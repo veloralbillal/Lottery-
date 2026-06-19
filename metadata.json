@@ -1,0 +1,6 @@
+{
+  "name": "Lottery Winner",
+  "description": "A highly polished, mobile-first Web App for lottery purchase, deposit/withdraw simulation with powerful admin panel management, user analytics, security limits, dark themes, and dynamic draw tools.",
+  "requestFramePermissions": ["vibrate"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

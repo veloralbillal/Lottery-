@@ -1,0 +1,150 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default global deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- REUSABLE UTILITIES & HELPERS ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+         (request.auth.token.email != null && request.auth.token.email_verified == true && request.auth.token.email == 'bh9957455@gmail.com')
+      );
+    }
+
+    // Helpers to access incoming and existing records
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- VALIDATION HELPER STRATEGIES ---
+
+    function isValidUser(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 100
+        && data.email is string && data.email.size() <= 150
+        && (data.phone == null || (data.phone is string && data.phone.size() <= 30))
+        && data.balance is number && data.balance >= 0.0
+        && (data.status == 'active' || data.status == 'blocked');
+    }
+
+    function isValidLottery(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 200
+        && data.entryFee is number && data.entryFee >= 0.0
+        && data.totalTickets is int && data.totalTickets >= 0
+        && data.soldTickets is int && data.soldTickets >= 0
+        && (data.status == 'active' || data.status == 'drawn' || data.status == 'cancelled')
+        && data.prizeAmount is number && data.prizeAmount >= 0.0;
+    }
+
+    function isValidTicket(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.userId is string && data.userId.size() <= 128
+        && data.lotteryId is string && data.lotteryId.size() <= 128
+        && data.code is string && data.code.size() <= 50
+        && (data.status == 'pending' || data.status == 'won' || data.status == 'lost');
+    }
+
+    function isValidDeposit(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.username is string && data.username.size() <= 100
+        && data.amount is number && data.amount > 0.0
+        && data.method is string && data.method.size() <= 50
+        && data.trxId is string && data.trxId.size() <= 100
+        && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
+    }
+
+    function isValidWithdrawal(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.username is string && data.username.size() <= 100
+        && data.amount is number && data.amount > 0.0
+        && data.method is string && data.method.size() <= 50
+        && data.targetAccount is string && data.targetAccount.size() <= 100
+        && (data.status == 'pending' || data.status == 'approved' || data.status == 'rejected');
+    }
+
+    function isValidSetting(data) {
+      return data.setting_key is string && data.setting_key.size() <= 100
+        && (data.setting_value == null || (data.setting_value is string && data.setting_value.size() <= 10000));
+    }
+
+
+    // --- COLLECTION MATCH BLOCKS ---
+
+    // USERS COLLECTION
+    match /users/{userId} {
+      allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      allow update: if isSignedIn() && isValidUser(incoming()) && (
+        isAdmin() ||
+        (isOwner(userId) && incoming().balance == existing().balance && incoming().status == existing().status) ||
+        (isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['phone', 'email']))
+      );
+      allow delete: if isAdmin();
+    }
+
+    // LOTTERIES COLLECTION
+    match /lotteries/{lotteryId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isSignedIn() && isValidLottery(incoming()) && (
+        isAdmin() ||
+        (incoming().diff(existing()).affectedKeys().hasOnly(['soldTickets']))
+      );
+    }
+
+    // TICKETS COLLECTION
+    match /tickets/{ticketId} {
+      allow read: if isSignedIn() && (isOwner(existing().userId) || isAdmin());
+      allow create: if isSignedIn() && isOwner(incoming().userId) && isValidTicket(incoming());
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // DEPOSITS COLLECTION
+    match /deposits/{depositId} {
+      allow read: if isSignedIn() && (existing() == null || isOwner(existing().userId) || isAdmin());
+      allow create: if isSignedIn() && isValidDeposit(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // WITHDRAWALS COLLECTION
+    match /withdrawals/{withdrawalId} {
+      allow read: if isSignedIn() && (existing() == null || isOwner(existing().userId) || isAdmin());
+      allow create: if isSignedIn() && isValidWithdrawal(incoming());
+      allow update, delete: if isAdmin();
+    }
+
+    // SETTINGS COLLECTION
+    match /settings/{settingKey} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin() && isValidSetting(incoming());
+    }
+
+    // ADMINS COLLECTION
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if false; // Configured out-of-band or via Firebase console
+    }
+  }
+}
