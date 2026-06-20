@@ -1,1 +1,12 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom high-fidelity colors used in UI design */
+  --color-slate-850: rgb(24, 32, 47);
+  --color-slate-955: rgb(5, 7, 14);
+  --color-rose-955: #2d060a;
+}
