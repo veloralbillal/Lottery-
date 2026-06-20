@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npx @tailwindcss/cli -i src/index.css -o src/tailwind-built.css --minify && vite build",
     "clean": "rm -rf dist",
     "lint": "echo 'No lint check needed'"
   },
