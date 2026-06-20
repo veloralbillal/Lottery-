@@ -29,6 +29,9 @@ class StateManager {
 
     // Initialize real-time cloud synchronization from Firebase
     this.initFirebaseSync();
+
+    // Initialize network status monitoring for offline mode UI
+    this.initNetworkMonitoring();
   }
 
   initDatabase() {
@@ -514,6 +517,64 @@ class StateManager {
       }, { merge: true });
     } catch (e) {
       console.error("Write to Firebase failed:", e);
+    }
+  }
+
+  initNetworkMonitoring() {
+    // Check initial status upon loads
+    if (!navigator.onLine) {
+      this.showOfflineModal();
+    }
+
+    // Register active network event triggers
+    window.addEventListener("offline", () => {
+      this.showOfflineModal();
+      this.showToast("Your internet connection was lost! Switched to safe offline mode.", "error");
+    });
+
+    window.addEventListener("online", () => {
+      this.hideOfflineModal();
+      this.showToast("Internet connection restored! Resuming live cloud sync.", "success");
+      if (this.firestoreDocRef) {
+        this.loadFromCloud();
+      }
+    });
+  }
+
+  showOfflineModal() {
+    const modal = document.getElementById("offline-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+    }
+  }
+
+  hideOfflineModal() {
+    const modal = document.getElementById("offline-modal");
+    if (modal) {
+      modal.classList.add("hidden");
+    }
+  }
+
+  async checkNetworkStatus() {
+    this.showToast("Handshaking with internet network...", "info");
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      
+      const response = await fetch("https://api.ipify.org?format=json", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        this.hideOfflineModal();
+        this.showToast("Internet restored! Sync database verified.", "success");
+        if (this.firestoreDocRef) {
+          this.loadFromCloud();
+        }
+      } else {
+        this.showToast("Handshake failed. Check your data router.", "error");
+      }
+    } catch (e) {
+      this.showToast("Device remains offline. Please try again shortly.", "error");
     }
   }
 
