@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import './index.css';
 
 // Main client-side database and router state for the Mobile Lottery Portal
 class StateManager {
@@ -471,7 +472,9 @@ class StateManager {
       const firebaseConfig = await configRes.json();
       const app = initializeApp(firebaseConfig);
       const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
-      this.firestore = getFirestore(app, dbId);
+      this.firestore = initializeFirestore(app, {
+        experimentalForceLongPolling: true
+      }, dbId);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
       console.log("Firebase sync engine initialized successfully.");
       await this.loadFromCloud();
