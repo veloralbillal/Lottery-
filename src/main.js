@@ -1,3 +1,6 @@
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
 // Main client-side database and router state for the Mobile Lottery Portal
 class StateManager {
   constructor() {
@@ -23,6 +26,9 @@ class StateManager {
     this.initDatabase();
     this.loadSession();
     this.startAutoDrawChecker();
+
+    // Initialize real-time cloud synchronization from Firebase
+    this.initFirebaseSync();
   }
 
   initDatabase() {
@@ -207,6 +213,9 @@ class StateManager {
       }
       if (this.db.settings.ipPreventionEnabled === undefined) {
         this.db.settings.ipPreventionEnabled = true;
+      }
+      if (this.db.settings.vpnBlockEnabled === undefined) {
+        this.db.settings.vpnBlockEnabled = true;
       }
       if (!this.db.settings.bannedIPs) {
         this.db.settings.bannedIPs = [];
@@ -441,6 +450,71 @@ class StateManager {
 
   saveDB() {
     localStorage.setItem(this.dbKey, JSON.stringify(this.db));
+    if (this.firestoreDocRef) {
+      if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
+      this.cloudSyncTimeout = setTimeout(() => {
+        this.syncToCloud();
+      }, 800);
+    }
+  }
+
+  async initFirebaseSync() {
+    try {
+      const configRes = await fetch("/firebase-applet-config.json");
+      if (!configRes.ok) {
+        console.warn("Firebase config not found or accessible.");
+        return;
+      }
+      const firebaseConfig = await configRes.json();
+      const app = initializeApp(firebaseConfig);
+      this.firestore = getFirestore(app);
+      this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
+      console.log("Firebase sync engine initialized successfully.");
+      await this.loadFromCloud();
+    } catch (e) {
+      console.error("Failed to initialize Firebase Sync:", e);
+    }
+  }
+
+  async loadFromCloud() {
+    if (!this.firestoreDocRef) return;
+    try {
+      const docSnap = await getDoc(this.firestoreDocRef);
+      if (docSnap.exists()) {
+        const cloudData = docSnap.data().db;
+        if (cloudData) {
+          let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
+          this.db = parsed;
+          if (this.currentUser) {
+            const freshUser = this.db.users.find(u => u.username === this.currentUser.username);
+            if (freshUser) {
+              this.currentUser = freshUser;
+              localStorage.setItem(this.sessionKey, JSON.stringify(freshUser));
+            }
+          }
+          localStorage.setItem(this.dbKey, JSON.stringify(this.db));
+          this.render();
+          console.log("Database successfully synced with Firebase cloud.");
+        }
+      } else {
+        await this.syncToCloud();
+        console.log("Initialized cloud database document in Firebase Firestore.");
+      }
+    } catch (e) {
+      console.error("Cloud document fetch error:", e);
+    }
+  }
+
+  async syncToCloud() {
+    if (!this.firestoreDocRef || !this.db) return;
+    try {
+      await setDoc(this.firestoreDocRef, {
+        db: this.db,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.error("Write to Firebase failed:", e);
+    }
   }
 
   loadSession() {
@@ -3682,6 +3756,47 @@ class StateManager {
     }
   }
 
+  async getIPDetails() {
+    try {
+      const response = await fetch("https://ipapi.co/json/");
+      if (response.ok) {
+        const details = await response.json();
+        return {
+          ip: details.ip || "127.0.0.1",
+          country: details.country_name || "",
+          org: details.org || "",
+          timezone: details.timezone || "",
+          region: details.region || ""
+        };
+      }
+    } catch (e) {
+      console.warn("Retrying IP details fetch via fallback due to blocker", e);
+    }
+    const ip = await this.getClientIP();
+    return { ip, country: "", org: "", timezone: "", region: "" };
+  }
+
+  isVPN(details) {
+    if (!details) return false;
+    const orgLower = (details.org || "").toLowerCase();
+    const vpnKeywords = [
+      "vpn", "proxy", "hosting", "cloud", "server", "datacenter", "mullvad", 
+      "nordvpn", "expressvpn", "surfshark", "digitalocean", "linode", "ovh", 
+      "colocation", "amazon", "google", "microsoft", "leaseweb", "vultr", "packet", 
+      "private internet", "windscribe", "tor", "exit-node", "proton", "cloudflare", 
+      "fastly", "dedicated", "contabo", "interserver", "hetzner"
+    ];
+    const isVpnOrg = vpnKeywords.some(keyword => orgLower.includes(keyword));
+    if (isVpnOrg) return true;
+
+    // Timezone discrepancy check: device timezone vs IP location timezone
+    const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (details.timezone && clientTimezone && details.timezone !== clientTimezone) {
+      return true;
+    }
+    return false;
+  }
+
   triggerAdminSecurityAlert(type, message) {
     if (!this.db.securityLogs) {
       this.db.securityLogs = [];
@@ -4629,10 +4744,12 @@ class StateManager {
     const allowedInput = document.getElementById("ref-allowed-regions-input");
     const bannedInput = document.getElementById("ref-banned-regions-input");
     const preventionToggle = document.getElementById("ref-ip-prevention-toggle");
+    const vpnBlockToggle = document.getElementById("ref-vpn-block-toggle");
 
     if (allowedInput) allowedInput.value = (s.allowedRegions || []).join(", ");
     if (bannedInput) bannedInput.value = (s.bannedRegions || []).join(", ");
     if (preventionToggle) preventionToggle.checked = s.ipPreventionEnabled !== false;
+    if (vpnBlockToggle) vpnBlockToggle.checked = s.vpnBlockEnabled !== false;
 
     // Render Milestone Levels Table
     const tbody = document.getElementById("admin-milestone-levels-tbody");
@@ -5371,6 +5488,16 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  const refVpnBlockToggle = document.getElementById("ref-vpn-block-toggle");
+  if (refVpnBlockToggle) {
+    refVpnBlockToggle.addEventListener("change", (e) => {
+      app.db.settings.vpnBlockEnabled = e.target.checked;
+      app.saveDB();
+      app.showToast(`Anti-VPN / Proxy Protection Shield is now ${e.target.checked ? 'ACTIVE' : 'DEACTIVATED'}!`, "info");
+      app.renderAdminRefer();
+    });
+  }
+
   const refAddBannedIpBtn = document.getElementById("ref-add-banned-ip-btn");
   if (refAddBannedIpBtn) {
     refAddBannedIpBtn.addEventListener("click", () => {
@@ -5519,6 +5646,14 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
+    if (app.db.settings.vpnBlockEnabled !== false) {
+      const details = await app.getIPDetails();
+      if (app.isVPN(details)) {
+        app.showToast(`VPN / PROXY REJECTED: VPN connection is strictly blocked. Turn off VPN & try again!`, "error");
+        return;
+      }
+    }
+
     // Check for direct admin login credentials
     if (userVal.toLowerCase() === "admin" && (passVal === "Admin123" || passVal === app.db.settings.adminPass)) {
       app.isAdminMode = true;
@@ -5595,6 +5730,14 @@ window.addEventListener("DOMContentLoaded", () => {
     if (bannedIPs.includes(clientIp)) {
       app.showToast(`SECURITY DETECTED: This computer's network IP (${clientIp}) has been banned!`, "error");
       return;
+    }
+
+    if (app.db.settings.vpnBlockEnabled !== false) {
+      const details = await app.getIPDetails();
+      if (app.isVPN(details)) {
+        app.showToast(`SECURITY ALERT: VPN / Proxy detected. Sign-up is strictly forbidden. Disable VPN!`, "error");
+        return;
+      }
     }
 
     // 3. Multi-Account Restriction (1 account per IP)

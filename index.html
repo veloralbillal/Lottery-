@@ -1433,6 +1433,17 @@
                   </label>
                 </div>
 
+                <div class="flex justify-between items-center bg-slate-900/60 p-3 border border-slate-850 rounded-xl">
+                  <div>
+                    <span class="text-[11px] font-bold text-white block">Anti-VPN / Proxy Protection Shield</span>
+                    <span class="text-[9px] text-slate-500 block font-sans">Strictly blocks all VPN servers, Proxy layers, and Cloud Hosting ISPs.</span>
+                  </div>
+                  <label class="relative inline-flex items-center cursor-pointer">
+                    <input id="ref-vpn-block-toggle" type="checkbox" class="sr-only peer">
+                    <div class="w-10 h-5 bg-slate-850 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-600 animate-pulse"></div>
+                  </label>
+                </div>
+
                 <!-- Custom IP Banish Field -->
                 <div class="space-y-1.5 pt-0.5">
                   <label class="block text-slate-500 text-[9px] uppercase font-bold">MANUAL IP BLACKLIST BAN (Banish Single IP immediately)</label>
@@ -2946,55 +2957,17 @@
           <span id="screenshot-meta" class="text-[9.5px] text-slate-400 block font-mono">Submitted by: @username • ৳50.00 Bounty</span>
         </div>
         <div class="flex items-center gap-1.5">
-          <button id="screenshot-zoom-reset" type="button" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-white rounded-xl py-2 px-3.5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-arrows-rotate text-purple-400"></i> Reset
-          </button>
-          <button id="screenshot-close-btn" type="button" class="bg-rose-955 border border-rose-950 hover:bg-rose-900 text-rose-400 rounded-xl py-2 px-4 text-xs font-black transition flex items-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-xmark"></i> Close
+          <button id="screenshot-close-btn" type="button" class="bg-rose-955 border border-rose-950 hover:bg-rose-900 text-rose-400 rounded-xl py-2.5 px-5 text-xs font-black transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-xmark"></i> Close Viewer
           </button>
         </div>
       </div>
 
-      <!-- Lightbox Canvas Viewport -->
+      <!-- Lightbox Canvas Viewport (Fixed Screen, No Zoom) -->
       <div class="flex-1 w-full max-w-5xl mx-auto flex items-center justify-center relative overflow-hidden my-4 border border-slate-900 bg-slate-950 rounded-3xl select-none" id="screenshot-viewport">
-        <!-- Interactive Image draggable and transformable -->
+        <!-- Static Image -->
         <img id="screenshot-large-img" src="" alt="Proof high-res screenshot view" 
-             class="max-h-[72vh] max-w-full object-contain cursor-grab active:cursor-grabbing select-none pointer-events-auto transition-transform duration-100 ease-out origin-center" 
-             style="transform: scale(1) translate(0px, 0px) rotate(0deg);" />
-        
-        <!-- Drag hint overlays -->
-        <div class="absolute bottom-4 left-4 right-4 md:right-auto bg-slate-900/60 backdrop-blur-sm border border-slate-800 py-1.5 px-3 rounded-lg text-[9px] text-slate-400 font-mono pointer-events-none flex items-center gap-1.5">
-          <i class="fa-solid fa-hand-pointer text-purple-400"></i> Drag image to pan • Use Mouse Wheel / Slider to zoom
-        </div>
-      </div>
-
-      <!-- Control Toolbar bottom -->
-      <div class="border-t border-slate-850 pt-3 max-w-5xl w-full mx-auto flex flex-wrap items-center justify-between gap-4">
-        <!-- Zoom Controls -->
-        <div class="flex items-center gap-3">
-          <button id="screenshot-zoom-out" type="button" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 w-9 h-9 flex items-center justify-center rounded-xl transition cursor-pointer">
-            <i class="fa-solid fa-minus"></i>
-          </button>
-          
-          <div class="flex items-center gap-2">
-            <span class="text-[9px] text-slate-500 font-mono w-10 text-right" id="screenshot-zoom-percent">100%</span>
-            <input id="screenshot-zoom-slider" type="range" min="0.5" max="5" step="0.1" value="1" class="w-32 accent-purple-500 bg-slate-900 h-1.5 rounded-lg appearance-none cursor-pointer border border-slate-800" />
-          </div>
-
-          <button id="screenshot-zoom-in" type="button" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 w-9 h-9 flex items-center justify-center rounded-xl transition cursor-pointer">
-            <i class="fa-solid fa-plus"></i>
-          </button>
-        </div>
-
-        <!-- Rotate controls -->
-        <div class="flex items-center gap-2">
-          <button id="screenshot-rotate-ccw" type="button" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 text-[10px] py-1.5 px-3.5 rounded-xl transition cursor-pointer flex items-center gap-1">
-            <i class="fa-solid fa-rotate-left text-purple-400"></i> Rotate CCW
-          </button>
-          <button id="screenshot-rotate-cw" type="button" class="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-400 text-[10px] py-1.5 px-3.5 rounded-xl transition cursor-pointer flex items-center gap-1">
-            <i class="fa-solid fa-rotate-right text-purple-400"></i> Rotate CW
-          </button>
-        </div>
+             class="max-h-[80vh] max-w-full object-contain select-text cursor-default" />
       </div>
     </div>
 
