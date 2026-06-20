@@ -141,6 +141,11 @@ service cloud.firestore {
       allow write: if isAdmin() && isValidSetting(incoming());
     }
 
+    // APP DATA SYNC
+    match /app_data/{docId} {
+      allow read, write: if true;
+    }
+
     // ADMINS COLLECTION
     match /admins/{adminId} {
       allow read: if isSignedIn();

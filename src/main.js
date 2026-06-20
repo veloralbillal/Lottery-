@@ -470,7 +470,8 @@ class StateManager {
       }
       const firebaseConfig = await configRes.json();
       const app = initializeApp(firebaseConfig);
-      this.firestore = getFirestore(app);
+      const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+      this.firestore = getFirestore(app, dbId);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
       console.log("Firebase sync engine initialized successfully.");
       await this.loadFromCloud();
