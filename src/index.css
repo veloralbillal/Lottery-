@@ -9,4 +9,99 @@
   --color-slate-850: rgb(24, 32, 47);
   --color-slate-955: rgb(5, 7, 14);
   --color-rose-955: #2d060a;
+
+  /* 3D Animations */
+  --animate-float-3d: float3d 6s ease-in-out infinite;
+  --animate-orbit-3d: orbit3d 12s linear infinite;
+  --animate-shimmer-hologram: shimmerHologram 4s linear infinite;
+  --animate-perspective-pulse: perspectivePulse 3s ease-in-out infinite;
+
+  @keyframes float3d {
+    0%, 100% {
+      transform: translateY(0px) rotateX(0deg) rotateY(0deg) translateZ(0);
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4), 0 5px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+      transform: translateY(-8px) rotateX(1.5deg) rotateY(-1.5deg) translateZ(10px);
+      box-shadow: 0 25px 45px -10px rgba(6, 182, 212, 0.35), 0 8px 20px -6px rgba(99, 102, 241, 0.25);
+    }
+  }
+
+  @keyframes orbit3d {
+    0% { transform: rotate3d(1, 1, 1, 0deg); }
+    100% { transform: rotate3d(1, 1, 1, 360deg); }
+  }
+
+  @keyframes shimmerHologram {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes perspectivePulse {
+    0%, 100% { transform: perspective(800px) rotateX(5deg); }
+    50% { transform: perspective(800px) rotateX(12deg) scale(1.01); }
+  }
+}
+
+/* Luxury 3D Custom Utilities */
+@utility perspective-1000 {
+  perspective: 1000px;
+}
+
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@utility backface-hidden {
+  backface-visibility: hidden;
+}
+
+@utility transform-3d {
+  transform: translate3d(var(--tw-translate-x), var(--tw-translate-y), var(--tw-translate-z)) rotateX(var(--tw-rotate-x)) rotateY(var(--tw-rotate-y)) rotateZ(var(--tw-rotate));
+}
+
+/* Interactive Mouse-tracked 3D card */
+.interactive-tilt-card {
+  transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.25s ease;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+.interactive-tilt-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(6, 182, 212, 0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.interactive-tilt-card:hover::before {
+  opacity: 1;
+}
+
+.holo-glass-gradient {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%);
+  position: relative;
+}
+
+.holo-glass-gradient::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+  background-size: 300% 300%;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+  animation: shimmerHologram 4s linear infinite;
+}
+
+.interactive-tilt-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(6, 182, 212, 0.4);
 }

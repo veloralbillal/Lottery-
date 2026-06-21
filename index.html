@@ -81,6 +81,81 @@
       </div>
     </div>
 
+
+    <!-- ================= CLOUD SYNC DIAGNOSTICS MODAL ================= -->
+    <div id="cloud-sync-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[1050] flex items-center justify-center p-4">
+      <div class="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl relative overflow-hidden">
+        <!-- Glowing accent border -->
+        <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-50 blur-xl pointer-events-none"></div>
+        
+        <div class="flex justify-between items-center border-b border-slate-850 pb-3 relative">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up text-cyan-400 text-lg"></i>
+            <h3 class="text-xs font-black uppercase tracking-wider text-slate-200">Cloud Sync Monitor</h3>
+          </div>
+          <button onclick="document.getElementById('cloud-sync-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 transition text-sm">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Pulse Status Panel -->
+        <div class="bg-slate-950/80 border border-slate-850 rounded-2xl p-4 flex items-center gap-4 relative">
+          <div class="w-12 h-12 rounded-xl bg-cyan-950/40 border border-cyan-800/30 flex items-center justify-center text-cyan-400 text-xl shrink-0" id="sync-modal-icon-container">
+            <i class="fa-solid fa-circle-notch animate-spin text-cyan-400" id="sync-modal-icon"></i>
+          </div>
+          <div class="space-y-1">
+            <span class="text-[9px] uppercase font-mono text-slate-500 block">Current Status</span>
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" id="sync-modal-dot"></span>
+              <span class="text-xs font-black text-white uppercase tracking-wider" id="sync-modal-state-text">Synced</span>
+            </div>
+            <span class="text-[10px] text-slate-400 block" id="sync-modal-state-subtext">Connected to Google Cloud</span>
+          </div>
+        </div>
+
+        <!-- Sync Stats List -->
+        <div class="bg-slate-950/40 border border-slate-850/50 p-4 rounded-2xl space-y-3 font-mono text-[10px]">
+          <div class="flex justify-between border-b border-slate-850 pb-2">
+            <span class="text-slate-500">Sync Engine</span>
+            <span class="text-slate-300 font-bold">Google Firebase Firestore</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-850 pb-2">
+            <span class="text-slate-500">Database ID</span>
+            <span class="text-cyan-400 font-bold text-[9px] truncate max-w-[155px]" id="sync-modal-project-id" title="ai-studio-974d5483-e694-46e0-8f50-3cc61524c974">ai-studio-974d5483...</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-850 pb-2">
+            <span class="text-slate-500">Registered Players</span>
+            <span class="text-slate-300 font-bold" id="sync-stat-users">--</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-850 pb-2">
+            <span class="text-slate-500 font-mono">Lotteries / Pools</span>
+            <span class="text-slate-300 font-bold" id="sync-stat-pools">--</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Last Synced Status</span>
+            <span class="text-emerald-400 font-bold" id="sync-stat-time">Synced Just Now</span>
+          </div>
+        </div>
+
+        <!-- Action triggers -->
+        <div class="flex flex-col gap-2 relative">
+          <button id="sync-manual-trigger-btn" class="bg-gradient-to-r from-cyan-600 to-rose-600 hover:opacity-90 text-white text-xs font-black py-3 rounded-xl transition cursor-pointer active:scale-98 flex items-center justify-center gap-2">
+            <i class="fa-solid fa-arrows-rotate" id="sync-manual-icon"></i> <span>Sync & Refresh Data</span>
+          </button>
+          
+          <button onclick="document.getElementById('cloud-sync-modal').classList.add('hidden')" class="bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-400 text-[10px] subpixel-antialiased font-bold py-2 px-4 rounded-xl transition">
+            Close Panel
+          </button>
+        </div>
+
+        <!-- Friendly Bengali Instruction -->
+        <p class="text-[9px] text-slate-500 text-center font-sans leading-normal">
+          💡 আপনার সমস্ত ডেটা গুগুল ক্লাউডে রিয়েল-টাইমে সুরক্ষিতভাবে সংরক্ষণ এবং সিঙ্ক করা হচ্ছে।
+        </p>
+      </div>
+    </div>
+
+
     <!-- ================= SCREEN 1: MAINTENANCE LOCK SCREEN ================= -->
     <div id="screen-maintenance" class="hidden fixed inset-0 bg-slate-950 flex flex-col justify-between p-6 z-50 overflow-y-auto">
       <div class="my-auto max-w-md w-full mx-auto text-center space-y-6">
@@ -129,11 +204,18 @@
         </div>
         <h1 class="text-xl font-black font-display tracking-wide uppercase text-white brand-site-name">Lottery Winner</h1>
         <p class="text-[10px] font-mono text-cyan-400 uppercase tracking-widest mt-1 brand-site-info">Premium Mobile Play Portal</p>
+        
+        <!-- Cloud Sync status badge for Auth screen -->
+        <div class="mt-3 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-800/80 text-[10px] font-mono flex items-center gap-2 shadow-lg cursor-pointer hover:bg-slate-900 transition active:scale-98 cloud-sync-debug-trigger" title="Check Cloud Sync Status">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 cloud-sync-dot shadow-[0_0_6px_rgba(16,185,129,0.5)]"></span>
+          <span class="text-slate-400">Database Connection:</span>
+          <span class="font-black text-emerald-400 uppercase tracking-wide cloud-sync-text">Synced</span>
+        </div>
       </header>
 
       <!-- Main Login Container block -->
       <div id="auth-login-box" class="z-10 max-w-sm w-full mx-auto my-auto py-8">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md space-y-5">
+        <div class="interactive-tilt-card holo-glass-gradient border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md space-y-5">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Player Sign-In</h2>
             <button id="show-register-btn" class="text-[11px] font-black text-rose-500 font-mono hover:underline">Register Account</button>
@@ -165,7 +247,7 @@
 
       <!-- Main Sign Up Container block -->
       <div id="auth-signup-box" class="hidden z-10 max-w-sm w-full mx-auto my-auto py-8">
-        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md space-y-5">
+        <div class="interactive-tilt-card holo-glass-gradient border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md space-y-5">
           <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Register Account</h2>
             <button id="show-login-btn" class="text-[11px] font-black text-cyan-400 font-mono hover:underline">Sign In Instead</button>
@@ -253,10 +335,18 @@
           </div>
         </div>
 
-        <!-- Floating pocket balance badge -->
-        <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-1.5 select-none font-mono">
-          <span class="text-[10px] text-slate-500 uppercase font-black">Purse:</span>
-          <span class="text-xs font-black text-emerald-400">৳<span class="curr-balance"></span></span>
+        <div class="flex items-center gap-1.5">
+          <!-- Cloud Sync Badge for Dashboard -->
+          <div class="cloud-sync-debug-trigger bg-slate-950 border border-slate-850 hover:bg-slate-900 transition cursor-pointer px-2 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none text-[8.5px] font-mono leading-none active:scale-95" title="Check Cloud Sync Status">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 cloud-sync-dot shadow-[0_0_6px_rgba(16,185,129,0.5)]"></span>
+            <span class="text-emerald-400 font-extrabold uppercase tracking-tight cloud-sync-text">Synced</span>
+          </div>
+
+          <!-- Floating pocket balance badge -->
+          <div class="bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full flex items-center gap-1.5 select-none font-mono">
+            <span class="text-[10px] text-slate-500 uppercase font-black">Purse:</span>
+            <span class="text-xs font-black text-emerald-400">৳<span class="curr-balance"></span></span>
+          </div>
         </div>
       </header>
 
@@ -280,7 +370,7 @@
           </div>
 
           <!-- Decorative promotional hero slider -->
-          <div class="bg-gradient-to-r from-red-950/40 to-slate-900 border border-red-900/10 p-5 rounded-3xl relative overflow-hidden shadow-lg mb-2 flex items-center justify-between">
+          <div class="interactive-tilt-card holo-glass-gradient border border-red-900/20 p-5 rounded-3xl relative overflow-hidden shadow-lg mb-2 flex items-center justify-between">
             <div class="space-y-1 z-10">
               <span class="text-[9px] uppercase font-bold text-red-500 tracking-widest font-mono block">EASY PAYOUT</span>
               <h2 class="text-base font-black text-white font-display">Fast Taka Cashout</h2>
@@ -1251,9 +1341,17 @@
           <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
           <h2 class="text-xs font-black tracking-wider text-rose-500 font-mono">ADMIN PANEL CONTROL ROOM</h2>
         </div>
-        <button id="exit-admin-btn" class="text-[10px] font-bold font-mono bg-rose-950 border border-rose-800 text-rose-300 py-1.5 px-4 rounded-xl cursor-pointer hover:bg-rose-900 transition h-fit">
-          Exit Room
-        </button>
+        <div class="flex items-center gap-2">
+          <!-- Cloud Sync status badge for Admin screen -->
+          <div class="cloud-sync-debug-trigger bg-slate-950 border border-slate-850 hover:bg-slate-900 transition cursor-pointer px-2 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg select-none text-[8.5px] font-mono leading-none active:scale-95" title="Check Cloud Sync Status">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 cloud-sync-dot shadow-[0_0_6px_rgba(16,185,129,0.5)]"></span>
+            <span class="text-emerald-400 font-extrabold uppercase tracking-tight cloud-sync-text">Synced</span>
+          </div>
+
+          <button id="exit-admin-btn" class="text-[10px] font-bold font-mono bg-rose-950 border border-rose-800 text-rose-300 py-1.5 px-4 rounded-xl cursor-pointer hover:bg-rose-900 transition h-fit">
+            Exit Room
+          </button>
+        </div>
       </header>
 
       <!-- Admin Tab Switch selectors -->
@@ -1302,6 +1400,9 @@
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="badge-requests">
           <i class="fa-solid fa-ribbon text-rose-500"></i> Badge Requests <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-badge-requests-count-badge">0</span>
+        </button>
+        <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="sync-vault">
+          <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> Cloud Failover Vault
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="settings">
           <i class="fa-solid fa-sliders"></i> App Settings
@@ -1848,6 +1949,208 @@
               </div>
             </div>
 
+          </div>
+        </div>
+      </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= ADMIN TAB: CLOUD FAILOVER VAULT ================= -->
+      <div id="admin-tab-sync-vault" class="hidden space-y-6">
+        <!-- Top network status header -->
+        <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden shadow-2xl">
+          <div class="absolute inset-0 bg-radial-gradient from-cyan-500/10 via-transparent to-transparent opacity-60"></div>
+          <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-1">
+              <span class="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-block">High-Availability Cloud Console</span>
+              <h3 class="text-xl font-black text-white font-sans tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-up text-cyan-400 animate-pulse"></i> Multi-Database Standby & Failover Manager
+              </h3>
+              <p class="text-xs text-slate-400 font-sans max-w-xl">
+                আপনার সিস্টেমটি রিয়েল-টাইমে মাল্টি-ক্লাউড ফেইলওভার সাপোর্ট করে। যদি কোনো মূল সার্ভারে বা ফায়ারবেসে সমস্যা হয়, তবে ব্যাকআপ ডাটাবেস সম্পূর্ণ স্বয়ংক্রিয়ভাবে চালু হয়ে যাবে কোনো ডাটা লস ছাড়াই।
+              </p>
+            </div>
+            <div class="shrink-0 bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 font-mono">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-ping shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+              <div class="text-[10px]">
+                <span class="text-slate-500 block uppercase font-bold">Active Primary link</span>
+                <span class="text-emerald-400 font-black" id="failover-live-active-nodename">Firebase Production Node</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Network Flow Diagram Visualizer -->
+          <div class="mt-6 bg-slate-950/70 border border-slate-850 rounded-2xl p-4 relative">
+            <h4 class="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-4">Database Traffic & Heartbeat Loop (রিয়েল-টাইম কানেকশন ম্যাপ)</h4>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+              <!-- Client Browser node -->
+              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
+                <div class="w-10 h-10 rounded-full bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400">
+                  <i class="fa-solid fa-desktop"></i>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold text-white block">Client Portal</span>
+                  <span class="text-[9px] text-slate-500 block font-mono">Web Application</span>
+                </div>
+                <div class="px-2 py-0.5 rounded-full bg-cyan-950 text-[8px] text-cyan-400 font-mono tracking-wider">ONLINE</div>
+              </div>
+
+              <!-- Switch load Balancer / Fallback gateway -->
+              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
+                <!-- Glowing Pulsing effect for active routing -->
+                <div class="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-rose-600 rounded-xl blur opacity-15 animate-pulse"></div>
+                <div class="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-rose-500 relative z-10">
+                  <i class="fa-solid fa-network-wired" id="cluster-balancer-icon"></i>
+                </div>
+                <div class="relative z-10">
+                  <span class="text-[10px] font-bold text-white block">Router Sync Engine</span>
+                  <span class="text-[9px] text-rose-400 block font-mono" id="cluster-active-router-mode">Autopilot High-Availability</span>
+                </div>
+                <div class="px-2 py-0.5 rounded-full bg-rose-950/50 text-[8px] text-rose-400 font-mono tracking-wider relative z-10">FAILOVER STANDBY ACTIVE</div>
+              </div>
+
+              <!-- Database Clusters -->
+              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
+                <div class="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400" id="cluster-db-visual-icon">
+                  <i class="fa-solid fa-database"></i>
+                </div>
+                <div>
+                  <span class="text-[10px] font-bold text-white block">Configured Storage Pool</span>
+                  <span class="text-[9px] text-slate-500 block font-mono" id="cluster-backends-count-txt">3 Database Nodes registered</span>
+                </div>
+                <div class="px-2 py-0.5 rounded-full bg-emerald-950 text-[8px] text-emerald-400 font-mono tracking-wider" id="cluster-db-visual-status">HEALTHY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Standby Database Config list -->
+          <div class="lg:col-span-2 space-y-4">
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+              <div class="flex justify-between items-center border-b border-slate-850 pb-3">
+                <div class="flex items-center gap-2">
+                  <i class="fa-solid fa-server text-cyan-400"></i>
+                  <h4 class="text-xs font-black tracking-wider uppercase text-slate-200">Failover Clusters & Replication Nodes</h4>
+                </div>
+                <span class="text-[9px] bg-slate-950 border border-slate-800 px-2 py-1 rounded-full text-slate-500 font-mono">Priori-Ordered Queue</span>
+              </div>
+
+              <!-- Live Grid loop of servers -->
+              <div id="sync-nodes-container" class="space-y-3">
+                <!-- Dynamically populated by JS state -->
+              </div>
+            </div>
+
+            <!-- Failover Log Console Terminal -->
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl">
+              <div class="flex justify-between items-center">
+                <div class="flex items-center gap-2 text-xs font-bold font-mono text-slate-300">
+                  <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  <span>SYSTEM HEARTBEAT & SYNCHRONIZATION LOGS</span>
+                </div>
+                <button id="clear-sync-logs-btn" class="text-[9px] font-mono text-slate-500 hover:text-slate-300 bg-slate-950 border border-slate-850 hover:bg-slate-900 px-3 py-1 rounded-lg transition">
+                  Clear Console
+                </button>
+              </div>
+
+              <div class="bg-black/90 rounded-2xl p-4 border border-slate-850/60 font-mono text-[9px] h-40 overflow-y-auto space-y-1.5 scrollbar-thin text-slate-400" id="sync-console-logs">
+                <div class="text-cyan-500">[12:10:05] HA Sync Engine initial handshake established.</div>
+                <div class="text-emerald-500">[12:10:06] Connection Pool ready. Primed 3 replica nodes.</div>
+                <div class="text-slate-500">[12:10:30] Auto-heartbeat verified. Latency: 12ms.</div>
+              </div>
+              <div class="text-[9px] text-slate-500 font-sans leading-normal">
+                💡 প্রতিটি ডাটাবেজ সঙ্কলন বা পরিবর্তনের পর সিস্টেমটি প্রতিটি একটিভ ব্যাকআপ সার্ভারে সিঙ্ক করার চেষ্টা করবে। কোনো সমস্যা চিহ্নিত হলে, তা সাথে সাথে এই লগে দেখা যাবে।
+              </div>
+            </div>
+          </div>
+
+          <!-- Add standby replica form -->
+          <div class="space-y-4">
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+              <div class="border-b border-slate-850 pb-3">
+                <h4 class="text-xs font-black tracking-wider uppercase text-slate-200">Enlist Standby Cluster / Database</h4>
+                <p class="text-[10px] text-slate-500">Add dynamic backup APIs, secondary SQL, or custom storage nodes.</p>
+              </div>
+
+              <form id="add-sync-node-form" class="space-y-3 text-xs font-mono">
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Node / Server Name</label>
+                  <input type="text" id="sync-node-name" required placeholder="e.g., PostgreSQL Backup server" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition">
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Engine Driver Type</label>
+                  <select id="sync-node-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition">
+                    <option value="firebase">Google Firebase Firestore</option>
+                    <option value="sql">Relational SQL Backup Node</option>
+                    <option value="api">Custom REST Sync Backup Webhook</option>
+                  </select>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Database URI / Webhook Endpoint</label>
+                  <input type="text" id="sync-node-endpoint" required value="postgresql://database.postgres-cluster.internal:5432/lottery_backup" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[10px]">
+                </div>
+
+                <div class="grid grid-cols-2 gap-2">
+                  <div class="space-y-1">
+                    <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Failover Priority</label>
+                    <select id="sync-node-priority" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition">
+                      <option value="1">1 (Highest Priority)</option>
+                      <option value="2" selected>2 (Standby High)</option>
+                      <option value="3">3 (Standby Normal)</option>
+                      <option value="4">4 (Low Priority)</option>
+                      <option value="5">5 (Failover-Only)</option>
+                    </select>
+                  </div>
+
+                  <div class="space-y-1">
+                    <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Connection Mode</label>
+                    <select id="sync-node-mode" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition">
+                      <option value="active_sync">Active Sync</option>
+                      <option value="standby" selected>Standby-HA</option>
+                      <option value="failover_only">Failover-Only</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider font-sans">Description (বিবরণ)</label>
+                  <textarea id="sync-node-description" rows="2" placeholder="Secondary fallback cluster for lottery ledger preservation." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[10.5px] font-sans"></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:opacity-90 text-white text-[11px] font-black py-3 rounded-xl cursor-pointer transition active:scale-98 flex items-center justify-center gap-1.5 mt-2">
+                  <i class="fa-solid fa-network-wired"></i> <span>Enlist Standby Cluster</span>
+                </button>
+              </form>
+            </div>
+
+            <!-- Visual stats of replication health -->
+            <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3 shadow-xl text-xs font-mono">
+              <h4 class="text-[10px] text-slate-400 uppercase font-black tracking-wider">Replica Cluster Stats</h4>
+              <div class="space-y-2 text-[10.5px]">
+                <div class="flex justify-between border-b border-slate-850 pb-1.5">
+                  <span class="text-slate-500">Active Pipeline</span>
+                  <span class="text-emerald-400 font-extrabold" id="sync-health-pipeline">Firestore Secure Link</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-850 pb-1.5">
+                  <span class="text-slate-500">Failover Latency Switch</span>
+                  <span class="text-[#f59e0b] font-extrabold">&lt; 1500 ms</span>
+                </div>
+                <div class="flex justify-between border-b border-slate-850 pb-1.5">
+                  <span class="text-slate-500">Fault-Tolerance (HA)</span>
+                  <span class="text-emerald-400">99.999% Active</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Total Nodes Loaded</span>
+                  <span class="text-white font-extrabold" id="sync-health-nodes-count">3 Clusters</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
