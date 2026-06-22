@@ -769,6 +769,7 @@ class StateManager {
   initSyncClickHandlers() {
     // Add event delegation or direct click triggers for sync badges
     document.addEventListener("click", (e) => {
+      if (!e.target || typeof e.target.closest !== "function") return;
       const trigger = e.target.closest(".cloud-sync-debug-trigger");
       if (trigger) {
         e.preventDefault();
@@ -1166,6 +1167,7 @@ class StateManager {
   init3DTiltEffect() {
     // Elegant mouse coordinate tracking to tilt any card with interactive-tilt-card class
     document.addEventListener("mousemove", (e) => {
+      if (!e.target || typeof e.target.closest !== "function") return;
       const card = e.target.closest(".interactive-tilt-card");
       if (!card) return;
 
@@ -1187,6 +1189,7 @@ class StateManager {
     });
 
     document.addEventListener("mouseleave", (e) => {
+      if (!e.target || typeof e.target.closest !== "function") return;
       const card = e.target.closest(".interactive-tilt-card");
       if (!card) return;
       card.style.transform = "perspective(800px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
@@ -4191,6 +4194,8 @@ class StateManager {
     document.getElementById("admin-tab-withdraws").classList.add("hidden");
     document.getElementById("admin-tab-settings").classList.add("hidden");
     document.getElementById("admin-tab-gateways").classList.add("hidden");
+    const syncVaultTab = document.getElementById("admin-tab-sync-vault");
+    if (syncVaultTab) syncVaultTab.classList.add("hidden");
     const msgsTab = document.getElementById("admin-tab-messages");
     if (msgsTab) msgsTab.classList.add("hidden");
     const catTab = document.getElementById("admin-tab-categories");
@@ -7007,6 +7012,7 @@ function initApplicationLoader() {
 
   // Handle Jackpot Qty buttons click delegation
   document.addEventListener("click", (e) => {
+    if (!e.target || typeof e.target.closest !== "function") return;
     const qtyBtn = e.target.closest(".jp-qty-btn");
     if (qtyBtn) {
       const qty = qtyBtn.getAttribute("data-qty");
@@ -7025,6 +7031,7 @@ function initApplicationLoader() {
 
   // Delegated Admin Reset Jackpot click handler
   document.addEventListener("click", (e) => {
+    if (!e.target || typeof e.target.closest !== "function") return;
     const resetBtn = e.target.closest("#admin-reset-jackpot-btn");
     if (resetBtn) {
       if (!confirm("Are you sure you want to completely reset the Progressive Jackpot Pool to default starting ৳1,000.00 and clear active registrations?")) return;
@@ -7038,6 +7045,7 @@ function initApplicationLoader() {
 
   // Delegated Admin Draw Jackpot click handler
   document.addEventListener("click", (e) => {
+    if (!e.target || typeof e.target.closest !== "function") return;
     const drawBtn = e.target.closest("#admin-draw-jackpot-btn");
     if (drawBtn) {
       const regs = app.db.jackpotRegistrations || [];
@@ -7136,6 +7144,7 @@ function initApplicationLoader() {
 
   // Handle Admin Task Verification Filter button clicks
   document.addEventListener("click", (e) => {
+    if (!e.target || typeof e.target.closest !== "function") return;
     const filterBtn = e.target.closest(".task-verify-filter-btn");
     if (filterBtn) {
       document.querySelectorAll(".task-verify-filter-btn").forEach(btn => {
@@ -7704,6 +7713,7 @@ function initApplicationLoader() {
 
   // Keep track of community subtabs, admin moderation reporting and consent clicks
   document.addEventListener("click", (e) => {
+    if (!e.target || typeof e.target.closest !== "function") return;
     // 1. Home category tabs
     const tabBtn = e.target.closest(".home-cat-tab-btn");
     if (tabBtn) {
