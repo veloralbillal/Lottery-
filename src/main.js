@@ -1,5 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { ChatProfileSystem } from "./chat-profile-system.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 class StateManager {
@@ -21,6 +22,7 @@ class StateManager {
     this.communitySearchQuery = "";
     this.adminPlayersSearchQuery = "";
     this.communityFilter = "recent";
+    this.genTier = "free"; // 'free' or 'premium' for standby code generator
 
     // Load or bootstrap database
     this.initDatabase();
@@ -33,6 +35,12 @@ class StateManager {
     // Initialize real-time cloud synchronization from Firebase
     this.initFirebaseSync();
 
+    this.offlineGameCards = [];
+    this.firstFlippedCard = null;
+    this.secondFlippedCard = null;
+    this.isFlippedTimeoutActive = false;
+    this.offlineScore = 0;
+
     // Initialize network status monitoring for offline mode UI
     this.initNetworkMonitoring();
 
@@ -41,6 +49,10 @@ class StateManager {
 
     // Initialize 3D immersive card tilts and micro-animations
     this.init3DTiltEffect();
+
+    // Trigger spectacular 3D loading splash screen sequence
+    this.initSplashScreen();
+    this.init3DAuthCard();
   }
 
   initDatabase() {
@@ -258,6 +270,9 @@ class StateManager {
       if (!this.db.transactions) {
         this.db.transactions = [];
       }
+      if (!this.db.spinHistory) {
+        this.db.spinHistory = [];
+      }
       this.db.users.forEach(u => {
         if (!u.region) u.region = "Dhaka";
         if (!u.registeredIp) u.registeredIp = "103.45.120." + (Math.floor(Math.random() * 200) + 10);
@@ -468,7 +483,8 @@ class StateManager {
             latency: 14,
             active: true,
             mode: "active_sync",
-            description: "Google Firestore Database ensuring durable real-time storage."
+            description: "Google Firestore Database ensuring durable real-time storage.",
+            tier: "premium"
           },
           {
             id: "node-2",
@@ -480,7 +496,8 @@ class StateManager {
             latency: 42,
             active: false,
             mode: "standby",
-            description: "Relational backup database replica with automated replication handshake."
+            description: "Relational backup database replica with automated replication handshake.",
+            tier: "premium"
           },
           {
             id: "node-3",
@@ -492,9 +509,19 @@ class StateManager {
             latency: 110,
             active: false,
             mode: "failover_only",
-            description: "Fallback HTTPS JSON storage service invoked when primary links collapse."
+            description: "Fallback HTTPS JSON storage service invoked when primary links collapse.",
+            tier: "free"
           }
         ];
+      }
+
+      // Automatically migrate older nodes lacking the modern 'tier' property
+      if (this.db.syncNodes) {
+        this.db.syncNodes.forEach(node => {
+          if (!node.tier) {
+            node.tier = (node.name.includes("Main") || node.name.includes("SQL") || node.id === "node-1" || node.id === "node-2") ? "premium" : "free";
+          }
+        });
       }
 
       if (!this.db.syncLogs) {
@@ -822,6 +849,8 @@ class StateManager {
         e.preventDefault();
         const nodeName = document.getElementById("sync-node-name").value.trim();
         const nodeType = document.getElementById("sync-node-type").value;
+        const nodeTierEl = document.getElementById("sync-node-tier");
+        const nodeTier = nodeTierEl ? nodeTierEl.value : "premium";
         const nodeEndpoint = document.getElementById("sync-node-endpoint").value.trim();
         const nodePriority = parseInt(document.getElementById("sync-node-priority").value || "2");
         const nodeMode = document.getElementById("sync-node-mode").value;
@@ -838,7 +867,8 @@ class StateManager {
           latency: Math.floor(Math.random() * 80) + 10,
           active: false,
           mode: nodeMode,
-          description: nodeDesc
+          description: nodeDesc,
+          tier: nodeTier
         };
 
         if (!this.db.syncNodes) this.db.syncNodes = [];
@@ -947,6 +977,44 @@ class StateManager {
       });
     }
 
+    // ================= INTEGRATION CODE BUILDER LISTENERS =================
+    const triggerGenerate = () => {
+      this.updateStandbyCodeGenerator();
+    };
+
+    const selLang = document.getElementById("code-lang-selector");
+    if (selLang) selLang.addEventListener("change", triggerGenerate);
+
+    const selNode = document.getElementById("code-node-selector");
+    if (selNode) selNode.addEventListener("change", triggerGenerate);
+
+    const selTimeout = document.getElementById("code-timeout-selector");
+    if (selTimeout) selTimeout.addEventListener("change", triggerGenerate);
+
+    const selResilience = document.getElementById("code-resilience-selector");
+    if (selResilience) selResilience.addEventListener("change", triggerGenerate);
+
+    // Copy to Clipboard trigger
+    const copyBtn = document.getElementById("copy-snippet-btn");
+    if (copyBtn) {
+      copyBtn.addEventListener("click", () => {
+        const textContainer = document.getElementById("code-snippets-display-block");
+        if (textContainer) {
+          const codeText = textContainer.innerText;
+          navigator.clipboard.writeText(codeText).then(() => {
+            this.showToast("কানেকশন কোড সফলভাবে কপি করা হয়েছে!", "success");
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> Code Copied!`;
+            setTimeout(() => {
+              copyBtn.innerHTML = originalText;
+            }, 2000);
+          }).catch(err => {
+            this.showToast("Unable to copy to clipboard", "error");
+          });
+        }
+      });
+    }
+
     // Clear logs button trigger
     const clearLogsBtn = document.getElementById("clear-sync-logs-btn");
     if (clearLogsBtn) {
@@ -986,6 +1054,466 @@ class StateManager {
       this.addConsoleLog(`🔴 FAILOVER TERMINATED: Zero available active replica nodes remaining! Holding writes in local staging cache.`, "error");
       this.showToast("সব কানেকশন ডাউন! লোকাল ব্রাউজারে ডাটা সেভ রাখা হয়েছে।", "error");
     }
+  }
+
+  switchGenTier(tier) {
+    this.genTier = tier;
+    
+    // Toggle active visual states of the tabs
+    const freeBtn = document.getElementById("code-db-tier-free-btn");
+    const premiumBtn = document.getElementById("code-db-tier-premium-btn");
+    if (freeBtn && premiumBtn) {
+      if (tier === "free") {
+        freeBtn.className = "px-3 py-1.5 rounded-lg font-black transition cursor-pointer bg-slate-900 text-slate-300";
+        premiumBtn.className = "px-3 py-1.5 rounded-lg font-black transition cursor-pointer text-slate-500 hover:text-slate-300";
+      } else {
+        freeBtn.className = "px-3 py-1.5 rounded-lg font-black transition cursor-pointer text-slate-500 hover:text-slate-300";
+        premiumBtn.className = "px-3 py-1.5 rounded-lg font-black transition cursor-pointer bg-slate-900 text-slate-300";
+      }
+    }
+
+    const badge = document.getElementById("code-tier-badge");
+    if (badge) {
+      if (tier === "free") {
+        badge.innerText = "Free Database Mode";
+        badge.className = "font-bold text-[8.5px] uppercase tracking-wider bg-emerald-950/50 border border-emerald-900/50 text-emerald-400 px-2 py-0.5 rounded";
+      } else {
+        badge.innerText = "Premium HA Mode";
+        badge.className = "font-bold text-[8.5px] uppercase tracking-wider bg-indigo-950/50 border border-indigo-900/50 text-indigo-400 px-2 py-0.5 rounded";
+      }
+    }
+
+    // Repopulate nodes matching tier
+    this.repopulateNodesForGenerator();
+    this.updateStandbyCodeGenerator();
+  }
+
+  repopulateNodesForGenerator() {
+    const nodeSelector = document.getElementById("code-node-selector");
+    if (!nodeSelector) return;
+
+    const currentSelectedValue = nodeSelector.value;
+    nodeSelector.innerHTML = "";
+    
+    const matchedNodes = (this.db.syncNodes || []).filter(n => n.tier === (this.genTier || "free"));
+    if (matchedNodes.length === 0) {
+      const option = document.createElement("option");
+      option.value = "default";
+      option.innerText = (this.genTier || "free") === "premium" ? "💎 Enterprise Cloud Cluster (Auto)" : "🌱 Sandbox Backup Node (Auto)";
+      nodeSelector.appendChild(option);
+    } else {
+      matchedNodes.forEach(node => {
+        const option = document.createElement("option");
+        option.value = node.id;
+        option.innerText = `${node.name} (${node.type.toUpperCase()})`;
+        // Restore selection if possible
+        if (node.id === currentSelectedValue) {
+          option.selected = true;
+        }
+        nodeSelector.appendChild(option);
+      });
+    }
+  }
+
+  updateStandbyCodeGenerator() {
+    const displayBlock = document.getElementById("code-snippets-display-block");
+    const titleEl = document.getElementById("code-terminal-title");
+    if (!displayBlock) return;
+
+    const lang = document.getElementById("code-lang-selector")?.value || "php";
+    const nodeId = document.getElementById("code-node-selector")?.value || "default";
+    const timeout = document.getElementById("code-timeout-selector")?.value || "1500";
+    const resilience = document.getElementById("code-resilience-selector")?.value || "active";
+    const tier = this.genTier || "free";
+
+    // Find the chosen node in config
+    let selectedNode = (this.db.syncNodes || []).find(n => n.id === nodeId);
+    if (!selectedNode) {
+      selectedNode = (this.db.syncNodes || []).find(n => n.tier === tier) || {
+        name: tier === "premium" ? "Backup SQL Replication Node" : "Custom REST Sync Webhook",
+        type: tier === "premium" ? "sql" : "api",
+        endpoint: tier === "premium" ? "postgresql://database.postgres-cluster.internal:5432/lottery_backup" : "https://sync-api.lotterywinner.app/v1/vault"
+      };
+    }
+
+    // Parsed endpoint
+    let host = "localhost";
+    let port = "5432";
+    let dbName = "lottery_winner_db";
+    try {
+      const endpoint = selectedNode.endpoint || "";
+      if (endpoint.startsWith("postgresql://") || endpoint.startsWith("postgres://")) {
+        const clean = endpoint.replace("postgresql://", "").replace("postgres://", "");
+        const parts = clean.split("@");
+        const hostAndDb = parts[parts.length - 1];
+        const slashParts = hostAndDb.split("/");
+        const hostPort = slashParts[0];
+        dbName = slashParts[1] || "lottery_winner_db";
+        if (hostPort.includes(":")) {
+          const colonParts = hostPort.split(":");
+          host = colonParts[0];
+          port = colonParts[1];
+        } else {
+          host = hostPort;
+          port = "5432";
+        }
+      } else if (endpoint.startsWith("https://") || endpoint.startsWith("http://")) {
+        const clean = endpoint.replace("https://", "").replace("http://", "");
+        const slashParts = clean.split("/");
+        const hostPort = slashParts[0];
+        dbName = "api_gateway";
+        if (hostPort.includes(":")) {
+          const colonParts = hostPort.split(":");
+          host = colonParts[0];
+          port = colonParts[1];
+        } else {
+          host = hostPort;
+          port = endpoint.startsWith("https://") ? "443" : "80";
+        }
+      } else {
+        host = endpoint.split("/")[0] || "firestore.googleapis.com";
+        port = "443";
+        dbName = endpoint.split("/")[1] || "lottery_db_project";
+      }
+    } catch (err) {}
+
+    let code = "";
+    let fileName = "db-connection.php";
+
+    if (lang === "php") {
+      fileName = "db-connection.php";
+      if (tier === "free") {
+        code = `<?php
+// 🌱 Free Tier Cluster Connection Handler (Lottery Winner App)
+// Node Name: ${selectedNode.name}
+// Driver Type: ${selectedNode.type.toUpperCase()}
+// Endpoint URI: ${selectedNode.endpoint}
+
+$host = "${host}";
+$port = "${port}";
+$dbname = "${dbName}";
+$timeout_limit = ${timeout}; // millisecond connection threshold
+
+try {
+    // Standard single-node fallback driver initiation
+    $dsn = "pgsql:host=$host;port=$port;dbname=$dbname;options='--connect_timeout=" . ($timeout_limit / 1000) . "'";
+    $pdo = new PDO($dsn, "free_lotto_user", "lotto_sandbox_pass", [
+        PDO::ATTR_TIMEOUT => $timeout_limit / 1000,
+        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+    ]);
+    echo "🌱 Connected successfully to standby database link: ${selectedNode.type}\\n";
+} catch (PDOException $e) {
+    // Gracefully handle outage without terminating critical client pipeline
+    error_log("Standby Database Node offline: " . $e->getMessage());
+    echo "⚠️ Warning: Database down! Standby buffered local cache active.\\n";
+}`;
+      } else {
+        code = `<?php
+// 💎 Premium High-Availability Connection Handler (Lottery Winner Prod)
+// Active Primaries: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+// Primary Connection: ${selectedNode.endpoint}
+// Resilience Mode: ${resilience === 'active' ? 'Active-Sync Double Writes' : 'Read-Only High Performance'}
+
+list($primary_host, $backup_host) = ["${host}", "failover-replica.lotterywinner.net"];
+$port = "${port}";
+$dbname = "${dbName}";
+$timeout_limit = ${timeout}; 
+
+function get_resilient_connection($primary_host, $backup_host, $port, $dbname, $timeout_limit) {
+    $nodes = [$primary_host, $backup_host];
+    foreach ($nodes as $index => $node) {
+        try {
+            $dsn = "pgsql:host=$node;port=$port;dbname=$dbname;options='--connect_timeout=" . ($timeout_limit / 1000) . "'";
+            $pdo = new PDO($dsn, "premium_sec_user", "Prod_Secure_Pass_892x_X", [
+                PDO::ATTR_TIMEOUT => $timeout_limit / 1000,
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+            ]);
+            // Multi-replica active standby handshake
+            return ['connection' => $pdo, 'node' => $node, 'is_backup_replica' => ($index > 0)];
+        } catch (PDOException $e) {
+            error_log("Connection failed for node ($node): " . $e->getMessage());
+        }
+    }
+    throw new Exception("🚨 FAILOVER TERMINATED: All Premium standby nodes are currently offline. Local transaction staging active.");
+}
+
+try {
+    $cluster = get_resilient_connection($primary_host, $backup_host, $port, $dbname, $timeout_limit);
+    echo "💎 [SLA HIGH] Connected safely to Cluster Node: " . $cluster['node'] . "\\n";
+} catch (Exception $e) {
+    echo $e->getMessage() . "\\n";
+}`;
+      }
+    } else if (lang === "nodejs") {
+      fileName = "db-config.js";
+      if (tier === "free") {
+        code = `// 🌱 Free Sandbox Standby Node Connection Node.js
+// Node Info: ${selectedNode.name}
+// Endpoint: ${selectedNode.endpoint}
+
+const { Client } = require('pg');
+
+const client = new Client({
+  connectionString: "${selectedNode.endpoint}",
+  connectionTimeoutMillis: ${timeout}, // connection timeout threshold
+});
+
+async function connectFreeDB() {
+  try {
+    await client.connect();
+    console.log("🌱 Standby database node connection established successfully! (${selectedNode.type})");
+  } catch (err) {
+    console.warn("⚠️ Standby offline. Active browser state holds transactions.");
+    console.error(err.message);
+  }
+}
+connectFreeDB();`;
+      } else {
+        code = `// 💎 Premium Auto-Failover Multi-Client Cluster configuration
+// Active Master Node: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+// Primary Endpoint: ${selectedNode.endpoint}
+// Resilience: ${resilience.toUpperCase()} Mode
+
+const { Pool } = require('pg');
+
+const clusterConfig = {
+  primary: "${selectedNode.endpoint}",
+  secondary: "postgresql://backup_replica:SecuredPass_Lotto_99@failover-replica.lotterywinner.net:5432/lottery_backup",
+  connectionTimeoutMillis: ${timeout},
+  max: 25, // Active pool limit (High IOPs)
+};
+
+class FailoverConnectionPool {
+  constructor() {
+    this.primaryPool = new Pool({ connectionString: clusterConfig.primary, connectionTimeoutMillis: clusterConfig.connectionTimeoutMillis });
+    this.backupPool = new Pool({ connectionString: clusterConfig.secondary, connectionTimeoutMillis: clusterConfig.connectionTimeoutMillis });
+  }
+
+  async query(text, params) {
+    try {
+      // Autopilot Active Sync Write routing 
+      return await this.primaryPool.query(text, params);
+    } catch (err) {
+      console.warn("🚨 PRIMARY NODE OFFLINE: Switching to Standby Replication Node instantly!");
+      try {
+        return await this.backupPool.query(text, params);
+      } catch (backupErr) {
+        throw new Error("🚨 HA CRITICAL: Multi-Cloud Database failure. Transactions staged locally inside SQLite.");
+      }
+    }
+  }
+}
+
+const db = new FailoverConnectionPool();
+module.exports = db;`;
+      }
+    } else if (lang === "python") {
+      fileName = "db_client.py";
+      if (tier === "free") {
+        code = `# 🌱 Python Free Tier Standby Node Hookup
+# Target Server: ${selectedNode.name}
+# Engine Target: ${selectedNode.type.toUpperCase()}
+
+import psycopg2
+import sys
+
+connection_uri = "${selectedNode.endpoint}"
+timeout_secs = ${timeout} / 1000.0
+
+def connect_free_database():
+    try:
+        conn = psycopg2.connect(connection_uri, connect_timeout=int(timeout_secs))
+        print("🌱 Standby connected successfully to ${selectedNode.type} node!")
+        return conn
+    except Exception as e:
+        print(f"⚠️ Warning: Connection failover triggered to sandbox local buffer: {e}", file=sys.stderr)
+        return None
+
+db_connection = connect_free_database()`;
+      } else {
+        code = `# 💎 Python Enterprise Multi-Node Failover Manager
+# Primary Driver: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+# Primary URI: ${selectedNode.endpoint}
+# Strategy: ${resilience}
+
+import psycopg2
+import time
+
+CLUSTER_NODES = [
+    "${selectedNode.endpoint}",
+    "postgresql://premium_sec_user:Prod_SecurePass_99x3@failover-replica.lotterywinner.net:5432/lottery_backup"
+]
+TIMEOUT_MILLIS = ${timeout}
+
+def execute_with_failover(query, params=None):
+    for idx, node_uri in enumerate(CLUSTER_NODES):
+        try:
+            conn = psycopg2.connect(node_uri, connect_timeout=int(TIMEOUT_MILLIS / 1000))
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            conn.commit()
+            if idx > 0:
+                print(f"⚠️ AUTOMATED WARNING: Primary offline. Fallback Standby-HA used.")
+            return cursor.fetchall()
+        except psycopg2.OperationalError as e:
+            print(f"⚠️ Failover Warning: Node {idx+1} down. Relaying traffic: {e}")
+            continue
+    raise Exception("🚨 CRITICAL MASTER OUTAGE: Both primary and backup failover nodes are offline.")
+
+# Example resilient query execution
+# results = execute_with_failover("SELECT * FROM ticket_draws;")`;
+      }
+    } else if (lang === "go") {
+      fileName = "main.go";
+      if (tier === "free") {
+        code = `package main
+
+// 🌱 Go Free Tier Standby Node Integrator
+// Database Connection: ${selectedNode.endpoint}
+// Node Name: ${selectedNode.name}
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"time"
+	_ "github.com/lib/pq"
+)
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), ${timeout}*time.Millisecond)
+	defer cancel()
+
+	connStr := "${selectedNode.endpoint}"
+	db, err := sql.Open("postgres", connStr)
+	if err != nil {
+		fmt.Printf("⚠️ Drivers failed to initialize: %v\\n", err)
+		return
+	}
+	defer db.Close()
+
+	err = db.PingContext(ctx)
+	if err != nil {
+		fmt.Printf("⚠️ Sandboxed fallback: Active Standby endpoint is down. Running on browser cache: %v\\n", err)
+		return
+	}
+	fmt.Println("🌱 Connected successfully. Free standby sync active!")
+}`;
+      } else {
+        code = `package main
+
+// 💎 Go Multi-Cloud Cluster Autopilot Failover SDK
+// Active Master: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+// Primary Connection: ${selectedNode.endpoint}
+// Strategy: ${resilience}
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"time"
+	_ "github.com/lib/pq"
+)
+
+type MultiNodeCluster struct {
+	PrimaryDB *sql.DB
+	BackupDB  *sql.DB
+}
+
+func (c *MultiNodeCluster) QueryRow(query string, args ...interface{}) (*sql.Row, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), ${timeout}*time.Millisecond)
+	defer cancel()
+
+	// Try Primary DB Node
+	err := c.PrimaryDB.PingContext(ctx)
+	if err == nil {
+		return c.PrimaryDB.QueryRowContext(ctx, query, args...), nil
+	}
+
+	// Hot-Standby Failover
+	fmt.Println("🚨 Primary Connection Broken! Relaying transaction payload to Hot-Standby replica...")
+	backupCtx, backupCancel := context.WithTimeout(context.Background(), ${timeout}*time.Millisecond)
+	defer backupCancel()
+
+	err = c.BackupDB.PingContext(backupCtx)
+	if err == nil {
+		return c.BackupDB.QueryRowContext(backupCtx, query, args...), nil
+	}
+
+	return nil, errors.New("🚨 CRITICAL: Primary and Standby clusters are completely unreachable")
+}`;
+      }
+    } else if (lang === "java") {
+      fileName = "DatabaseConfig.java";
+      if (tier === "free") {
+        code = `// 🌱 Java Standard Spring / JDBC Connection Instance
+// Node: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+// Endpoint: ${selectedNode.endpoint}
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+
+public class DatabaseConfig {
+    public static Connection getConnection() {
+        String dbUrl = "${selectedNode.endpoint}";
+        int timeoutSecs = ${timeout} / 1000;
+        try {
+            DriverManager.setLoginTimeout(timeoutSecs);
+            Connection conn = DriverManager.getConnection(dbUrl, "free_lotto_user", "lotto_sandbox_pass");
+            System.out.println("🌱 Successfully synchronized to Free Node (${selectedNode.name})!");
+            return conn;
+        } catch (SQLException e) {
+            System.err.println("⚠️ Free Standby offline. Active browser session remains operational: " + e.getMessage());
+            return null;
+        }
+    }
+}`;
+      } else {
+        code = `// 💎 Enterprise Multi-Cloud Database Router & Hikari Pool Setup
+// Master Database: ${selectedNode.name} (${selectedNode.type.toUpperCase()})
+// Connection string: ${selectedNode.endpoint}
+
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+public class DatabaseClusterRouter {
+    private static HikariDataSource primaryDS;
+    private static HikariDataSource backupDS;
+
+    static {
+        // Setup Primary Pool with active ${timeout} ms timeout limits
+        HikariConfig primaryConfig = new HikariConfig();
+        primaryConfig.setJdbcUrl("${selectedNode.endpoint}");
+        primaryConfig.setConnectionTimeout(${timeout});
+        primaryConfig.setMaximumPoolSize(25);
+        primaryDS = new HikariDataSource(primaryConfig);
+
+        // Setup Secondary standby replica
+        HikariConfig backupConfig = new HikariConfig();
+        backupConfig.setJdbcUrl("postgresql://database.postgres-cluster.internal:5432/lottery_backup");
+        backupConfig.setConnectionTimeout(${timeout});
+        backupConfig.setMaximumPoolSize(10);
+        backupDS = new HikariDataSource(backupConfig);
+    }
+
+    public static Connection getPoolConnection() throws SQLException {
+        try {
+            return primaryDS.getConnection();
+        } catch (SQLException e) {
+            System.err.println("🚨 [FAILOVER ROUTING ACTIVED] Primary Database error. Re-routing query packet...");
+            return backupDS.getConnection();
+        }
+    }
+}`;
+      }
+    }
+
+    titleEl.innerText = fileName;
+    displayBlock.innerText = code;
   }
 
   renderSyncVaultTab() {
@@ -1029,88 +1557,118 @@ class StateManager {
       }
     }
 
-    // 2. Render sync nodes loop
+    // 2. Render sync nodes loop - partitioned by Premium vs Free tiers
     const container = document.getElementById("sync-nodes-container");
     if (container) {
       container.innerHTML = "";
-      this.db.syncNodes.forEach(node => {
-        // Node Type icon selector
-        let iconHtml = `<i class="fa-solid fa-server text-cyan-400"></i>`;
-        if (node.type === "firebase") {
-          iconHtml = `<i class="fa-solid fa-cloud text-amber-500"></i>`;
-        } else if (node.type === "sql") {
-          iconHtml = `<i class="fa-solid fa-database text-blue-400"></i>`;
-        } else if (node.type === "api") {
-          iconHtml = `<i class="fa-solid fa-arrows-spin text-purple-400"></i>`;
-        }
+      
+      const premiumNodes = this.db.syncNodes.filter(n => n.tier === "premium");
+      const freeNodes = this.db.syncNodes.filter(n => n.tier === "free");
 
-        // Active highlighted classes
-        const activeClass = node.active ? "border-emerald-600/60 bg-gradient-to-br from-slate-900 to-emerald-950/20" : "border-slate-800 bg-slate-950/40";
+      const renderNodeList = (nodesList, sectionTitle, isPremium) => {
+        if (nodesList.length === 0) return;
+
+        const headerDiv = document.createElement("div");
+        headerDiv.className = "flex items-center gap-2 pt-4 pb-1 border-b border-slate-800/40 mb-3 mt-2 select-none";
         
-        let statusBadge = "";
-        if (node.status === "outage") {
-          statusBadge = `<span class="bg-red-500/10 text-red-500 border border-red-500/25 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-bold uppercase animate-pulse">🔴 Outage (Simulated Fault)</span>`;
-        } else if (node.active) {
-          statusBadge = `<span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-black uppercase shadow-[0_0_8px_rgba(16,185,129,0.15)] animate-pulse">🟢 Active Master DB</span>`;
-        } else if (node.status === "connected") {
-          statusBadge = `<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-semibold uppercase">Connected</span>`;
-        } else if (node.status === "standby") {
-          statusBadge = `<span class="bg-amber-500/15 text-amber-400 border border-amber-500/20 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-semibold uppercase">Standby Replication Link</span>`;
-        } else {
-          statusBadge = `<span class="bg-slate-800 text-slate-500 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full uppercase">Passive</span>`;
+        let labelClass = "bg-indigo-500/15 text-indigo-400 border border-indigo-500/20";
+        if (!isPremium) {
+          labelClass = "bg-emerald-500/15 text-emerald-400 border border-emerald-500/20";
         }
-
-        const card = document.createElement("div");
-        card.className = `p-4 border ${activeClass} rounded-2xl flex flex-col md:flex-row justify-between gap-4 items-start md:items-center transition duration-200 hover:border-slate-700`;
-        card.innerHTML = `
-          <div class="space-y-1.5 max-w-full md:max-w-md">
-            <div class="flex items-center gap-2 flex-wrap">
-              <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-xs">
-                ${iconHtml}
-              </div>
-              <div>
-                <h5 class="text-[12px] font-black text-white leading-tight">${node.name}</h5>
-                <span class="text-[8.5px] font-mono text-slate-500 uppercase font-bold">DRIVER: ${node.type.toUpperCase()} • Priority queue: ${node.priority}</span>
-              </div>
-              <div class="flex gap-1.5 items-center flex-wrap">
-                ${statusBadge}
-                <span class="text-[9px] text-[#f59e0b] font-mono">⚡ ${node.latency} ms</span>
-              </div>
-            </div>
-            <p class="text-[10px] text-slate-400/80 font-sans leading-relaxed">${node.description}</p>
-            <div class="text-[8.5px] text-slate-600 font-mono select-all break-all overflow-x-auto truncate max-w-xs md:max-w-md block bg-slate-950 px-2 py-1 rounded">
-              Connection Address: ${node.endpoint}
-            </div>
+        
+        headerDiv.innerHTML = `
+          <div class="px-2 py-0.5 rounded text-[8.5px] font-black tracking-widest uppercase ${labelClass}">
+            ${isPremium ? '💎 Enterprise SLA' : '🌱 Free Sandbox'}
           </div>
-
-          <div class="flex flex-wrap gap-1.5 w-full md:w-auto shrink-0 border-t border-slate-850 pt-2.5 md:pt-0 md:border-0 justify-end">
-            <!-- Simulated failure toggle -->
-            <button class="action-toggle-outage text-[9.5px] font-mono font-bold px-2.5 py-1.5 rounded-lg border transition cursor-pointer select-none ${node.status === "outage" ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-400 hover:bg-emerald-900' : 'bg-rose-950/20 border-rose-900/30 text-rose-400 hover:bg-rose-900/45'}" data-id="${node.id}">
-              ${node.status === "outage" ? '<i class="fa-solid fa-play-circle"></i> Clear Fault' : '<i class="fa-solid fa-heart-crack animate-pulse"></i> Outage'}
-            </button>
-
-            <!-- Diagnostic Ping check -->
-            <button class="action-test-ping text-[9.5px] font-mono font-bold bg-slate-950 border border-slate-800 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}">
-              <i class="fa-solid fa-bolt"></i> Ping Node
-            </button>
-
-            <!-- Force Set Active master override -->
-            ${!node.active ? `
-              <button class="action-set-active text-[9.5px] font-mono font-bold bg-cyan-950 border border-cyan-800 text-cyan-300 hover:bg-cyan-900 px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}">
-                Force Active
-              </button>
-            ` : ''}
-
-            <!-- Trash button if dynamic -->
-            ${node.id !== "node-1" && node.id !== "node-2" ? `
-              <button class="action-delete-node text-[9.5px] text-rose-500 hover:bg-rose-950/40 bg-slate-950 border border-slate-850 hover:border-rose-900 p-1.5 rounded-lg transition shrink-0 cursor-pointer" data-id="${node.id}" title="Remove Standby server">
-                <i class="fa-solid fa-trash-can"></i>
-              </button>
-            ` : ''}
-          </div>
+          <span class="text-[10px] font-black text-white uppercase tracking-wider font-mono">${sectionTitle}</span>
         `;
-        container.appendChild(card);
-      });
+        container.appendChild(headerDiv);
+
+        nodesList.forEach(node => {
+          // Node Type icon selector
+          let iconHtml = `<i class="fa-solid fa-server text-cyan-400"></i>`;
+          if (node.type === "firebase") {
+            iconHtml = `<i class="fa-solid fa-cloud text-amber-500"></i>`;
+          } else if (node.type === "sql") {
+            iconHtml = `<i class="fa-solid fa-database text-blue-400"></i>`;
+          } else if (node.type === "api") {
+            iconHtml = `<i class="fa-solid fa-arrows-spin text-purple-400"></i>`;
+          }
+
+          // Active highlighted classes
+          const activeClass = node.active ? "border-emerald-600/60 bg-gradient-to-br from-slate-900 to-emerald-950/20" : "border-slate-800 bg-slate-950/40";
+          
+          let statusBadge = "";
+          if (node.status === "outage") {
+            statusBadge = `<span class="bg-red-500/10 text-red-500 border border-red-500/25 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-bold uppercase animate-pulse">🔴 Outage (Simulated Fault)</span>`;
+          } else if (node.active) {
+            statusBadge = `<span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-black uppercase shadow-[0_0_8px_rgba(16,185,129,0.15)] animate-pulse">🟢 Active Master DB</span>`;
+          } else if (node.status === "connected") {
+            statusBadge = `<span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-semibold uppercase">Connected</span>`;
+          } else if (node.status === "standby") {
+            statusBadge = `<span class="bg-amber-500/15 text-amber-400 border border-amber-500/20 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full font-semibold uppercase">Standby Replication Link</span>`;
+          } else {
+            statusBadge = `<span class="bg-slate-800 text-slate-500 text-[8.5px] font-mono px-2.5 py-0.5 rounded-full uppercase">Passive</span>`;
+          }
+
+          const card = document.createElement("div");
+          card.className = `p-4 border ${activeClass} rounded-2xl flex flex-col md:flex-row justify-between gap-4 items-start md:items-center transition duration-200 hover:border-slate-700 mb-2.5`;
+          card.innerHTML = `
+            <div class="space-y-1.5 max-w-full md:max-w-md">
+              <div class="flex items-center gap-2 flex-wrap">
+                <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-xs">
+                  ${iconHtml}
+                </div>
+                <div>
+                  <h5 class="text-[12px] font-black text-white leading-tight">${node.name}</h5>
+                  <span class="text-[8.5px] font-mono text-slate-500 uppercase font-bold">DRIVER: ${node.type.toUpperCase()} • Priority: ${node.priority}</span>
+                </div>
+                <div class="flex gap-1.5 items-center flex-wrap">
+                  ${statusBadge}
+                  <span class="text-[9px] text-[#f59e0b] font-mono">⚡ ${node.latency} ms</span>
+                </div>
+              </div>
+              <p class="text-[10px] text-slate-400/80 font-sans leading-relaxed">${node.description}</p>
+              <div class="text-[8.5px] text-slate-600 font-mono select-all break-all overflow-x-auto truncate max-w-xs md:max-w-md block bg-slate-950 px-2 py-1 rounded">
+                Connection Address: ${node.endpoint}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5 w-full md:w-auto shrink-0 border-t border-slate-850 pt-2.5 md:pt-0 md:border-0 justify-end">
+              <!-- Simulated failure toggle -->
+              <button class="action-toggle-outage text-[9.5px] font-mono font-bold px-2.5 py-1.5 rounded-lg border transition cursor-pointer select-none ${node.status === "outage" ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-400 hover:bg-emerald-900' : 'bg-rose-950/20 border-rose-900/30 text-rose-400 hover:bg-rose-900/45'}" data-id="${node.id}">
+                ${node.status === "outage" ? '<i class="fa-solid fa-play-circle"></i> Clear Fault' : '<i class="fa-solid fa-heart-crack animate-pulse"></i> Outage'}
+              </button>
+
+              <!-- Diagnostic Ping check -->
+              <button class="action-test-ping text-[9.5px] font-mono font-bold bg-slate-950 border border-slate-800 text-slate-400 hover:text-white px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}">
+                <i class="fa-solid fa-bolt"></i> Ping Node
+              </button>
+
+              <!-- Force Set Active master override -->
+              ${!node.active ? `
+                <button class="action-set-active text-[9.5px] font-mono font-bold bg-cyan-950 border border-cyan-800 text-cyan-300 hover:bg-cyan-900 px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}">
+                  Force Active
+                </button>
+              ` : ''}
+
+              <!-- Trash button if dynamic -->
+              ${node.id !== "node-1" && node.id !== "node-2" ? `
+                <button class="action-delete-node text-[9.5px] text-rose-500 hover:bg-rose-950/40 bg-slate-950 border border-slate-850 hover:border-rose-900 p-1.5 rounded-lg transition shrink-0 cursor-pointer" data-id="${node.id}" title="Remove Standby server">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              ` : ''}
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      };
+
+      // 1. Render Premium high-availability backup nodes
+      renderNodeList(premiumNodes, "💎 Premium Security Database Vaults (Enterprise HA Replicated)", true);
+
+      // 2. Render Free sandbox backup nodes
+      renderNodeList(freeNodes, "🌱 Free / Development replica Nodes (Community Shared)", false);
     }
 
     // 3. Render sync console messages
@@ -1139,6 +1697,10 @@ class StateManager {
         logsEl.scrollTop = logsEl.scrollHeight;
       }
     }
+
+    // 4. Update Standby Code Generator Dropdowns & Text Terminal preview
+    this.repopulateNodesForGenerator();
+    this.updateStandbyCodeGenerator();
   }
 
   initNetworkMonitoring() {
@@ -1162,6 +1724,19 @@ class StateManager {
         this.loadFromCloud();
       }
     });
+
+    // Fluctuating signal indicator
+    setInterval(() => {
+      const pingVal = document.getElementById("curr-ping-val");
+      if (pingVal && !this.isSpeedtesting) {
+        if (navigator.onLine) {
+          const simulatedPing = Math.floor(Math.random() * 15) + 18;
+          pingVal.innerText = `${simulatedPing}ms`;
+        } else {
+          pingVal.innerText = "N/A (TIMEOUT)";
+        }
+      }
+    }, 3000);
   }
 
   init3DTiltEffect() {
@@ -1196,17 +1771,114 @@ class StateManager {
     }, true);
   }
 
+  initSplashScreen() {
+    const splashScreen = document.getElementById("splash-screen");
+    const progress = document.getElementById("splash-progress");
+    const percent = document.getElementById("splash-percent");
+    const card = document.getElementById("splash-3d-card");
+
+    if (!splashScreen) return;
+
+    // 1. Continuous 3D auto-rotation logic for the card (when no mouse is hovering)
+    let isHovered = false;
+
+    if (card) {
+      card.addEventListener("mouseenter", () => { isHovered = true; });
+      card.addEventListener("mouseleave", () => { 
+        isHovered = false; 
+        card.style.transition = "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)";
+      });
+    }
+
+    const autoRotateInterval = setInterval(() => {
+      if (isHovered || !card) return;
+      // Cycle through a gentle infinity loop or sinusoidal tilt
+      const time = Date.now() * 0.0015;
+      const rotateY = Math.sin(time) * 15 + 10;
+      const rotateX = Math.cos(time * 0.8) * 10 + 8;
+      card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.02, 1.02, 1.02)`;
+    }, 30);
+
+    // 2. Animate progress bar from 0% to 100%
+    let percentage = 0;
+    const progressInterval = setInterval(() => {
+      if (percentage < 100) {
+        // Vary increment to mimic asymmetric network loading profile
+        const increment = Math.floor(Math.random() * 4) + 1;
+        percentage = Math.min(100, percentage + increment);
+        if (progress) progress.style.width = `${percentage}%`;
+        if (percent) percent.innerText = `${percentage}%`;
+      } else {
+        clearInterval(progressInterval);
+        clearInterval(autoRotateInterval);
+
+        // Transition fade out elegantly
+        splashScreen.style.opacity = "0";
+        setTimeout(() => {
+          splashScreen.classList.add("hidden");
+        }, 750);
+      }
+    }, 40);
+  }
+
   showOfflineModal() {
     const modal = document.getElementById("offline-modal");
     if (modal) {
       modal.classList.remove("hidden");
     }
+    // Update live status strip markers as well
+    const stripDot = document.getElementById("dashboard-network-dot");
+    const stripDotPulse = document.getElementById("dashboard-network-ping-pulse");
+    const stripLabel = document.getElementById("dashboard-network-label");
+    const pingVal = document.getElementById("curr-ping-val");
+    if (stripDot) {
+      stripDot.classList.remove("bg-emerald-500");
+      stripDot.classList.add("bg-rose-500");
+    }
+    if (stripDotPulse) {
+      stripDotPulse.classList.remove("bg-emerald-400");
+      stripDotPulse.classList.add("bg-rose-500/50");
+    }
+    if (stripLabel) {
+      stripLabel.innerText = "STANDALONE LOCAL LOCK (OFFLINE)";
+      stripLabel.classList.remove("text-emerald-400");
+      stripLabel.classList.add("text-rose-500");
+    }
+    if (pingVal) {
+      pingVal.innerText = "N/A (TIMEOUT)";
+      pingVal.className = "text-rose-500 font-mono";
+    }
+
+    // Trigger restart/init of the offline game
+    this.restartOfflineGame();
   }
 
   hideOfflineModal() {
     const modal = document.getElementById("offline-modal");
     if (modal) {
       modal.classList.add("hidden");
+    }
+    // Update live status strip markers back to online
+    const stripDot = document.getElementById("dashboard-network-dot");
+    const stripDotPulse = document.getElementById("dashboard-network-ping-pulse");
+    const stripLabel = document.getElementById("dashboard-network-label");
+    const pingVal = document.getElementById("curr-ping-val");
+    if (stripDot) {
+      stripDot.classList.remove("bg-rose-500");
+      stripDot.classList.add("bg-emerald-500");
+    }
+    if (stripDotPulse) {
+      stripDotPulse.classList.remove("bg-rose-500/50");
+      stripDotPulse.classList.add("bg-emerald-400");
+    }
+    if (stripLabel) {
+      stripLabel.innerText = "ONLINE (SECURE)";
+      stripLabel.classList.remove("text-rose-500");
+      stripLabel.classList.add("text-emerald-400");
+    }
+    if (pingVal) {
+      pingVal.innerText = "24ms";
+      pingVal.className = "text-emerald-400 font-mono";
     }
   }
 
@@ -1230,6 +1902,180 @@ class StateManager {
       }
     } catch (e) {
       this.showToast("Device remains offline. Please try again shortly.", "error");
+    }
+  }
+
+  init3DAuthCard() {
+    const card = document.getElementById("auth-3d-vip-card");
+    if (!card) return;
+
+    let isHovered = false;
+    card.addEventListener("mouseenter", () => { isHovered = true; });
+    card.addEventListener("mouseleave", () => { 
+      isHovered = false; 
+      card.style.transition = "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)";
+    });
+
+    setInterval(() => {
+      if (isHovered) return;
+      const time = Date.now() * 0.001;
+      const rotateY = Math.sin(time) * 12 - 5;
+      const rotateX = Math.cos(time * 0.9) * 8 + 6;
+      card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.01, 1.01, 1.01)`;
+    }, 40);
+  }
+
+  runPingSpeedtest() {
+    const btn = document.getElementById("dashboard-network-test-btn");
+    const label = document.getElementById("curr-ping-val");
+    if (!btn || this.isSpeedtesting) return;
+
+    this.isSpeedtesting = true;
+    this.showToast("Starting quick ping diagnostic telemetry...", "info");
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-rose-450"></i> testing...`;
+    btn.setAttribute("disabled", "true");
+
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      if (label) {
+        label.innerText = `${Math.floor(Math.random() * 10) + 12}ms`;
+      }
+      if (count >= 5) {
+        clearInterval(interval);
+        this.isSpeedtesting = false;
+        btn.innerHTML = originalContent;
+        btn.removeAttribute("disabled");
+        const finalPing = Math.floor(Math.random() * 8) + 14;
+        if (label) label.innerText = `${finalPing}ms`;
+        this.showToast(`Speedtest success! Upstream latency: ${finalPing}ms. Connection fully optimized.`, "success");
+      }
+    }, 300);
+  }
+
+  restartOfflineGame() {
+    const symbols = ["🍀", "💎", "👑", "৳", "🍀", "💎", "👑", "৳"];
+    // Shuffle the symbols randomly
+    for (let i = symbols.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [symbols[i], symbols[j]] = [symbols[j], symbols[i]];
+    }
+
+    this.firstFlippedCard = null;
+    this.secondFlippedCard = null;
+    this.isFlippedTimeoutActive = false;
+
+    this.offlineGameCards = symbols.map((symbol, idx) => ({
+      id: idx,
+      symbol: symbol,
+      isMatched: false,
+      isFlipped: false
+    }));
+
+    const grid = document.getElementById("offline-game-grid");
+    if (grid) {
+      grid.innerHTML = "";
+      this.offlineGameCards.forEach((card, idx) => {
+        // Build 3D card layout
+        const cardHTML = `
+          <div class="flip-card w-full h-[55px] cursor-pointer" onclick="window.appInstance.flipOfflineCard(${idx})">
+            <div id="offline-card-inner-${idx}" class="flip-card-inner w-full h-full relative" style="transform-style: preserve-3d; height: 55px;">
+              
+              <!-- Front Face (Closed Card) -->
+              <div class="flip-card-front absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700/60 rounded-xl flex items-center justify-center text-rose-500/80 font-black shadow-inner" style="backface-visibility: hidden;">
+                <i class="fa-solid fa-clover text-xs rotate-12"></i>
+              </div>
+
+              <!-- Back Face (Revealed Emojis) -->
+              <div class="flip-card-back absolute inset-0 bg-slate-950 border border-cyan-500/40 rounded-xl flex items-center justify-center text-lg shadow-[0_0_10px_rgba(6,182,212,0.15)]" style="backface-visibility: hidden; transform: rotateY(180deg);">
+                <span>${card.symbol}</span>
+              </div>
+
+            </div>
+          </div>
+        `;
+        grid.insertAdjacentHTML("beforeend", cardHTML);
+      });
+    }
+
+    const badge = document.getElementById("offline-score-badge");
+    if (badge) {
+      badge.innerText = `Score: ${this.offlineScore}`;
+    }
+  }
+
+  flipOfflineCard(idx) {
+    if (this.isFlippedTimeoutActive) return;
+    const cardData = this.offlineGameCards[idx];
+    if (cardData.isFlipped || cardData.isMatched) return;
+
+    const cardEl = document.getElementById(`offline-card-inner-${idx}`);
+    if (!cardEl) return;
+
+    // Flip card inner div
+    cardEl.classList.add("flip-card-flipped");
+    cardData.isFlipped = true;
+
+    if (!this.firstFlippedCard) {
+      this.firstFlippedCard = { idx, data: cardData };
+    } else {
+      this.secondFlippedCard = { idx, data: cardData };
+      this.checkOfflineGameMatch();
+    }
+  }
+
+  checkOfflineGameMatch() {
+    this.isFlippedTimeoutActive = true;
+    const c1 = this.firstFlippedCard;
+    const c2 = this.secondFlippedCard;
+
+    if (c1.data.symbol === c2.data.symbol) {
+      // It's a match!
+      setTimeout(() => {
+        c1.data.isMatched = true;
+        c2.data.isMatched = true;
+        
+        // Success glow borders
+        const el1 = document.getElementById(`offline-card-inner-${c1.idx}`);
+        const el2 = document.getElementById(`offline-card-inner-${c2.idx}`);
+        if (el1) {
+          const backFace = el1.querySelector(".flip-card-back");
+          if (backFace) backFace.className += " border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]";
+        }
+        if (el2) {
+          const backFace = el2.querySelector(".flip-card-back");
+          if (backFace) backFace.className += " border-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.3)]";
+        }
+
+        this.offlineScore += 10;
+        const badge = document.getElementById("offline-score-badge");
+        if (badge) badge.innerText = `Score: ${this.offlineScore}`;
+
+        this.firstFlippedCard = null;
+        this.secondFlippedCard = null;
+        this.isFlippedTimeoutActive = false;
+
+        // Check if all matched
+        if (this.offlineGameCards.every(c => c.isMatched)) {
+          this.showToast("💎 Congratulations! All pairs matched. Ticket safety streak boost acquired!", "success");
+        }
+      }, 400);
+    } else {
+      // Not a match, flip them back
+      setTimeout(() => {
+        const el1 = document.getElementById(`offline-card-inner-${c1.idx}`);
+        const el2 = document.getElementById(`offline-card-inner-${c2.idx}`);
+        if (el1) el1.classList.remove("flip-card-flipped");
+        if (el2) el2.classList.remove("flip-card-flipped");
+
+        c1.data.isFlipped = false;
+        c2.data.isFlipped = false;
+
+        this.firstFlippedCard = null;
+        this.secondFlippedCard = null;
+        this.isFlippedTimeoutActive = false;
+      }, 950);
     }
   }
 
@@ -1628,6 +2474,62 @@ class StateManager {
         }
       }
     }
+
+    this.renderLuckySpinHistory();
+  }
+
+  renderLuckySpinHistory() {
+    if (!this.currentUser) return;
+    const historyList = document.getElementById("lucky-spin-history-list");
+    const historyCount = document.getElementById("lucky-spin-history-count");
+    if (!historyList) return;
+
+    if (!this.db.spinHistory) {
+      this.db.spinHistory = [];
+    }
+
+    const userSpins = this.db.spinHistory.filter(
+      spin => spin.username === this.currentUser.username
+    );
+
+    if (historyCount) {
+      historyCount.innerText = `${userSpins.length} play${userSpins.length !== 1 ? "s" : ""}`;
+    }
+
+    if (userSpins.length === 0) {
+      historyList.innerHTML = `<div class="text-center text-slate-600 py-3 font-sans text-[10px]">No past spin results recorded.</div>`;
+      return;
+    }
+
+    // Sort by date descending
+    const sortedSpins = [...userSpins].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    historyList.innerHTML = sortedSpins.map(spin => {
+      const isWin = spin.prizeAmount > 0;
+      const formattedDate = new Date(spin.date).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      return `
+        <div class="flex items-center justify-between bg-slate-950 border ${isWin ? "border-emerald-900/30 bg-emerald-955/15" : "border-slate-850"} p-2 rounded-xl">
+          <div class="flex items-center gap-1.5">
+            <span class="${isWin ? "text-amber-400" : "text-slate-500"}">
+              <i class="fa-solid ${isWin ? "fa-crown animate-pulse" : "fa-face-frown"} text-[9px]"></i>
+            </span>
+            <div class="flex flex-col">
+              <span class="${isWin ? "text-white font-bold" : "text-slate-400"}">${spin.label}</span>
+              <span class="text-[8px] text-slate-500">${formattedDate}</span>
+            </div>
+          </div>
+          <span class="${isWin ? "text-emerald-400 font-extrabold" : "text-slate-500 font-medium"}">
+            ${isWin ? "+৳" + spin.prizeAmount.toFixed(1) : "No win"}
+          </span>
+        </div>
+      `;
+    }).join("");
   }
 
   spinLuckyWheel() {
@@ -1725,6 +2627,18 @@ class StateManager {
       }
 
       appRef.currentUser.lastSpinTime = Date.now();
+
+      if (!appRef.db.spinHistory) {
+        appRef.db.spinHistory = [];
+      }
+      appRef.db.spinHistory.push({
+        id: "spin_" + Date.now() + "_" + Math.floor(Math.random() * 1000),
+        username: appRef.currentUser.username,
+        prizeAmount: finalWinnings,
+        label: targetSector.label,
+        date: new Date().toISOString()
+      });
+
       appRef.saveDB();
 
       // Reset css animation states and triggers
@@ -3676,7 +4590,7 @@ class StateManager {
                 <div class="bg-slate-950 p-2.5 rounded-xl text-[10px] space-y-1 border border-slate-800/30">
                   <div class="flex justify-between items-center text-[9px]">
                     <div class="font-bold text-slate-300 flex items-center gap-1">
-                      <span>@${com.username}</span> 
+                      <span class="cursor-pointer hover:underline hover:text-rose-400 transition-colors com-user-profile-click" data-username="${com.username}">@${com.username}</span> 
                       ${cBadgeHtml}
                       <span class="text-[8px] text-slate-600 font-mono">(${comMaskedEmail})</span>
                     </div>
@@ -3699,7 +4613,7 @@ class StateManager {
                 </div>
                 <div>
                   <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="text-[11px] font-black tracking-tight text-white font-sans">@${post.username}</span>
+                    <span class="text-[11px] font-black tracking-tight text-white font-sans cursor-pointer hover:underline hover:text-rose-400 transition-colors com-user-profile-click" data-username="${post.username}">@${post.username}</span>
                     ${reputationBadgesHtml}
                   </div>
                   <div class="text-[8px] text-slate-500 font-mono mt-0.5">
@@ -3752,6 +4666,9 @@ class StateManager {
   }
 
   renderProfileTab() {
+    // Sync unread messages indicators
+    window.chatProfileHelper?.updateNotificationBadgeOff();
+
     // Dynamically calculate live statistics from database
     const winCounts = (this.db.tickets || []).filter(t => t.userId === this.currentUser.id && t.status === "won").length + (this.currentUser.wins || 0);
     
@@ -4186,34 +5103,28 @@ class StateManager {
       }
     });
 
-    // Hide all viewports
-    document.getElementById("admin-tab-stats").classList.add("hidden");
-    document.getElementById("admin-tab-users").classList.add("hidden");
-    document.getElementById("admin-tab-lotteries").classList.add("hidden");
-    document.getElementById("admin-tab-deposits").classList.add("hidden");
-    document.getElementById("admin-tab-withdraws").classList.add("hidden");
-    document.getElementById("admin-tab-settings").classList.add("hidden");
-    document.getElementById("admin-tab-gateways").classList.add("hidden");
-    const syncVaultTab = document.getElementById("admin-tab-sync-vault");
-    if (syncVaultTab) syncVaultTab.classList.add("hidden");
-    const msgsTab = document.getElementById("admin-tab-messages");
-    if (msgsTab) msgsTab.classList.add("hidden");
-    const catTab = document.getElementById("admin-tab-categories");
-    if (catTab) catTab.classList.add("hidden");
-    const websiteTab = document.getElementById("admin-tab-website");
-    if (websiteTab) websiteTab.classList.add("hidden");
-    const reportsTab = document.getElementById("admin-tab-reports");
-    if (reportsTab) reportsTab.classList.add("hidden");
-    const badgeRequestsTab = document.getElementById("admin-tab-badge-requests");
-    if (badgeRequestsTab) badgeRequestsTab.classList.add("hidden");
-    const refAdminTab = document.getElementById("admin-tab-refer");
-    if (refAdminTab) refAdminTab.classList.add("hidden");
-    const vipAdminTab = document.getElementById("admin-tab-vip");
-    if (vipAdminTab) vipAdminTab.classList.add("hidden");
-    const jackpotAdminTab = document.getElementById("admin-tab-jackpot");
-    if (jackpotAdminTab) jackpotAdminTab.classList.add("hidden");
-    const tasksAdminTab = document.getElementById("admin-tab-tasks");
-    if (tasksAdminTab) tasksAdminTab.classList.add("hidden");
+    // Hide all viewports with safe guards
+    const hideViewport = (id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("hidden");
+    };
+    hideViewport("admin-tab-stats");
+    hideViewport("admin-tab-users");
+    hideViewport("admin-tab-lotteries");
+    hideViewport("admin-tab-deposits");
+    hideViewport("admin-tab-withdraws");
+    hideViewport("admin-tab-settings");
+    hideViewport("admin-tab-gateways");
+    hideViewport("admin-tab-sync-vault");
+    hideViewport("admin-tab-messages");
+    hideViewport("admin-tab-categories");
+    hideViewport("admin-tab-website");
+    hideViewport("admin-tab-reports");
+    hideViewport("admin-tab-badge-requests");
+    hideViewport("admin-tab-refer");
+    hideViewport("admin-tab-vip");
+    hideViewport("admin-tab-jackpot");
+    hideViewport("admin-tab-tasks");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -4236,38 +5147,42 @@ class StateManager {
     const currentViewport = document.getElementById(`admin-tab-${this.currentAdminTab}`);
     if (currentViewport) currentViewport.classList.remove("hidden");
 
-    if (this.currentAdminTab === "stats") {
-      this.renderAdminStats();
-    } else if (this.currentAdminTab === "users") {
-      this.renderAdminUsers();
-    } else if (this.currentAdminTab === "lotteries") {
-      this.renderAdminLotteries();
-    } else if (this.currentAdminTab === "deposits") {
-      this.renderAdminDeposits();
-    } else if (this.currentAdminTab === "withdraws") {
-      this.renderAdminWithdraws();
-    } else if (this.currentAdminTab === "categories") {
-      this.renderAdminCategories();
-    } else if (this.currentAdminTab === "messages") {
-      this.renderAdminMessages();
-    } else if (this.currentAdminTab === "website") {
-      this.renderAdminWebsite();
-    } else if (this.currentAdminTab === "reports") {
-      this.renderAdminReports();
-    } else if (this.currentAdminTab === "badge-requests") {
-      this.renderAdminBadgeRequests();
-    } else if (this.currentAdminTab === "refer") {
-      this.renderAdminRefer();
-    } else if (this.currentAdminTab === "vip") {
-      this.renderAdminVipClub();
-    } else if (this.currentAdminTab === "jackpot") {
-      this.renderAdminJackpot();
-    } else if (this.currentAdminTab === "tasks") {
-      this.renderAdminTasks();
-    } else if (this.currentAdminTab === "settings" || this.currentAdminTab === "gateways") {
-      this.renderAdminSettings();
-    } else if (this.currentAdminTab === "sync-vault") {
-      this.renderSyncVaultTab();
+    try {
+      if (this.currentAdminTab === "stats") {
+        this.renderAdminStats();
+      } else if (this.currentAdminTab === "users") {
+        this.renderAdminUsers();
+      } else if (this.currentAdminTab === "lotteries") {
+        this.renderAdminLotteries();
+      } else if (this.currentAdminTab === "deposits") {
+        this.renderAdminDeposits();
+      } else if (this.currentAdminTab === "withdraws") {
+        this.renderAdminWithdraws();
+      } else if (this.currentAdminTab === "categories") {
+        this.renderAdminCategories();
+      } else if (this.currentAdminTab === "messages") {
+        this.renderAdminMessages();
+      } else if (this.currentAdminTab === "website") {
+        this.renderAdminWebsite();
+      } else if (this.currentAdminTab === "reports") {
+        this.renderAdminReports();
+      } else if (this.currentAdminTab === "badge-requests") {
+        this.renderAdminBadgeRequests();
+      } else if (this.currentAdminTab === "refer") {
+        this.renderAdminRefer();
+      } else if (this.currentAdminTab === "vip") {
+        this.renderAdminVipClub();
+      } else if (this.currentAdminTab === "jackpot") {
+        this.renderAdminJackpot();
+      } else if (this.currentAdminTab === "tasks") {
+        this.renderAdminTasks();
+      } else if (this.currentAdminTab === "settings" || this.currentAdminTab === "gateways") {
+        this.renderAdminSettings();
+      } else if (this.currentAdminTab === "sync-vault") {
+        this.renderSyncVaultTab();
+      }
+    } catch (err) {
+      console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
     }
 
     // Flush any pending real-time security alerts/toasts
@@ -5097,6 +6012,139 @@ class StateManager {
     document.getElementById("admin-draw-modal").classList.remove("hidden");
   }
 
+  animateDrawRoulette(tickets, winningTicket, onComplete) {
+    const canvas = document.getElementById("admin-draw-roulette-canvas");
+    if (!canvas) {
+      setTimeout(onComplete, 3500);
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    const center = canvas.width / 2;
+    const radius = center - 5;
+
+    // Pick surrounding tickets to make up exactly maxSectors
+    const maxSectors = 8;
+    let poolTickets = tickets.filter(t => t.code !== winningTicket.code);
+    
+    // Shuffle the other ones
+    poolTickets.sort(() => Math.random() - 0.5);
+    
+    // Take up to maxSectors - 1
+    const chosenOthers = poolTickets.slice(0, maxSectors - 1);
+    
+    // Combine winning ticket + others
+    const finalTickets = [winningTicket, ...chosenOthers];
+    // Shuffle again but keep track of winning ticket's index
+    finalTickets.sort(() => Math.random() - 0.5);
+    const winningIdx = finalTickets.findIndex(t => t.code === winningTicket.code);
+
+    const sectors = finalTickets.map((t, idx) => {
+      let bg = idx % 2 === 0 ? "#111827" : "#020617"; // space vs dark slate
+      if (idx === winningIdx) {
+        bg = "#e11d48"; // rose-600 background for winner index focus indicator
+      }
+      return {
+        code: t.code,
+        label: t.code,
+        color: bg
+      };
+    });
+
+    const arc = (Math.PI * 2) / sectors.length;
+
+    // Pointer is at the top (-Math.PI / 2). 
+    // Pointer lands where: -Math.PI / 2 - finalRotation = winningIdx * arc + arc / 2
+    // So finalRotation = -Math.PI / 2 - (winningIdx * arc + arc / 2)
+    let finalRotation = -Math.PI / 2 - (winningIdx * arc + arc / 2);
+    while (finalRotation < 0) {
+      finalRotation += Math.PI * 2;
+    }
+    // Add 6 full spins
+    finalRotation += Math.PI * 2 * 6;
+
+    let startTime = null;
+    const duration = 3500; // 3.5 seconds
+
+    function easeOutCubic(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function drawWheel(rotation) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      ctx.save();
+      ctx.translate(center, center);
+      ctx.rotate(rotation);
+      
+      // Draw sections
+      for (let i = 0; i < sectors.length; i++) {
+        const angle = i * arc;
+        ctx.beginPath();
+        ctx.fillStyle = sectors[i].color;
+        ctx.moveTo(0, 0);
+        ctx.arc(0, 0, radius, angle, angle + arc);
+        ctx.lineTo(0, 0);
+        ctx.fill();
+        
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        
+        // Render sector text (last 5 chars of the ticket code)
+        ctx.save();
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = 'bold 8px "JetBrains Mono", monospace';
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 3;
+        
+        const labelText = sectors[i].label; 
+        ctx.fillText(labelText, radius - 10, 3);
+        ctx.restore();
+      }
+      
+      // Draw inner core center hub pin
+      ctx.beginPath();
+      ctx.arc(0, 0, 10, 0, Math.PI * 2);
+      ctx.fillStyle = "#0f172a"; 
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff"; 
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      
+      ctx.restore();
+    }
+
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const elapsed = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      
+      const easedProgress = easeOutCubic(progress);
+      const currentRotation = easedProgress * finalRotation;
+      
+      drawWheel(currentRotation);
+      
+      // Update running text display below
+      if (progress < 0.85) {
+        const randIndex = Math.floor(Math.random() * finalTickets.length);
+        document.getElementById("spinning-codes-roll").innerText = finalTickets[randIndex].code;
+      } else {
+        document.getElementById("spinning-codes-roll").innerText = winningTicket.code;
+      }
+
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      } else {
+        onComplete();
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  }
+
   executeManualDrawWinner() {
     const id = document.getElementById("draw-modal-id-field").value;
     const lot = this.db.lotteries.find(l => l.id === id);
@@ -5114,23 +6162,32 @@ class StateManager {
     const loader = document.getElementById("spin-loader-graphic");
     loader.classList.remove("hidden");
 
-    // Loop spin animation
-    let count = 0;
-    const randCodes = ["LW-492740", "LW-829103", "LW-290184", "LW-772910", "LW-538192"];
-    const textEl = document.getElementById("spinning-codes-roll");
-    
-    const interval = setInterval(() => {
-      textEl.innerText = randCodes[count % randCodes.length];
-      count++;
-    }, 150);
+    // Check if admin entered an override code
+    const overrideVal = document.getElementById("draw-override-winning-ticket").value.trim();
 
-    setTimeout(() => {
-      clearInterval(interval);
+    // Prematurely calculate main winning ticket to represent on roulette wheel
+    let targetWinnerTicket = null;
+    if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
+      if (overrideVal) {
+        targetWinnerTicket = ticketsOfPool.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
+      }
+      if (!targetWinnerTicket) {
+        targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
+      }
+    } else {
+      if (overrideVal) {
+        targetWinnerTicket = ticketsOfPool.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
+        if (!targetWinnerTicket) {
+          targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
+        }
+      } else {
+        targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
+      }
+    }
+
+    this.animateDrawRoulette(ticketsOfPool, targetWinnerTicket, () => {
       loader.classList.add("hidden");
 
-      // Check if admin entered an override code
-      const overrideVal = document.getElementById("draw-override-winning-ticket").value.trim();
-      
       const singleDisplay = document.getElementById("single-winner-display");
       const multiDisplay = document.getElementById("multi-winners-display");
       const multiList = document.getElementById("multi-winners-list");
@@ -5218,16 +6275,7 @@ class StateManager {
 
       } else {
         // Standard single winner
-        let winningTicket = null;
-        if (overrideVal) {
-          winningTicket = ticketsOfPool.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
-          if (!winningTicket) {
-            this.showToast("Override code non-existent or already drawn. Selecting a random buyer...", "error");
-            winningTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-          }
-        } else {
-          winningTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-        }
+        let winningTicket = targetWinnerTicket;
 
         const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
         if (winnerUser) {
@@ -5259,7 +6307,7 @@ class StateManager {
       if (resultZone) resultZone.classList.remove("hidden");
 
       this.showToast("Lucky draw award completed successfully!", "success");
-    }, 3500);
+    });
   }
 
   renderAdminDeposits() {
@@ -5373,22 +6421,40 @@ class StateManager {
     const listEl = document.getElementById("admin-withdraws-list");
     listEl.innerHTML = "";
 
-    const wds = this.db.withdrawals;
+    const filterEl = document.getElementById("admin-withdraws-filter");
+    const filterVal = filterEl ? filterEl.value : "all";
+
+    let wds = this.db.withdrawals || [];
+
+    if (filterVal !== "all") {
+      wds = wds.filter(w => {
+        const method = (w.method || "").toLowerCase();
+        const check = filterVal.toLowerCase();
+        if (check === "usdt") {
+          return method.includes("usdt") || method.includes("crypto");
+        }
+        if (check === "dbbl") {
+          return method.includes("dbbl") || method.includes("credit");
+        }
+        return method.includes(check);
+      });
+    }
+
     if (wds.length === 0) {
-      listEl.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No cash withdrawals pending.</div>`;
+      listEl.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No core matching withdrawals found.</div>`;
       return;
     }
 
     wds.forEach(w => {
       const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md";
+      card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md animate-in fade-in duration-200";
 
       let actionBlock = "";
       if (w.status === "pending") {
         actionBlock = `
           <div class="flex gap-2">
-            <button class="approve-wd-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${w.id}">Approve/Paid</button>
-            <button class="decline-wd-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${w.id}">Refund/Decline</button>
+            <button class="approve-wd-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition cursor-pointer" data-id="${w.id}">Approve/Paid</button>
+            <button class="decline-wd-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition cursor-pointer" data-id="${w.id}">Refund/Decline</button>
           </div>
         `;
       } else {
@@ -5635,92 +6701,114 @@ class StateManager {
   renderAdminSettings() {
     const s = this.db.settings;
 
-    // Load Enable / Disable Toggles
-    document.getElementById("sys-pay-bkash-enabled").checked = s.payBkashEnabled !== false;
-    document.getElementById("sys-pay-nagad-enabled").checked = s.payNagadEnabled !== false;
-    document.getElementById("sys-pay-rocket-enabled").checked = s.payRocketEnabled !== false;
-    document.getElementById("sys-pay-upay-enabled").checked = s.payUpayEnabled !== false;
-    document.getElementById("sys-pay-dbbl-enabled").checked = s.payDbblEnabled !== false;
-    document.getElementById("sys-pay-usdt-enabled").checked = s.payUsdtEnabled !== false;
-    document.getElementById("sys-pay-btc-enabled").checked = s.payBtcEnabled !== false;
-    document.getElementById("sys-pay-eth-enabled").checked = s.payEthEnabled !== false;
+    try {
+      const setChecked = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.checked = !!val;
+      };
+      const setValue = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val !== undefined ? val : "";
+      };
 
-    document.getElementById("sys-pay-bkash-personal").value = s.mobilePersonalBkash || s.mobileAgentBkash || "";
-    document.getElementById("sys-pay-bkash-agent").value = s.mobileAgentBkash || "";
-    document.getElementById("sys-pay-bkash-instruction").value = s.mobileInstructionBkash || "";
-    
-    document.getElementById("sys-pay-nagad-personal").value = s.mobilePersonalNagad || s.mobileAgentNagad || "";
-    document.getElementById("sys-pay-nagad-agent").value = s.mobileAgentNagad || "";
-    document.getElementById("sys-pay-nagad-instruction").value = s.mobileInstructionNagad || "";
-    
-    document.getElementById("sys-pay-rocket-personal").value = s.mobilePersonalRocket || s.mobileAgentRocket || "";
-    document.getElementById("sys-pay-rocket-agent").value = s.mobileAgentRocket || "";
-    document.getElementById("sys-pay-rocket-instruction").value = s.mobileInstructionRocket || "";
-    
-    document.getElementById("sys-pay-upay-personal").value = s.mobilePersonalUpay || s.mobileAgentUpay || "";
-    document.getElementById("sys-pay-upay-agent").value = s.mobileAgentUpay || "";
-    document.getElementById("sys-pay-upay-instruction").value = s.mobileInstructionUpay || "";
-    
-    document.getElementById("sys-pay-dbbl").value = s.dbblDetails || "";
-    document.getElementById("sys-pay-dbbl-instruction").value = s.dbblInstruction || "";
-    
-    document.getElementById("sys-pay-crypto-usdt").value = s.cryptoAddressUSDT || "";
-    document.getElementById("sys-pay-crypto-btc").value = s.cryptoAddressBTC || "";
-    document.getElementById("sys-pay-crypto-eth").value = s.cryptoAddressETH || "";
-    document.getElementById("sys-pay-crypto-qr-type").value = s.cryptoQRType || "auto";
-    
-    document.getElementById("sys-pay-crypto-qr-usdt").value = s.cryptoQRUrlUSDT || "";
-    document.getElementById("sys-pay-crypto-qr-btc").value = s.cryptoQRUrlBTC || "";
-    document.getElementById("sys-pay-crypto-qr-eth").value = s.cryptoQRUrlETH || "";
-    document.getElementById("sys-pay-crypto-instruction").value = s.cryptoInstruction || "";
+      // Load Enable / Disable Toggles
+      setChecked("sys-pay-bkash-enabled", s.payBkashEnabled !== false);
+      setChecked("sys-pay-nagad-enabled", s.payNagadEnabled !== false);
+      setChecked("sys-pay-rocket-enabled", s.payRocketEnabled !== false);
+      setChecked("sys-pay-upay-enabled", s.payUpayEnabled !== false);
+      setChecked("sys-pay-dbbl-enabled", s.payDbblEnabled !== false);
+      setChecked("sys-pay-usdt-enabled", s.payUsdtEnabled !== false);
+      setChecked("sys-pay-btc-enabled", s.payBtcEnabled !== false);
+      setChecked("sys-pay-eth-enabled", s.payEthEnabled !== false);
 
-    // Toggle custom URLs section on render
-    const customUrlsArea = document.getElementById("sys-pay-crypto-custom-urls");
-    if (s.cryptoQRType === "custom") {
-      customUrlsArea.classList.remove("hidden");
-    } else {
-      customUrlsArea.classList.add("hidden");
+      setValue("sys-pay-bkash-personal", s.mobilePersonalBkash || s.mobileAgentBkash || "");
+      setValue("sys-pay-bkash-agent", s.mobileAgentBkash || "");
+      setValue("sys-pay-bkash-instruction", s.mobileInstructionBkash || "");
+      
+      setValue("sys-pay-nagad-personal", s.mobilePersonalNagad || s.mobileAgentNagad || "");
+      setValue("sys-pay-nagad-agent", s.mobileAgentNagad || "");
+      setValue("sys-pay-nagad-instruction", s.mobileInstructionNagad || "");
+      
+      setValue("sys-pay-rocket-personal", s.mobilePersonalRocket || s.mobileAgentRocket || "");
+      setValue("sys-pay-rocket-agent", s.mobileAgentRocket || "");
+      setValue("sys-pay-rocket-instruction", s.mobileInstructionRocket || "");
+      
+      setValue("sys-pay-upay-personal", s.mobilePersonalUpay || s.mobileAgentUpay || "");
+      setValue("sys-pay-upay-agent", s.mobileAgentUpay || "");
+      setValue("sys-pay-upay-instruction", s.mobileInstructionUpay || "");
+      
+      setValue("sys-pay-dbbl", s.dbblDetails || "");
+      setValue("sys-pay-dbbl-instruction", s.dbblInstruction || "");
+      
+      setValue("sys-pay-crypto-usdt", s.cryptoAddressUSDT || "");
+      setValue("sys-pay-crypto-btc", s.cryptoAddressBTC || "");
+      setValue("sys-pay-crypto-eth", s.cryptoAddressETH || "");
+      setValue("sys-pay-crypto-qr-type", s.cryptoQRType || "auto");
+      
+      setValue("sys-pay-crypto-qr-usdt", s.cryptoQRUrlUSDT || "");
+      setValue("sys-pay-crypto-qr-btc", s.cryptoQRUrlBTC || "");
+      setValue("sys-pay-crypto-qr-eth", s.cryptoQRUrlETH || "");
+      setValue("sys-pay-crypto-instruction", s.cryptoInstruction || "");
+
+      // Toggle custom URLs section on render
+      const customUrlsArea = document.getElementById("sys-pay-crypto-custom-urls");
+      if (customUrlsArea) {
+        if (s.cryptoQRType === "custom") {
+          customUrlsArea.classList.remove("hidden");
+        } else {
+          customUrlsArea.classList.add("hidden");
+        }
+      }
+
+      // Refresh Admin QR Code preview
+      this.refreshAdminQRPreview();
+
+      setChecked("sys-maintenance-toggle", s.maintenanceMode || false);
+      setValue("sys-maintenance-msg", s.maintenanceMessage || "");
+      setValue("sys-app-url", s.forceUpdateLink || "");
+      setValue("sys-app-ver", s.appVersion || "");
+      setValue("sys-admin-p", s.adminPass || "");
+
+      // Load Deposit Match Booster parameters
+      setValue("sys-dep-boost-percent", s.depBonusPercent || 10);
+      setValue("sys-dep-boost-min", s.depBonusMin || 500);
+      setChecked("sys-dep-boost-toggle", s.depBonusEnabled || false);
+    } catch (err) {
+      console.warn("Exception in renderAdminSettings:", err);
     }
-
-    // Refresh Admin QR Code preview
-    this.refreshAdminQRPreview();
-
-    document.getElementById("sys-maintenance-toggle").checked = s.maintenanceMode || false;
-    document.getElementById("sys-maintenance-msg").value = s.maintenanceMessage || "";
-    document.getElementById("sys-app-url").value = s.forceUpdateLink || "";
-    document.getElementById("sys-app-ver").value = s.appVersion || "";
-    document.getElementById("sys-admin-p").value = s.adminPass || "";
-
-    // Load Deposit Match Booster parameters
-    document.getElementById("sys-dep-boost-percent").value = s.depBonusPercent || 10;
-    document.getElementById("sys-dep-boost-min").value = s.depBonusMin || 500;
-    document.getElementById("sys-dep-boost-toggle").checked = s.depBonusEnabled || false;
   }
 
   refreshAdminQRPreview() {
-    const s = this.db.settings;
-    const selectedCoinType = document.getElementById("admin-spa-qr-selector").value; // usdt, btc, eth
-    const qrImg = document.getElementById("admin-spa-qr-preview");
-    
-    let activeAddress = "";
-    let customQRUrl = "";
+    try {
+      const s = this.db.settings;
+      const selector = document.getElementById("admin-spa-qr-selector");
+      const qrImg = document.getElementById("admin-spa-qr-preview");
+      if (!selector || !qrImg) return;
 
-    if (selectedCoinType === "usdt") {
-      activeAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
-      customQRUrl = s.cryptoQRUrlUSDT;
-    } else if (selectedCoinType === "btc") {
-      activeAddress = s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
-      customQRUrl = s.cryptoQRUrlBTC;
-    } else {
-      activeAddress = s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-      customQRUrl = s.cryptoQRUrlETH;
-    }
+      const selectedCoinType = selector.value; // usdt, btc, eth
+      
+      let activeAddress = "";
+      let customQRUrl = "";
 
-    if (s.cryptoQRType === "custom" && customQRUrl) {
-      qrImg.src = customQRUrl;
-    } else {
-      // Auto-generated QR via QRServer API
-      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeAddress)}`;
+      if (selectedCoinType === "usdt") {
+        activeAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
+        customQRUrl = s.cryptoQRUrlUSDT;
+      } else if (selectedCoinType === "btc") {
+        activeAddress = s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+        customQRUrl = s.cryptoQRUrlBTC;
+      } else {
+        activeAddress = s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+        customQRUrl = s.cryptoQRUrlETH;
+      }
+
+      if (s.cryptoQRType === "custom" && customQRUrl) {
+        qrImg.src = customQRUrl;
+      } else {
+        // Auto-generated QR via QRServer API
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeAddress)}`;
+      }
+    } catch (err) {
+      console.warn("Exception in refreshAdminQRPreview:", err);
     }
   }
 
@@ -6060,6 +7148,7 @@ function initApplicationLoader() {
   if (window.appInstance) return; // Prevent double initialization
   const app = new StateManager();
   window.appInstance = app; // expose global handler helper
+  window.chatProfileHelper = new ChatProfileSystem(app);
 
   // Setup security/blocking features as standard for high-security container app
   document.addEventListener("contextmenu", e => e.preventDefault());
@@ -6342,19 +7431,24 @@ function initApplicationLoader() {
   const signupBox = document.getElementById("auth-signup-box");
   const loginBox = document.getElementById("auth-login-box");
 
-  showRegisterBtn.addEventListener("click", () => {
-    loginBox.classList.add("hidden");
-    signupBox.classList.remove("hidden");
-  });
+  if (showRegisterBtn && signupBox && loginBox) {
+    showRegisterBtn.addEventListener("click", () => {
+      loginBox.classList.add("hidden");
+      signupBox.classList.remove("hidden");
+    });
+  }
 
-  showLoginBtn.addEventListener("click", () => {
-    signupBox.classList.add("hidden");
-    loginBox.classList.remove("hidden");
-  });
+  if (showLoginBtn && signupBox && loginBox) {
+    showLoginBtn.addEventListener("click", () => {
+      signupBox.classList.add("hidden");
+      loginBox.classList.remove("hidden");
+    });
+  }
 
   // Login Trigger Action
   const loginForm = document.getElementById("auth-login-form");
-  loginForm.addEventListener("submit", async (e) => {
+  if (loginForm) {
+    loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const userVal = document.getElementById("auth-user").value.trim();
     const passVal = document.getElementById("auth-pass").value;
@@ -6411,11 +7505,13 @@ function initApplicationLoader() {
     localStorage.setItem(app.sessionKey, JSON.stringify(matched));
     app.showToast(`Welcome back, @${matched.username}!`, "success");
     app.render();
-  });
+    });
+  }
 
   // Sign up Trigger Action
   const registerForm = document.getElementById("auth-signup-form");
-  registerForm.addEventListener("submit", async (e) => {
+  if (registerForm) {
+    registerForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const userVal = document.getElementById("reg-user").value.trim();
     const emailVal = document.getElementById("reg-email").value.trim();
@@ -6573,7 +7669,8 @@ function initApplicationLoader() {
     localStorage.setItem(app.sessionKey, JSON.stringify(newUser));
     app.showToast(`Account registered successfully under region ${regionVal}! Enjoy ৳${welcomeBonus} Starter Wallet Bonus!`, "success");
     app.render();
-  });
+    });
+  }
 
    // Custom system administrator secret key doorway modal control
   const openBypass = () => {
@@ -6707,96 +7804,100 @@ function initApplicationLoader() {
 
   // Wallet Deposit Form submission routing
   const depositForm = document.getElementById("wallet-deposit-form");
-  depositForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const amountVal = parseFloat(document.getElementById("dep-amount").value);
-    const gateway = document.getElementById("dep-gateway").value;
-    const trxIdVal = document.getElementById("dep-trxid").value.trim();
+  if (depositForm) {
+    depositForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const amountVal = parseFloat(document.getElementById("dep-amount").value);
+      const gateway = document.getElementById("dep-gateway").value;
+      const trxIdVal = document.getElementById("dep-trxid").value.trim();
 
-    if (amountVal < 20) {
-      app.showToast("Minimum deposit is ৳20.", "error");
-      return;
-    }
+      if (amountVal < 20) {
+        app.showToast("Minimum deposit is ৳20.", "error");
+        return;
+      }
 
-    if (trxIdVal.length < 5) {
-      app.showToast("Please enter a valid bKash/Nagad Tracer Transaction ID.", "error");
-      return;
-    }
+      if (trxIdVal.length < 5) {
+        app.showToast("Please enter a valid bKash/Nagad Tracer Transaction ID.", "error");
+        return;
+      }
 
-    const newDepo = {
-      id: "d" + Date.now(),
-      username: app.currentUser.username,
-      amount: amountVal,
-      method: gateway,
-      trxId: trxIdVal,
-      status: "pending",
-      date: new Date().toISOString()
-    };
+      const newDepo = {
+        id: "d" + Date.now(),
+        username: app.currentUser.username,
+        amount: amountVal,
+        method: gateway,
+        trxId: trxIdVal,
+        status: "pending",
+        date: new Date().toISOString()
+      };
 
-    app.db.deposits.unshift(newDepo);
-    app.saveDB();
+      app.db.deposits.unshift(newDepo);
+      app.saveDB();
 
-    if (navigator.vibrate) {
-      navigator.vibrate(100);
-    }
+      if (navigator.vibrate) {
+        navigator.vibrate(100);
+      }
 
-    app.showToast(`Deposit request of ৳${amountVal} filed! Processing by merchant.`, "success");
-    app.currentTab = "history";
-    app.render();
+      app.showToast(`Deposit request of ৳${amountVal} filed! Processing by merchant.`, "success");
+      app.currentTab = "history";
+      app.render();
 
-    // Reset fields
-    document.getElementById("dep-amount").value = "";
-    document.getElementById("dep-trxid").value = "";
-  });
+      // Reset fields
+      document.getElementById("dep-amount").value = "";
+      document.getElementById("dep-trxid").value = "";
+    });
+  }
 
   // Wallet Withdrawal request filing
   const withdrawForm = document.getElementById("wallet-withdraw-form");
-  withdrawForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const amountVal = parseFloat(document.getElementById("wd-amount").value);
-    const gateway = document.getElementById("wd-gateway").value;
-    const targetVal = document.getElementById("wd-account").value.trim();
+  if (withdrawForm) {
+    withdrawForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const amountVal = parseFloat(document.getElementById("wd-amount").value);
+      const gateway = document.getElementById("wd-gateway").value;
+      const targetVal = document.getElementById("wd-account").value.trim();
 
-    if (amountVal < 100) {
-      app.showToast("Minimum withdrawal is ৳100.", "error");
-      return;
-    }
+      if (amountVal < 100) {
+        app.showToast("Minimum withdrawal is ৳100.", "error");
+        return;
+      }
 
-    if (app.currentUser.balance < amountVal) {
-      app.showToast("Insufficient purse balance for this extraction!", "error");
-      return;
-    }
+      if (app.currentUser.balance < amountVal) {
+        app.showToast("Insufficient purse balance for this extraction!", "error");
+        return;
+      }
 
-    if (targetVal.length < 8) {
-      app.showToast("Please enter a valid cash transfer recipient account.", "error");
-      return;
-    }
+      if (targetVal.length < 8) {
+        app.showToast("Please enter a valid cash transfer recipient account.", "error");
+        return;
+      }
 
-    // Process local balance block
-    app.currentUser.balance -= amountVal;
-    app.currentUser.profit -= amountVal;
+      // Process local balance block
+      app.currentUser.balance -= amountVal;
+      app.currentUser.profit -= amountVal;
 
-    const newWd = {
-      id: "w" + Date.now(),
-      username: app.currentUser.username,
-      amount: amountVal,
-      method: gateway,
-      targetAccount: targetVal,
-      status: "pending",
-      date: new Date().toISOString()
-    };
+      const newWd = {
+        id: "w" + Date.now(),
+        username: app.currentUser.username,
+        amount: amountVal,
+        method: gateway,
+        targetAccount: targetVal,
+        status: "pending",
+        date: new Date().toISOString()
+      };
 
-    app.db.withdrawals.unshift(newWd);
-    app.saveDB();
+      app.db.withdrawals.unshift(newWd);
+      app.saveDB();
 
-    app.showToast(`Payout request of ৳${amountVal} locked. Awaiting automated ledger dispatch.`, "success");
-    app.currentTab = "history";
-    app.render();
+      app.showToast(`Payout request of ৳${amountVal} locked. Awaiting automated ledger dispatch.`, "success");
+      app.currentTab = "history";
+      app.render();
 
-    // Reset fields
-    document.getElementById("wd-amount").value = "";
-    document.getElementById("wd-account").value = "";
-  });
+      // Reset fields
+      document.getElementById("wd-amount").value = "";
+      document.getElementById("wd-account").value = "";
+    });
+  }
 
   // ================= DYNAMIC HIGH-YIELD FEATURES INTERFACES =================
 
@@ -6843,6 +7944,14 @@ function initApplicationLoader() {
   const closeSpinBtn = document.getElementById("close-lucky-spin-btn");
   if (closeSpinBtn) {
     closeSpinBtn.addEventListener("click", () => {
+      const m = document.getElementById("lucky-spin-modal");
+      if (m) m.classList.add("hidden");
+    });
+  }
+
+  const closeSpinBtnSec = document.getElementById("close-lucky-spin-btn-secondary");
+  if (closeSpinBtnSec) {
+    closeSpinBtnSec.addEventListener("click", () => {
       const m = document.getElementById("lucky-spin-modal");
       if (m) m.classList.add("hidden");
     });

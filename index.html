@@ -30,54 +30,199 @@
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
 
-    <!-- Global Floating Toasts Container -->
-    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[999] flex flex-col gap-2 max-w-sm w-full px-4 pointer-events-none"></div>
-
-    <!-- Beautiful Offline Overlay Notification Portal -->
-    <div id="offline-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[1050] flex items-center justify-center p-4">
-      <div class="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-red-500/20 rounded-3xl p-6 max-w-sm w-full text-center space-y-5 shadow-2xl relative overflow-hidden">
-        <!-- Glowing accent border -->
-        <div class="absolute inset-0 bg-gradient-to-r from-red-500/10 to-amber-500/10 opacity-50 blur-xl pointer-events-none"></div>
+    <!-- ================= STUNNING 3D SPLASH SCREEN ================= -->
+    <div id="splash-screen" class="fixed inset-0 bg-slate-950 z-[2000] flex flex-col items-center justify-center p-6 select-none overflow-hidden transition-all duration-750 ease-out">
+      <!-- Glow Background Elements -->
+      <div class="absolute w-[500px] h-[500px] bg-red-650/15 rounded-full blur-[120px] -top-40 -left-40 animate-pulse"></div>
+      <div class="absolute w-[500px] h-[500px] bg-amber-600/10 rounded-full blur-[120px] -bottom-40 -right-40 animate-pulse delay-700"></div>
+      
+      <!-- Center 3D Space Wrapper -->
+      <div class="relative flex flex-col items-center max-w-md w-full text-center space-y-8" style="perspective: 1200px;">
         
-        <!-- Offline Icon pulse outer circle -->
-        <div class="w-16 h-16 bg-red-950/30 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto text-red-500 text-2xl animate-pulse relative">
-          <i class="fa-solid fa-wifi"></i>
-          <!-- Cross diagonal bar using custom element -->
-          <div class="absolute inset-x-0 w-full flex items-center justify-center pointer-events-none">
-            <div class="w-10 h-1 bg-red-500 rotate-45 rounded-full shadow-md"></div>
+        <!-- Interactive & Auto-Rotating 3D Ticket Asset / Holographic Card -->
+        <div id="splash-3d-card" class="interactive-tilt-card w-64 h-40 bg-gradient-to-br from-rose-600 via-red-500 to-amber-500 rounded-3xl p-0.5 shadow-[0_20px_50px_rgba(239,68,68,0.25)] transition-all duration-300 relative overflow-hidden" style="transform-style: preserve-3d; transform: rotateY(15deg) rotateX(15deg);">
+          <!-- Metallic Reflection Sheen Layer -->
+          <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent -translate-x-full animate-shimmer pointer-events-none"></div>
+          
+          <!-- Realistic Inner Border & Design -->
+          <div class="w-full h-full bg-slate-950 rounded-[22px] p-5 flex flex-col justify-between relative overflow-hidden">
+            <!-- Grid lines overlay -->
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#0f172a_1px,transparent_1px),linear-gradient(to_bottom,#0f172a_1px,transparent_1px)] bg-[size:16px_16px] opacity-40"></div>
+            
+            <!-- Golden chip inside -->
+            <div class="flex justify-between items-start relative z-10">
+              <div class="w-9 h-7 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 rounded-lg flex flex-col justify-between p-1.5 border border-amber-300/30 shadow-inner">
+                <div class="h-px bg-slate-950/40 w-full"></div>
+                <div class="h-px bg-slate-950/40 w-full"></div>
+                <div class="h-px bg-slate-950/40 w-full"></div>
+              </div>
+              <div class="font-mono text-[8.5px] text-rose-500 font-extrabold uppercase bg-rose-950/40 border border-rose-500/30 px-2 py-0.5 rounded-full tracking-wider">
+                VIP GATEWAY
+              </div>
+            </div>
+
+            <!-- Card Number and Details -->
+            <div class="space-y-1 text-left relative z-10" style="transform: translateZ(30px);">
+              <span class="text-[9px] font-mono text-slate-500 block tracking-widest">TICKET REF ID</span>
+              <span class="text-sm font-black font-mono text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-150 to-slate-300 tracking-wider">LW-777-999-3D</span>
+            </div>
+
+            <!-- Header and Bottom Bar -->
+            <div class="flex justify-between items-center relative z-10">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-gradient-to-r from-red-500 to-rose-600 animate-pulse"></span>
+                <span class="font-display font-black text-[10px] text-white tracking-tight uppercase">LOTTERY WINNER</span>
+              </div>
+              <span class="text-amber-500 text-xs font-black"><i class="fa-solid fa-crown animate-bounce"></i></span>
+            </div>
+            
+            <!-- Holographic radial gradient glow -->
+            <div class="absolute -right-12 -bottom-12 w-32 h-32 bg-rose-500/10 rounded-full blur-2xl pointer-events-none"></div>
           </div>
         </div>
 
-        <div class="space-y-2 relative">
-          <h2 class="text-base font-black font-display tracking-tight text-white uppercase">Offline Mode Active</h2>
-          <p class="text-[11px] text-slate-400 font-sans leading-relaxed">
-            Your internet connection is currently unavailable. Don't worry, you can still view your data locally! Your actions will sync back as soon as you reconnect.
+        <!-- Sleek Rings Rotating behind the 3D element -->
+        <div class="absolute -z-10 top-0 left-1/2 -translate-x-1/2 -translate-y-6 w-80 h-80 border-4 border-dashed border-red-500/10 rounded-full animate-[spin_40s_linear_infinite] pointer-events-none" style="transform: rotateX(75deg);"></div>
+        <div class="absolute -z-10 top-0 left-1/2 -translate-x-1/2 -translate-y-6 w-72 h-72 border border-rose-500/20 rounded-full animate-[spin_20s_linear_infinite] pointer-events-none" style="transform: rotateX(75deg);"></div>
+
+        <!-- Name & Details of App -->
+        <div class="space-y-3 pt-6 relative" style="transform: translateZ(20px);">
+          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-red-950/40 via-slate-900/60 to-slate-900 border border-red-900/30 px-3.5 py-1.5 rounded-full text-white tracking-widest uppercase font-mono text-[8.5px] shadow-lg">
+            <span class="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> 
+            <span>Secure Cloud Connection</span>
+          </div>
+          
+          <h1 class="text-2xl font-black font-display tracking-tighter text-transparent bg-clip-text bg-gradient-to-b from-white via-slate-100 to-slate-400 uppercase">
+            LOTTERY WINNER
+          </h1>
+          <p class="text-[11px] text-slate-400 font-sans tracking-wide max-w-xs mx-auto">
+            Establishing secure connection and sync status of bKash, Nagad, and Rocket wallet accounts...
           </p>
         </div>
 
-        <!-- Connection indicators -->
-        <div class="bg-slate-900/60 border border-slate-850 p-3 rounded-2xl flex items-center justify-between font-mono text-[9.5px] text-left">
-          <div class="space-y-0.5">
-            <span class="text-slate-500 block">Connection State</span>
-            <span class="text-rose-500 font-bold flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> Offline
-            </span>
+        <!-- Futuristic HUD loading indicators -->
+        <div class="w-full max-w-xs space-y-3 relative pt-4">
+          <!-- Loading Progress bar -->
+          <div class="h-1.5 w-full bg-slate-900 border border-slate-800 rounded-full overflow-hidden relative">
+            <div id="splash-progress" class="h-full bg-gradient-to-r from-red-600 via-rose-500 to-amber-500 rounded-full w-0 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(239,68,68,0.4)]"></div>
           </div>
-          <div class="space-y-0.5 text-right">
-            <span class="text-slate-500 block">Local Engine</span>
-            <span class="text-emerald-400 font-bold">READY (Offline Active)</span>
+
+          <div class="flex justify-between items-center text-[9.5px] font-mono text-slate-500">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-server animate-pulse text-red-500"></i> Local Engine v6.50
+            </span>
+            <span id="splash-percent">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Global Floating Toasts Container -->
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[999] flex flex-col gap-2 max-w-sm w-full px-4 pointer-events-none"></div>
+
+    <!-- Beautiful Immersive Full-Screen Offline Portal -->
+    <!-- Beautiful Immersive Full-Screen Offline Portal -->
+    <div id="offline-modal" class="hidden fixed inset-0 bg-slate-950 z-[1050] flex flex-col justify-center items-center p-6 select-none overflow-y-auto transition-all duration-500">
+      <!-- High-fidelity background vector glows -->
+      <div class="absolute w-[450px] h-[450px] bg-red-650/10 rounded-full blur-[100px] top-1/4 left-1/4 pointer-events-none animate-pulse"></div>
+      <div class="absolute w-[450px] h-[450px] bg-amber-600/5 rounded-full blur-[100px] bottom-1/4 right-1/4 pointer-events-none animate-pulse delay-500"></div>
+
+      <!-- Adaptive responsive container -->
+      <div class="flex flex-col md:flex-row gap-6 max-w-4xl w-full items-center justify-center relative z-10 scale-95 md:scale-100">
+
+        <!-- Main Locking UI Glass Card -->
+        <div class="bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-slate-900/90 border border-red-500/20 rounded-[32px] p-6 max-w-sm w-full text-center space-y-6 shadow-[0_25px_60px_rgba(239,68,68,0.15)] relative overflow-hidden backdrop-blur-xl">
+          <!-- Accent indicator decoration -->
+          <div class="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent"></div>
+          
+          <!-- Interactive Pulsing 3D Network Radar Container -->
+          <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+            <!-- Pulse ripple 1 -->
+            <div class="absolute inset-0 rounded-full bg-red-650/15 border border-red-500/10 animate-[ping_2s_infinite]"></div>
+            <!-- Pulse ripple 2 -->
+            <div class="absolute inset-2 rounded-full bg-red-650/10 border border-red-500/10 animate-[ping_3s_infinite_delay-300]"></div>
+            
+            <!-- Core WiFi Off Graphic Circle -->
+            <div class="w-16 h-16 bg-gradient-to-b from-red-950/40 to-slate-900 border border-red-500/30 rounded-3xl flex items-center justify-center text-red-500 text-3xl shadow-xl relative preserve-3d group-hover:scale-105 transition-transform duration-300">
+              <i class="fa-solid fa-signal text-slate-500/40 text-xl absolute"></i>
+              <i class="fa-solid fa-wifi text-red-500 relative z-[2]"></i>
+              <!-- Visual lock slash -->
+              <div class="absolute w-12 h-1 bg-red-500 rotate-45 rounded-full shadow-lg border border-slate-950 z-[3]"></div>
+            </div>
+          </div>
+
+          <!-- Warning Title Block -->
+          <div class="space-y-2 relative">
+            <span class="font-mono text-[9px] tracking-widest text-red-400 font-extrabold uppercase bg-red-950/45 px-3 py-1 rounded-full border border-red-900/30">
+              Network Error Detect
+            </span>
+            <h2 class="text-lg font-black font-display tracking-tight text-white uppercase pt-1">Connection Interrupted</h2>
+            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">
+              Your internet communication channel dropped. Don't worry! Your live state is preserved. Local actions will sync back securely when you reconnect.
+            </p>
+          </div>
+
+          <!-- Connection Telemetry Table -->
+          <div class="bg-slate-950/80 border border-slate-850/85 p-3.5 rounded-2xl space-y-2.5 font-mono text-[9.5px] text-left">
+            <div class="flex justify-between items-center pb-1.5 border-b border-slate-900">
+              <span class="text-slate-500">Live Connection</span>
+              <span class="text-rose-500 font-bold flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> DISCONNECTED
+              </span>
+            </div>
+            <div class="flex justify-between items-center pb-1.5 border-b border-slate-900">
+              <span class="text-slate-500">Local DB Status</span>
+              <span class="text-emerald-400 font-bold flex items-center gap-1">
+                <i class="fa-solid fa-circle-check"></i> READY (OFFLINE)
+              </span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-500">Failed Node API</span>
+              <span class="text-slate-400 font-semibold text-right">firebase-firestore.js</span>
+            </div>
+          </div>
+
+          <!-- Interactive Control CTA -->
+          <div class="flex flex-col gap-2.5 relative pt-1">
+            <button onclick="window.appInstance.checkNetworkStatus()" class="bg-gradient-to-r from-red-650 to-rose-600 hover:opacity-90 text-white text-[11px] font-black py-3 rounded-xl transition cursor-pointer active:scale-98 shadow-lg shadow-rose-950/30 flex items-center justify-center gap-1.5 group">
+              <i class="fa-solid fa-arrows-rotate animate-[spin_6s_linear_infinite] text-rose-200"></i> RETRY LIVE HANDSHAKE
+            </button>
+            
+            <button onclick="document.getElementById('offline-modal').classList.add('hidden')" class="bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/60 text-slate-400 hover:text-slate-200 text-[10px] font-medium py-2 rounded-xl transition-colors cursor-pointer">
+              CONTINUE IN READ-ONLY MODE
+            </button>
           </div>
         </div>
 
-        <div class="flex flex-col gap-2 relative">
-          <button onclick="window.appInstance.checkNetworkStatus()" class="bg-gradient-to-r from-cyan-600 to-rose-600 hover:opacity-90 text-white text-[11px] font-black py-2.5 rounded-xl transition cursor-pointer active:scale-98">
-            <i class="fa-solid fa-arrows-rotate mr-1 animate-spin"></i> Retry Connection
-          </button>
+        <!-- ================= FEATURE 3: 3D LUCKY COIN FLIP MATCH GAME CARD ================= -->
+        <div class="bg-gradient-to-b from-slate-900/95 via-slate-950/98 to-slate-900/95 border border-slate-800/80 rounded-[32px] p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative overflow-hidden backdrop-blur-xl">
+          <!-- Ambient glowing decoration -->
+          <div class="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent"></div>
           
-          <button onclick="document.getElementById('offline-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 text-[9.5px] font-mono py-1">
-            Continue Working Offline
-          </button>
+          <div class="flex items-center justify-between border-b border-slate-850 pb-2">
+            <div class="flex items-center gap-1.5">
+              <span class="text-cyan-400"><i class="fa-solid fa-gamepad animate-pulse text-sm"></i></span>
+              <span class="font-mono text-[9px] font-black text-slate-400 uppercase tracking-wider">Lucky Flip Pair Game</span>
+            </div>
+            <span id="offline-score-badge" class="font-mono text-[9.5px] uppercase font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 bg-amber-955/40 border border-amber-500/20 px-2 py-0.5 rounded-full">Score: 0</span>
+          </div>
+
+          <p class="text-[10.5px] text-slate-400 font-sans leading-relaxed">
+            Internet offline? Let's play! Flip card pairs to trigger matching symbols and get double safety tickets.
+          </p>
+
+          <!-- Interactive Game Grid containing 3D mini items -->
+          <div id="offline-game-grid" class="grid grid-cols-4 gap-2 pt-1 select-none">
+            <!-- Populated dynamically with beautiful 3D flip card elements -->
+          </div>
+
+          <div class="pt-2">
+            <button onclick="window.appInstance.restartOfflineGame()" class="bg-slate-950 border border-slate-850 hover:border-slate-800 text-cyan-400 hover:text-cyan-300 font-mono text-[9.5px] py-2 px-4 rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 w-full cursor-pointer">
+              <i class="fa-solid fa-rotate-right text-[10px]"></i> RESET CARD DECK
+            </button>
+          </div>
         </div>
+
       </div>
     </div>
 
@@ -212,6 +357,40 @@
           <span class="font-black text-emerald-400 uppercase tracking-wide cloud-sync-text">Synced</span>
         </div>
       </header>
+
+      <!-- ================= FEATURE 1: 3D INTERACTIVE MEMBERSHIP CARD ================= -->
+      <div class="z-10 max-w-sm w-full mx-auto pt-3 flex justify-center bg-transparent select-none" style="perspective: 1200px;">
+        <div id="auth-3d-vip-card" class="interactive-tilt-card w-[290px] h-44 bg-gradient-to-br from-red-600 via-rose-550 to-amber-500 rounded-[24px] p-0.5 shadow-[0_15px_35px_rgba(239,68,68,0.2)] relative overflow-hidden transition-all duration-300 transform-style-preserve-3d" style="transform: rotateX(8deg) rotateY(-8deg);">
+          <!-- Reflective overlay shines -->
+          <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent -translate-x-full animate-shimmer pointer-events-none"></div>
+          
+          <div class="w-full h-full bg-slate-950/95 rounded-[22px] p-5 flex flex-col justify-between relative overflow-hidden">
+            <!-- Grid decorative backdrop -->
+            <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:16px_16px] opacity-30"></div>
+            
+            <div class="flex justify-between items-start relative z-10">
+              <span class="font-mono text-[9px] text-red-400 font-extrabold uppercase bg-red-950/40 border border-red-900/30 px-2 py-0.5 rounded-full tracking-wider">
+                VIP GATEWAY
+              </span>
+              <span class="text-amber-400 text-xs font-black"><i class="fa-solid fa-crown animate-pulse"></i></span>
+            </div>
+
+            <!-- Glowing serial identifier -->
+            <div class="space-y-1 relative z-10" style="transform: translateZ(25px);">
+              <span class="text-[8.5px] font-mono text-slate-500 block tracking-wider leading-none">VIP TICKET SERIAL HASH</span>
+              <span class="text-sm font-black font-mono text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-slate-400 tracking-widest uppercase">777-WIN-SYS-99</span>
+            </div>
+
+            <div class="flex justify-between items-center relative z-10">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-red-500 animate-ping"></span>
+                <span class="font-display font-black text-[9.5px] text-slate-300 tracking-tight uppercase">SECURE SECRETS AUTHENTICATED</span>
+              </div>
+              <span class="text-[9.5px] font-mono text-slate-500 uppercase">SYS-B52</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Main Login Container block -->
       <div id="auth-login-box" class="z-10 max-w-sm w-full mx-auto my-auto py-8">
@@ -1297,6 +1476,25 @@
 
       </main>
 
+      <!-- ================= FEATURE 2: FLOATING CONNECTION DIAGNOSTICS STRIP ================= -->
+      <div id="dashboard-network-diagnostic-strip" class="fixed bottom-[65px] left-1/2 -translate-x-1/2 z-30 max-w-sm w-[92%] bg-slate-900/90 border border-slate-800/80 rounded-2xl py-2 px-3.5 shadow-xl backdrop-blur-md flex items-center justify-between gap-2.5 font-mono text-[9px] text-slate-450 select-none animate-in fade-in duration-300">
+        <div class="flex items-center gap-2">
+          <!-- Transmitting signal locator -->
+          <span class="relative flex h-2 w-2">
+            <span id="dashboard-network-ping-pulse" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span id="dashboard-network-dot" class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+          </span>
+          <span class="text-slate-300">Sync Status:</span>
+          <span id="dashboard-network-label" class="text-emerald-400 font-extrabold uppercase">ONLINE (SECURE)</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="dashboard-network-latency" class="text-slate-500 font-bold">Ping: <strong id="curr-ping-val" class="text-emerald-400 font-mono">24ms</strong></span>
+          <button id="dashboard-network-test-btn" onclick="window.appInstance.runPingSpeedtest()" class="bg-slate-950 border border-slate-800 hover:bg-slate-850 hover:text-white text-slate-300 font-black px-2 py-1 rounded-lg transition active:scale-95 flex items-center gap-1 cursor-pointer">
+            <i class="fa-solid fa-gauge-high text-[8.5px] text-rose-500"></i> Speedtest
+          </button>
+        </div>
+      </div>
+
       <!-- Bottom System Navigation tab bar -->
       <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="home">
@@ -1508,7 +1706,21 @@
 
       <!-- ================= ADMIN TAB: WITHDRAWALS APPROVALS ================= -->
       <div id="admin-tab-withdraws" class="hidden space-y-4">
-        <h3 class="text-sm font-bold uppercase text-slate-400 font-mono">Withdrawals Dispatch ledger</h3>
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <h3 class="text-sm font-bold uppercase text-slate-400 font-mono">Withdrawals Dispatch ledger</h3>
+          <div class="flex items-center gap-2">
+            <span class="text-[9.5px] font-mono text-slate-500 uppercase">Gateway:</span>
+            <select id="admin-withdraws-filter" onchange="window.appInstance.renderAdminWithdraws()" class="bg-slate-950 border border-slate-800 text-slate-300 font-mono text-[10px] rounded-xl py-1 px-3 outline-none focus:border-red-500 cursor-pointer">
+              <option value="all">ALL GATEWAYS</option>
+              <option value="bKash">bKash</option>
+              <option value="Nagad">Nagad</option>
+              <option value="Rocket">Rocket</option>
+              <option value="Upay">Upay</option>
+              <option value="USDT">USDT / Crypto</option>
+              <option value="DBBL">DBBL / Credit</option>
+            </select>
+          </div>
+        </div>
         <div id="admin-withdraws-list" class="space-y-3"></div>
       </div>
 
@@ -2087,6 +2299,14 @@
                 </div>
 
                 <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Database Node Tier</label>
+                  <select id="sync-node-tier" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition">
+                    <option value="premium" selected>💎 Premium HA Secured Block</option>
+                    <option value="free">🌱 Free / Dev Sandbox Node</option>
+                  </select>
+                </div>
+
+                <div class="space-y-1">
                   <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider">Database URI / Webhook Endpoint</label>
                   <input type="text" id="sync-node-endpoint" required value="postgresql://database.postgres-cluster.internal:5432/lottery_backup" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[10px]">
                 </div>
@@ -2141,10 +2361,108 @@
                   <span class="text-emerald-400">99.999% Active</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-slate-500">Total Nodes Loaded</span>
-                  <span class="text-white font-extrabold" id="sync-health-nodes-count">3 Clusters</span>
-                </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+        <!-- ================= EASY CONNECT DATABASE HUB & CODE GENERATOR ================= -->
+        <div class="bg-gradient-to-br from-slate-900 to-indigo-950/40 border border-slate-802 p-6 rounded-3xl space-y-5 shadow-2xl">
+          <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-850 pb-4">
+            <div class="space-y-1">
+              <span class="bg-indigo-500/15 text-indigo-400 border border-indigo-500/20 text-[8px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-block">Universal Connection Hub</span>
+              <h4 class="text-sm font-black text-white font-sans uppercase tracking-tight flex items-center gap-1.5">
+                <i class="fa-solid fa-plug text-cyan-400 animate-pulse"></i> Standby DB Live Connection Builder & SDKs
+              </h4>
+              <p class="text-[10px] text-slate-400 font-sans">
+                সহজে আপনার ব্যাকঅ্যান্ড সার্ভিস বা প্যানেলে কানেক্ট করার জন্য কোড স্নিপেট জেনারেট করুন। ফ্রি এবং প্রিমিয়াম ডাটাবেজ অপশন আলাদা করে দেওয়া হয়েছে।
+              </p>
+            </div>
+            
+            <!-- Group buttons to select Free vs Premium DB tier connection -->
+            <div class="flex bg-slate-950/80 border border-slate-800 p-1 rounded-xl text-[10px] select-none">
+              <button id="code-db-tier-free-btn" class="px-3 py-1.5 rounded-lg font-black transition cursor-pointer bg-slate-900 text-slate-300" onclick="window.appInstance.switchGenTier('free')">
+                🌱 Free DB SDK
+              </button>
+              <button id="code-db-tier-premium-btn" class="px-3 py-1.5 rounded-lg font-black transition cursor-pointer text-slate-500 hover:text-slate-300" onclick="window.appInstance.switchGenTier('premium')">
+                💎 Premium DB SDK
+              </button>
+            </div>
+          </div>
+
+          <!-- Configuration parameters bento bar -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-950/50 border border-slate-850/60 p-4 rounded-2xl text-xs font-mono">
+            <!-- 1. Select Language -->
+            <div class="space-y-1">
+              <label class="text-[9px] text-slate-500 uppercase font-black">1. Choose Language</label>
+              <select id="code-lang-selector" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-cyan-500 text-[11px] cursor-pointer">
+                <option value="php" selected>🐘 PHP (PDO / Mysqli)</option>
+                <option value="nodejs">🟢 Node.js (Express & Pg / Firestore)</option>
+                <option value="python">🐍 Python (Psycopg2 / Firebase SDK)</option>
+                <option value="go">🐹 Go (Database/SQL / pgx)</option>
+                <option value="java">☕ Java (Spring Boot JDBC / Hikari)</option>
+              </select>
+            </div>
+
+            <!-- 2. Select Concrete target node -->
+            <div class="space-y-1">
+              <label class="text-[9px] text-slate-500 uppercase font-black">2. Standby Node Target</label>
+              <select id="code-node-selector" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-cyan-500 text-[11px] cursor-pointer">
+                <!-- Dynamically populated with appropriate Free / Premium node options -->
+              </select>
+            </div>
+
+            <!-- 3. Port / Mode parameters -->
+            <div class="space-y-1">
+              <label class="text-[9px] text-slate-500 uppercase font-black">3. Failover Timeout</label>
+              <select id="code-timeout-selector" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-cyan-500 text-[11px] cursor-pointer">
+                <option value="500">500 ms (Aggressive)</option>
+                <option value="1500" selected>1500 ms (Standard SLA)</option>
+                <option value="3000">3000 ms (High Latency Link)</option>
+                <option value="5000">5000 ms (Maximum Retry)</option>
+              </select>
+            </div>
+
+            <!-- 4. Sync Strategy -->
+            <div class="space-y-1">
+              <label class="text-[9px] text-slate-500 uppercase font-black">4. Failover Resilience</label>
+              <select id="code-resilience-selector" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-2 text-white focus:outline-none focus:border-cyan-500 text-[11px] cursor-pointer">
+                <option value="failover_only">Standby Only / Read-Only Fallback</option>
+                <option value="active" selected>Active-Sync Write Replication</option>
+                <option value="isolated">Strict Read/Write Split Isolation</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Code Display Panel -->
+          <div class="relative bg-slate-950 border border-slate-900 rounded-2xl overflow-hidden shadow-inner">
+            <!-- Window title bar -->
+            <div class="flex items-center justify-between px-4 py-2.5 bg-slate-950/90 border-b border-slate-900/60 font-mono text-[10px]">
+              <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-rose-500/60"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500/60"></span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500/60"></span>
+                <span class="text-slate-500 font-bold ml-2 uppercase tracking-wider" id="code-terminal-title">db-connection.php</span>
+              </div>
+              <span id="code-tier-badge" class="font-bold text-[8.5px] uppercase tracking-wider bg-emerald-950/50 border border-emerald-900/50 text-emerald-400 px-2 py-0.5 rounded">Free Database Mode</span>
+            </div>
+
+            <!-- Dynamic code block -->
+            <pre class="p-5 font-mono text-[10px] sm:text-[10.5px] text-slate-300 leading-relaxed overflow-x-auto select-all max-h-80 min-h-[145px] custom-scrollbar animate-in fade-in duration-200" id="code-snippets-display-block"></pre>
+
+            <!-- Clipboard click floating trigger button -->
+            <button id="copy-snippet-btn" class="absolute bottom-4 right-4 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-white font-bold p-2 sm:p-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center justify-center gap-2 group shadow-lg text-[9.5px] sm:text-[10.5px]">
+              <span class="group-hover:scale-105 transition-transform"><i class="fa-regular fa-copy text-cyan-400"></i></span>
+              <span>Copy Connection Snippet</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-3 bg-indigo-950/25 border border-indigo-900/40 p-4 rounded-2xl text-[10.5px] text-indigo-300 font-sans leading-relaxed">
+            <i class="fa-solid fa-shield-halved text-lg shrink-0 text-indigo-400 animate-pulse"></i>
+            <div>
+              <strong class="text-white block mb-0.5">💡 Enterprise Failover Security Protocol</strong>
+              উপরের কোডটি আপনার ব্যাকঅ্যান্ড পোর্টালে সংযুক্ত করলে মূল ডাটাবেসের সমস্যা ধরা পরার সাথে সাথে আপনার অ্যাপ্লিকেশনটি সেকেন্ডের মধ্যে ব্যাকআপ আইপিতে সুইচ করতে পারবে। যেকোনো ভাষার ক্ষেত্রে এটি রিয়্যাল-টাইম থ্রেড-সেফ ফেইলওভার নিশ্চিত করে।
             </div>
           </div>
         </div>
@@ -2850,10 +3168,15 @@
           </div>
 
           <!-- Rolling animated wheel graphic -->
-          <div id="spin-loader-graphic" class="hidden bg-slate-950 p-6 border border-slate-800 rounded-2xl text-center space-y-3">
-            <div class="w-12 h-12 border-4 border-dashed border-rose-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p class="text-[11px] text-cyan-400 font-bold uppercase animate-pulse tracking-wide mt-1">Spinning Draw Wheel...</p>
-            <div id="spinning-codes-roll" class="text-base font-bold text-slate-500">LW-000000</div>
+          <div id="spin-loader-graphic" class="hidden bg-slate-950 p-4 border border-slate-800 rounded-2xl text-center space-y-2">
+            <div class="relative w-40 h-40 mx-auto flex items-center justify-center">
+              <div class="absolute -top-1.5 z-30 text-rose-500 text-base drop-shadow-md animate-bounce">
+                <i class="fa-solid fa-caret-down text-xl"></i>
+              </div>
+              <canvas id="admin-draw-roulette-canvas" width="160" height="160" class="w-36 h-36 rounded-full border border-slate-800 bg-slate-900"></canvas>
+            </div>
+            <p class="text-[11px] text-rose-400 font-bold uppercase animate-pulse tracking-wide mt-1">Spinning Draw Wheel...</p>
+            <div id="spinning-codes-roll" class="text-base font-bold text-slate-400">LW-000000</div>
           </div>
 
           <!-- Draw Outcome values -->
@@ -3102,23 +3425,25 @@
     </div>
 
     <!-- ================= MODAL: MAGIC LUCKY SPIN WHEEL ================= -->
-    <div id="lucky-spin-modal" class="hidden fixed inset-0 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto font-sans text-xs">
-      <div class="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150">
-        <button id="close-lucky-spin-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-base cursor-pointer"><i class="fa-solid fa-xmark"></i></button>
-
-        <div class="text-center space-y-1">
-          <div class="w-11 h-11 bg-cyan-955/50 border border-cyan-850/40 text-cyan-400 rounded-full flex items-center justify-center text-xl mx-auto shadow-inner">
+    <div id="lucky-spin-modal" class="hidden fixed inset-0 bg-black/98 backdrop-blur-md flex justify-center items-center p-3 sm:p-6 z-50 overflow-y-auto font-sans text-xs">
+      <div class="my-auto max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-4 sm:p-6 shadow-2xl space-y-3.5 sm:space-y-5 relative animate-in fade-in zoom-in-95 duration-150">
+        <button id="close-lucky-spin-btn" class="absolute top-3 right-3 sm:top-4 sm:right-4 text-slate-400 hover:text-white bg-slate-950/80 hover:bg-slate-950 border border-slate-850 w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center cursor-pointer transition active:scale-95 z-40" aria-label="Close lucky wheel">
+          <i class="fa-solid fa-xmark text-xs sm:text-sm"></i>
+        </button>
+ 
+         <div class="text-center space-y-1">
+          <div class="w-9 h-9 sm:w-11 sm:h-11 bg-cyan-955/50 border border-cyan-850/40 text-cyan-400 rounded-full flex items-center justify-center text-lg sm:text-xl mx-auto shadow-inner">
             <i class="fa-solid fa-circle-notch animate-spin-slow"></i>
           </div>
-          <h4 class="text-base font-black text-white uppercase tracking-wider font-display">🔮 Fortune Wheel Spinner</h4>
-          <p class="text-[10px] text-slate-400 font-sans">Spin to win instant credits up to ৳500.00! Free spin daily!</p>
+          <h4 class="text-sm sm:text-base font-black text-white uppercase tracking-wider font-display">🔮 Fortune Wheel Spinner</h4>
+          <p class="text-[9.5px] sm:text-[10px] text-slate-400 font-sans">Spin to win instant credits up to ৳500.00! Free spin daily!</p>
         </div>
-
-        <!-- HTML5 Canvas Visual Wheel Area -->
-        <div class="relative w-56 h-56 mx-auto flex items-center justify-center">
+ 
+         <!-- HTML5 Canvas Visual Wheel Area -->
+        <div class="relative w-44 h-44 sm:w-56 sm:h-56 mx-auto flex items-center justify-center">
           <!-- Arrow Indicator at Top -->
-          <div class="absolute -top-1 z-30 text-amber-500 text-lg drop-shadow-md animate-bounce">
-            <i class="fa-solid fa-caret-down text-2xl"></i>
+          <div class="absolute -top-1.5 z-30 text-amber-500 text-base sm:text-lg drop-shadow-md animate-bounce">
+            <i class="fa-solid fa-caret-down text-xl sm:text-2xl"></i>
           </div>
           
           <!-- Outer Wheel border decorations -->
@@ -3129,16 +3454,16 @@
             <!-- Canvas target inside Disk to look highly futuristic -->
             <canvas id="lucky-spin-canvas" width="220" height="220" class="w-full h-full rounded-full"></canvas>
           </div>
-
-          <!-- Spinner Central Hub Pin trigger -->
-          <button id="lucky-spin-trigger-btn" class="absolute z-20 w-14 h-14 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs font-mono rounded-full flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform border-4 border-slate-900 cursor-pointer hover:from-amber-400 hover:to-yellow-400 uppercase tracking-tighter">
+ 
+           <!-- Spinner Central Hub Pin trigger -->
+          <button id="lucky-spin-trigger-btn" class="absolute z-20 w-11 h-11 sm:w-14 sm:h-14 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[10px] sm:text-xs font-mono rounded-full flex flex-col items-center justify-center shadow-lg active:scale-95 transition-transform border-2 sm:border-4 border-slate-900 cursor-pointer hover:from-amber-400 hover:to-yellow-400 uppercase tracking-tighter">
             <span>SPIN</span>
           </button>
         </div>
-
-        <!-- Spin Info Log & Timers -->
-        <div class="bg-slate-950 border border-slate-850 p-3 rounded-2xl text-center space-y-1.5 font-mono text-[10px]">
-          <div class="flex justify-between items-center text-slate-400 border-b border-slate-900 pb-1.5">
+ 
+         <!-- Spin Info Log & Timers -->
+        <div class="bg-slate-950 border border-slate-850 p-2.5 sm:p-3 rounded-2xl text-center space-y-1 sm:space-y-1.5 font-mono text-[9px] sm:text-[10px]">
+          <div class="flex justify-between items-center text-slate-400 border-b border-slate-900 pb-1 sm:pb-1.5">
             <span>Free Spin Timer:</span>
             <span id="lucky-spin-timer-label" class="text-emerald-400 font-bold">READY NOW</span>
           </div>
@@ -3146,6 +3471,25 @@
             <span>Extra spin cost:</span>
             <span class="text-white font-extrabold">৳50.00 / spin</span>
           </div>
+        </div>
+ 
+         <!-- ================= PAST SPIN RESULTS SECTION ================= -->
+        <div class="border-t border-slate-800/80 pt-2.5 sm:pt-3 space-y-1.5 sm:space-y-2">
+          <div class="flex items-center justify-between">
+            <h5 class="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-wider font-mono">🎬 Your Spin History</h5>
+            <span id="lucky-spin-history-count" class="text-[8px] sm:text-[8.5px] font-mono text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-850/60">0 plays</span>
+          </div>
+          <div id="lucky-spin-history-list" class="max-h-20 sm:max-h-24 overflow-y-auto space-y-1 sm:space-y-1.5 pr-1 text-[9px] sm:text-[9.5px] font-mono custom-scrollbar">
+            <div class="text-center text-slate-600 py-1.5">No past spins recorded yet.</div>
+          </div>
+        </div>
+ 
+         <!-- Bottom Back / Go Back to Home Button specifically for easy tapping on mobile viewports -->
+        <div class="pt-0.5 sm:pt-1">
+          <button id="close-lucky-spin-btn-secondary" class="w-full bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-slate-300 hover:text-white font-bold uppercase py-2 sm:py-2.5 rounded-2xl text-[9px] sm:text-[10px] tracking-wider cursor-pointer transition active:scale-95 flex items-center justify-center gap-1.5 shadow-md">
+            <i class="fa-solid fa-arrow-left text-[8px] sm:text-[9px]"></i>
+            <span>Back to Dashboard</span>
+          </button>
         </div>
 
         <div class="text-[9px] text-slate-500 text-center font-sans leading-tight">
