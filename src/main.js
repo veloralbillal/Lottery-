@@ -4,6 +4,55 @@ import { ChatProfileSystem } from "./chat-profile-system.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 class StateManager {
+  static getCircularReplacer() {
+    const seen = new WeakSet();
+    return (key, value) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) {
+          return undefined; // Discard circular references
+        }
+        seen.add(value);
+      }
+      return value;
+    };
+  }
+
+  static removeCircularReferences(obj, seen = new WeakSet()) {
+    if (obj === null || typeof obj !== "object") {
+      return obj;
+    }
+    if (seen.has(obj)) {
+      return null;
+    }
+    seen.add(obj);
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        if (typeof obj[i] === "object" && obj[i] !== null) {
+          if (seen.has(obj[i])) {
+            obj[i] = null;
+          } else {
+            StateManager.removeCircularReferences(obj[i], seen);
+          }
+        }
+      }
+    } else {
+      for (const key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          if (typeof obj[key] === "object" && obj[key] !== null) {
+            if (seen.has(obj[key])) {
+              obj[key] = null;
+            } else {
+              StateManager.removeCircularReferences(obj[key], seen);
+            }
+          }
+        }
+      }
+    }
+    seen.delete(obj);
+    return obj;
+  }
+
   constructor() {
     this.dbKey = "lottery_winner_db";
     this.sessionKey = "lw_user_session";
@@ -110,6 +159,68 @@ class StateManager {
             joinDate: "2026-06-10",
             status: "blocked",
             blockedUntil: new Date(Date.now() + 86400000).toISOString()
+          },
+          {
+            id: "u_agent_dhaka",
+            username: "agent_dhaka",
+            email: "dhaka@agents.app",
+            password: "password123",
+            phone: "01700000001",
+            dob: "1990-01-01",
+            balance: 5000,
+            totDeposit: 5000,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-20",
+            status: "active",
+            blockedUntil: null,
+            role: "agent",
+            commissionRate: 5.0,
+            earnedCommission: 120.00,
+            totalBookings: 24,
+            district: "Dhaka"
+          },
+          {
+            id: "u_agent_sylhet",
+            username: "agent_sylhet",
+            email: "sylhet@agents.app",
+            password: "password123",
+            phone: "01900000005",
+            dob: "1992-05-18",
+            balance: 8500,
+            totDeposit: 8500,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-21",
+            status: "active",
+            blockedUntil: null,
+            role: "agent",
+            commissionRate: 6.0,
+            earnedCommission: 310.00,
+            totalBookings: 43,
+            district: "Sylhet"
+          },
+          {
+            id: "u_mod_support",
+            username: "mod_support",
+            email: "support@lotterywinner.app",
+            password: "password123",
+            phone: "01700000002",
+            dob: "1993-02-15",
+            balance: 0,
+            totDeposit: 0,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-21",
+            status: "active",
+            blockedUntil: null,
+            role: "moderator"
           }
         ],
         lotteries: [
@@ -224,10 +335,20 @@ class StateManager {
           adminPass: "Admin123"
         }
       };
-      localStorage.setItem(this.dbKey, JSON.stringify(defaultDB));
+      localStorage.setItem(this.dbKey, JSON.stringify(defaultDB, StateManager.getCircularReplacer()));
       this.db = defaultDB;
     } else {
-      this.db = JSON.parse(raw);
+      try {
+        this.db = JSON.parse(raw);
+        if (this.db) {
+          this.db = StateManager.removeCircularReferences(this.db);
+        }
+      } catch (e) {
+        console.error("Failed to parse local DB raw. Resetting to default database state.", e);
+        localStorage.removeItem(this.dbKey);
+        this.initDatabase();
+        return;
+      }
     }
 
     // Guarantee Refer/IP configurations exist
@@ -463,6 +584,10 @@ class StateManager {
       if (s.payUsdtEnabled === undefined) s.payUsdtEnabled = true;
       if (s.payBtcEnabled === undefined) s.payBtcEnabled = true;
       if (s.payEthEnabled === undefined) s.payEthEnabled = true;
+      if (s.payAgentDepositEnabled === undefined) s.payAgentDepositEnabled = true;
+      if (s.payAgentWithdrawEnabled === undefined) s.payAgentWithdrawEnabled = true;
+      if (s.mobileInstructionAgentDeposit === undefined) s.mobileInstructionAgentDeposit = "Select your active district verified agent list below, hand over cash physically or transfer, and share reference username.";
+      if (s.mobileInstructionAgentWithdraw === undefined) s.mobileInstructionAgentWithdraw = "Generate and confirm a direct cashout request with any district agent and pick up physical cash at their local desk.";
 
       // Inject website and bonus configurations
       if (s.siteName === undefined) s.siteName = "Lottery Winner";
@@ -532,12 +657,91 @@ class StateManager {
         ];
       }
 
+      // Automatically guarantee Agent & Moderator records exist in DB
+      if (this.db && this.db.users) {
+        if (!this.db.users.some(u => u.username === "agent_dhaka")) {
+          this.db.users.push({
+            id: "u_agent_dhaka",
+            username: "agent_dhaka",
+            email: "dhaka@agents.app",
+            password: "password123",
+            phone: "01700000001",
+            dob: "1990-01-01",
+            balance: 5000,
+            totDeposit: 5000,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-20",
+            status: "active",
+            blockedUntil: null,
+            role: "agent",
+            commissionRate: 5.0,
+            earnedCommission: 120.00,
+            totalBookings: 24,
+            district: "Dhaka"
+          });
+        }
+        if (!this.db.users.some(u => u.username === "agent_sylhet")) {
+          this.db.users.push({
+            id: "u_agent_sylhet",
+            username: "agent_sylhet",
+            email: "sylhet@agents.app",
+            password: "password123",
+            phone: "01900000005",
+            dob: "1992-05-18",
+            balance: 8500,
+            totDeposit: 8500,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-21",
+            status: "active",
+            blockedUntil: null,
+            role: "agent",
+            commissionRate: 6.0,
+            earnedCommission: 310.00,
+            totalBookings: 43,
+            district: "Sylhet"
+          });
+        }
+        if (!this.db.users.some(u => u.username === "mod_support")) {
+          this.db.users.push({
+            id: "u_mod_support",
+            username: "mod_support",
+            email: "support@lotterywinner.app",
+            password: "password123",
+            phone: "01700000002",
+            dob: "1993-02-15",
+            balance: 0,
+            totDeposit: 0,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: "2026-06-21",
+            status: "active",
+            blockedUntil: null,
+            role: "moderator"
+          });
+        }
+      }
+
       this.saveDB();
     }
   }
 
   saveDB() {
-    localStorage.setItem(this.dbKey, JSON.stringify(this.db));
+    try {
+      if (this.db) {
+        this.db = StateManager.removeCircularReferences(this.db);
+      }
+      localStorage.setItem(this.dbKey, JSON.stringify(this.db, StateManager.getCircularReplacer()));
+    } catch (e) {
+      console.error("Failed to safely serialize database:", e);
+    }
     if (this.firestoreDocRef) {
       if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
       this.cloudSyncTimeout = setTimeout(() => {
@@ -576,15 +780,18 @@ class StateManager {
         const cloudData = docSnap.data().db;
         if (cloudData) {
           let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
+          if (parsed) {
+            parsed = StateManager.removeCircularReferences(parsed);
+          }
           this.db = parsed;
           if (this.currentUser) {
             const freshUser = this.db.users.find(u => u.username === this.currentUser.username);
             if (freshUser) {
-              this.currentUser = freshUser;
-              localStorage.setItem(this.sessionKey, JSON.stringify(freshUser));
+              this.currentUser = StateManager.removeCircularReferences(freshUser);
+              localStorage.setItem(this.sessionKey, JSON.stringify(freshUser, StateManager.getCircularReplacer()));
             }
           }
-          localStorage.setItem(this.dbKey, JSON.stringify(this.db));
+          localStorage.setItem(this.dbKey, JSON.stringify(this.db, StateManager.getCircularReplacer()));
           this.render();
           console.log("Database successfully synced with Firebase cloud.");
           this.setSyncState("synced");
@@ -628,6 +835,7 @@ class StateManager {
         if (!this.firestoreDocRef) {
           throw new Error("Firestore primary link is not initiated.");
         }
+        this.db = StateManager.removeCircularReferences(this.db);
         await setDoc(this.firestoreDocRef, {
           db: this.db,
           updatedAt: new Date().toISOString()
@@ -3472,7 +3680,8 @@ public class DatabaseClusterRouter {
                     this.currentUser.balance = winnerUser.balance;
                     this.currentUser.wins = winnerUser.wins;
                     this.currentUser.profit = winnerUser.profit;
-                    localStorage.setItem(this.sessionKey, JSON.stringify(this.currentUser));
+                    this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                    localStorage.setItem(this.sessionKey, JSON.stringify(this.currentUser, StateManager.getCircularReplacer()));
                   }
                 }
               }
@@ -3499,7 +3708,8 @@ public class DatabaseClusterRouter {
                   this.currentUser.balance = winnerUser.balance;
                   this.currentUser.wins = winnerUser.wins;
                   this.currentUser.profit = winnerUser.profit;
-                  localStorage.setItem(this.sessionKey, JSON.stringify(this.currentUser));
+                  this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                  localStorage.setItem(this.sessionKey, JSON.stringify(this.currentUser, StateManager.getCircularReplacer()));
                 }
               }
 
@@ -3658,14 +3868,17 @@ public class DatabaseClusterRouter {
   // Route Views Switcher
   getAppView() {
     // Check maintenance first
-    if (this.db.settings.maintenanceMode && !this.isAdminMode) {
+    if (this.db.settings.maintenanceMode && !this.isAdminMode && (!this.currentUser || this.currentUser.role !== "moderator")) {
       return "maintenance";
     }
-    if (this.isAdminMode) {
+    if (this.isAdminMode || (this.currentUser && this.currentUser.role === "moderator")) {
       return "admin";
     }
     if (!this.currentUser) {
       return "auth";
+    }
+    if (this.currentUser.role === "agent") {
+      return "agent";
     }
     return "dashboard";
   }
@@ -3715,6 +3928,8 @@ public class DatabaseClusterRouter {
     document.getElementById("screen-auth").classList.add("hidden");
     document.getElementById("screen-dashboard").classList.add("hidden");
     document.getElementById("screen-admin").classList.add("hidden");
+    const agentScreen = document.getElementById("screen-agent");
+    if (agentScreen) agentScreen.classList.add("hidden");
 
     if (view === "maintenance") {
       document.getElementById("screen-maintenance").classList.remove("hidden");
@@ -3728,6 +3943,11 @@ public class DatabaseClusterRouter {
     } else if (view === "admin") {
       document.getElementById("screen-admin").classList.remove("hidden");
       this.renderAdmin();
+    } else if (view === "agent") {
+      if (agentScreen) {
+        agentScreen.classList.remove("hidden");
+        this.renderAgentWorkspace();
+      }
     }
   }
 
@@ -4068,6 +4288,7 @@ public class DatabaseClusterRouter {
       { value: "Crypto USDT", text: "TRC20 USDT", enabled: s.payUsdtEnabled !== false },
       { value: "Crypto BTC", text: "Bitcoin BTC", enabled: s.payBtcEnabled !== false },
       { value: "Crypto ETH", text: "Ethereum ETH", enabled: s.payEthEnabled !== false },
+      { value: "Agent Deposit", text: "Agent Deposit (Verified Local Desk)", enabled: s.payAgentDepositEnabled !== false },
     ];
 
     selectEl.innerHTML = "";
@@ -4094,8 +4315,53 @@ public class DatabaseClusterRouter {
     }
   }
 
+  rebuildWithdrawGatewaySelect() {
+    const s = this.db.settings;
+    const selectEl = document.getElementById("wd-gateway");
+    if (!selectEl) return;
+
+    const currentVal = selectEl.value;
+
+    const options = [
+      { value: "bKash", text: "bKash (SendMoney)", enabled: true },
+      { value: "Nagad", text: "Nagad (SendMoney)", enabled: true },
+      { value: "Rocket", text: "Rocket (Personal)", enabled: true },
+      { value: "Upay", text: "Upay (Personal)", enabled: true },
+      { value: "DBBL", text: "Dutch Bangla DBBL", enabled: true },
+      { value: "Crypto USDT", text: "TRC20 USDT", enabled: true },
+      { value: "Agent Withdraw", text: "Agent Withdraw (Verified Local Desk)", enabled: s.payAgentWithdrawEnabled !== false },
+    ];
+
+    selectEl.innerHTML = "";
+    
+    const activeOptions = options.filter(opt => opt.enabled);
+    activeOptions.forEach(opt => {
+      const o = document.createElement("option");
+      o.value = opt.value;
+      o.text = opt.text;
+      selectEl.appendChild(o);
+    });
+    
+    if (activeOptions.some(opt => opt.value === currentVal)) {
+      selectEl.value = currentVal;
+    } else {
+      selectEl.value = activeOptions[0].value;
+    }
+
+    // Trigger row hidden toggle based on selected option
+    const wdRowDistrictAgents = document.getElementById("user-wd-row-district-agents");
+    if (wdRowDistrictAgents) {
+      if (selectEl.value === "Agent Withdraw") {
+        wdRowDistrictAgents.classList.remove("hidden");
+      } else {
+        wdRowDistrictAgents.classList.add("hidden");
+      }
+    }
+  }
+
   renderWalletTab() {
     this.rebuildDepositGatewaySelect();
+    this.rebuildWithdrawGatewaySelect();
     this.updateSelectedDepositGatewayInstructions();
   }
 
@@ -4113,6 +4379,7 @@ public class DatabaseClusterRouter {
     const rowPersonal = document.getElementById("user-dep-row-personal");
     const rowAgent = document.getElementById("user-dep-row-agent");
     const rowSingle = document.getElementById("user-dep-row-single");
+    const rowDistrictAgents = document.getElementById("user-dep-row-district-agents");
 
     const personalAccEl = document.getElementById("user-dep-account-personal");
     const agentAccEl = document.getElementById("user-dep-account-agent");
@@ -4120,6 +4387,8 @@ public class DatabaseClusterRouter {
     const singleLabelEl = document.getElementById("user-dep-single-label");
 
     if (!titleEl || !instructionEl || !badgeEl || !qrBlock || !qrImg || !rowPersonal || !rowAgent || !rowSingle || !personalAccEl || !agentAccEl || !singleAccEl) return;
+
+    if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
 
     if (!gateway) {
       titleEl.innerText = "No payment gateways active";
@@ -4148,6 +4417,7 @@ public class DatabaseClusterRouter {
       rowPersonal.classList.remove("hidden");
       rowAgent.classList.remove("hidden");
       rowSingle.classList.add("hidden");
+      if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
 
       if (gateway === "bKash") {
         titleText = "bKash Mobile Banking";
@@ -4174,11 +4444,24 @@ public class DatabaseClusterRouter {
       badgeEl.innerText = "Personal & Agent Active";
       badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/20 px-2.5 py-0.5 rounded-full animate-pulse";
       badgeEl.parentElement.classList.remove("hidden");
+    } else if (gateway === "Agent Deposit") {
+      rowPersonal.classList.add("hidden");
+      rowAgent.classList.add("hidden");
+      rowSingle.classList.add("hidden");
+      if (rowDistrictAgents) rowDistrictAgents.classList.remove("hidden");
+
+      titleText = "Partner Agent Network Desk";
+      instructionText = s.mobileInstructionAgentDeposit || "Hand over physical cash or transfer funds directly to any verified agent found below.";
+      
+      badgeEl.innerText = "Verified Agent Partner";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-400 border border-indigo-900/30 px-2.5 py-0.5 rounded-full";
+      badgeEl.parentElement.classList.remove("hidden");
     } else {
       // Non-mobile (DBBL / Crypto)
       rowPersonal.classList.add("hidden");
       rowAgent.classList.add("hidden");
       rowSingle.classList.remove("hidden");
+      if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
 
       if (gateway === "DBBL") {
         titleText = "Dutch Bangla DBBL Bank";
@@ -5092,10 +5375,28 @@ public class DatabaseClusterRouter {
 
   // ================= ADMIN SYSTEM CONTROL VIEW RENDER =================
   renderAdmin() {
+    const isModerator = this.currentUser && this.currentUser.role === "moderator";
+
     // Select Admin tab classes matching selection
     const adminTabBtns = document.querySelectorAll(".admin-tab-selector-btn");
     adminTabBtns.forEach(btn => {
       const tabId = btn.getAttribute("data-tab");
+
+      if (isModerator) {
+        // Permit: stats, users, lotteries, deposits, withdraws, messages
+        const permittedTabs = ["stats", "users", "lotteries", "deposits", "withdraws", "messages"];
+        if (!permittedTabs.includes(tabId)) {
+          btn.classList.add("hidden");
+          if (this.currentAdminTab === tabId) {
+            this.currentAdminTab = "stats";
+          }
+        } else {
+          btn.classList.remove("hidden");
+        }
+      } else {
+        btn.classList.remove("hidden");
+      }
+
       if (tabId === this.currentAdminTab) {
         btn.className = "admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15";
       } else {
@@ -5125,6 +5426,7 @@ public class DatabaseClusterRouter {
     hideViewport("admin-tab-vip");
     hideViewport("admin-tab-jackpot");
     hideViewport("admin-tab-tasks");
+    hideViewport("admin-tab-agents");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -5180,6 +5482,8 @@ public class DatabaseClusterRouter {
         this.renderAdminSettings();
       } else if (this.currentAdminTab === "sync-vault") {
         this.renderSyncVaultTab();
+      } else if (this.currentAdminTab === "agents") {
+        this.renderAdminAgents();
       }
     } catch (err) {
       console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
@@ -5893,6 +6197,34 @@ public class DatabaseClusterRouter {
       badgeDropdown.value = u.customBadge || "";
     }
 
+    const roleSelect = document.getElementById("edit-player-role");
+    const commInput = document.getElementById("edit-player-commission");
+    const commWrapper = document.getElementById("edit-player-commission-wrapper");
+    const districtSelect = document.getElementById("edit-player-district");
+    const districtWrapper = document.getElementById("edit-player-district-wrapper");
+
+    if (districtSelect) {
+      districtSelect.value = u.district || "Dhaka";
+    }
+
+    if (roleSelect && commWrapper) {
+      roleSelect.value = u.role || "player";
+      if (commInput) {
+        commInput.value = u.commissionRate !== undefined ? u.commissionRate : 5.0;
+      }
+      const toggleComm = () => {
+        if (roleSelect.value === "agent") {
+          commWrapper.classList.remove("hidden");
+          if (districtWrapper) districtWrapper.classList.remove("hidden");
+        } else {
+          commWrapper.classList.add("hidden");
+          if (districtWrapper) districtWrapper.classList.add("hidden");
+        }
+      };
+      toggleComm();
+      roleSelect.onchange = toggleComm;
+    }
+
     document.getElementById("admin-user-edit-modal").classList.remove("hidden");
   }
 
@@ -5911,6 +6243,19 @@ public class DatabaseClusterRouter {
       u.customBadge = badgeDropdown.value;
     }
 
+    const roleSelect = document.getElementById("edit-player-role");
+    if (roleSelect) {
+      u.role = roleSelect.value;
+    }
+    const commInput = document.getElementById("edit-player-commission");
+    if (commInput) {
+      u.commissionRate = parseFloat(commInput.value || "5.0");
+    }
+    const districtSelectVal = document.getElementById("edit-player-district");
+    if (districtSelectVal) {
+      u.district = districtSelectVal.value;
+    }
+
     const newPass = document.getElementById("edit-player-password").value.trim();
     if (newPass) {
       u.password = newPass;
@@ -5923,6 +6268,1009 @@ public class DatabaseClusterRouter {
     this.render();
   }
 
+  // ================= ADMIN AGENT REGISTRY VIEW RENDER =================
+  renderAdminAgents() {
+    const listEl = document.getElementById("admin-agents-list-tbody");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const searchInput = document.getElementById("agents-search-input");
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    const staffAccounts = this.db.users.filter(u => {
+      const isStaff = u.role === "agent" || u.role === "moderator";
+      if (!isStaff) return false;
+      if (query) {
+        return u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query);
+      }
+      return true;
+    });
+
+    // Populate metrics
+    const agentsCount = this.db.users.filter(u => u.role === "agent").length;
+    const modsCount = this.db.users.filter(u => u.role === "moderator").length;
+    
+    // Total commissions distributed is cumulative of agent logs
+    const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
+    const initialSeedComms = this.db.users.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
+
+    document.getElementById("agents-stat-count").innerText = `${agentsCount} Agents`;
+    document.getElementById("moderators-stat-count").innerText = `${modsCount} Mods`;
+    document.getElementById("agents-stat-commission").innerText = `৳${(totalComms + initialSeedComms).toFixed(2)}`;
+
+    if (staffAccounts.length === 0) {
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="5" class="p-6 text-center text-slate-500 font-sans">
+            No registered field agents or system moderators found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    staffAccounts.forEach(staff => {
+      const row = document.createElement("tr");
+      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition";
+
+      const badgeColor = staff.role === "agent" ? "bg-emerald-950 text-emerald-400 border-emerald-800/30" : "bg-cyan-950 text-cyan-400 border-cyan-800/30";
+      const isBlocked = staff.status === "blocked" || staff.status === "permanently_banned";
+
+      row.innerHTML = `
+        <td class="p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${isBlocked ? "bg-red-500" : "bg-emerald-500"}"></span>
+            <div>
+              <span class="text-white font-bold leading-none block">@${staff.username} ${staff.role === "agent" ? `<span class="ml-1 text-[8.5px] bg-indigo-950 text-indigo-400 border border-indigo-900/40 rounded px-1 py-0.2 font-mono uppercase font-black">${staff.district || "Dhaka"}</span>` : ""}</span>
+              <span class="text-[9.5px] text-slate-500 block select-all font-mono">${staff.email}</span>
+            </div>
+          </div>
+        </td>
+        <td class="p-3">
+          <div>
+            <span class="text-slate-300 font-bold font-mono">৳${(staff.balance || 0).toFixed(2)}</span>
+            ${staff.role === "agent" ? `
+              <span class="text-[9px] text-slate-500 block leading-tight">Rate: <strong class="text-emerald-400">${(staff.commissionRate || 5.0).toFixed(1)}%</strong></span>
+            ` : ""}
+          </div>
+        </td>
+        <td class="p-3">
+          ${staff.role === "agent" ? `
+            <div>
+              <span class="text-slate-300 select-none block leading-none">Bookings: <strong class="text-white font-mono">${staff.totalBookings || 0}</strong></span>
+              <span class="text-[9px] text-emerald-400 font-mono block leading-none mt-1">Earned: ৳${(staff.earnedCommission || 0).toFixed(2)}</span>
+            </div>
+          ` : `
+            <span class="text-[10px] text-slate-400 italic font-sans">Back-office monitoring role</span>
+          `}
+        </td>
+        <td class="p-3">
+          <div class="flex items-center gap-1.5">
+            <span class="border rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase font-mono tracking-wider bg-slate-950 ${badgeColor}">${staff.role}</span>
+            <span class="text-[9px] py-0.5 px-1.5 uppercase font-mono rounded ${staff.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${staff.status}</span>
+          </div>
+        </td>
+        <td class="p-3 text-right">
+          <div class="flex justify-end gap-1 font-mono">
+            <button class="staff-edit-btn bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 text-slate-400 py-1 px-2.5 rounded-lg transition text-[10px] cursor-pointer cursor-pointer" data-id="${staff.id}">
+              Edit
+            </button>
+            <button class="staff-del-btn bg-rose-950/30 hover:bg-rose-900/60 text-rose-400 py-1 px-2.5 rounded-lg border border-rose-900/30 transition text-[10px] cursor-pointer" data-id="${staff.id}">
+              Delete
+            </button>
+          </div>
+        </td>
+      `;
+
+      listEl.appendChild(row);
+    });
+
+    // Handle Edit listeners click
+    listEl.querySelectorAll(".staff-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.openUserEditModal(id);
+      });
+    });
+
+    // Handle Delete actions
+    listEl.querySelectorAll(".staff-del-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const staff = this.db.users.find(u => u.id === id);
+        if (!staff) return;
+
+        if (confirm(`Are you absolutely sure you want to permanently delete the staff account @${staff.username}?`)) {
+          this.db.users = this.db.users.filter(u => u.id !== id);
+          this.saveDB();
+          this.showToast(`Deleted staff account @${staff.username} successfully.`, "success");
+          this.renderAdminAgents();
+        }
+      });
+    });
+  }
+
+  // ================= AGENT WORKSPACE VIEW RENDER =================
+  renderAgentWorkspace() {
+    if (!this.currentUser || this.currentUser.role !== "agent") return;
+
+    // Display basic identity
+    const nameEl = document.getElementById("agent-display-name");
+    if (nameEl) nameEl.innerText = `@${this.currentUser.username}`;
+
+    // Update Overview Stats
+    const balOverview = document.getElementById("agent-overview-wallet-balance");
+    if (balOverview) balOverview.innerText = `৳${(this.currentUser.balance || 0).toFixed(2)}`;
+
+    const commOverview = document.getElementById("agent-overview-commission-earned");
+    if (commOverview) commOverview.innerText = `৳${(this.currentUser.earnedCommission || 0).toFixed(2)}`;
+
+    const bookingsOverview = document.getElementById("agent-overview-total-bookings");
+    if (bookingsOverview) bookingsOverview.innerText = `${this.currentUser.totalBookings || 0}`;
+
+    const rateOverview = document.getElementById("agent-overview-commission-rate");
+    if (rateOverview) rateOverview.innerText = `${(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
+
+    // Compute goal achievements using active session ledger logs list
+    const ledger = (this.db.agentLedger || []).filter(l => l.agentId === this.currentUser.id);
+    const totalSalesVolume = ledger.reduce((sum, act) => sum + (act.amount || 0), 0);
+
+    // Goal Level 1: target 500
+    const goalLevel1Progress = Math.min(100, Math.round((totalSalesVolume / 500) * 100));
+    const goalLevel1Bar = document.getElementById("goal-level1-bar");
+    const goalLevel1Track = document.getElementById("goal-level1-track");
+    if (goalLevel1Bar) goalLevel1Bar.style.width = `${goalLevel1Progress}%`;
+    if (goalLevel1Track) goalLevel1Track.innerText = `৳${Math.round(totalSalesVolume)}/৳500 Slot`;
+
+    // Goal Level 2: target 2000
+    const goalLevel2Progress = Math.min(100, Math.round((totalSalesVolume / 2000) * 100));
+    const goalLevel2Bar = document.getElementById("goal-level2-bar");
+    if (goalLevel2Bar) goalLevel2Bar.style.width = `${goalLevel2Progress}%`;
+
+    // Target Overview Badge Progress Score
+    const targetBadge = document.getElementById("agent-overview-target-progress");
+    if (targetBadge) {
+      const displayScore = Math.max(goalLevel1Progress, goalLevel2Progress);
+      targetBadge.innerText = `${displayScore}%`;
+    }
+
+    // Populate active lotteries dropdown list
+    const selectEl = document.getElementById("agent-booking-lottery");
+    const activeLotts = this.db.lotteries.filter(l => l.status === "active");
+
+    if (selectEl) {
+      const prevVal = selectEl.value;
+      selectEl.innerHTML = "";
+      activeLotts.forEach(lot => {
+        const opt = document.createElement("option");
+        opt.value = lot.id;
+        opt.innerText = `${lot.name} (Entry: ৳${lot.entryFee})`;
+        selectEl.appendChild(opt);
+      });
+      if (prevVal && activeLotts.some(l => l.id === prevVal)) {
+        selectEl.value = prevVal;
+      }
+    }
+
+    // Populate Active Pools interactive list card slots in Booker Tab
+    const poolsListEl = document.getElementById("agent-active-pools-list");
+    if (poolsListEl) {
+      poolsListEl.innerHTML = "";
+      if (activeLotts.length === 0) {
+        poolsListEl.innerHTML = `
+          <div class="text-center p-4 bg-slate-950 border border-slate-900 rounded-2xl text-slate-500 font-sans text-[11px]">
+            No live draw event active at the moment.
+          </div>
+        `;
+      } else {
+        activeLotts.forEach(lot => {
+          const cardDiv = document.createElement("div");
+          cardDiv.className = "bg-slate-950 border border-slate-850 p-3.5 rounded-2xl flex justify-between items-center transition hover:border-emerald-500/20";
+          cardDiv.innerHTML = `
+            <div>
+              <span class="text-[9px] uppercase font-bold tracking-wider text-emerald-400 font-mono">${lot.category}</span>
+              <h5 class="text-xs font-bold text-white mt-0.5">${lot.name}</h5>
+              <div class="text-[9.5px] text-slate-500 font-mono">Fee: ৳${lot.entryFee} • ${lot.soldTickets || 0}/${lot.totalTickets || 500} Sold</div>
+            </div>
+            <button class="fill-lottery-action bg-emerald-950/40 hover:bg-emerald-900 border border-emerald-900/40 text-emerald-400 text-[10px] font-black py-1.5 px-3 rounded-xl transition cursor-pointer" data-id="${lot.id}">
+              Select
+            </button>
+          `;
+          poolsListEl.appendChild(cardDiv);
+        });
+
+        // Add direct selector button trigger action
+        poolsListEl.querySelectorAll(".fill-lottery-action").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const lotId = btn.getAttribute("data-id");
+            if (selectEl) {
+              selectEl.value = lotId;
+              // Trigger change event to recompute estimates
+              const event = new Event('change');
+              selectEl.dispatchEvent(event);
+              this.showToast(`Selected pool: ${lotId}`, "info");
+            }
+          });
+        });
+      }
+    }
+
+    // Render Searchable Active Player list registry
+    const playersTbody = document.getElementById("agent-players-tbody");
+    if (playersTbody) {
+      playersTbody.innerHTML = "";
+      
+      const searchVal = (document.getElementById("agent-players-search-input")?.value || "").toLowerCase().trim();
+      const allPlayers = this.db.users.filter(u => u.role === "user");
+      
+      const filteredPlayers = allPlayers.filter(p => {
+        if (!searchVal) return true;
+        return (p.username || "").toLowerCase().includes(searchVal) ||
+               (p.email || "").toLowerCase().includes(searchVal) ||
+               (p.phone || "").toLowerCase().includes(searchVal);
+      });
+
+      if (filteredPlayers.length === 0) {
+        playersTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-6 text-center text-slate-500 font-mono">
+              -- No matching registered players detected in workspace --
+            </td>
+          </tr>
+        `;
+      } else {
+        filteredPlayers.forEach(p => {
+          const row = document.createElement("tr");
+          row.className = "border-b border-slate-800/30 hover:bg-slate-900/20 transition";
+          
+          row.innerHTML = `
+            <td class="p-3">
+              <div class="font-bold text-white flex items-center gap-1">
+                <span class="text-xs text-slate-400">@</span>${p.username}
+              </div>
+              <div class="text-[9.5px] text-slate-500 font-mono select-all">${p.email || "N/A"}</div>
+            </td>
+            <td class="p-3 font-mono text-slate-350 select-all">${p.phone || "N/A"}</td>
+            <td class="p-3 font-mono font-bold text-emerald-400">৳${(p.balance || 0).toFixed(2)}</td>
+            <td class="p-3">
+              <span class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-[9px] font-mono leading-none font-bold ${p.status === 'active' ? 'bg-emerald-950 text-emerald-450 border border-emerald-900/30' : 'bg-rose-950 text-rose-450 border border-rose-900/30'}">
+                <span class="w-1.5 h-1.5 rounded-full ${p.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span>
+                ${(p.status || "active").toUpperCase()}
+              </span>
+            </td>
+            <td class="p-3 text-right space-x-1.5 whitespace-nowrap">
+              <button class="agent-fill-user-load bg-emerald-950/40 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 py-1.5 px-3 rounded-lg text-[10px] uppercase font-black transition cursor-pointer" data-username="${p.username}">
+                Load Cash
+              </button>
+              <button class="agent-fill-user-wdr bg-rose-950/40 hover:bg-rose-900 text-rose-450 border border-rose-900/40 py-1.5 px-3 rounded-lg text-[10px] uppercase font-black transition cursor-pointer" data-username="${p.username}">
+                Cash Out
+              </button>
+            </td>
+          </tr>
+        `;
+          playersTbody.appendChild(row);
+        });
+
+        // Add action triggers inside rows
+        playersTbody.querySelectorAll(".agent-fill-user-load").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const user = btn.getAttribute("data-username");
+            // Set input details and navigate
+            const depUserEl = document.getElementById("agent-cash-dep-username");
+            if (depUserEl) depUserEl.value = user;
+
+            const cashTabTrigger = document.getElementById("agent-btn-cash");
+            if (cashTabTrigger) {
+              cashTabTrigger.click();
+              this.showToast(`Prefilled target player @${user} inside Cash Load`, "info");
+            }
+          });
+        });
+
+        playersTbody.querySelectorAll(".agent-fill-user-wdr").forEach(btn => {
+          btn.addEventListener("click", () => {
+            const user = btn.getAttribute("data-username");
+            // Set input details and navigate
+            const wdrUserEl = document.getElementById("agent-cash-wdr-username");
+            if (wdrUserEl) wdrUserEl.value = user;
+
+            const cashTabTrigger = document.getElementById("agent-btn-cash");
+            if (cashTabTrigger) {
+              cashTabTrigger.click();
+              // Make sure withdrawal forms is toggled
+              const wdrSubBtn = document.getElementById("btn-agent-sub-wdr");
+              if (wdrSubBtn) wdrSubBtn.click();
+              this.showToast(`Prefilled target player @${user} inside Cash Out Assist`, "info");
+            }
+          });
+        });
+      }
+    }
+
+    // Populate local activity / ledger table
+    const tbody = document.getElementById("agent-activity-tbody");
+    if (tbody) {
+      tbody.innerHTML = "";
+      
+      if (ledger.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-5 text-center text-slate-500 font-sans">
+              No direct field bookings or transfers logged in active session.
+            </td>
+          </tr>
+        `;
+      } else {
+        // Render chronological order descending
+        [...ledger].reverse().forEach(act => {
+          const row = document.createElement("tr");
+          row.className = "border-b border-slate-800/25 text-[11px] hover:bg-slate-900/30 transition";
+
+          const dateObj = new Date(act.timestamp);
+          const timeString = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+          row.innerHTML = `
+            <td class="p-3 select-none text-slate-500">${timeString}</td>
+            <td class="p-3 text-white font-bold">@${act.targetUser}</td>
+            <td class="p-3 text-slate-400 font-sans">${act.description}</td>
+            <td class="p-3 text-slate-200">৳${act.amount.toFixed(2)}</td>
+            <td class="p-3 ${act.commission > 0 ? "text-emerald-400 font-bold" : "text-slate-550"}">${act.commission > 0 ? `+৳${act.commission.toFixed(2)}` : "-"}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      }
+    }
+  }
+
+  setupDistrictAgentsLookup() {
+    const depDistrictSelect = document.getElementById("user-dep-agent-district-select");
+    const depAgentSelect = document.getElementById("user-dep-agent-lookup-select");
+    const depDetailsCard = document.getElementById("user-dep-agent-details-card");
+    const depLblUsername = document.getElementById("user-dep-agent-lbl-username");
+    const depLblPhone = document.getElementById("user-dep-agent-lbl-phone");
+
+    const wdDistrictSelect = document.getElementById("user-wd-agent-district-select");
+    const wdAgentSelect = document.getElementById("user-wd-agent-lookup-select");
+    const wdDetailsCard = document.getElementById("user-wd-agent-details-card");
+    const wdLblUsername = document.getElementById("user-wd-agent-lbl-username");
+    const wdLblLocation = document.getElementById("user-wd-agent-lbl-location");
+    const wdAccountInput = document.getElementById("wd-account");
+
+    const refreshDepositAgents = () => {
+      if (!depDistrictSelect || !depAgentSelect) return;
+      const district = depDistrictSelect.value;
+      const agents = this.db.users.filter(u => u.role === "agent" && u.status === "active" && (district === "all" || u.district === district));
+
+      depAgentSelect.innerHTML = "";
+      if (agents.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.text = "No active agents here";
+        depAgentSelect.appendChild(option);
+        if (depDetailsCard) depDetailsCard.classList.add("hidden");
+      } else {
+        agents.forEach(agent => {
+          const option = document.createElement("option");
+          option.value = agent.id;
+          option.text = `@${agent.username} (${agent.district || "Dhaka"})`;
+          depAgentSelect.appendChild(option);
+        });
+        
+        const firstAgent = agents[0];
+        if (depLblUsername) depLblUsername.innerText = `@${firstAgent.username}`;
+        if (depLblPhone) depLblPhone.innerText = firstAgent.phone || "No phone";
+        if (depDetailsCard) depDetailsCard.classList.remove("hidden");
+      }
+    };
+
+    const refreshWithdrawAgents = () => {
+      if (!wdDistrictSelect || !wdAgentSelect) return;
+      const district = wdDistrictSelect.value;
+      const agents = this.db.users.filter(u => u.role === "agent" && u.status === "active" && (district === "all" || u.district === district));
+
+      wdAgentSelect.innerHTML = "";
+      if (agents.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.text = "No active agents here";
+        wdAgentSelect.appendChild(option);
+        if (wdDetailsCard) wdDetailsCard.classList.add("hidden");
+      } else {
+        agents.forEach(agent => {
+          const option = document.createElement("option");
+          option.value = agent.id;
+          option.text = `@${agent.username} (${agent.district || "Dhaka"})`;
+          wdAgentSelect.appendChild(option);
+        });
+
+        const firstAgent = agents[0];
+        if (wdLblUsername) wdLblUsername.innerText = `@${firstAgent.username}`;
+        if (wdLblLocation) wdLblLocation.innerText = `${firstAgent.district || "Dhaka"} District Agent`;
+        if (wdDetailsCard) wdDetailsCard.classList.remove("hidden");
+
+        if (wdAccountInput && wdAgentSelect.closest("#user-wd-row-district-agents") && !wdRowDistrictAgents_is_hidden()) {
+          wdAccountInput.value = firstAgent.phone || "";
+        }
+      }
+    };
+
+    const wdRowDistrictAgents_is_hidden = () => {
+      const parent = document.getElementById("user-wd-row-district-agents");
+      return !parent || parent.classList.contains("hidden");
+    };
+
+    if (depDistrictSelect) {
+      depDistrictSelect.addEventListener("change", refreshDepositAgents);
+    }
+    if (depAgentSelect) {
+      depAgentSelect.addEventListener("change", () => {
+        const agentId = depAgentSelect.value;
+        const agent = this.db.users.find(u => u.id === agentId);
+        if (agent) {
+          if (depLblUsername) depLblUsername.innerText = `@${agent.username}`;
+          if (depLblPhone) depLblPhone.innerText = agent.phone || "";
+          if (depDetailsCard) depDetailsCard.classList.remove("hidden");
+        } else {
+          if (depDetailsCard) depDetailsCard.classList.add("hidden");
+        }
+      });
+    }
+
+    if (wdDistrictSelect) {
+      wdDistrictSelect.addEventListener("change", refreshWithdrawAgents);
+    }
+    if (wdAgentSelect) {
+      wdAgentSelect.addEventListener("change", () => {
+        const agentId = wdAgentSelect.value;
+        const agent = this.db.users.find(u => u.id === agentId);
+        if (agent) {
+          if (wdLblUsername) wdLblUsername.innerText = `@${agent.username}`;
+          if (wdLblLocation) wdLblLocation.innerText = `${agent.district || "Dhaka"} District Agent`;
+          if (wdDetailsCard) wdDetailsCard.classList.remove("hidden");
+          if (wdAccountInput) {
+            wdAccountInput.value = agent.phone || "";
+          }
+        } else {
+          if (wdDetailsCard) wdDetailsCard.classList.add("hidden");
+        }
+      });
+    }
+
+    refreshDepositAgents();
+    refreshWithdrawAgents();
+  }
+
+  setupStaffAndAgentListeners() {
+    const app = this;
+
+    // --- Staff Management Triggers inside Admin ---
+    const createStaffBtn = document.getElementById("admin-create-staff-btn");
+    const staffWrapper = document.getElementById("admin-create-staff-wrapper");
+    const cancelStaffBtn = document.getElementById("admin-cancel-staff-btn");
+    const createStaffForm = document.getElementById("admin-create-staff-form");
+    const agentsSearchInput = document.getElementById("agents-search-input");
+
+    if (createStaffBtn && staffWrapper) {
+      createStaffBtn.addEventListener("click", () => {
+        staffWrapper.classList.toggle("hidden");
+        if (!staffWrapper.classList.contains("hidden")) {
+          createStaffBtn.innerHTML = `<i class="fa-solid fa-minus"></i> Hide Form`;
+        } else {
+          createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
+        }
+      });
+    }
+
+    if (cancelStaffBtn && staffWrapper) {
+      cancelStaffBtn.addEventListener("click", () => {
+        staffWrapper.classList.add("hidden");
+        if (createStaffBtn) {
+          createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
+        }
+      });
+    }
+
+    if (createStaffForm) {
+      createStaffForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const usernameVal = document.getElementById("staff-username").value.trim();
+        const emailVal = document.getElementById("staff-email").value.trim();
+        const phoneVal = document.getElementById("staff-phone").value.trim();
+        const passVal = document.getElementById("staff-password").value.trim();
+        const roleVal = document.getElementById("staff-role").value;
+        const commVal = parseFloat(document.getElementById("staff-commission").value || "5.0");
+        const districtVal = document.getElementById("staff-district").value;
+
+        if (app.db.users.some(u => u.username.toLowerCase() === usernameVal.toLowerCase())) {
+          app.showToast(`Username @${usernameVal} already exists in database!`, "error");
+          return;
+        }
+
+        const newStaff = {
+          id: "u_staff_" + Date.now(),
+          username: usernameVal,
+          email: emailVal,
+          phone: phoneVal,
+          password: passVal,
+          dob: "1995-01-01",
+          balance: roleVal === "agent" ? 1000 : 0, // Starter funds for agents to facilitate field deposits
+          totDeposit: roleVal === "agent" ? 1000 : 0,
+          totWithdraw: 0,
+          wins: 0,
+          loss: 0,
+          profit: 0,
+          joinDate: new Date().toISOString().split("T")[0],
+          status: "active",
+          blockedUntil: null,
+          role: roleVal,
+          commissionRate: roleVal === "agent" ? commVal : undefined,
+          earnedCommission: roleVal === "agent" ? 0 : undefined,
+          totalBookings: roleVal === "agent" ? 0 : undefined,
+          district: roleVal === "agent" ? districtVal : undefined
+        };
+
+        app.db.users.push(newStaff);
+        app.saveDB();
+        app.showToast(`Staff account @${usernameVal} (${roleVal}) successfully created!`, "success");
+        createStaffForm.reset();
+        staffWrapper.classList.add("hidden");
+        if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
+        app.renderAdminAgents();
+      });
+    }
+
+    if (agentsSearchInput) {
+      agentsSearchInput.addEventListener("input", () => {
+        app.renderAdminAgents();
+      });
+    }
+
+    // --- Agent Workspace Triggers ---
+    
+    // --- Advanced Agent Workspace Sub-Tabs Switcher ---
+    const tabBtns = document.querySelectorAll(".agent-tab-selector-btn");
+    const tabPanels = [
+      "agent-tab-overview",
+      "agent-tab-booker",
+      "agent-tab-cash",
+      "agent-tab-players",
+      "agent-tab-ledger"
+    ];
+
+    tabBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const selectedTab = btn.getAttribute("val");
+        
+        // Update selection UI buttons active colors
+        tabBtns.forEach(b => {
+          b.className = "agent-tab-selector-btn text-[10px] font-black uppercase tracking-wider py-2 px-3.5 rounded-xl flex items-center gap-2 cursor-pointer transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-400 hover:text-white";
+        });
+        btn.className = "agent-tab-selector-btn text-[10px] font-black uppercase tracking-wider py-2 px-3.5 rounded-xl flex items-center gap-2 cursor-pointer transition whitespace-nowrap bg-emerald-600 text-white shadow-lg shadow-emerald-600/15";
+
+        // Hide all sub tab containers, show active one
+        tabPanels.forEach(panelId => {
+          const panelEl = document.getElementById(panelId);
+          if (panelEl) {
+            if (panelId === `agent-tab-${selectedTab}`) {
+              panelEl.classList.remove("hidden");
+            } else {
+              panelEl.classList.add("hidden");
+            }
+          }
+        });
+
+        // Trigger dynamic metrics update
+        app.renderAgentWorkspace();
+      });
+    });
+
+    // Real-time search filter for field player registry table
+    const playerSearchInput = document.getElementById("agent-players-search-input");
+    if (playerSearchInput) {
+      playerSearchInput.addEventListener("input", () => {
+        app.renderAgentWorkspace();
+      });
+    }
+
+    // Agent Booker Pre-booking generator
+    const spinBtn = document.getElementById("btn-agent-test-spin");
+    const testNumVal = document.getElementById("agent-booking-test-number");
+    if (spinBtn && testNumVal) {
+      spinBtn.addEventListener("click", () => {
+        // Spin a mockup 6-digit sequence
+        const randomNum = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
+        testNumVal.value = randomNum;
+        app.showToast("Lucky offline mock number generated!", "success");
+      });
+    }
+
+    // Agent Wallet presets in Load/Deposit and Payout helper
+    const loadPresetBtns = document.querySelectorAll(".preset-load-btn");
+    const loadAmountInput = document.getElementById("agent-cash-dep-amount");
+    loadPresetBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const val = btn.getAttribute("val");
+        if (loadAmountInput) {
+          loadAmountInput.value = val;
+          app.showToast(`Applied preset loaded: ৳${val}`, "info");
+        }
+      });
+    });
+
+    const wdrPresetBtns = document.querySelectorAll(".preset-wdr-btn");
+    const wdrAmountInput = document.getElementById("agent-cash-wdr-amount");
+    wdrPresetBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        const val = btn.getAttribute("val");
+        if (wdrAmountInput) {
+          wdrAmountInput.value = val;
+          app.showToast(`Applied preset payout: ৳${val}`, "info");
+        }
+      });
+    });
+
+    // Export Session ledger copy
+    const copyLedgerBtn = document.getElementById("btn-agent-copy-ledger");
+    if (copyLedgerBtn) {
+      copyLedgerBtn.addEventListener("click", () => {
+        const ledgerLogs = (app.db.agentLedger || []).filter(l => l.agentId === app.currentUser.id);
+        if (ledgerLogs.length === 0) {
+          app.showToast("No active session transaction records to export!", "error");
+          return;
+        }
+
+        let outputText = `== AGENT SUITE ACTIVE SESSION LEDGER REPORT ==\n`;
+        outputText += `Active Operator: @${app.currentUser.username}\n`;
+        outputText += `Generated Date: ${new Date().toLocaleString()}\n`;
+        outputText += `----------------------------------------------\n`;
+        
+        ledgerLogs.forEach((act, idx) => {
+          outputText += `[${idx + 1}] ${new Date(act.timestamp).toLocaleTimeString()} - Player: @${act.targetUser} • Action: ${act.description} • Value: ৳${act.amount} • Commission: ৳${act.commission}\n`;
+        });
+        outputText += `----------------------------------------------\n`;
+        outputText += `Total Earned Commissions in logs: ৳${app.currentUser.earnedCommission || 0}\n`;
+
+        navigator.clipboard.writeText(outputText)
+          .then(() => {
+            app.showToast("Full session tracker copied to clipboard successfully!", "success");
+          })
+          .catch(() => {
+            app.showToast("Clipboard write permission failure!", "error");
+          });
+      });
+    }
+
+    const agentVerifyBtn = document.getElementById("agent-verify-btn");
+    const agentBookingForm = document.getElementById("agent-booking-form");
+    const bookingQtyInput = document.getElementById("agent-booking-qty");
+    const bookingLotterySelect = document.getElementById("agent-booking-lottery");
+
+    const agentCashDepositForm = document.getElementById("agent-cash-deposit-form");
+    const agentCashWithdrawForm = document.getElementById("agent-cash-withdraw-form");
+    const btnSubDep = document.getElementById("btn-agent-sub-dep");
+    const btnSubWdr = document.getElementById("btn-agent-sub-wdr");
+
+    const agentLogoutBtn = document.getElementById("agent-logout-btn");
+
+    if (agentLogoutBtn) {
+      agentLogoutBtn.addEventListener("click", () => {
+        app.currentUser = null;
+        localStorage.removeItem(app.sessionKey);
+        app.showToast("Logged out from agent field workspace successfully.", "info");
+        app.render();
+      });
+    }
+
+    if (agentVerifyBtn) {
+      agentVerifyBtn.addEventListener("click", () => {
+        const usernameVal = document.getElementById("agent-verify-username").value.trim();
+        const resultEl = document.getElementById("agent-verify-result");
+        if (!resultEl) return;
+
+        if (!usernameVal) {
+          app.showToast("Enter target username first!", "error");
+          return;
+        }
+
+        const targetUser = app.db.users.find(u => u.username.toLowerCase() === usernameVal.toLowerCase());
+        resultEl.classList.remove("hidden");
+        if (!targetUser) {
+          resultEl.innerHTML = `
+            <div class="text-rose-450 flex items-center gap-1 font-sans">
+              <i class="fa-solid fa-circle-exclamation"></i> Player Not Found!
+            </div>
+          `;
+          return;
+        }
+
+        const joinedDate = targetUser.joinDate || "N/A";
+
+        resultEl.innerHTML = `
+          <div class="border-b border-slate-800 pb-1.5 mb-1.5 text-center font-bold text-slate-250 font-sans">
+            Profile Search for @${targetUser.username}
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">Wallet Balance:</span>
+            <span class="text-emerald-400 font-bold">৳${(targetUser.balance || 0).toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">Email Address:</span>
+            <span class="text-slate-300 select-all">${targetUser.email || "N/A"}</span>
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">Phone Mobile Link:</span>
+            <span class="text-slate-300 select-all">${targetUser.phone || "N/A"}</span>
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">Registration Date:</span>
+            <span class="text-slate-400">${joinedDate}</span>
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">Account Status:</span>
+            <span class="uppercase font-bold ${targetUser.status === "active" ? "text-emerald-500" : "text-rose-500"}">${targetUser.status || "active"}</span>
+          </div>
+          <div class="flex justify-between font-mono text-xs">
+            <span class="text-slate-500">dob Age Limit:</span>
+            <span class="text-slate-300">${targetUser.dob || "N/A"}</span>
+          </div>
+        `;
+      });
+    }
+
+    const recomputeBookingEstimates = () => {
+      const lotteryId = bookingLotterySelect ? bookingLotterySelect.value : "";
+      const qty = parseInt(bookingQtyInput ? bookingQtyInput.value : 1) || 1;
+      const uPriceEl = document.getElementById("agent-book-unit-price");
+      const tCostEl = document.getElementById("agent-book-total-cost");
+      const estCommEl = document.getElementById("agent-book-est-commission");
+
+      if (!uPriceEl || !tCostEl || !estCommEl) return;
+
+      const lot = app.db.lotteries.find(l => l.id === lotteryId);
+      if (!lot) {
+        uPriceEl.innerText = "৳0.00";
+        tCostEl.innerText = "৳0.00";
+        estCommEl.innerText = "৳0.00";
+        return;
+      }
+
+      const unitPrice = lot.entryFee || 0;
+      const totalCost = unitPrice * qty;
+      const agentRate = app.currentUser ? (app.currentUser.commissionRate || 5.0) : 5.0;
+      const calculatedComm = (totalCost * agentRate) / 100;
+
+      uPriceEl.innerText = `৳${unitPrice.toFixed(2)}`;
+      tCostEl.innerText = `৳${totalCost.toFixed(2)}`;
+      estCommEl.innerText = `৳${calculatedComm.toFixed(2)}`;
+    };
+
+    if (bookingQtyInput) {
+      bookingQtyInput.addEventListener("input", recomputeBookingEstimates);
+    }
+    if (bookingLotterySelect) {
+      bookingLotterySelect.addEventListener("change", recomputeBookingEstimates);
+    }
+
+    if (agentBookingForm) {
+      agentBookingForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const targetUsername = document.getElementById("agent-booking-user").value.trim();
+        const lotteryId = bookingLotterySelect ? bookingLotterySelect.value : "";
+        const qty = parseInt(bookingQtyInput ? bookingQtyInput.value : 1) || 1;
+
+        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+        if (!targetUser) {
+          app.showToast(`Invalid username: Target player @${targetUsername} does not exist!`, "error");
+          return;
+        }
+
+        const lot = app.db.lotteries.find(l => l.id === lotteryId);
+        if (!lot) {
+          app.showToast("Invalid lottery selection!", "error");
+          return;
+        }
+
+        const unitPrice = lot.entryFee || 0;
+        const totalCost = unitPrice * qty;
+
+        if (targetUser.balance < totalCost) {
+          app.showToast(`Booking Failed: Player @${targetUser.username} has insufficient balance (৳${targetUser.balance.toFixed(2)}). Need ৳${totalCost.toFixed(2)}. Please load cash into their wallet first.`, "error");
+          return;
+        }
+
+        // Deduct player balance
+        targetUser.balance -= totalCost;
+
+        // Populate tickets
+        if (!app.db.tickets) app.db.tickets = [];
+        for (let i = 0; i < qty; i++) {
+          const numSeq = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
+          app.db.tickets.push({
+            id: "t_" + Date.now() + "_" + i,
+            userId: targetUser.id,
+            lotteryId: lot.id,
+            ticketNumber: numSeq,
+            purchaseDate: new Date().toISOString(),
+            status: "active"
+          });
+        }
+
+        // Add soldTickets limit
+        lot.soldTickets = (lot.soldTickets || 0) + qty;
+
+        // Credit Agent Commissions
+        const agentRate = app.currentUser ? (app.currentUser.commissionRate || 5.0) : 5.0;
+        const calculatedComm = (totalCost * agentRate) / 100;
+        app.currentUser.earnedCommission = (app.currentUser.earnedCommission || 0) + calculatedComm;
+        app.currentUser.totalBookings = (app.currentUser.totalBookings || 0) + qty;
+
+        // Store active session modifications also in DB registry users
+        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
+        if (dbAgent) {
+          dbAgent.earnedCommission = app.currentUser.earnedCommission;
+          dbAgent.totalBookings = app.currentUser.totalBookings;
+        }
+
+        // Add list transaction activity in agent Ledger
+        if (!app.db.agentLedger) app.db.agentLedger = [];
+        app.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: app.currentUser.id,
+          timestamp: new Date().toISOString(),
+          targetUser: targetUser.username,
+          description: `Booked ticket on ${lot.name} x${qty} Pcs`,
+          amount: totalCost,
+          commission: calculatedComm
+        });
+
+        app.saveDB();
+        app.showToast(`Executed Order! Successfully booked ${qty} tickets for @${targetUser.username}. Earned ৳${calculatedComm.toFixed(2)} commission!`, "success");
+        agentBookingForm.reset();
+        recomputeBookingEstimates();
+        app.renderAgentWorkspace();
+      });
+    }
+
+    if (btnSubDep && btnSubWdr) {
+      btnSubDep.addEventListener("click", () => {
+        btnSubDep.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md";
+        btnSubWdr.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition text-slate-400 hover:text-white";
+        document.getElementById("agent-cash-deposit-form").classList.remove("hidden");
+        document.getElementById("agent-cash-withdraw-form").classList.add("hidden");
+      });
+
+      btnSubWdr.addEventListener("click", () => {
+        btnSubWdr.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md";
+        btnSubDep.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition text-slate-400 hover:text-white";
+        document.getElementById("agent-cash-deposit-form").classList.add("hidden");
+        document.getElementById("agent-cash-withdraw-form").classList.remove("hidden");
+      });
+    }
+
+    if (agentCashDepositForm) {
+      agentCashDepositForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const targetUsername = document.getElementById("agent-cash-dep-username").value.trim();
+        const amount = parseFloat(document.getElementById("agent-cash-dep-amount").value || "0");
+
+        if (amount < 10) {
+          app.showToast("Minimum wallet load is 10 Taka!", "error");
+          return;
+        }
+
+        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+        if (!targetUser) {
+          app.showToast(`Invalid Player: Target player @${targetUsername} does not exist!`, "error");
+          return;
+        }
+
+        // Dedect from agent funds
+        if (app.currentUser.balance < amount) {
+          app.showToast(`Load Failed: Insufficient Agent Wallet funds (Current Balance: ৳${app.currentUser.balance.toFixed(2)}). Contact Administrator for Agent Wallet limit refill!`, "error");
+          return;
+        }
+
+        // Perform balance shift
+        app.currentUser.balance -= amount;
+        targetUser.balance = (targetUser.balance || 0) + amount;
+        // Keep DB user record matching current active agent session
+        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
+        if (dbAgent) {
+          dbAgent.balance = app.currentUser.balance;
+        }
+
+        // Record a deposit ledger transaction as automatically approved
+        if (!app.db.deposits) app.db.deposits = [];
+        app.db.deposits.push({
+          id: "dep_" + Date.now(),
+          userId: targetUser.id,
+          username: targetUser.username,
+          gateway: "Agent Funds Assistance",
+          amount: amount,
+          txid: "AGN-DEP-" + Math.floor(Math.random() * 100000),
+          status: "approved",
+          date: new Date().toISOString()
+        });
+
+        // Log Agent activity ledger
+        if (!app.db.agentLedger) app.db.agentLedger = [];
+        app.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: app.currentUser.id,
+          timestamp: new Date().toISOString(),
+          targetUser: targetUser.username,
+          description: "Wallet Cash Deposit (Load assisted)",
+          amount: amount,
+          commission: 0
+        });
+
+        app.saveDB();
+        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Agent Limit deducted.`, "success");
+        agentCashDepositForm.reset();
+        app.renderAgentWorkspace();
+      });
+    }
+
+    if (agentCashWithdrawForm) {
+      agentCashWithdrawForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const targetUsername = document.getElementById("agent-cash-wdr-username").value.trim();
+        const amount = parseFloat(document.getElementById("agent-cash-wdr-amount").value || "0");
+
+        if (amount < 10) {
+          app.showToast("Minimum cash out is 10 Taka!", "error");
+          return;
+        }
+
+        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
+        if (!targetUser) {
+          app.showToast(`Invalid Player: Target player @${targetUsername} does not exist!`, "error");
+          return;
+        }
+
+        // Verify player is active and has sufficient wallet balance
+        if (targetUser.balance < amount) {
+          app.showToast(`Cashout Failed: Player @${targetUser.username} has insufficient wallet balance (৳${targetUser.balance.toFixed(2)})!`, "error");
+          return;
+        }
+
+        // Perform balance deduction and physically reward offline cash
+        targetUser.balance -= amount;
+
+        // Record a withdrawal ledger transaction as automatically approved
+        if (!app.db.withdrawals) app.db.withdrawals = [];
+        app.db.withdrawals.push({
+          id: "wdr_" + Date.now(),
+          userId: targetUser.id,
+          username: targetUser.username,
+          gateway: "Agent Assisted Cashout",
+          amount: amount,
+          phone: targetUser.phone,
+          status: "approved",
+          date: new Date().toISOString()
+        });
+
+        // Log Agent activity ledger
+        if (!app.db.agentLedger) app.db.agentLedger = [];
+        app.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: app.currentUser.id,
+          timestamp: new Date().toISOString(),
+          targetUser: targetUser.username,
+          description: "Assisted offline Cashout (Cashed physical money)",
+          amount: amount,
+          commission: 0
+        });
+
+        app.saveDB();
+        app.showToast(`Cashout approved! Deducted ৳${amount.toFixed(2)} from @${targetUser.username}. Hand physical money over to the player now.`, "success");
+        agentCashWithdrawForm.reset();
+        app.renderAgentWorkspace();
+      });
+    }
+  }
+
+  // ================= ADMIN REGISTERED LOTTERIES VIEW =================
   renderAdminLotteries() {
     const listEl = document.getElementById("admin-pools-list-container");
     listEl.innerHTML = "";
@@ -6750,6 +8098,11 @@ public class DatabaseClusterRouter {
       setValue("sys-pay-crypto-qr-eth", s.cryptoQRUrlETH || "");
       setValue("sys-pay-crypto-instruction", s.cryptoInstruction || "");
 
+      setChecked("sys-pay-agent-deposit-enabled", s.payAgentDepositEnabled !== false);
+      setChecked("sys-pay-agent-withdraw-enabled", s.payAgentWithdrawEnabled !== false);
+      setValue("sys-pay-agent-deposit-instruction", s.mobileInstructionAgentDeposit || "");
+      setValue("sys-pay-agent-withdraw-instruction", s.mobileInstructionAgentWithdraw || "");
+
       // Toggle custom URLs section on render
       const customUrlsArea = document.getElementById("sys-pay-crypto-custom-urls");
       if (customUrlsArea) {
@@ -7501,8 +8854,8 @@ function initApplicationLoader() {
       return;
     }
 
-    app.currentUser = matched;
-    localStorage.setItem(app.sessionKey, JSON.stringify(matched));
+    app.currentUser = StateManager.removeCircularReferences(matched);
+    localStorage.setItem(app.sessionKey, JSON.stringify(app.currentUser, StateManager.getCircularReplacer()));
     app.showToast(`Welcome back, @${matched.username}!`, "success");
     app.render();
     });
@@ -7616,7 +8969,8 @@ function initApplicationLoader() {
       registeredIp: clientIp,
       refersCount: 0,
       referredUsers: [],
-      rewardedMilestones: []
+      rewardedMilestones: [],
+      role: "player"
     };
 
     // 5. Apply referral rewards and counters
@@ -7665,8 +9019,8 @@ function initApplicationLoader() {
     app.db.users.push(newUser);
     app.saveDB();
 
-    app.currentUser = newUser;
-    localStorage.setItem(app.sessionKey, JSON.stringify(newUser));
+    app.currentUser = StateManager.removeCircularReferences(newUser);
+    localStorage.setItem(app.sessionKey, JSON.stringify(app.currentUser, StateManager.getCircularReplacer()));
     app.showToast(`Account registered successfully under region ${regionVal}! Enjoy ৳${welcomeBonus} Starter Wallet Bonus!`, "success");
     app.render();
     });
@@ -8449,6 +9803,11 @@ function initApplicationLoader() {
     s.cryptoQRUrlETH = document.getElementById("sys-pay-crypto-qr-eth").value.trim();
     s.cryptoInstruction = document.getElementById("sys-pay-crypto-instruction").value.trim();
 
+    s.payAgentDepositEnabled = document.getElementById("sys-pay-agent-deposit-enabled").checked;
+    s.payAgentWithdrawEnabled = document.getElementById("sys-pay-agent-withdraw-enabled").checked;
+    s.mobileInstructionAgentDeposit = document.getElementById("sys-pay-agent-deposit-instruction").value.trim();
+    s.mobileInstructionAgentWithdraw = document.getElementById("sys-pay-agent-withdraw-instruction").value.trim();
+
     // Legacy fallback string support
     s.cryptoAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
 
@@ -8872,7 +10231,8 @@ function initApplicationLoader() {
           dbUser.communityConsent = true;
         }
         app.saveDB();
-        localStorage.setItem(app.sessionKey, JSON.stringify(app.currentUser));
+        app.currentUser = StateManager.removeCircularReferences(app.currentUser);
+        localStorage.setItem(app.sessionKey, JSON.stringify(app.currentUser, StateManager.getCircularReplacer()));
         
         app.showToast("Permission granted! Welcome to the Community Space.", "success");
         app.render();
@@ -9473,6 +10833,12 @@ function initApplicationLoader() {
       modal.classList.add("hidden");
     }
   });
+
+  // Automatically register specialized Staff & Agent workspace listeners
+  if (app) {
+    app.setupStaffAndAgentListeners();
+    app.setupDistrictAgentsLookup();
+  }
 }
 
 if (document.readyState === "loading") {
