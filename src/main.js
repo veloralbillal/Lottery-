@@ -3775,9 +3775,155 @@ public class DatabaseClusterRouter {
       }
     });
 
+    // Check for agent cashout balance deduction notification popup (5-sec duration)
+    const freshUser = this.db.users.find(u => u.id === this.currentUser.id);
+    if (freshUser && freshUser.latestDeductionNotification && !notifiedItems.includes(freshUser.latestDeductionNotification.id)) {
+      this.showCashoutDeductionPopup(freshUser.latestDeductionNotification);
+      notifiedItems.push(freshUser.latestDeductionNotification.id);
+      updatedNotified = true;
+    }
+
     if (updatedNotified) {
       localStorage.setItem("lw_notified_systems", JSON.stringify(notifiedItems));
     }
+  }
+
+  showCashoutDeductionPopup(deduction) {
+    const existing = document.getElementById("cashout-deduction-popup");
+    if (existing) existing.remove();
+
+    const popup = document.createElement("div");
+    popup.id = "cashout-deduction-popup";
+    popup.className = "fixed inset-0 flex items-center justify-center z-[9999] bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300 p-4";
+    
+    const timeStr = new Date(deduction.timestamp).toLocaleString();
+
+    popup.innerHTML = `
+      <div class="relative w-full max-w-sm bg-gradient-to-b from-slate-900 to-slate-950 border border-red-500/30 p-6 rounded-[32px] shadow-2xl text-center space-y-5 animate-in zoom-in-95 duration-300">
+        <div class="absolute -right-6 -top-6 w-24 h-24 bg-red-500/10 rounded-full blur-[30px] pointer-events-none"></div>
+        
+        <div class="w-16 h-16 mx-auto bg-gradient-to-tr from-rose-500 to-red-600 rounded-3xl flex items-center justify-center text-white text-2xl shadow-lg shadow-rose-500/10 mb-2">
+          <i class="fa-solid fa-receipt animate-bounce"></i>
+        </div>
+
+        <div class="space-y-1">
+          <h3 class="text-base font-black font-display text-white uppercase tracking-tight">Balance Deducted</h3>
+          <p class="text-[9.5px] text-slate-500 font-mono tracking-widest uppercase">Official Cashout Receipt</p>
+        </div>
+
+        <div class="bg-slate-950 border border-slate-850 rounded-2xl p-4 text-left space-y-2 text-xs font-mono">
+          <div class="flex justify-between border-b border-slate-850/60 pb-1.5">
+            <span class="text-slate-500 uppercase text-[9px]">Deducted Amount</span>
+            <span class="text-rose-450 font-black text-sm">৳${parseFloat(deduction.amount).toFixed(2)}</span>
+          </div>
+          <div class="flex justify-between border-b border-slate-850/60 py-1.5">
+            <span class="text-slate-500 uppercase text-[9px]">Agent Handler</span>
+            <span class="text-white font-bold">@${deduction.agentUsername}</span>
+          </div>
+          <div class="flex justify-between pt-1">
+            <span class="text-slate-500 uppercase text-[9px]">Timestamp</span>
+            <span class="text-slate-300 text-[10px]">${timeStr}</span>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400">
+            <span>Dismissing in:</span>
+            <span id="popup-dismiss-secs" class="font-bold text-white">5s</span>
+          </div>
+          <div class="w-full h-1 bg-slate-950 rounded-full overflow-hidden">
+            <div id="popup-dismiss-progress" class="h-full bg-rose-600 w-full transition-all duration-1000 ease-linear"></div>
+          </div>
+        </div>
+
+        <button id="dismiss-cashout-popup-btn" class="w-full bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer">
+          Dismiss Now
+        </button>
+      </div>
+    `;
+
+    document.body.appendChild(popup);
+
+    let popupRemaining = 5;
+    const progressEl = document.getElementById("popup-dismiss-progress");
+    const secondsEl = document.getElementById("popup-dismiss-secs");
+
+    const timer = setInterval(() => {
+      popupRemaining--;
+      if (secondsEl) secondsEl.innerText = `${popupRemaining}s`;
+      if (progressEl) {
+        progressEl.style.width = `${(popupRemaining / 5) * 100}%`;
+      }
+      
+      if (popupRemaining <= 0) {
+        clearInterval(timer);
+        popup.remove();
+      }
+    }, 1000);
+
+    const dismissBtn = document.getElementById("dismiss-cashout-popup-btn");
+    if (dismissBtn) {
+      dismissBtn.addEventListener("click", () => {
+        clearInterval(timer);
+        popup.remove();
+      });
+    }
+  }
+
+  renderSupportAgentsList() {
+    const listEl = document.getElementById("user-support-agents-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const districtSelect = document.getElementById("user-support-agent-district-select");
+    const districtVal = districtSelect ? districtSelect.value : "all";
+
+    const agents = this.db.users.filter(u => u.role === "agent" && u.status === "active" && (districtVal === "all" || u.district === districtVal));
+
+    if (agents.length === 0) {
+      listEl.innerHTML = `
+        <div class="text-center py-6 text-slate-500 text-[10px] font-mono">
+          No active verified agents available for this district.
+        </div>
+      `;
+      return;
+    }
+
+    const adminWhatsApp = this.db.settings?.whatsappUrl || "";
+
+    agents.forEach(agent => {
+      const card = document.createElement("div");
+      card.className = "bg-slate-950 border border-slate-800 hover:border-emerald-500/30 p-3 rounded-2xl flex justify-between items-center transition cursor-pointer";
+      
+      let cleanPhone = (agent.phone || "").replace(/\D/g, "");
+      if (cleanPhone.startsWith("0")) {
+        cleanPhone = "88" + cleanPhone;
+      }
+      
+      let waUrl = "";
+      if (cleanPhone) {
+        waUrl = `https://wa.me/${cleanPhone}`;
+      } else if (adminWhatsApp) {
+        waUrl = adminWhatsApp.startsWith("http") ? adminWhatsApp : `https://wa.me/${adminWhatsApp.replace(/\D/g, "")}`;
+      } else {
+        waUrl = "#";
+      }
+
+      card.innerHTML = `
+        <div class="space-y-0.5 text-left">
+          <div class="font-bold text-white flex items-center gap-1.5 text-xs">
+            <span>@${agent.username}</span>
+            <span class="text-[8px] bg-emerald-950 text-emerald-400 border border-emerald-900/30 rounded px-1 font-mono uppercase">${agent.district || "Dhaka"}</span>
+          </div>
+          <div class="text-[9.5px] text-slate-500 font-mono">Verified Station Agent</div>
+        </div>
+        <a href="${waUrl}" target="_blank" class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white py-1.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition">
+          <i class="fa-brands fa-whatsapp text-xs"></i> Connect Chat
+        </a>
+      `;
+
+      listEl.appendChild(card);
+    });
   }
 
   renderProfileChart() {
@@ -4363,6 +4509,7 @@ public class DatabaseClusterRouter {
     this.rebuildDepositGatewaySelect();
     this.rebuildWithdrawGatewaySelect();
     this.updateSelectedDepositGatewayInstructions();
+    this.renderSupportAgentsList();
   }
 
   updateSelectedDepositGatewayInstructions() {
@@ -4559,15 +4706,41 @@ public class DatabaseClusterRouter {
 
     // Combine
     const allOps = [];
-    userDepos.forEach(d => allOps.push({ ...d, type: "deposit", sign: "+", color: "text-emerald-400", label: `Trx: ${d.trxId}` }));
-    userWds.forEach(w => allOps.push({ ...w, type: "withdraw", sign: "-", color: "text-rose-400", label: `Tar: ${w.targetAccount}` }));
-    userTx.forEach(tx => allOps.push({
-      ...tx,
-      type: tx.type === "credit" ? "Bonus/Credit" : "Charge/Debit",
-      sign: tx.type === "credit" ? "+" : "-",
-      color: tx.type === "credit" ? "text-emerald-400" : "text-rose-400",
-      label: tx.walletNumber || `Ref: ${tx.id.slice(-6)}`
-    }));
+    userDepos.forEach(d => {
+      const trxVal = d.trxId || d.txid || d.id;
+      const methodVal = d.method || d.gateway || "Agent Load";
+      allOps.push({
+        ...d,
+        method: methodVal,
+        type: "deposit",
+        sign: "+",
+        color: "text-emerald-400",
+        label: `Trx: ${trxVal}`
+      });
+    });
+    userWds.forEach(w => {
+      const targetVal = w.targetAccount || w.phone || w.username || "Agent Handout";
+      const methodVal = w.method || w.gateway || "Agent Payout";
+      allOps.push({
+        ...w,
+        method: methodVal,
+        type: "withdraw",
+        sign: "-",
+        color: "text-rose-400",
+        label: `Tar: ${targetVal}`
+      });
+    });
+    userTx.forEach(tx => {
+      const refVal = tx.walletNumber || `Ref: ${tx.id.slice(-6)}`;
+      allOps.push({
+        ...tx,
+        method: tx.method || tx.description || "System adjustments",
+        type: tx.type === "credit" ? "Bonus/Credit" : "Charge/Debit",
+        sign: tx.type === "credit" ? "+" : "-",
+        color: tx.type === "credit" ? "text-emerald-400" : "text-rose-400",
+        label: refVal
+      });
+    });
 
     // Sort by date
     allOps.sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -6872,6 +7045,106 @@ public class DatabaseClusterRouter {
       });
     }
 
+    // Agent-assisted player quick registration
+    const agentRegForm = document.getElementById("agent-player-quick-register-form");
+    if (agentRegForm) {
+      agentRegForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        
+        const usernameVal = document.getElementById("agent-reg-username").value.trim();
+        const emailVal = document.getElementById("agent-reg-email").value.trim();
+        const phoneVal = document.getElementById("agent-reg-phone").value.trim();
+        const passVal = document.getElementById("agent-reg-password").value.trim();
+
+        if (!usernameVal || !emailVal || !phoneVal || !passVal) {
+          app.showToast("All registration fields are required!", "error");
+          return;
+        }
+
+        // Validate duplicates
+        const dupUser = app.db.users.find(u => u.username.toLowerCase() === usernameVal.toLowerCase() || u.email.toLowerCase() === emailVal.toLowerCase() || u.phone === phoneVal);
+        if (dupUser) {
+          app.showToast("Account Creation Failed: Username, Email or Phone Number is already registered!", "error");
+          return;
+        }
+
+        const welcomeBonus = (app.db && app.db.settings && app.db.settings.signupBonus !== undefined) 
+          ? parseFloat(app.db.settings.signupBonus) 
+          : 100;
+
+        const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined)
+          ? parseFloat(app.db.settings.agentReferralBonus)
+          : 100;
+
+        // Create player user object
+        const newUser = {
+          id: "u" + Date.now(),
+          username: usernameVal,
+          email: emailVal,
+          password: passVal,
+          phone: phoneVal,
+          balance: welcomeBonus,
+          totDeposit: 0,
+          totWithdraw: 0,
+          wins: 0,
+          loss: 0,
+          profit: 0,
+          joinDate: new Date().toISOString().split("T")[0],
+          status: "active",
+          blockedUntil: null,
+          refersCount: 0,
+          referredUsers: [],
+          rewardedMilestones: [],
+          role: "user", // "user" role is filtered as a regular player in agent tab
+          referredBy: app.currentUser.username
+        };
+
+        // Award referral bonus to the Agent!
+        app.currentUser.balance = (app.currentUser.balance || 0) + referBonus;
+        
+        // Also keep DB user record matching current active agent session
+        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
+        if (dbAgent) {
+          dbAgent.balance = app.currentUser.balance;
+          dbAgent.refersCount = (dbAgent.refersCount || 0) + 1;
+          if (!dbAgent.referredUsers) dbAgent.referredUsers = [];
+          dbAgent.referredUsers.push({
+            username: usernameVal,
+            region: "Assisted",
+            date: new Date().toISOString()
+          });
+        }
+
+        // Log agent activity ledger
+        if (!app.db.agentLedger) app.db.agentLedger = [];
+        app.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: app.currentUser.id,
+          timestamp: new Date().toISOString(),
+          targetUser: usernameVal,
+          description: `Assisted Player Quick-Registration (Referral Bonus)`,
+          amount: referBonus,
+          commission: 0
+        });
+
+        // Add player to system DB
+        app.db.users.push(newUser);
+        
+        app.saveDB();
+        app.showToast(`Player @${usernameVal} registered successfully! Added ৳${referBonus} referral bonus to your agent wallet.`, "success");
+        agentRegForm.reset();
+        app.renderAgentWorkspace();
+      });
+    }
+
+    // District-based Agent Live Support List Change Event
+    const supportDistrictSelect = document.getElementById("user-support-agent-district-select");
+    if (supportDistrictSelect) {
+      supportDistrictSelect.addEventListener("change", () => {
+        app.renderSupportAgentsList();
+      });
+    }
+
     // Agent Booker Pre-booking generator
     const spinBtn = document.getElementById("btn-agent-test-spin");
     const testNumVal = document.getElementById("agent-booking-test-number");
@@ -7216,9 +7489,15 @@ public class DatabaseClusterRouter {
         e.preventDefault();
         const targetUsername = document.getElementById("agent-cash-wdr-username").value.trim();
         const amount = parseFloat(document.getElementById("agent-cash-wdr-amount").value || "0");
+        const enteredOTP = document.getElementById("agent-cash-wdr-otp").value.trim();
 
         if (amount < 10) {
           app.showToast("Minimum cash out is 10 Taka!", "error");
+          return;
+        }
+
+        if (!enteredOTP) {
+          app.showToast("Please enter the 6-Digit Player Cashout OTP to proceed!", "error");
           return;
         }
 
@@ -7234,16 +7513,51 @@ public class DatabaseClusterRouter {
           return;
         }
 
+        // --- SECURE OTP VERIFICATION ---
+        const otpData = targetUser.cashoutOTP;
+        if (!otpData) {
+          app.showToast(`OTP Verification Failed: No active OTP code found for @${targetUser.username}. Ask them to generate one first on their profile.`, "error");
+          return;
+        }
+
+        if (otpData.used) {
+          app.showToast(`OTP Verification Failed: This OTP has already been used to deduct balance! Player must generate a new OTP.`, "error");
+          return;
+        }
+
+        if (Date.now() > otpData.expiresAt) {
+          app.showToast(`OTP Verification Failed: This OTP code has expired! Ask the player to generate a fresh one.`, "error");
+          return;
+        }
+
+        if (otpData.code !== enteredOTP) {
+          app.showToast(`OTP Verification Failed: Invalid 6-digit code! Please double-check with the player.`, "error");
+          return;
+        }
+
+        // Mark OTP as used so it cannot be re-used under any circumstance within the 30 seconds
+        otpData.used = true;
+
         // Perform balance deduction and physically reward offline cash
         targetUser.balance -= amount;
 
-        // Record a withdrawal ledger transaction as automatically approved
+        // Save latest deduction details to trigger the 5-second popup on targetUser's panel in real-time
+        targetUser.latestDeductionNotification = {
+          id: "deduct_" + Date.now() + "_" + Math.floor(Math.random() * 100),
+          amount: amount,
+          agentUsername: app.currentUser.username,
+          timestamp: new Date().toISOString()
+        };
+
+        // Record a withdrawal ledger transaction
         if (!app.db.withdrawals) app.db.withdrawals = [];
         app.db.withdrawals.push({
           id: "wdr_" + Date.now(),
           userId: targetUser.id,
           username: targetUser.username,
           gateway: "Agent Assisted Cashout",
+          method: "Agent Assisted Cashout",
+          targetAccount: targetUser.phone || targetUser.username,
           amount: amount,
           phone: targetUser.phone,
           status: "approved",
@@ -7257,7 +7571,7 @@ public class DatabaseClusterRouter {
           agentId: app.currentUser.id,
           timestamp: new Date().toISOString(),
           targetUser: targetUser.username,
-          description: "Assisted offline Cashout (Cashed physical money)",
+          description: `Assisted offline Cashout (Verified with OTP: ${enteredOTP})`,
           amount: amount,
           commission: 0
         });
@@ -8126,6 +8440,10 @@ public class DatabaseClusterRouter {
       setValue("sys-dep-boost-percent", s.depBonusPercent || 10);
       setValue("sys-dep-boost-min", s.depBonusMin || 500);
       setChecked("sys-dep-boost-toggle", s.depBonusEnabled || false);
+
+      // Load Agent Referral Bonus & WhatsApp Settings
+      setValue("sys-agent-referral-bonus", s.agentReferralBonus !== undefined ? s.agentReferralBonus : 100);
+      setValue("sys-whatsapp-url", s.whatsappUrl || "");
     } catch (err) {
       console.warn("Exception in renderAdminSettings:", err);
     }
@@ -8987,6 +9305,37 @@ function initApplicationLoader() {
           date: new Date().toISOString()
         });
 
+        // If referrer is an agent, auto credit agent referral bonus!
+        if (referrer.role === "agent") {
+          const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined) ? parseFloat(app.db.settings.agentReferralBonus) : 100;
+          referrer.balance = (referrer.balance || 0) + referBonus;
+          
+          if (!app.db.agentLedger) app.db.agentLedger = [];
+          app.db.agentLedger.push({
+            id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 100),
+            agentId: referrer.id,
+            timestamp: new Date().toISOString(),
+            targetUser: userVal,
+            description: `Auto-credited Agent Referral Bonus (Player registered: @${userVal})`,
+            amount: referBonus,
+            commission: 0
+          });
+
+          // Send notification message
+          const autoNotice = {
+            id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+            recipientType: "specific",
+            targetUsername: referrer.username,
+            category: "bonus",
+            subject: `🎁 Agent Referral Reward: +৳${referBonus}!`,
+            content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} has been added to your wallet.`,
+            date: new Date().toISOString(),
+            readBy: []
+          };
+          if (!app.db.messages) app.db.messages = [];
+          app.db.messages.push(autoNotice);
+        }
+
         // Evaluate milestones
         const milLevels = app.db.settings.milestoneLevels || [];
         milLevels.forEach(lvl => {
@@ -9830,6 +10179,10 @@ function initApplicationLoader() {
     app.db.settings.depBonusPercent = parseFloat(document.getElementById("sys-dep-boost-percent").value);
     app.db.settings.depBonusMin = parseFloat(document.getElementById("sys-dep-boost-min").value);
     app.db.settings.depBonusEnabled = document.getElementById("sys-dep-boost-toggle").checked;
+
+    // Save Agent Referral Bonus & WhatsApp Settings
+    app.db.settings.agentReferralBonus = parseFloat(document.getElementById("sys-agent-referral-bonus").value || "100");
+    app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url").value.trim();
 
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");

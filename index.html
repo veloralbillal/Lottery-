@@ -686,6 +686,45 @@
             <p class="text-[10px] text-slate-500">Available to purchase lottery draw pools with zero escrow delays.</p>
           </div>
 
+          <!-- AGENT DIRECTORY & LIVE WHATSAPP SUPPORT -->
+          <div class="bg-gradient-to-r from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 p-5 rounded-3xl space-y-4 shadow-xl">
+            <div class="flex items-center justify-between border-b border-emerald-900/20 pb-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-brands fa-whatsapp text-emerald-400 text-lg animate-pulse"></i>
+                <div>
+                  <h3 class="text-xs font-black uppercase text-white font-display">Live Agent WhatsApp Support</h3>
+                  <p class="text-[9px] text-slate-400 font-sans">Contact our certified agents instantly on WhatsApp for manual deposits & cashouts</p>
+                </div>
+              </div>
+            </div>
+            
+            <div class="space-y-3">
+              <!-- District Selector -->
+              <div class="space-y-1">
+                <label class="block text-slate-500 text-[9px] uppercase font-mono">Select Agent District</label>
+                <select id="user-support-agent-district-select" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-white outline-none cursor-pointer focus:border-emerald-500">
+                  <option value="all">-- Show All Districts --</option>
+                  <option value="Dhaka">Dhaka</option>
+                  <option value="Chittagong">Chittagong</option>
+                  <option value="Sylhet">Sylhet</option>
+                  <option value="Rajshahi">Rajshahi</option>
+                  <option value="Khulna">Khulna</option>
+                  <option value="Barisal">Barisal</option>
+                  <option value="Rangpur">Rangpur</option>
+                  <option value="Mymensingh">Mymensingh</option>
+                  <option value="Comilla">Comilla</option>
+                  <option value="Gazipur">Gazipur</option>
+                  <option value="Narayanganj">Narayanganj</option>
+                </select>
+              </div>
+
+              <!-- Agents List Container -->
+              <div id="user-support-agents-list" class="space-y-2.5 max-h-52 overflow-y-auto pr-1">
+                <!-- Dynamically loaded in main.js -->
+              </div>
+            </div>
+          </div>
+
           <!-- DEPOSIT PANEL CARD -->
           <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
             <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -1208,6 +1247,26 @@
                 <i class="fa-solid fa-circle-check mr-1 text-[11px]"></i> Update Profile Details
               </button>
             </form>
+
+            <!-- Support OTP Security Action -->
+            <div class="bg-gradient-to-r from-cyan-950/30 to-indigo-950/30 border border-cyan-500/20 rounded-2xl p-4 text-left space-y-3 shadow-md mt-4">
+              <div class="flex items-start gap-3">
+                <div class="p-2.5 bg-cyan-500/10 rounded-xl text-cyan-400">
+                  <i class="fa-solid fa-key text-sm"></i>
+                </div>
+                <div>
+                  <h4 class="text-xs font-black text-white flex items-center gap-1.5 font-display">
+                    Secure Cashout OTP Support
+                  </h4>
+                  <p class="text-[9.5px] text-slate-400 leading-relaxed font-sans mt-0.5">
+                    Generate secure 6-digit verification codes to authorize instant balance deductions at verified Agent Cashout Stations.
+                  </p>
+                </div>
+              </div>
+              <a href="/otp.html" target="_blank" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-[11px] py-2.5 rounded-xl transition duration-150 transform hover:scale-[1.01] cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/15">
+                <i class="fa-solid fa-shield-halved"></i> Access OTP Generator Page
+              </a>
+            </div>
 
             <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono pt-1.5 text-left border-t border-slate-850/60">
               <span>Account Registration Date:</span>
@@ -2725,6 +2784,17 @@
               </div>
             </div>
 
+            <div class="grid grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 font-bold text-emerald-400">Agent Referral Bonus (৳)</label>
+                <input id="sys-agent-referral-bonus" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-emerald-500" placeholder="e.g. 100" />
+              </div>
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 font-bold text-cyan-400">Support WhatsApp (Number/URL)</label>
+                <input id="sys-whatsapp-url" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. 8801700000000" />
+              </div>
+            </div>
+
             <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
               Commit Maintenance Configuration
             </button>
@@ -3737,6 +3807,11 @@
                 <input id="agent-cash-wdr-amount" type="number" min="10" required class="w-full bg-slate-950 border border-slate-850 rounded-xl py-3 px-3 text-white font-bold outline-none focus:border-rose-500 font-mono text-base" placeholder="Enter amount to pay" />
               </div>
 
+              <div class="space-y-1.5" id="agent-cashout-otp-row">
+                <label class="block text-slate-455 uppercase font-black text-[9px] font-mono tracking-wider text-rose-450">Player Cashout OTP (6-Digits)</label>
+                <input id="agent-cash-wdr-otp" type="text" maxlength="6" required class="w-full bg-slate-950 border border-rose-900/40 rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-rose-500 font-mono text-center tracking-widest text-base" placeholder="000000" />
+              </div>
+
               <div class="p-3.5 bg-rose-950/20 border border-rose-900/30 rounded-2xl block text-[10px] text-rose-450 leading-relaxed font-sans">
                 <i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1.5"></i> This action IMMEDIATELY deducts online Taka from the user's online wallet. <strong>Only proceed if you are physically handing over cash to the player at your station.</strong>
               </div>
@@ -3752,6 +3827,42 @@
 
       <!-- ================= AGENT SUB-TAB: FIELD PLAYERS REGISTRY ================= -->
       <div id="agent-tab-players" class="hidden space-y-6">
+        
+        <!-- Agent-Led Player Quick Registration -->
+        <div class="bg-gradient-to-r from-slate-900 to-indigo-950/30 border border-slate-800 p-5 rounded-[24px] space-y-4 shadow-lg">
+          <div class="flex items-center gap-2 border-b border-slate-850 pb-2">
+            <i class="fa-solid fa-user-plus text-indigo-400"></i>
+            <div>
+              <h3 class="text-xs font-black uppercase text-white font-display">Agent-Assisted Player Registration</h3>
+              <p class="text-[9px] text-slate-400 font-sans">Open a verified player account instantly. They will be referred under you and your referral bonus will be auto-credited!</p>
+            </div>
+          </div>
+
+          <form id="agent-player-quick-register-form" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-[10px] font-mono">
+            <div class="space-y-1">
+              <label class="block text-slate-500 uppercase">Username</label>
+              <input id="agent-reg-username" type="text" required class="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. player123" />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-slate-500 uppercase">Email</label>
+              <input id="agent-reg-email" type="email" required class="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. player@gmail.com" />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-slate-500 uppercase">Phone Number</label>
+              <input id="agent-reg-phone" type="text" required class="w-full bg-slate-950 border border-slate-850 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. 01700000000" />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-slate-500 uppercase">Password</label>
+              <div class="relative">
+                <input id="agent-reg-password" type="text" required class="w-full bg-slate-950 border border-slate-850 rounded-xl py-2.5 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. 123456" />
+                <button type="submit" class="absolute right-1.5 top-1.5 bottom-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 rounded-lg transition text-[9px] uppercase cursor-pointer">
+                  Create
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
         <div class="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-lg space-y-4">
           <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-slate-850 pb-3">
             <div>

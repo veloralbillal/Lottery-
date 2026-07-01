@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Cashout OTP Generator</title>
+  
+  <!-- FontAwesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  
+  <!-- Fonts -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800;900&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Space Grotesk', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .animate-spin-slow {
+      animation: spin-slow 20s linear infinite;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex items-center justify-center p-4 selection:bg-cyan-500/30 selection:text-white">
+
+  <!-- Decorative Atmosphere Glows -->
+  <div class="fixed top-0 right-0 w-96 h-96 bg-cyan-600/5 rounded-full blur-[120px] pointer-events-none"></div>
+  <div class="fixed bottom-0 left-0 w-96 h-96 bg-indigo-600/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+  <!-- Main Card Container -->
+  <div class="relative w-full max-w-md bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800/80 p-6 rounded-[32px] shadow-2xl text-center space-y-6 overflow-hidden">
+    
+    <!-- Pulse Ring Glow behind lock icon -->
+    <div class="absolute -right-8 -top-8 w-32 h-32 bg-cyan-500/10 rounded-full blur-[40px] pointer-events-none"></div>
+    
+    <!-- Branding Header -->
+    <div class="space-y-1">
+      <div class="w-12 h-12 mx-auto bg-gradient-to-tr from-cyan-500 to-indigo-500 rounded-2xl flex items-center justify-center text-white text-lg shadow-lg shadow-cyan-500/10 mb-2">
+        <i class="fa-solid fa-shield-halved"></i>
+      </div>
+      <h2 class="text-lg font-black font-display tracking-tight text-white uppercase">Security Terminal</h2>
+      <p class="text-[10px] text-slate-500 font-mono tracking-widest uppercase">Verified Cashout OTP Token</p>
+    </div>
+
+    <!-- Divider -->
+    <div class="border-b border-slate-850/60"></div>
+
+    <!-- Active User Profile Row -->
+    <div id="user-profile-row" class="hidden bg-slate-950/60 border border-slate-850/60 rounded-2xl p-3 flex items-center justify-between text-left text-xs">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-450 font-bold">
+          <i class="fa-solid fa-user-astronaut"></i>
+        </div>
+        <div>
+          <span class="text-[9px] text-slate-500 block font-mono uppercase leading-none">Logged Player</span>
+          <span id="player-username" class="font-bold text-white text-xs">@username</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <span class="text-[9px] text-slate-500 block font-mono uppercase leading-none">Wallet balance</span>
+        <span id="player-balance" class="font-extrabold text-emerald-400 font-mono">৳0.00</span>
+      </div>
+    </div>
+
+    <!-- OTP Display Box -->
+    <div id="otp-display-area" class="space-y-4">
+      <div class="bg-slate-950 border-2 border-slate-900/80 rounded-3xl p-6 relative overflow-hidden group">
+        <!-- Background grid details -->
+        <div class="absolute inset-0 opacity-[0.02] pointer-events-none" style="background-image: radial-gradient(#fff 1px, transparent 1px); background-size: 16px 16px;"></div>
+        
+        <span class="text-[9px] text-slate-500 uppercase tracking-widest font-mono font-bold block mb-1">Deduction authorization code</span>
+        
+        <!-- Big OTP -->
+        <div id="otp-digits" class="text-4xl font-black text-cyan-400 font-mono tracking-[0.25em] pl-[0.25em] py-2 relative select-all transition duration-300">
+          ------
+        </div>
+        
+        <!-- Status indicator -->
+        <div class="flex items-center justify-center gap-1.5 pt-2 text-[10px] font-mono text-emerald-400">
+          <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
+          <span id="otp-status-lbl">Live & Synchronized</span>
+        </div>
+      </div>
+
+      <!-- Progressive Countdown Bar -->
+      <div class="space-y-1.5 text-left">
+        <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
+          <span>OTP Auto-Rotates in:</span>
+          <span id="countdown-secs" class="font-bold text-white">30s</span>
+        </div>
+        <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden border border-slate-900">
+          <div id="countdown-progress" class="h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear" style="width: 100%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Unauthorized / Error Box -->
+    <div id="unauth-area" class="hidden bg-rose-950/20 border border-rose-900/30 rounded-2xl p-5 space-y-3.5 text-center">
+      <i class="fa-solid fa-triangle-exclamation text-rose-500 text-3xl"></i>
+      <div class="space-y-1">
+        <h4 class="text-xs font-bold text-white uppercase">Authentication Required</h4>
+        <p class="text-[10px] text-slate-400 leading-relaxed font-sans">
+          You are not currently authenticated. Please log in to your account through the main dashboard app before generating OTP authorization codes.
+        </p>
+      </div>
+      <a href="/" class="inline-block bg-rose-600/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-900/30 font-bold text-[10px] py-2 px-4 rounded-xl transition uppercase tracking-wider">
+        Go to Login Dashboard
+      </a>
+    </div>
+
+    <!-- Security Information Footer -->
+    <div class="text-[9px] text-slate-500 font-sans leading-relaxed space-y-1">
+      <p class="font-semibold text-slate-400"><i class="fa-solid fa-lock text-[8.5px] text-cyan-500 mr-1"></i> Multi-factor Agent Verification Protocol</p>
+      <p>Do not share this OTP with anyone other than the verified station agent at the time of cashout. OTPs are dynamic and expire automatically after 30 seconds.</p>
+    </div>
+  </div>
+
+  <!-- Firebase Integration Script -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+    import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore.js";
+
+    // App state
+    const sessionKey = "lw_user_session";
+    const dbKey = "lottery_winner_db";
+    let currentUser = null;
+    let fullDB = null;
+    let firestoreDocRef = null;
+    let remainingTime = 30;
+    let currentOTP = "";
+    let timerInterval = null;
+
+    // Load initial session
+    function checkSession() {
+      const savedSession = localStorage.getItem(sessionKey);
+      if (!savedSession) {
+        document.getElementById("unauth-area").classList.remove("hidden");
+        document.getElementById("otp-display-area").classList.add("hidden");
+        return false;
+      }
+      currentUser = JSON.parse(savedSession);
+      
+      const savedDB = localStorage.getItem(dbKey);
+      if (savedDB) {
+        fullDB = JSON.parse(savedDB);
+      }
+      
+      document.getElementById("player-username").innerText = `@${currentUser.username}`;
+      const freshUser = fullDB ? fullDB.users.find(u => u.username === currentUser.username) : currentUser;
+      document.getElementById("player-balance").innerText = `৳${(freshUser.balance || 0).toFixed(2)}`;
+      document.getElementById("user-profile-row").classList.remove("hidden");
+      return true;
+    }
+
+    // Initialize Firebase
+    async function initFirebase() {
+      try {
+        const configRes = await fetch("/firebase-applet-config.json");
+        if (!configRes.ok) {
+          console.warn("Firebase config not found. Operating in local-sync mode.");
+          return;
+        }
+        const firebaseConfig = await configRes.json();
+        const app = initializeApp(firebaseConfig);
+        const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
+        const firestore = initializeFirestore(app, { experimentalForceLongPolling: true }, dbId);
+        firestoreDocRef = doc(firestore, "app_data", "lottery_winner_db");
+        console.log("OTP terminal successfully hooked to Firebase cloud.");
+      } catch (e) {
+        console.error("Firebase init error in OTP page:", e);
+      }
+    }
+
+    // Generate new OTP
+    async function rotateOTP() {
+      if (!currentUser) return;
+      
+      // Generate 6-digit number
+      currentOTP = String(Math.floor(100000 + Math.random() * 900000));
+      document.getElementById("otp-digits").innerText = currentOTP;
+      document.getElementById("otp-status-lbl").innerText = "Syncing with live servers...";
+      document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-cyan-400";
+      
+      remainingTime = 30;
+      updateProgressBar();
+
+      // Save locally
+      const savedDB = localStorage.getItem(dbKey);
+      if (savedDB) {
+        fullDB = JSON.parse(savedDB);
+      }
+      
+      if (fullDB && fullDB.users) {
+        const dbUser = fullDB.users.find(u => u.username.toLowerCase() === currentUser.username.toLowerCase());
+        if (dbUser) {
+          dbUser.cashoutOTP = {
+            code: currentOTP,
+            expiresAt: Date.now() + 30000,
+            used: false
+          };
+          localStorage.setItem(dbKey, JSON.stringify(fullDB));
+          
+          // Update profile balance too if changed
+          document.getElementById("player-balance").innerText = `৳${(dbUser.balance || 0).toFixed(2)}`;
+        }
+      }
+
+      // Sync to cloud
+      if (firestoreDocRef && fullDB) {
+        try {
+          // Fetch first to get latest state so we don't overwrite other changes
+          const docSnap = await getDoc(firestoreDocRef);
+          if (docSnap.exists()) {
+            const cloudDB = docSnap.data().db;
+            const parsed = typeof cloudDB === "string" ? JSON.parse(cloudDB) : cloudDB;
+            if (parsed && parsed.users) {
+              const cloudUser = parsed.users.find(u => u.username.toLowerCase() === currentUser.username.toLowerCase());
+              if (cloudUser) {
+                cloudUser.cashoutOTP = {
+                  code: currentOTP,
+                  expiresAt: Date.now() + 30000,
+                  used: false
+                };
+                
+                // Keep local DB and Session in sync with newest cloud values
+                fullDB = parsed;
+                localStorage.setItem(dbKey, JSON.stringify(fullDB));
+                localStorage.setItem(sessionKey, JSON.stringify(cloudUser));
+                document.getElementById("player-balance").innerText = `৳${(cloudUser.balance || 0).toFixed(2)}`;
+              }
+            }
+          }
+          
+          await setDoc(firestoreDocRef, { db: fullDB }, { merge: true });
+          document.getElementById("otp-status-lbl").innerText = "Live & Synchronized";
+          document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-emerald-450";
+        } catch (e) {
+          console.error("Firestore sync error in OTP page:", e);
+          document.getElementById("otp-status-lbl").innerText = "Offline Cache Only";
+          document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-amber-500";
+        }
+      } else {
+        document.getElementById("otp-status-lbl").innerText = "Local-Sync Ready";
+        document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-indigo-400";
+      }
+    }
+
+    function updateProgressBar() {
+      const percentage = (remainingTime / 30) * 100;
+      document.getElementById("countdown-progress").style.width = `${percentage}%`;
+      document.getElementById("countdown-secs").innerText = `${remainingTime}s`;
+      
+      // Warning colors
+      if (remainingTime <= 5) {
+        document.getElementById("countdown-progress").className = "h-full bg-gradient-to-r from-red-500 to-rose-600 transition-all duration-1000 ease-linear";
+        document.getElementById("otp-digits").className = "text-4xl font-black text-rose-500 font-mono tracking-[0.25em] pl-[0.25em] py-2 relative select-all transition duration-300";
+      } else {
+        document.getElementById("countdown-progress").className = "h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear";
+        document.getElementById("otp-digits").className = "text-4xl font-black text-cyan-400 font-mono tracking-[0.25em] pl-[0.25em] py-2 relative select-all transition duration-300";
+      }
+    }
+
+    // Start countdown
+    function startTimer() {
+      timerInterval = setInterval(async () => {
+        remainingTime--;
+        if (remainingTime < 0) {
+          await rotateOTP();
+        } else {
+          updateProgressBar();
+          
+          // Periodically fetch balance and check if cashout completed
+          if (remainingTime % 5 === 0) {
+            checkBalanceUpdates();
+          }
+        }
+      }, 1000);
+    }
+
+    // Check if balance or status changed remotely
+    async function checkBalanceUpdates() {
+      if (!firestoreDocRef || !currentUser) return;
+      try {
+        const docSnap = await getDoc(firestoreDocRef);
+        if (docSnap.exists()) {
+          const cloudDB = docSnap.data().db;
+          const parsed = typeof cloudDB === "string" ? JSON.parse(cloudDB) : cloudDB;
+          if (parsed && parsed.users) {
+            const cloudUser = parsed.users.find(u => u.username.toLowerCase() === currentUser.username.toLowerCase());
+            if (cloudUser) {
+              const prevBalance = currentUser.balance || 0;
+              if (cloudUser.balance !== prevBalance) {
+                currentUser = cloudUser;
+                localStorage.setItem(sessionKey, JSON.stringify(cloudUser));
+                document.getElementById("player-balance").innerText = `৳${(cloudUser.balance || 0).toFixed(2)}`;
+                
+                // Also update local DB
+                fullDB = parsed;
+                localStorage.setItem(dbKey, JSON.stringify(fullDB));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("Error background-checking balance updates:", e);
+      }
+    }
+
+    // Initialize Page
+    async function init() {
+      if (checkSession()) {
+        await initFirebase();
+        await rotateOTP();
+        startTimer();
+      }
+    }
+
+    // Bind event for page focus to immediately update state
+    window.addEventListener("focus", () => {
+      checkSession();
+    });
+
+    init();
+  </script>
+</body>
+</html>
