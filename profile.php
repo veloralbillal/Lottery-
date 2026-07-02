@@ -111,12 +111,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Chart.js CDN for visual player metrics breakdown charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        body {
-            background-color: #020617;
-            font-family: 'Inter', system-ui, sans-serif;
-        }
-    </style>
+    <link rel="stylesheet" href="profile.css">
 </head>
 <body class="text-slate-100 flex flex-col justify-between min-h-screen">
 
@@ -197,7 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="mt-4 bg-slate-950/40 p-4 border border-slate-800/60 rounded-3xl space-y-2">
                 <span class="text-[9px] uppercase font-bold text-slate-400 font-mono block text-center">Spending vs Winnings Breakdown</span>
                 <div class="relative h-28 w-full flex justify-center">
-                    <canvas id="profile-chart" class="max-w-[180px]"></canvas>
+                    <canvas id="profile-chart" class="max-w-[180px]" data-spent="<?php echo (float)$user['loss']; ?>" data-profit="<?php echo (float)$user['profit']; ?>"></canvas>
                 </div>
             </div>
 
@@ -260,129 +255,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <!-- Google login / picker tools -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
-
-    <script>
-        // Set up client side picker for user photo from Google Drive
-        let developerKey = ''; // Optional API Key
-        let clientId = '537748328831-dev.apps.googleusercontent.com'; // Extracted client ID
-        let scope = 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.metadata.readonly';
-        
-        let oauthToken;
-
-        function loadPicker() {
-            gapi.load('auth', {'callback': onAuthApiLoad});
-            gapi.load('picker', {'callback': onPickerApiLoad});
-        }
-
-        function onAuthApiLoad() {
-            // Prepared to authorize
-        }
-
-        function onPickerApiLoad() {
-            // Loading complete
-        }
-
-        document.getElementById('google-picker-avatar-btn').addEventListener('click', () => {
-            // Trigger authentic Google Identity service token request
-            const client = google.accounts.oauth2.initTokenClient({
-                client_id: clientId,
-                scope: scope,
-                callback: (response) => {
-                    if (response.error !== undefined) {
-                        alert("Google auth failed. Please try again.");
-                        return;
-                    }
-                    oauthToken = response.access_token;
-                    createPicker();
-                },
-            });
-            client.requestAccessToken();
-        });
-
-        function createPicker() {
-            if (oauthToken) {
-                // Open real images only picker from Drive
-                const view = new google.picker.View(google.picker.ViewId.DOCS);
-                view.setMimeTypes("image/png,image/jpeg,image/jpg,image/webp");
-                
-                const picker = new google.picker.PickerBuilder()
-                    .addView(view)
-                    .setOAuthToken(oauthToken)
-                    .setDeveloperKey(developerKey)
-                    .setCallback(pickerCallback)
-                    .build();
-                picker.setVisible(true);
-            }
-        }
-
-        function pickerCallback(data) {
-            if (data[google.picker.Response.ACTION] == google.picker.Action.PICKED) {
-                const doc = data[google.picker.Response.DOCUMENTS][0];
-                const fileId = doc[google.picker.Document.ID];
-                const name = doc[google.picker.Document.NAME];
-                
-                // Construct beautiful direct static view link using Google Drive access token
-                const directUrl = "https://www.googleapis.com/drive/v3/files/" + fileId + "?alt=media&access_token=" + oauthToken;
-                
-                document.getElementById('google-photo-url-field').value = directUrl;
-                
-                // Show instant client image change feedback
-                const avatarImg = document.getElementById('avatar-image-ref');
-                if (avatarImg) {
-                    avatarImg.src = directUrl;
-                } else {
-                    const avatarPlaceholder = document.getElementById('avatar-icon-placeholder');
-                    if (avatarPlaceholder) {
-                        avatarPlaceholder.innerHTML = '<img src="' + directUrl + '" class="w-full h-full object-cover" id="avatar-image-ref" />';
-                    }
-                }
-                
-                // Auto submit profile edit form to commit changes dynamically
-                document.getElementById('profile-edit-form').submit();
-            }
-        }
-
-        // Render visual player spending profile statistics breakdown
-        document.addEventListener('DOMContentLoaded', () => {
-            const ctx = document.getElementById('profile-chart');
-            if (!ctx) return;
-
-            const spent = parseFloat("<?php echo (float)$user['loss']; ?>") || 0;
-            const profit = parseFloat("<?php echo (float)$user['profit']; ?>") || 0;
-            const winnings = Math.max(0, spent + profit);
-
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Spent', 'Winnings'],
-                    datasets: [{
-                        data: [spent, winnings],
-                        backgroundColor: ['#f43f5e', '#10b981'],
-                        borderWidth: 1,
-                        borderColor: '#0f172a'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#94a3b8',
-                                font: {
-                                    size: 9,
-                                    family: 'JetBrains Mono'
-                                }
-                            }
-                        }
-                    },
-                    cutout: '65%'
-                }
-            });
-        });
-
-        window.addEventListener('load', loadPicker);
-    </script>
+    <script src="profile.js"></script>
 </body>
 </html>

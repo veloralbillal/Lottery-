@@ -1,0 +1,10 @@
+/* Tickets Tab Custom Styles */
+.ticket-row-won {
+  border-left-color: #10b981;
+}
+.ticket-row-lost {
+  border-left-color: #f43f5e;
+}
+.ticket-row-pending {
+  border-left-color: #0ea5e9;
+}

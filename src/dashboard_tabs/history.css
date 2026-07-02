@@ -1,0 +1,7 @@
+/* History Tab Custom Styles */
+.community-comment-line {
+  border-left: 1px solid #1e293b;
+}
+.community-comment-line:hover {
+  border-left-color: #334155;
+}

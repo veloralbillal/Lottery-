@@ -1,6 +1,17 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ChatProfileSystem } from "./chat-profile-system.js";
+import { AdminModule } from "./js/admin.js";
+import { AgentModule } from "./js/agent.js";
+import { HomeTab } from "./dashboard_tabs/home.js";
+import { TicketsTab } from "./dashboard_tabs/tickets.js";
+import { WalletTab } from "./dashboard_tabs/wallet.js";
+import { HistoryTab } from "./dashboard_tabs/history.js";
+import { ProfileTab } from "./dashboard_tabs/profile.js";
+import { ReferTab } from "./dashboard_tabs/refer.js";
+import { BadgeRequestTab } from "./dashboard_tabs/badge_request.js";
+import { JackpotTab } from "./dashboard_tabs/jackpot.js";
+import { MissionsTab } from "./dashboard_tabs/missions.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 class StateManager {
@@ -8,6 +19,19 @@ class StateManager {
     const seen = new WeakSet();
     return (key, value) => {
       if (typeof value === "object" && value !== null) {
+        if (value.constructor && (
+          value.constructor.name.startsWith("Firestore") ||
+          value.constructor.name.startsWith("Document") ||
+          value.constructor.name.startsWith("Query") ||
+          value.constructor.name.startsWith("Collection") ||
+          value.constructor.name.startsWith("Firebase") ||
+          value.constructor.name.startsWith("HTML") ||
+          value.constructor.name === "Window" ||
+          value.constructor.name === "Sa" ||
+          value.constructor.name === "Q$1"
+        )) {
+          return undefined;
+        }
         if (seen.has(value)) {
           return undefined; // Discard circular references
         }
@@ -20,6 +44,19 @@ class StateManager {
   static removeCircularReferences(obj, seen = new WeakSet()) {
     if (obj === null || typeof obj !== "object") {
       return obj;
+    }
+    if (obj.constructor && (
+      obj.constructor.name.startsWith("Firestore") ||
+      obj.constructor.name.startsWith("Document") ||
+      obj.constructor.name.startsWith("Query") ||
+      obj.constructor.name.startsWith("Collection") ||
+      obj.constructor.name.startsWith("Firebase") ||
+      obj.constructor.name.startsWith("HTML") ||
+      obj.constructor.name === "Window" ||
+      obj.constructor.name === "Sa" ||
+      obj.constructor.name === "Q$1"
+    )) {
+      return null;
     }
     if (seen.has(obj)) {
       return null;
@@ -40,6 +77,10 @@ class StateManager {
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
           if (typeof obj[key] === "object" && obj[key] !== null) {
+            if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
+              obj[key] = null;
+              continue;
+            }
             if (seen.has(obj[key])) {
               obj[key] = null;
             } else {
@@ -98,6 +139,11 @@ class StateManager {
 
     // Initialize 3D immersive card tilts and micro-animations
     this.init3DTiltEffect();
+
+    // Load dashboard templates dynamically for local client-side dev/Vite
+    this.loadDashboardTabs().then(() => {
+      console.log("All dashboard tabs loaded successfully.");
+    });
 
     // Trigger spectacular 3D loading splash screen sequence
     this.initSplashScreen();
@@ -761,7 +807,8 @@ class StateManager {
       const app = initializeApp(firebaseConfig);
       const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
       this.firestore = initializeFirestore(app, {
-        experimentalForceLongPolling: true
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
       }, dbId);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
       console.log("Firebase sync engine initialized successfully.");
@@ -2113,6 +2160,42 @@ public class DatabaseClusterRouter {
     }
   }
 
+  async loadDashboardTabs() {
+    const tabs = [
+      { id: "tab-home", file: "/src/dashboard_tabs/home.php" },
+      { id: "tab-tickets", file: "/src/dashboard_tabs/tickets.php" },
+      { id: "tab-wallet", file: "/src/dashboard_tabs/wallet.php" },
+      { id: "tab-history", file: "/src/dashboard_tabs/history.php" },
+      { id: "tab-profile", file: "/src/dashboard_tabs/profile.php" },
+      { id: "tab-badge-request", file: "/src/dashboard_tabs/badge_request.php" },
+      { id: "tab-refer", file: "/src/dashboard_tabs/refer.php" },
+      { id: "tab-jackpot", file: "/src/dashboard_tabs/jackpot.php" },
+      { id: "tab-tasks", file: "/src/dashboard_tabs/missions.php" }
+    ];
+    
+    for (const tab of tabs) {
+      const el = document.getElementById(tab.id);
+      if (el && !el.innerHTML.trim()) {
+        try {
+          const response = await fetch(tab.file);
+          if (response.ok) {
+            const text = await response.text();
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            const content = doc.getElementById(tab.id);
+            if (content) {
+              el.innerHTML = content.innerHTML;
+            } else {
+              el.innerHTML = text;
+            }
+          }
+        } catch (e) {
+          console.error("Failed to load tab template:", tab.id, e);
+        }
+      }
+    }
+  }
+
   init3DAuthCard() {
     const card = document.getElementById("auth-3d-vip-card");
     if (!card) return;
@@ -2992,597 +3075,14 @@ public class DatabaseClusterRouter {
     this.render(); // Refresh dashboards & balances
   }
 
-  renderAdminVipClub() {
-    const list = document.getElementById("admin-vip-tiers-list");
-    if (!list) return;
-
-    list.innerHTML = "";
-    const tiers = this.db.settings.vipTiers || [];
-
-    // update count indicator
-    const countEl = document.getElementById("vip-tiers-count");
-    if (countEl) countEl.innerText = `${tiers.length} Active VIPs`;
-
-    if (tiers.length === 0) {
-      list.innerHTML = `
-        <div class="text-slate-500 text-center py-8 font-sans">
-          No VIP Tiers created. Use the editor on the left to initialize a premium plan!
-        </div>
-      `;
-      return;
-    }
-
-    tiers.forEach(tier => {
-      list.innerHTML += `
-        <div class="flex items-center justify-between py-3 border-b border-slate-900 last:border-0 font-mono text-[10px]">
-          <div class="space-y-1">
-            <span class="text-xs font-bold text-white block">${tier.title}</span>
-            <div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500 font-sans">
-              <span>Price: <strong class="text-slate-300">৳${tier.price}</strong></span>
-              <span>•</span>
-              <span>Bonus: <strong class="text-emerald-400">৳${tier.bonus}</strong></span>
-              <span>•</span>
-              <span>Mult: <strong class="text-amber-400">${tier.multiplier.toFixed(2)}x</strong></span>
-              <span>•</span>
-              <span>Discount: <strong class="text-purple-400">${tier.discount}%</strong></span>
-            </div>
-          </div>
-          <button onclick="window.appInstance.deleteAdminVipTier('${tier.id}')" class="bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 hover:text-rose-300 px-2 py-1 rounded text-[8px] transition cursor-pointer">
-            Delete
-          </button>
-        </div>
-      `;
-    });
-  }
-
-  deleteAdminVipTier(tierId) {
-    if (!this.db || !this.db.settings || !this.db.settings.vipTiers) return;
-    
-    // Safety check: is it empty or matched?
-    const title = this.db.settings.vipTiers.find(t => t.id === tierId)?.title || "Tier";
-    this.db.settings.vipTiers = this.db.settings.vipTiers.filter(t => t.id !== tierId);
-    this.saveDB();
-    this.showToast(`Removed VIP Club level tier "${title}" from the registry.`, "info");
-    this.renderAdminVipClub();
-  }
-
   // ================= MEGA PROGRESSIVE JACKPOT VIEW =================
   renderJackpotTab() {
-    const s = this.db.settings;
-    const poolAmountEl = document.getElementById("tab-jackpot-pool-amount");
-    if (poolAmountEl) {
-      poolAmountEl.innerText = `৳${(s.jackpotPool || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    // Dynamic timer countdown
-    const countdownEl = document.getElementById("tab-jackpot-countdown");
-    if (countdownEl) {
-      const now = new Date();
-      let target = new Date(s.jackpotExpiry || "");
-      if (isNaN(target.getTime())) {
-        target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-      }
-      const diff = target.getTime() - now.getTime();
-      if (diff > 0) {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        countdownEl.innerText = `${hours.toString().padStart(2, '0')}h : ${minutes.toString().padStart(2, '0')}m : ${seconds.toString().padStart(2, '0')}s`;
-      } else {
-        countdownEl.innerText = "00h : 00m : 00s (Ended)";
-      }
-    }
-
-    // Render registrations history
-    const tbody = document.getElementById("jackpot-registrations-tbody");
-    if (tbody) {
-      tbody.innerHTML = "";
-      const regs = this.db.jackpotRegistrations || [];
-      const activeCounter = document.getElementById("jackpot-active-counter");
-      if (activeCounter) activeCounter.innerText = `${regs.length} total purchased`;
-
-      if (regs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-center py-6 text-slate-550 font-sans">No active ticket entries. Be the first to buy!</td></tr>`;
-      } else {
-        // Show reverse chronological entries
-        [...regs].reverse().forEach(reg => {
-          const tr = document.createElement("tr");
-          tr.className = "border-b border-slate-850/30 hover:bg-slate-900/40 transition text-slate-300";
-          tr.innerHTML = `
-            <td class="py-2.5 font-bold text-white flex items-center gap-1.5 font-mono text-left">
-              <span class="w-1.5 h-1.5 rounded-full bg-purple-500"></span> ${this.escapeHTML(reg.userName)}
-            </td>
-            <td class="py-2.5 text-center text-purple-300 font-bold font-mono">${reg.qty}x</td>
-            <td class="py-2.5 text-center text-emerald-400 font-bold font-mono">৳${reg.spent.toFixed(2)}</td>
-            <td class="py-2.5 text-right text-slate-500 text-[9px] font-mono">${reg.date}</td>
-          `;
-          tbody.appendChild(tr);
-        });
-      }
-    }
-
-    // Update bulk quantity state count visual indicator
-    const selectedQtyInput = document.getElementById("jackpot-selected-qty");
-    const qtyVal = parseInt(selectedQtyInput ? selectedQtyInput.value : 1);
-    
-    // Set cost
-    const bulkCostEl = document.getElementById("jackpot-bulk-cost");
-    if (bulkCostEl) {
-      const ticketCost = s.jackpotTicketCost || 20.00;
-      const discountPercent = this.currentUser ? this.getUserTicketDiscount(this.currentUser) : 0;
-      const finalCostPerTicket = ticketCost * (1 - discountPercent / 100);
-      const totalCost = qtyVal * finalCostPerTicket;
-      if (discountPercent > 0) {
-        bulkCostEl.innerHTML = `<span class="line-through text-slate-500 mr-2">৳${(qtyVal * ticketCost).toFixed(2)}</span> ৳${totalCost.toFixed(2)}`;
-      } else {
-        bulkCostEl.innerText = `৳${totalCost.toFixed(2)}`;
-      }
-    }
-
-    // User total tickets entries
-    const userEntriesEl = document.getElementById("tab-jackpot-user-entries");
-    if (userEntriesEl && this.currentUser) {
-      const userRegsSum = (this.db.jackpotRegistrations || [])
-        .filter(r => r.userName === this.currentUser.username)
-        .reduce((sum, r) => sum + r.qty, 0);
-      userEntriesEl.innerText = `Your Entries: ${userRegsSum} tickets`;
-    }
+    JackpotTab.render(this);
   }
 
   // ================= DAILY BOUNTY TASKS VIEW =================
   renderTasksTab() {
-    const listContainer = document.getElementById("user-daily-tasks-list");
-    if (!listContainer) return;
-
-    listContainer.innerHTML = "";
-    const tasks = this.db.dailyTasks || [];
-    const submissions = this.db.taskSubmissions || [];
-
-    if (tasks.length === 0) {
-      listContainer.innerHTML = `
-        <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-2">
-          <i class="fa-solid fa-list-check text-slate-700 text-3xl"></i>
-          <p class="text-slate-400 font-bold text-xs">No tasks currently broadcasted.</p>
-          <p class="text-slate-505 text-[10px]">Contact our executive administrator to get promotional jobs assigned.</p>
-        </div>
-      `;
-      return;
-    }
-
-    tasks.forEach(task => {
-      // Find user submission for this task
-      const userSub = submissions.find(s => s.taskId === task.id && s.userName === this.currentUser.username);
-      
-      let statusBadge = "";
-      let actionArea = "";
-
-      if (userSub) {
-        if (userSub.status === "pending") {
-          statusBadge = `<span class="bg-amber-955/20 border border-amber-900/45 text-amber-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-hourglass-half mr-1 text-[8px]"></i> Pending Review</span>`;
-          actionArea = `
-            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-900 flex items-center justify-between gap-3 text-[10px]">
-              <span class="text-slate-400">Proof submitted. Waiting for dynamic review:</span>
-              <img src="${userSub.screenshot}" class="w-10 h-10 aspect-square object-cover rounded border border-slate-805 cursor-zoom-in" onclick="window.open('${userSub.screenshot}', '_blank')" />
-            </div>
-          `;
-        } else if (userSub.status === "approved") {
-          statusBadge = `<span class="bg-emerald-955/20 border border-emerald-900/45 text-emerald-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-check-double mr-1 text-[8px]"></i> Approved</span>`;
-          actionArea = `
-            <div class="bg-emerald-955/10 p-3 rounded-2xl border border-emerald-900/10 text-emerald-400 text-[10px] flex items-center gap-2">
-              <i class="fa-solid fa-gift text-sm animate-bounce"></i>
-              <span>Earned <strong>৳${task.reward}</strong> balance credited directly! (Notes: ${this.escapeHTML(userSub.adminNotes || "Good job")})</span>
-            </div>
-          `;
-        } else if (userSub.status === "rejected") {
-          statusBadge = `<span class="bg-rose-955/20 border border-rose-900/40 text-rose-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-circle-xmark mr-1 text-[8px]"></i> Rejected</span>`;
-          actionArea = `
-            <div class="space-y-2">
-              <div class="bg-rose-955/10 p-3 rounded-2xl border border-rose-900/15 text-rose-400 text-[10px] flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-sm"></i>
-                <span>Disapproved: <strong>${this.escapeHTML(userSub.adminNotes || 'Screenshot blurred or irrelevant.')}</strong></span>
-              </div>
-              <button onclick="window.appInstance.reSubmitTask('${task.id}')" class="w-full bg-slate-950 hover:bg-slate-900 border border-slate-850 py-2 rounded-xl text-[10px] text-white font-bold transition">
-                Resubmit New Screenshot Proof
-              </button>
-            </div>
-          `;
-        }
-      } else {
-        statusBadge = `<span class="bg-cyan-955/20 border border-cyan-900/40 text-cyan-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-bullseye mr-1 text-[8px]"></i> Open Task</span>`;
-        actionArea = `
-          <div class="space-y-3">
-            <div class="flex items-center gap-2.5">
-              <a href="${this.escapeHTML(task.url)}" target="_blank" class="w-1/2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition">
-                <i class="fa-solid fa-external-link mr-1"></i> Open Task Link
-              </a>
-              <button onclick="document.getElementById('task-img-upload-${task.id}').click()" class="w-1/2 bg-slate-950 hover:bg-slate-900 border border-slate-800 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer">
-                <i class="fa-solid fa-cloud-arrow-up text-cyan-400 animate-pulse"></i> Upload Screenshot
-              </button>
-            </div>
-            <input type="file" id="task-img-upload-${task.id}" class="hidden" accept="image/*" onchange="window.appInstance.handleScreenshotUpload(this, '${task.id}')" />
-          </div>
-        `;
-      }
-
-      // Check category details
-      let catIcon = "📺";
-      if (task.category === "telegram") catIcon = "✈️";
-      if (task.category === "facebook") catIcon = "👍";
-      if (task.category === "tiktok") catIcon = "🎵";
-      if (task.category === "other") catIcon = "⚙️";
-
-      const taskDiv = document.createElement("div");
-      taskDiv.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl font-mono text-xs text-left";
-      taskDiv.innerHTML = `
-        <div class="flex items-start justify-between gap-3 border-b border-slate-850 pb-3">
-          <div class="space-y-2">
-            <h4 class="text-xs font-black text-white flex items-center gap-1.5">
-              <span>${catIcon}</span> ${this.escapeHTML(task.title)}
-            </h4>
-            <div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500 font-sans">
-              <span>Earnings: <strong class="text-amber-400 font-mono">৳${task.reward}.00</strong></span>
-              <span>•</span>
-              <span>Category: <strong class="capitalize text-cyan-400">${task.category}</strong></span>
-            </div>
-          </div>
-          ${statusBadge}
-        </div>
-
-        <div class="space-y-1 bg-slate-950 p-3 rounded-2xl border border-slate-850/40 text-[10.5px]">
-          <span class="text-slate-500 font-bold block text-[8.5px] uppercase tracking-wider">Instructions:</span>
-          <p class="text-slate-350 leading-relaxed font-sans">${this.escapeHTML(task.instructions)}</p>
-        </div>
-
-        ${actionArea}
-      `;
-      listContainer.appendChild(taskDiv);
-    });
-  }
-
-  // ================= ADMIN: PROGRESSIVE JACKPOT CONTROL =================
-  renderAdminJackpot() {
-    const s = this.db.settings;
-    const poolAmountEl = document.getElementById("admin-jackpot-pool-indicator");
-    if (poolAmountEl) {
-      poolAmountEl.innerText = `৳${(s.jackpotPool || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-
-    // Pre-populate input configurations
-    const fundInput = document.getElementById("admin-jackpot-pool-input");
-    const costInput = document.getElementById("admin-jackpot-price-input");
-    const exInput = document.getElementById("admin-jackpot-expiry-input");
-
-    if (fundInput && document.activeElement !== fundInput) {
-      fundInput.value = (s.jackpotPool || 0).toFixed(2);
-    }
-    if (costInput && document.activeElement !== costInput) {
-      costInput.value = (s.jackpotTicketCost || 20.00).toFixed(2);
-    }
-    if (exInput && document.activeElement !== exInput) {
-      exInput.value = s.jackpotExpiry || "";
-    }
-
-    const tbody = document.getElementById("admin-jackpot-purchases-tbody");
-    if (!tbody) return;
-
-    tbody.innerHTML = "";
-    const regs = this.db.jackpotRegistrations || [];
-
-    // Counters update
-    const countEl = document.getElementById("admin-jackpot-logs-count");
-    if (countEl) countEl.innerText = `${regs.length} entries`;
-
-    const sumEl = document.getElementById("admin-jackpot-tickets-sum");
-    if (sumEl) {
-      const ticketsSum = regs.reduce((sum, r) => sum + r.qty, 0);
-      sumEl.innerText = `${ticketsSum} tickets`;
-    }
-
-    if (regs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 font-sans text-xs">No active Jackpot tickets purchased.</td></tr>`;
-      return;
-    }
-
-    [...regs].reverse().forEach(reg => {
-      const tr = document.createElement("tr");
-      tr.className = "border-b border-slate-850/45 hover:bg-slate-900/60 transition";
-      tr.innerHTML = `
-        <td class="py-2.5 text-slate-400 text-[10.5px]">#${reg.id.split("_").pop() || reg.id}</td>
-        <td class="py-2.5 font-bold text-white text-[10.5px]">${this.escapeHTML(reg.userName)}</td>
-        <td class="py-2.5 text-center text-purple-300 font-bold text-[10.5px]">${reg.qty}x</td>
-        <td class="py-2.5 text-center text-emerald-400 font-bold text-[10.5px]">৳${reg.spent.toFixed(2)}</td>
-        <td class="py-2.5 text-right text-slate-500 text-[9.5px]">${reg.date}</td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
-
-  // ================= ADMIN: DAILY BOUNTY TASKS CONTROL PANEL =================
-  renderAdminTasks() {
-    const activeTasksCountEl = document.getElementById("admin-active-tasks-count");
-    const pendingSubsCountEl = document.getElementById("admin-pending-submissions-count");
-    const activeTasks = this.db.dailyTasks || [];
-    const submissions = this.db.taskSubmissions || [];
-
-    if (activeTasksCountEl) activeTasksCountEl.innerText = `${activeTasks.length} Active`;
-    if (pendingSubsCountEl) {
-      const pendingCount = submissions.filter(s => s.status === "pending").length;
-      pendingSubsCountEl.innerText = `${pendingCount} Pending`;
-    }
-
-    // Render active tasks pool list
-    const listContainer = document.getElementById("admin-tasks-list-container");
-    if (listContainer) {
-      listContainer.innerHTML = "";
-      if (activeTasks.length === 0) {
-        listContainer.innerHTML = `<div class="text-slate-550 py-6 text-center text-[10px] font-sans">No active promo tasks created yet. Use panel above to create one.</div>`;
-      } else {
-        activeTasks.forEach(task => {
-          const div = document.createElement("div");
-          div.className = "py-3 border-b border-slate-900 last:border-0 font-mono text-[10.5px] flex items-center justify-between";
-          div.innerHTML = `
-            <div class="space-y-1 max-w-[70%] text-left">
-              <h5 class="text-white font-bold truncate">${this.escapeHTML(task.title)}</h5>
-              <div class="flex gap-2 items-center text-[8.5px] text-slate-500">
-                <span>Reward: <strong class="text-emerald-400 font-mono">৳${task.reward}</strong></span>
-                <span>•</span>
-                <span class="capitalize text-cyan-400">${task.category}</span>
-              </div>
-            </div>
-            <button onclick="window.appInstance.deleteAdminTask('${task.id}')" class="bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 hover:text-rose-350 px-2.5 py-1 rounded text-[8.5px] transition cursor-pointer">
-              Delete
-            </button>
-          `;
-          listContainer.appendChild(div);
-        });
-      }
-    }
-
-    // Render task proofs verification stream gallery
-    const gallery = document.getElementById("admin-task-submissions-gallery");
-    if (gallery) {
-      gallery.innerHTML = "";
-      
-      // Get filter value
-      const activeFilterBtn = document.querySelector(".task-verify-filter-btn.bg-cyan-955\\/35");
-      const currentFilter = activeFilterBtn ? activeFilterBtn.getAttribute("data-filter") : "pending";
-
-      // Filter subs
-      let filteredSubs = submissions;
-      if (currentFilter !== "all") {
-        filteredSubs = submissions.filter(s => s.status === currentFilter);
-      }
-
-      if (filteredSubs.length === 0) {
-        gallery.innerHTML = `
-          <div class="text-slate-500 text-center py-10">
-            <i class="fa-solid fa-folder-open text-slate-700 text-3xl mb-1.5 block"></i>
-            <span>No task registration submissions matching (${currentFilter}) status.</span>
-          </div>
-        `;
-        return;
-      }
-
-      // Show descending order (latest first)
-      [...filteredSubs].reverse().forEach(sub => {
-        const correspondingTask = activeTasks.find(t => t.id === sub.taskId);
-        
-        let actions = "";
-        let notesLabel = "";
-        
-        if (sub.status === "pending") {
-          actions = `
-            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3.5 border-t border-slate-900 text-left">
-              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Specify note/reason..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
-              <div class="flex gap-2 w-full sm:w-auto">
-                <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'approved')" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-555 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
-                  Approve & Reward
-                </button>
-                <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'rejected')" class="flex-1 sm:flex-initial bg-rose-600 hover:bg-rose-550 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
-                  Decline / Reject
-                </button>
-              </div>
-            </div>
-          `;
-        } else if (sub.status === "approved") {
-          const badgeClass = "text-emerald-400 bg-emerald-955/15 border-emerald-900/40";
-          notesLabel = `
-            <div class="mt-2.5 pt-2.5 border-t border-slate-900/60 flex flex-wrap items-center justify-between text-[9px] text-left">
-              <span class="text-slate-550 mr-2">Audit Response notes: <strong class="text-slate-300 font-sans">${this.escapeHTML(sub.adminNotes || "None")}</strong></span>
-              <span class="px-2 py-0.5 rounded-lg border uppercase font-mono font-bold text-[7.5px] ${badgeClass}">${sub.status}</span>
-            </div>
-          `;
-          actions = `
-            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3 border-t border-slate-900 text-left">
-              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Specify decline reason..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
-              <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'rejected')" class="w-full sm:w-auto bg-rose-700 hover:bg-rose-600 text-white font-bold px-3 py-1.5 rounded-lg text-[9.5px] transition cursor-pointer shrink-0">
-                Decline & Revoke Reward
-              </button>
-            </div>
-          `;
-        } else if (sub.status === "rejected") {
-          const badgeClass = "text-rose-450 bg-rose-955/15 border-rose-900/40";
-          notesLabel = `
-            <div class="mt-2.5 pt-2.5 border-t border-slate-900/60 flex flex-wrap items-center justify-between text-[9px] text-left">
-              <span class="text-slate-550 mr-2">Rejection reason: <strong class="text-slate-300 font-sans">${this.escapeHTML(sub.adminNotes || "None")}</strong></span>
-              <span class="px-2 py-0.5 rounded-lg border uppercase font-mono font-bold text-[7.5px] ${badgeClass}">${sub.status}</span>
-            </div>
-          `;
-          actions = `
-            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3 border-t border-slate-900 text-left">
-              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Change response note..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
-              <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'approved')" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-550 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
-                Re-approve & Reward
-              </button>
-            </div>
-          `;
-        }
-
-        const card = document.createElement("div");
-        card.className = "bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl text-[10.5px] space-y-3 shadow-md font-mono relative overflow-hidden text-left";
-        card.innerHTML = `
-          <div class="flex justify-between items-start gap-4">
-            <div class="space-y-1 max-w-[65%]">
-              <span class="text-[8px] font-bold text-slate-500 uppercase block tracking-wider">PLATFORM DEED AUDIT</span>
-              <h5 class="text-cyan-400 font-black truncate">${this.escapeHTML(correspondingTask ? correspondingTask.title : sub.taskTitle)}</h5>
-              <div class="flex flex-wrap items-center gap-1.5 text-[9px] text-slate-500 font-sans mt-0.5">
-                <span>Player: <strong class="text-white">${sub.userName}</strong></span>
-                <span>•</span>
-                <span>Prize: <strong class="text-yellow-500">৳${sub.reward}</strong></span>
-              </div>
-            </div>
-
-            <!-- Proof visual zoomer popup inside list -->
-            <div class="shrink-0 relative group cursor-zoom-in" onclick="window.appInstance.openScreenshotViewer('${sub.id}')">
-              <img src="${sub.screenshot}" class="w-14 h-14 aspect-square object-cover rounded-lg border border-slate-800" />
-              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-lg">
-                <i class="fa-solid fa-expand text-white text-xs animate-pulse"></i>
-              </div>
-            </div>
-          </div>
-
-          <div class="bg-slate-950 p-2 rounded-xl text-[9.5px]">
-            <span class="text-slate-500 leading-normal block">Date submitted: <strong class="text-slate-400">${sub.date}</strong></span>
-          </div>
-
-          ${notesLabel}
-          ${actions}
-        `;
-        gallery.appendChild(card);
-      });
-    }
-  }
-
-  handleScreenshotUpload(input, taskId) {
-    if (!input.files || input.files.length === 0) return;
-    const file = input.files[0];
-    const reader = new FileReader();
-    
-    reader.onload = (e) => {
-      const base64Data = e.target.result;
-      const task = this.db.dailyTasks.find(t => t.id === taskId);
-      if (!task) return;
-
-      const newSub = {
-        id: `sub_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        taskId: taskId,
-        taskTitle: task.title,
-        userName: this.currentUser.username,
-        reward: task.reward,
-        screenshot: base64Data,
-        status: "pending",
-        date: new Date().toLocaleString("en-US", { hour12: true }),
-        adminNotes: ""
-      };
-
-      if (!this.db.taskSubmissions) this.db.taskSubmissions = [];
-      this.db.taskSubmissions.push(newSub);
-      this.saveDB();
-      this.showToast("Deed screenshot proof registered. Our administrators will audit post immediately!", "success");
-      
-      // Haptic vibrate confirmation
-      if (navigator.vibrate) navigator.vibrate([100]);
-
-      this.renderTasksTab();
-    };
-
-    reader.readAsDataURL(file);
-  }
-
-  reSubmitTask(taskId) {
-    if (!this.db || !this.db.taskSubmissions) return;
-    
-    // Remove rejected submissions
-    this.db.taskSubmissions = this.db.taskSubmissions.filter(s => !(s.taskId === taskId && s.userName === this.currentUser.username));
-    this.saveDB();
-    this.renderTasksTab();
-  }
-
-  deleteAdminTask(taskId) {
-    if (!this.db || !this.db.dailyTasks) return;
-    
-    const taskTitle = this.db.dailyTasks.find(t => t.id === taskId)?.title || "Task";
-    this.db.dailyTasks = this.db.dailyTasks.filter(t => t.id !== taskId);
-    this.saveDB();
-    this.showToast(`Removed daily bounty task "${taskTitle}" successfully.`, "info");
-    this.renderAdminTasks();
-  }
-
-  verifyTaskSubmission(submissionId, newStatus) {
-    if (!this.db || !this.db.taskSubmissions) return;
-
-    const sub = this.db.taskSubmissions.find(s => s.id === submissionId);
-    if (!sub) return;
-
-    const notesInput = document.getElementById(`admin-sub-notes-${submissionId}`);
-    const notes = notesInput ? notesInput.value.trim() : "";
-    const oldStatus = sub.status;
-
-    if (oldStatus === newStatus) {
-      this.showToast(`Submission already marked as ${newStatus}`, "info");
-      return;
-    }
-
-    sub.status = newStatus;
-    sub.adminNotes = notes || (newStatus === "approved" ? "Satisfactory work." : "Disapproved profile metadata.");
-
-    const player = this.db.users.find(u => u.username === sub.userName);
-
-    if (newStatus === "approved") {
-      // From pending/rejected to approved: Credit user
-      if (player) {
-         player.balance += sub.reward;
-         
-         // Push transaction history list
-         if (!this.db.transactions) this.db.transactions = [];
-         this.db.transactions.push({
-           id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-           userName: player.username,
-           paymentMethod: "Bounty Task Reward",
-           phone: "Internal App Wallet",
-           amount: sub.reward,
-           transactionType: "Deposit", // Credited balance adds directly inside ledger
-           status: "complete",
-           bonusAmount: 0,
-           notes: `Reward for: ${sub.taskTitle}`,
-           date: new Date().toLocaleString("en-US", { hour12: true })
-         });
-      }
-      this.showToast(`Deed approved! Loaded ৳${sub.reward} directly to user balance.`, "success");
-    } else if (newStatus === "rejected") {
-      // From approved to rejected: Deduct reward if it was already credited!
-      if (oldStatus === "approved") {
-        if (player) {
-          player.balance = Math.max(0, player.balance - sub.reward);
-          // Push refund/deduct transaction
-          if (!this.db.transactions) this.db.transactions = [];
-          this.db.transactions.push({
-            id: `tx_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-            userName: player.username,
-            paymentMethod: "Bounty Task Revoked",
-            phone: "Internal App Wallet",
-            amount: sub.reward,
-            transactionType: "Withdrawal", // Deducted balance records as withdrawal
-            status: "complete",
-            bonusAmount: 0,
-            notes: `Revoked: ${sub.taskTitle} (Reason: ${sub.adminNotes})`,
-            date: new Date().toLocaleString("en-US", { hour12: true })
-          });
-        }
-        this.showToast(`Deed revoked! Deducted ৳${sub.reward} from user balance.`, "warning");
-      } else {
-        this.showToast(`Deed marked rejected: ${sub.adminNotes}`, "info");
-      }
-    } else if (newStatus === "pending") {
-      // If reset back/decline to pending
-      if (oldStatus === "approved" && player) {
-        player.balance = Math.max(0, player.balance - sub.reward);
-      }
-      this.showToast("Deed reset back to pending status.", "info");
-    }
-
-    this.saveDB();
-    this.renderAdminTasks();
+    MissionsTab.render(this);
   }
 
   openScreenshotViewer(submissionId) {
@@ -4179,145 +3679,7 @@ public class DatabaseClusterRouter {
   }
 
   renderHomeTab() {
-    this.updateNotificationBanner();
-    const listEl = document.getElementById("pools-list-container");
-    listEl.innerHTML = "";
-
-    // Dynamically render dynamic Home Category Filter Tabs
-    const tabsCont = document.getElementById("home-category-tabs");
-    if (tabsCont) {
-      tabsCont.innerHTML = "";
-      
-      // All Pools button
-      const allBtn = document.createElement("button");
-      allBtn.setAttribute("data-category", "all");
-      if (this.currentHomeCategory === "all") {
-        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15 cursor-pointer transition active:scale-95";
-      } else {
-        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-slate-900 text-slate-400 hover:text-white cursor-pointer transition active:scale-95 shadow-md";
-      }
-      allBtn.innerHTML = "🎯 All Pools";
-      tabsCont.appendChild(allBtn);
-
-      // Category buttons dynamically mapped
-      this.db.categories.forEach(cat => {
-        const btn = document.createElement("button");
-        btn.setAttribute("data-category", cat.name);
-        
-        const isActive = (this.currentHomeCategory === cat.name);
-        if (isActive) {
-          if (cat.type === "multi") {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/15 cursor-pointer transition active:scale-95";
-          } else {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15 cursor-pointer transition active:scale-95";
-          }
-        } else {
-          if (cat.type === "multi") {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-900/30 bg-slate-900 text-emerald-400 hover:text-emerald-300 cursor-pointer transition active:scale-95 shadow-md";
-          } else {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-slate-900 text-slate-400 hover:text-white cursor-pointer transition active:scale-95 shadow-md";
-          }
-        }
-        btn.innerHTML = cat.label;
-        tabsCont.appendChild(btn);
-      });
-    }
-
-    const isAll = (this.currentHomeCategory === "all");
-    const filteredLotteries = this.db.lotteries.filter(lot => {
-      if (isAll) return true;
-      return lot.category === this.currentHomeCategory;
-    });
-
-    if (filteredLotteries.length === 0) {
-      listEl.innerHTML = `
-        <div class="bg-slate-900/50 border border-slate-800/80 p-8 rounded-3xl text-center space-y-2 mt-2">
-          <p class="text-xs text-slate-500 font-mono">No active draw pools in this category right now.</p>
-        </div>
-      `;
-      return;
-    }
-
-    filteredLotteries.forEach(lot => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden space-y-4 shadow-xl cursor-pointer hover:border-cyan-500/20 transition-all duration-300";
-
-      const badgeColor = lot.category.includes("10") ? "bg-emerald-950 text-emerald-400 border border-emerald-800/40" :
-                         lot.category.includes("20") ? "bg-cyan-950 text-cyan-400 border border-cyan-800/40" :
-                         "bg-rose-950 text-rose-400 border border-rose-800/40";
-
-      const progress = Math.min(100, Math.round((lot.soldTickets / lot.totalTickets) * 100));
-      const cardDrawTime = new Date(lot.drawTime).toLocaleString("en-US", {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true
-      });
-
-      card.innerHTML = `
-        <div class="flex justify-between items-start gap-2">
-          <div>
-            <span class="text-[9px] uppercase font-bold tracking-widest ${badgeColor} px-2.5 py-0.5 rounded-full">
-              ${lot.category}
-            </span>
-            <h3 class="text-sm font-bold text-white mt-1.5">${lot.name}</h3>
-            <p class="text-[11px] text-slate-400 leading-normal mt-1">${lot.details}</p>
-          </div>
-          <div class="text-right shrink-0">
-            <span class="text-xs text-slate-500 font-mono block">Entry Fee</span>
-            <span class="text-base font-black text-white font-mono block">৳${lot.entryFee}</span>
-          </div>
-        </div>
-
-        <!-- Target Draw Date & Time -->
-        <div class="flex justify-between items-center text-[10px] text-slate-400 bg-slate-950/40 px-3 py-2 rounded-xl font-mono">
-          <div class="flex items-center gap-1.5 text-slate-400">
-            <i class="fa-regular fa-clock text-cyan-400"></i>
-            <span>Draw Scheduled:</span>
-          </div>
-          <span class="text-white font-bold">${cardDrawTime}</span>
-        </div>
-
-        <!-- Progress of Pools -->
-        <div class="space-y-1.5">
-          <div class="flex justify-between text-[10px] font-mono text-slate-500">
-            <span>Sold Tickets Progress</span>
-            <span class="text-cyan-400 font-bold">${progress}% (${lot.soldTickets}/${lot.totalTickets})</span>
-          </div>
-          <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-cyan-500 to-rose-500" style="width: ${progress}%"></div>
-          </div>
-        </div>
-
-        <div class="flex justify-between items-center border-t border-slate-800/80 pt-3 text-[11px] font-mono">
-          <div class="flex items-center gap-1.5 text-slate-400">
-            <i class="fa-solid fa-trophy text-rose-500"></i>
-            <span>Prize: <span class="text-white font-bold">৳${lot.prizeAmount}</span></span>
-          </div>
-          <button class="buy-pool-btn bg-gradient-to-r from-red-600 to-rose-600 hover:scale-103 text-white text-[11px] font-black py-2 px-4 rounded-xl shadow-lg transition active:opacity-90" data-id="${lot.id}">
-            Buy Ticket
-          </button>
-        </div>
-      `;
-
-      // Allow popping up details modal on choosing pool card
-      card.addEventListener("click", (e) => {
-        if (e.target.closest(".buy-pool-btn")) return;
-        this.openLotteryDetailsPop(lot.id);
-      });
-
-      listEl.appendChild(card);
-    });
-
-    // Attach buy logic
-    document.querySelectorAll(".buy-pool-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation(); // Stop bubbling to prevent also opening modal
-        const id = e.target.getAttribute("data-id");
-        this.purchaseTicket(id);
-      });
-    });
+    HomeTab.render(this);
   }
 
   // Purchase Lottery Ticket Flow
@@ -4370,52 +3732,7 @@ public class DatabaseClusterRouter {
   }
 
   renderTicketsTab() {
-    const listEl = document.getElementById("tickets-list-container");
-    listEl.innerHTML = "";
-
-    const userTickets = this.db.tickets.filter(t => t.userId === this.currentUser.id);
-
-    if (userTickets.length === 0) {
-      listEl.innerHTML = `
-        <div class="text-center py-12 text-slate-500 text-xs font-mono">
-          <i class="fa-solid fa-ticket text-xl text-slate-700 block mb-2"></i>
-          No bought ticket records in wallet.
-        </div>
-      `;
-      return;
-    }
-
-    userTickets.forEach(t => {
-      const lot = this.db.lotteries.find(l => l.id === t.lotteryId) || { name: "Expired Draw Event" };
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800/80 p-4 rounded-3xl relative flex justify-between items-center cursor-pointer hover:border-cyan-500/20 transition-all duration-300";
-
-      let statusBadge = "";
-      if (t.status === "won") {
-        statusBadge = `<span class="bg-emerald-950 border border-emerald-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">🏆 WON ৳${t.prizeAmount}</span>`;
-      } else if (t.status === "lost") {
-        statusBadge = `<span class="bg-slate-950 border border-slate-800 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">❌ LOST</span>`;
-      } else {
-        statusBadge = `<span class="bg-cyan-950 border border-cyan-800 text-cyan-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">⏳ RUNNING</span>`;
-      }
-
-      card.innerHTML = `
-        <div class="space-y-1">
-          <h4 class="text-xs font-black text-white leading-none">${lot.name}</h4>
-          <span class="text-[10px] text-slate-500 font-mono block">Purchased: ${new Date(t.purchaseDate).toLocaleDateString()}</span>
-          <div class="text-base font-black tracking-widest text-cyan-400 font-mono pt-1 select-all select-text">${t.code}</div>
-        </div>
-        <div class="text-right">
-          ${statusBadge}
-        </div>
-      `;
-
-      card.addEventListener("click", () => {
-        this.openTicketLiveInfoPop(t.id);
-      });
-
-      listEl.appendChild(card);
-    });
+    TicketsTab.render(this);
   }
 
   rebuildDepositGatewaySelect() {
@@ -4506,10 +3823,7 @@ public class DatabaseClusterRouter {
   }
 
   renderWalletTab() {
-    this.rebuildDepositGatewaySelect();
-    this.rebuildWithdrawGatewaySelect();
-    this.updateSelectedDepositGatewayInstructions();
-    this.renderSupportAgentsList();
+    WalletTab.render(this);
   }
 
   updateSelectedDepositGatewayInstructions() {
@@ -4665,126 +3979,7 @@ public class DatabaseClusterRouter {
   }
 
   renderHistoryTab() {
-    const listEl = document.getElementById("history-list-container");
-    const ledgerTabBtn = document.getElementById("history-subtab-ledger");
-    const communityTabBtn = document.getElementById("history-subtab-community");
-    const ledgerSection = document.getElementById("tab-history-ledger-section");
-    const communitySection = document.getElementById("tab-history-community-section");
-
-    if (!this.historySubTab) {
-      this.historySubTab = "ledger";
-    }
-
-    if (this.historySubTab === "ledger") {
-      if (ledgerTabBtn) {
-        ledgerTabBtn.className = "py-2.5 rounded-xl text-center text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/10";
-      }
-      if (communityTabBtn) {
-        communityTabBtn.className = "py-2.5 rounded-xl text-center text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 text-slate-400 bg-transparent hover:text-white";
-      }
-      if (ledgerSection) ledgerSection.classList.remove("hidden");
-      if (communitySection) communitySection.classList.add("hidden");
-    } else {
-      if (ledgerTabBtn) {
-        ledgerTabBtn.className = "py-2.5 rounded-xl text-center text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 text-slate-400 bg-transparent hover:text-white";
-      }
-      if (communityTabBtn) {
-        communityTabBtn.className = "py-2.5 rounded-xl text-center text-xs font-black flex items-center justify-center gap-1.5 cursor-pointer transition active:scale-95 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/10";
-      }
-      if (ledgerSection) ledgerSection.classList.add("hidden");
-      if (communitySection) communitySection.classList.remove("hidden");
-
-      this.renderCommunitySection();
-      return;
-    }
-
-    listEl.innerHTML = "";
-    // Load user operations (Deposits & Withdrawals)
-    const userDepos = this.db.deposits.filter(d => d.username === this.currentUser.username);
-    const userWds = this.db.withdrawals.filter(w => w.username === this.currentUser.username);
-    const userTx = (this.db.transactions || []).filter(tx => tx.userId === this.currentUser.id);
-
-    // Combine
-    const allOps = [];
-    userDepos.forEach(d => {
-      const trxVal = d.trxId || d.txid || d.id;
-      const methodVal = d.method || d.gateway || "Agent Load";
-      allOps.push({
-        ...d,
-        method: methodVal,
-        type: "deposit",
-        sign: "+",
-        color: "text-emerald-400",
-        label: `Trx: ${trxVal}`
-      });
-    });
-    userWds.forEach(w => {
-      const targetVal = w.targetAccount || w.phone || w.username || "Agent Handout";
-      const methodVal = w.method || w.gateway || "Agent Payout";
-      allOps.push({
-        ...w,
-        method: methodVal,
-        type: "withdraw",
-        sign: "-",
-        color: "text-rose-400",
-        label: `Tar: ${targetVal}`
-      });
-    });
-    userTx.forEach(tx => {
-      const refVal = tx.walletNumber || `Ref: ${tx.id.slice(-6)}`;
-      allOps.push({
-        ...tx,
-        method: tx.method || tx.description || "System adjustments",
-        type: tx.type === "credit" ? "Bonus/Credit" : "Charge/Debit",
-        sign: tx.type === "credit" ? "+" : "-",
-        color: tx.type === "credit" ? "text-emerald-400" : "text-rose-400",
-        label: refVal
-      });
-    });
-
-    // Sort by date
-    allOps.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (allOps.length === 0) {
-      listEl.innerHTML = `
-        <div class="text-center py-12 text-slate-500 text-xs font-mono">
-          <i class="fa-solid fa-clock-rotate-left text-xl text-slate-700 block mb-2"></i>
-          Wallet logs transaction ledger blank.
-        </div>
-      `;
-      return;
-    }
-
-    allOps.forEach(op => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800/80 p-3.5 rounded-2xl flex justify-between items-center text-xs";
-
-      const sign = op.sign;
-      const color = op.color;
-      const trxLabel = op.label;
-
-      let statusBadge = "";
-      if (op.status === "approved") {
-        statusBadge = `<span class="text-[10px] text-emerald-400 font-mono">Approved</span>`;
-      } else if (op.status === "declined") {
-        statusBadge = `<span class="text-[10px] text-rose-400 font-mono">Declined</span>`;
-      } else {
-        statusBadge = `<span class="text-[10px] text-amber-500 font-mono">Pending</span>`;
-      }
-
-      card.innerHTML = `
-        <div class="space-y-0.5">
-          <div class="font-bold text-white capitalize">${(op.type === "deposit" || op.type === "withdraw") ? (op.type + " via " + op.method) : op.method}</div>
-          <div class="text-[10px] text-slate-500 font-mono">${trxLabel}</div>
-        </div>
-        <div class="text-right">
-          <div class="font-black ${color} font-mono">${sign}৳${op.amount.toFixed(op.amount % 1 === 0 ? 0 : 2)}</div>
-          ${statusBadge}
-        </div>
-      `;
-
-      listEl.appendChild(card);
-    });
+    HistoryTab.render(this);
   }
 
   renderCommunitySection() {
@@ -5122,922 +4317,22 @@ public class DatabaseClusterRouter {
   }
 
   renderProfileTab() {
-    // Sync unread messages indicators
-    window.chatProfileHelper?.updateNotificationBadgeOff();
-
-    // Dynamically calculate live statistics from database
-    const winCounts = (this.db.tickets || []).filter(t => t.userId === this.currentUser.id && t.status === "won").length + (this.currentUser.wins || 0);
-    
-    document.getElementById("profile-wins").innerText = winCounts;
-    document.getElementById("profile-loss").innerText = this.currentUser.loss || 0;
-    document.getElementById("profile-profit").innerText = (this.currentUser.profit || 0).toFixed(2);
-    document.getElementById("profile-join-date").innerText = this.currentUser.joinDate || "N/A";
-
-    // Inject Dynamic Badge Badging Rack
-    const badgeContainer = document.getElementById("profile-unlocked-badges");
-    if (badgeContainer) {
-      badgeContainer.innerHTML = "";
-      
-      const authorUser = this.currentUser;
-      const postsCount = (this.db.communityPosts || []).filter(p => (p.userId === authorUser.id || p.username === authorUser.username) && p.status !== "banned").length;
-      const commentsCount = (this.db.communityComments || []).filter(c => (c.userId === authorUser.id || c.username === authorUser.username) && c.status !== "banned").length;
-      const totalContribution = postsCount + commentsCount;
-
-      const isLuckyWinner = winCounts > 0;
-      const isTopContributor = totalContribution >= 3;
-
-      let badgesHtml = "";
-      
-      // Admin custom badge override mapping
-      if (authorUser.customBadge) {
-        const badgeMap = {
-          vip: { label: "💎 VIP Player", style: "bg-cyan-950/70 text-cyan-400 border-cyan-800/60" },
-          moderator: { label: "🛡️ Staff Mod", style: "bg-indigo-950/70 text-indigo-400 border-indigo-800/60" },
-          star: { label: "⭐ Elite Star", style: "bg-purple-950/70 text-purple-400 border-purple-800/60" },
-          premium: { label: "✨ Premium Member", style: "bg-fuchsia-950/70 text-fuchsia-400 border-fuchsia-800/60" },
-          pro: { label: "🔥 Pro Active", style: "bg-orange-950/70 text-orange-400 border-orange-800/60" },
-          legend: { label: "👑 Royal Legend", style: "bg-rose-950/70 text-rose-400 border-rose-800/60" }
-        };
-        const conf = badgeMap[authorUser.customBadge];
-        if (conf) {
-          badgesHtml += `<span class="${conf.style} px-2 py-0.5 rounded-lg text-[9px] font-bold border flex items-center gap-1 shadow-md">${conf.label}</span>`;
-        }
-      }
-
-      if (isLuckyWinner) {
-        badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md animate-pulse" title="Unlocked by winning active lotteries"><i class="fa-solid fa-trophy text-amber-500 text-[8px]"></i> Lucky Winner (${winCounts})</span>`;
-      }
-      if (isTopContributor) {
-        badgesHtml += `<span class="bg-emerald-950/70 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md" title="Unlocked with 3+ shares/replies"><i class="fa-solid fa-medal text-emerald-400 text-[8px]"></i> Top Contributor (${totalContribution})</span>`;
-      }
-      
-      // Default baseline standard badge
-      badgesHtml += `<span class="bg-slate-950 border border-slate-800/80 text-slate-400 px-2 py-0.5 rounded-lg text-[9px] font-mono">🎖️ Active Player</span>`;
-      
-      badgeContainer.innerHTML = badgesHtml;
-    }
-
-    // Populate user details fields
-    document.getElementById("profile-edit-email").value = this.currentUser.email || "";
-    document.getElementById("profile-edit-phone").value = this.currentUser.phone || "";
-    document.getElementById("profile-edit-dob").value = this.currentUser.dob || "";
-
-    // Sync Avatar Image display
-    const avatarImg = document.getElementById("profile-avatar-img");
-    const avatarFallback = document.getElementById("profile-avatar-fallback");
-    if (this.currentUser.photo) {
-      avatarImg.src = this.currentUser.photo;
-      avatarImg.classList.remove("hidden");
-      avatarFallback.classList.add("hidden");
-    } else {
-      avatarImg.src = "";
-      avatarImg.classList.add("hidden");
-      avatarFallback.classList.remove("hidden");
-    }
-    this.renderProfileChart();
-    this.renderUserInbox();
+    ProfileTab.render(this);
   }
 
   renderReferTab() {
-    const userDisplay = document.getElementById("user-refer-code-display");
-    const regionDisplay = document.getElementById("user-region-display");
-    const linkDisplay = document.getElementById("user-refer-link-display");
-    const totalCount = document.getElementById("user-refer-total-count");
-    const tierDisplay = document.getElementById("user-refer-level-display");
-    const profitsDisplay = document.getElementById("user-refer-earned-display");
-
-    if (userDisplay) userDisplay.innerText = this.currentUser.username;
-    if (regionDisplay) regionDisplay.innerText = this.currentUser.region || "Dhaka";
-    
-    const inviteUrl = window.location.origin + "/index.html?ref=" + encodeURIComponent(this.currentUser.username);
-    if (linkDisplay) linkDisplay.innerText = inviteUrl;
-
-    const count = this.currentUser.refersCount || 0;
-    if (totalCount) totalCount.innerText = count;
-
-    // Evaluate Milestone Levels configuration to decide current tier and earned rewards
-    const levels = this.db.settings.milestoneLevels || [];
-    let currentLvlTitle = "LV0: Cadet";
-    let earnedBounties = 0;
-
-    const sortedLevels = [...levels].sort((a,b) => a.count - b.count);
-    sortedLevels.forEach(lvl => {
-      if (count >= lvl.count) {
-        currentLvlTitle = lvl.title;
-      }
-    });
-
-    // Sum earnings from actual rewarded list
-    const rewardedList = this.currentUser.rewardedMilestones || [];
-    rewardedList.forEach(title => {
-      const matchLvl = levels.find(l => l.title === title);
-      if (matchLvl) earnedBounties += parseFloat(matchLvl.reward || 0);
-    });
-
-    if (tierDisplay) tierDisplay.innerText = currentLvlTitle;
-    if (profitsDisplay) profitsDisplay.innerText = "৳" + earnedBounties.toFixed(2);
-
-    // Render Milestone Levels checklist
-    const levelsListEl = document.getElementById("user-refer-levels-list");
-    if (levelsListEl) {
-      levelsListEl.innerHTML = "";
-      if (levels.length === 0) {
-        levelsListEl.innerHTML = `<div class="text-slate-500 font-sans text-center py-2">No levels configured by admin.</div>`;
-      } else {
-        levels.forEach(lvl => {
-          const reached = count >= lvl.count;
-          const claimed = rewardedList.includes(lvl.title);
-          
-          let statusBadge = "";
-          if (claimed) {
-            statusBadge = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800/80 px-2 py-0.5 rounded text-[8px] font-black uppercase"><i class="fa-solid fa-circle-check"></i> CLAIMED ৳${lvl.reward}</span>`;
-          } else if (reached) {
-            statusBadge = `<span class="bg-cyan-950 text-cyan-400 border border-cyan-800/80 px-2 py-0.5 rounded text-[8px] font-black uppercase animate-pulse"><i class="fa-solid fa-wand-magic-sparkles"></i> REACHED</span>`;
-          } else {
-            statusBadge = `<span class="bg-slate-950 text-slate-500 border border-slate-900 px-2 py-0.5 rounded text-[8px] font-bold">Goal: ${lvl.count} refers</span>`;
-          }
-
-          const card = document.createElement("div");
-          card.className = "flex items-center justify-between bg-slate-950/70 p-2.5 rounded-xl border border-slate-900";
-          card.innerHTML = `
-            <div>
-              <span class="block text-white font-bold text-[11px]">${this.escapeHTML(lvl.title)}</span>
-              <span class="text-[8px] text-slate-500 font-sans font-medium block mt-0.5">Award money: ৳${lvl.reward}</span>
-            </div>
-            <div>${statusBadge}</div>
-          `;
-          levelsListEl.appendChild(card);
-        });
-      }
-    }
-
-    // Render Leaderboard list using top recruiters in system
-    const ldrBody = document.getElementById("user-refer-leaderboard-body");
-    if (ldrBody) {
-      ldrBody.innerHTML = "";
-      
-      const recruiters = this.db.users
-        .filter(u => u.refersCount > 0)
-        .sort((a,b) => (b.refersCount || 0) - (a.refersCount || 0))
-        .slice(0, 10);
-
-      if (recruiters.length === 0) {
-        ldrBody.innerHTML = `<tr><td colspan="4" class="text-center py-4 text-slate-500 font-sans">No referral activities registered yet. Be the first!</td></tr>`;
-      } else {
-        recruiters.forEach((rec, idx) => {
-          const rank = idx + 1;
-          
-          let badgeTag = "৳0";
-          if (rank === 1) badgeTag = "৳1500 (Champion)";
-          else if (rank === 2) badgeTag = "৳800";
-          else if (rank === 3) badgeTag = "৳400";
-          else badgeTag = "Commission share";
-
-          const row = document.createElement("tr");
-          row.className = "border-b border-slate-800/40 hover:bg-slate-900/40 transition";
-          row.innerHTML = `
-            <td class="py-2.5 font-bold ${rank <= 3 ? 'text-amber-400 font-black' : 'text-slate-500'}">#${rank}</td>
-            <td class="py-2.5 text-slate-200">@${this.escapeHTML(rec.username)}</td>
-            <td class="py-2.5 text-center text-cyan-400 font-black">${rec.refersCount}</td>
-            <td class="py-2.5 text-right font-semibold text-emerald-400">${badgeTag}</td>
-          `;
-          ldrBody.appendChild(row);
-        });
-      }
-    }
-
-    // Render Referred Friends
-    const friendsEl = document.getElementById("user-referred-friends-list");
-    if (friendsEl) {
-      friendsEl.innerHTML = "";
-      const friends = this.currentUser.referredUsers || [];
-      if (friends.length === 0) {
-        friendsEl.innerHTML = `<div class="text-slate-500 font-sans text-center py-2">Invite people using your invitation link to list referred participants!</div>`;
-      } else {
-        friends.forEach(fr => {
-          const card = document.createElement("div");
-          card.className = "p-2.5 bg-slate-950/60 rounded-xl border border-slate-900/60 flex justify-between items-center";
-          card.innerHTML = `
-            <div>
-              <span class="block font-bold text-white text-[11px]">@${this.escapeHTML(fr.username)}</span>
-              <span class="text-[8px] text-slate-500 block mt-0.5">Joined at: ${fr.date ? fr.date.substring(0, 10) : 'N/A'}</span>
-            </div>
-            <span class="text-[9px] font-black text-pink-400 uppercase bg-pink-950/30 px-2 py-0.5 rounded border border-pink-900/40 font-mono">${fr.region || 'DHAKA'}</span>
-          `;
-          friendsEl.appendChild(card);
-        });
-      }
-    }
+    ReferTab.render(this);
   }
 
   renderBadgeRequestTab() {
-    const listEl = document.getElementById("user-badge-reqs-history-list");
-    if (!listEl) return;
-    listEl.innerHTML = "";
-
-    const myReqs = (this.db.badgeRequests || []).filter(r => r.userId === this.currentUser.id);
-    
-    if (myReqs.length === 0) {
-      listEl.innerHTML = `
-        <div class="text-center py-6 bg-slate-900 border border-slate-850 text-[10px] text-slate-500 rounded-2xl font-mono">
-          No previous badge requests submitted.
-        </div>
-      `;
-    } else {
-      // Sort newest first
-      const sorted = [...myReqs].sort((a, b) => new Date(b.date) - new Date(a.date));
-      sorted.forEach(r => {
-        const item = document.createElement("div");
-        item.className = "bg-slate-900 border border-slate-800/80 p-3.5 rounded-2xl flex justify-between items-center text-xs font-mono";
-        
-        let badgeLabel = r.requestedBadge.toUpperCase();
-        const badgeMap = {
-          vip: "💎 VIP Player",
-          moderator: "🛡️ Staff Mod",
-          star: "⭐ Elite Star",
-          premium: "✨ Premium Member",
-          pro: "🔥 Pro Active",
-          legend: "👑 Royal Legend"
-        };
-        badgeLabel = badgeMap[r.requestedBadge] || badgeLabel;
-
-        let statusClass = "bg-slate-950 text-slate-400 border border-slate-800";
-        if (r.status === "approved") {
-          statusClass = "bg-green-950 text-green-400 border border-green-900/60";
-        } else if (r.status === "rejected") {
-          statusClass = "bg-red-950 text-red-500 border border-red-900/60";
-        } else {
-          statusClass = "bg-amber-950 text-amber-500 border border-amber-900/60 animate-pulse";
-        }
-
-        item.innerHTML = `
-          <div class="pr-3 flex-1">
-            <div class="flex items-center gap-2 flex-wrap">
-              <span class="font-bold text-white text-[11px]">${badgeLabel}</span>
-              <span class="px-1.5 py-0.5 rounded text-[8px] font-bold ${statusClass}">${r.status.toUpperCase()}</span>
-            </div>
-            <div class="text-[9px] text-slate-500 font-mono mt-1">Submitted: ${new Date(r.date).toLocaleDateString()}</div>
-            ${r.reason ? `<div class="text-[9px] text-slate-400 italic mt-1.5 bg-slate-950/60 p-2 border border-slate-850 rounded">"${r.reason}"</div>` : ""}
-          </div>
-          ${r.status === "pending" ? `
-            <button class="com-act-cancel-badge-req text-[8px] bg-slate-950 hover:bg-rose-950 border border-slate-800/80 hover:border-rose-900 text-slate-400 hover:text-rose-400 py-1.5 px-3 rounded-xl transition cursor-pointer" data-req-id="${r.id}">
-              Cancel
-            </button>
-          ` : ""}
-        `;
-
-        listEl.appendChild(item);
-      });
-
-      // Bind cancel buttons
-      listEl.querySelectorAll(".com-act-cancel-badge-req").forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          const reqId = btn.getAttribute("data-req-id");
-          this.db.badgeRequests = (this.db.badgeRequests || []).filter(r => r.id !== reqId);
-          this.saveDB();
-          this.showToast("Badge application request cancelled successfully.", "info");
-          this.renderBadgeRequestTab();
-        });
-      });
-    }
+    BadgeRequestTab.render(this);
   }
 
-  renderAdminBadgeRequests() {
-    const listEl = document.getElementById("admin-badge-requests-list");
-    if (!listEl) return;
-    listEl.innerHTML = "";
-
-    const reqs = this.db.badgeRequests || [];
-    
-    // Update count labels and bubble counters
-    const pendingCount = reqs.filter(r => r.status === "pending").length;
-    const subStatEl = document.getElementById("admin-badge-reqs-sub-stats");
-    if (subStatEl) {
-      subStatEl.innerText = `${pendingCount} pending applications`;
-    }
-    const headerBadge = document.getElementById("admin-badge-requests-count-badge");
-    if (headerBadge) {
-      headerBadge.innerText = pendingCount;
-      if (pendingCount > 0) {
-        headerBadge.classList.remove("hidden");
-      } else {
-        headerBadge.classList.add("hidden");
-      }
-    }
-
-    if (reqs.length === 0) {
-      listEl.innerHTML = `
-        <div class="text-center py-10 bg-slate-950 border border-slate-850 rounded-2xl text-[11px] text-slate-500 font-mono">
-          <i class="fa-solid fa-ribbon text-slate-700 text-base block mb-1"></i>
-          No badge requests submitted by any players yet.
-        </div>
-      `;
-      return;
-    }
-
-    // Sort pending first, then newest
-    const sorted = [...reqs].sort((a, b) => {
-      if (a.status === "pending" && b.status !== "pending") return -1;
-      if (a.status !== "pending" && b.status === "pending") return 1;
-      return new Date(b.date) - new Date(a.date);
-    });
-
-    sorted.forEach(r => {
-      const item = document.createElement("div");
-      item.className = "bg-slate-950 border border-slate-850 p-4 rounded-2xl space-y-3 font-mono";
-
-      const badgeMap = {
-        vip: { icon: "💎", label: "VIP Player", value: "vip" },
-        moderator: { icon: "🛡️", label: "Staff Mod", value: "moderator" },
-        star: { icon: "⭐", label: "Elite Star", value: "star" },
-        premium: { icon: "✨", label: "Premium Member", value: "premium" },
-        pro: { icon: "🔥", label: "Pro Active", value: "pro" },
-        legend: { icon: "👑", label: "Royal Legend", value: "legend" }
-      };
-
-      const bConf = badgeMap[r.requestedBadge] || { icon: "🎖️", label: r.requestedBadge, value: r.requestedBadge };
-
-      let statusColor = "bg-slate-900 text-slate-400";
-      if (r.status === "approved") {
-        statusColor = "bg-green-950 text-green-400 border border-green-800/40";
-      } else if (r.status === "rejected") {
-        statusColor = "bg-red-950 text-red-500 border border-red-850/40";
-      } else {
-        statusColor = "bg-amber-950 text-amber-500 border border-amber-800/40 animate-pulse";
-      }
-
-      item.innerHTML = `
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-          <div>
-            <div class="flex items-center gap-1.5 flex-wrap">
-              <span class="font-extrabold text-white text-sm">@${r.username}</span>
-              <span class="text-[9px] text-slate-500">(${new Date(r.date).toLocaleString()})</span>
-            </div>
-            
-            <div class="flex items-center gap-1.5 mt-2">
-              <span class="text-slate-400 text-[10px]">Claims Badge:</span>
-              <span class="bg-indigo-950 text-indigo-300 font-bold px-2 py-0.5 rounded text-[10px] border border-indigo-800/30">
-                ${bConf.icon} ${bConf.label}
-              </span>
-              <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusColor}">
-                ${r.status.toUpperCase()}
-              </span>
-            </div>
-
-            ${r.reason ? `
-              <div class="text-[11px] text-slate-300 bg-slate-900 border border-slate-850 p-2.5 rounded-xl mt-2.5 italic font-sans">
-                <span class="text-[9px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">User Justification Message:</span>
-                "${r.reason}"
-              </div>
-            ` : ""}
-          </div>
-
-          <div class="flex gap-1.5 self-start md:self-center">
-            ${r.status === "pending" ? `
-              <button class="admin-badge-act-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg transition cursor-pointer text-[10px]" data-action="approve" data-req-id="${r.id}">
-                Approve
-              </button>
-              <button class="admin-badge-act-btn bg-rose-600 hover:bg-rose-500 text-white font-bold py-1.5 px-3 rounded-lg transition cursor-pointer text-[10px]" data-action="reject" data-req-id="${r.id}">
-                Reject
-              </button>
-            ` : ""}
-            <button class="admin-badge-act-btn bg-slate-900 border border-slate-850 hover:bg-red-950/20 text-slate-400 hover:text-red-400 font-bold py-1.5 px-2.5 rounded-lg transition cursor-pointer text-[10px]" data-action="delete" data-req-id="${r.id}">
-              Delete
-            </button>
-          </div>
-        </div>
-      `;
-
-      listEl.appendChild(item);
-    });
-
-    // Bind action events
-    listEl.querySelectorAll(".admin-badge-act-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const action = btn.getAttribute("data-action");
-        const reqId = btn.getAttribute("data-req-id");
-        
-        const req = (this.db.badgeRequests || []).find(x => x.id === reqId);
-        if (!req) return;
-
-        if (action === "approve") {
-          req.status = "approved";
-          
-          // Auto grant user the badge in users table
-          const targetUser = (this.db.users || []).find(usr => usr.id === req.userId || usr.username === req.username);
-          if (targetUser) {
-            targetUser.customBadge = req.requestedBadge;
-            this.showToast(`Granted ${req.requestedBadge.toUpperCase()} Badge to user @${targetUser.username}!`, "success");
-          } else {
-            this.showToast("User record not found, but marked as approved.", "info");
-          }
-        } else if (action === "reject") {
-          req.status = "rejected";
-          this.showToast("Badge request rejected.", "warning");
-        } else if (action === "delete") {
-          this.db.badgeRequests = (this.db.badgeRequests || []).filter(x => x.id !== reqId);
-          this.showToast("Badge request deleted from database.", "info");
-        }
-
-        this.saveDB();
-        this.renderAdminBadgeRequests(); // Redraw requests view
-        this.renderAdmin(); // Sync headers count
-      });
-    });
-  }
-
-  // ================= ADMIN SYSTEM CONTROL VIEW RENDER =================
-  renderAdmin() {
-    const isModerator = this.currentUser && this.currentUser.role === "moderator";
-
-    // Select Admin tab classes matching selection
-    const adminTabBtns = document.querySelectorAll(".admin-tab-selector-btn");
-    adminTabBtns.forEach(btn => {
-      const tabId = btn.getAttribute("data-tab");
-
-      if (isModerator) {
-        // Permit: stats, users, lotteries, deposits, withdraws, messages
-        const permittedTabs = ["stats", "users", "lotteries", "deposits", "withdraws", "messages"];
-        if (!permittedTabs.includes(tabId)) {
-          btn.classList.add("hidden");
-          if (this.currentAdminTab === tabId) {
-            this.currentAdminTab = "stats";
-          }
-        } else {
-          btn.classList.remove("hidden");
-        }
-      } else {
-        btn.classList.remove("hidden");
-      }
-
-      if (tabId === this.currentAdminTab) {
-        btn.className = "admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15";
-      } else {
-        btn.className = "admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition bg-slate-900 border border-slate-800 text-slate-400 hover:text-white";
-      }
-    });
-
-    // Hide all viewports with safe guards
-    const hideViewport = (id) => {
-      const el = document.getElementById(id);
-      if (el) el.classList.add("hidden");
-    };
-    hideViewport("admin-tab-stats");
-    hideViewport("admin-tab-users");
-    hideViewport("admin-tab-lotteries");
-    hideViewport("admin-tab-deposits");
-    hideViewport("admin-tab-withdraws");
-    hideViewport("admin-tab-settings");
-    hideViewport("admin-tab-gateways");
-    hideViewport("admin-tab-sync-vault");
-    hideViewport("admin-tab-messages");
-    hideViewport("admin-tab-categories");
-    hideViewport("admin-tab-website");
-    hideViewport("admin-tab-reports");
-    hideViewport("admin-tab-badge-requests");
-    hideViewport("admin-tab-refer");
-    hideViewport("admin-tab-vip");
-    hideViewport("admin-tab-jackpot");
-    hideViewport("admin-tab-tasks");
-    hideViewport("admin-tab-agents");
-
-    // Dynamic pending reports counter
-    const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
-    const badgeEl = document.getElementById("admin-reports-count-badge");
-    if (badgeEl) badgeEl.innerText = pendingRepsCount;
-
-    // Dynamic pending badge requests counter
-    const pendingBadgeReqsCount = (this.db.badgeRequests || []).filter(br => br.status === "pending").length;
-    const badgeReqsCountEl = document.getElementById("admin-badge-requests-count-badge");
-    if (badgeReqsCountEl) {
-      badgeReqsCountEl.innerText = pendingBadgeReqsCount;
-      if (pendingBadgeReqsCount > 0) {
-        badgeReqsCountEl.classList.remove("hidden");
-      } else {
-        badgeReqsCountEl.classList.add("hidden");
-      }
-    }
-
-    // Show current tab viewport
-    const currentViewport = document.getElementById(`admin-tab-${this.currentAdminTab}`);
-    if (currentViewport) currentViewport.classList.remove("hidden");
-
-    try {
-      if (this.currentAdminTab === "stats") {
-        this.renderAdminStats();
-      } else if (this.currentAdminTab === "users") {
-        this.renderAdminUsers();
-      } else if (this.currentAdminTab === "lotteries") {
-        this.renderAdminLotteries();
-      } else if (this.currentAdminTab === "deposits") {
-        this.renderAdminDeposits();
-      } else if (this.currentAdminTab === "withdraws") {
-        this.renderAdminWithdraws();
-      } else if (this.currentAdminTab === "categories") {
-        this.renderAdminCategories();
-      } else if (this.currentAdminTab === "messages") {
-        this.renderAdminMessages();
-      } else if (this.currentAdminTab === "website") {
-        this.renderAdminWebsite();
-      } else if (this.currentAdminTab === "reports") {
-        this.renderAdminReports();
-      } else if (this.currentAdminTab === "badge-requests") {
-        this.renderAdminBadgeRequests();
-      } else if (this.currentAdminTab === "refer") {
-        this.renderAdminRefer();
-      } else if (this.currentAdminTab === "vip") {
-        this.renderAdminVipClub();
-      } else if (this.currentAdminTab === "jackpot") {
-        this.renderAdminJackpot();
-      } else if (this.currentAdminTab === "tasks") {
-        this.renderAdminTasks();
-      } else if (this.currentAdminTab === "settings" || this.currentAdminTab === "gateways") {
-        this.renderAdminSettings();
-      } else if (this.currentAdminTab === "sync-vault") {
-        this.renderSyncVaultTab();
-      } else if (this.currentAdminTab === "agents") {
-        this.renderAdminAgents();
-      }
-    } catch (err) {
-      console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
-    }
-
-    // Flush any pending real-time security alerts/toasts
-    this.flushAdminToasts();
-  }
-
-  renderAdminStats() {
-    // Collect facts of system
-    const totalUsers = this.db.users.length;
-    const activeLotteries = this.db.lotteries.filter(l => l.status === "active").length;
-    const completedLotteries = this.db.lotteries.filter(l => l.status === "drawn").length;
-
-    const totalDepositedApproved = this.db.deposits.filter(d => d.status === "approved").reduce((sum, d) => sum + d.amount, 0);
-    const pendingDeposCount = this.db.deposits.filter(d => d.status === "pending").length;
-    const pendingWdsCount = this.db.withdrawals.filter(w => w.status === "pending").length;
-    const totalWdsApproved = this.db.withdrawals.filter(w => w.status === "approved").reduce((sum, w) => sum + w.amount, 0);
-
-    const ticketPurchasedVolume = this.db.tickets.length * 10; // estimate factor on ticket volume or dynamic fees
-    let actualPaidTicketSpent = 0;
-    this.db.tickets.forEach(ticket => {
-      const lot = this.db.lotteries.find(l => l.id === ticket.lotteryId);
-      if (lot) actualPaidTicketSpent += lot.entryFee;
-    });
-
-    document.getElementById("admin-stat-sales").innerText = `৳${actualPaidTicketSpent}`;
-    document.getElementById("admin-stat-players").innerText = totalUsers;
-    document.getElementById("admin-stat-deposits").innerText = `৳${totalDepositedApproved}`;
-    document.getElementById("admin-stat-pending").innerText = `${pendingDeposCount + pendingWdsCount} Ops`;
-
-    // Logs metrics
-    document.getElementById("admin-metric-total-pools").innerText = `${this.db.lotteries.length} pools`;
-    document.getElementById("admin-metric-active-pools").innerText = `${activeLotteries} active Pools`;
-    document.getElementById("admin-metric-total-completes").innerText = `${completedLotteries} completed Pools`;
-    document.getElementById("admin-metric-withdrawn-approved").innerText = `৳${totalWdsApproved} paid out`;
-  }
-
-  renderAdminUsers() {
-    const listEl = document.getElementById("admin-users-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
-
-    // Toggle clear search button visibility
-    const clearBtn = document.getElementById("admin-players-clear-search-btn");
-    if (clearBtn) {
-      if (this.adminPlayersSearchQuery) {
-        clearBtn.classList.remove("hidden");
-      } else {
-        clearBtn.classList.add("hidden");
-      }
-    }
-
-    let filteredUsers = this.db.users || [];
-    const query = (this.adminPlayersSearchQuery || "").toLowerCase().trim();
-    if (query) {
-      filteredUsers = filteredUsers.filter(u => {
-        const usernameMatch = (u.username || "").toLowerCase().includes(query);
-        const emailMatch = (u.email || "").toLowerCase().includes(query);
-        const phoneMatch = (u.phone || "").toLowerCase().includes(query);
-        return usernameMatch || emailMatch || phoneMatch;
-      });
-    }
-
-    if (filteredUsers.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="4" class="p-8 text-center text-slate-500 font-mono text-[10px]">
-            No matching players found for search term "${query}"
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    filteredUsers.forEach(u => {
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 border-b border-slate-800 text-xs";
-
-      let statusColor = u.status === "active" ? "bg-green-950 text-green-400 border border-green-800/40" :
-                         u.status === "blocked" ? "bg-amber-950 text-amber-400 border border-amber-800/40" :
-                         "bg-red-950 text-red-500 border border-red-800/30";
-
-      // Display extra metrics matching profile badges if custom Badge selected
-      let customBadgeBadge = "";
-      if (u.customBadge) {
-        const adminBadgeIcons = {
-          vip: "💎 VIP",
-          moderator: "🛡️ MOD",
-          star: "⭐ STAR",
-          premium: "✨ PREM",
-          pro: "🔥 PRO",
-          legend: "👑 LGND"
-        };
-        const label = adminBadgeIcons[u.customBadge] || u.customBadge.toUpperCase();
-        customBadgeBadge = `<span class="bg-indigo-950/80 text-indigo-300 text-[8px] font-bold px-1.5 py-0.2 rounded ml-1 uppercase border border-indigo-900/50">${label}</span>`;
-      }
-
-      row.innerHTML = `
-        <td class="p-4">
-          <div class="font-bold text-white flex items-center gap-1">@${u.username} ${customBadgeBadge}</div>
-          <div class="text-[10px] text-slate-500 font-mono">${u.email} ${u.phone ? `• ${u.phone}` : ""}</div>
-        </td>
-        <td class="p-4 font-mono font-bold text-cyan-400">৳${u.balance.toFixed(2)}</td>
-        <td class="p-4">
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono ${statusColor}">
-            ${u.status.toUpperCase()}
-          </span>
-        </td>
-        <td class="p-4 text-right">
-          <button class="admin-edit-player-btn bg-slate-800 text-slate-300 py-1.5 px-3 rounded-xl hover:bg-slate-700 transition cursor-pointer" data-id="${u.id}">
-            Modify
-          </button>
-        </td>
-      `;
-
-      listEl.appendChild(row);
-    });
-
-    document.querySelectorAll(".admin-edit-player-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const uId = e.currentTarget.getAttribute("data-id");
-        this.openUserEditModal(uId);
-      });
-    });
-  }
-
-  renderAdminCategories() {
-    const listEl = document.getElementById("admin-categories-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
-
-    this.db.categories.forEach(cat => {
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 border-b border-slate-800/60";
-
-      const showPrizes = cat.type === "multi" ? cat.defaultPrizes : "—";
-      const badgeClass = cat.type === "multi" ? "bg-emerald-950 text-emerald-400 border border-emerald-800/40" : "bg-cyan-950 text-cyan-400 border border-cyan-800/40";
-
-      row.innerHTML = `
-        <td class="p-3 font-bold text-white">${cat.label}</td>
-        <td class="p-3 font-mono text-slate-400">${cat.name}</td>
-        <td class="p-3">
-          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${badgeClass}">
-            ${cat.type === "multi" ? "MULTI WINNER SPLIT" : "SINGLE WINNER"}
-          </span>
-        </td>
-        <td class="p-3 font-mono text-cyan-400">${showPrizes}</td>
-        <td class="p-3 text-right">
-          <button class="admin-delete-category-btn bg-red-950 hover:bg-red-950/80 text-red-400 border border-red-900/40 text-[9px] font-bold py-1 px-2.5 rounded-lg transition" data-id="${cat.id}">
-            Delete
-          </button>
-        </td>
-      `;
-
-      listEl.appendChild(row);
-    });
-
-    // Add category click bindings for security check
-    document.querySelectorAll(".admin-delete-category-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const catId = btn.getAttribute("data-id");
-        const matched = this.db.categories.find(c => c.id === catId);
-        if (!matched) return;
-
-        // Prevent deleting original core categories to preserve live demo look
-        if (["c1", "c2", "c3", "c4", "c5"].includes(catId)) {
-          this.showToast("Cannot delete core defaults, only user custom ones!", "error");
-          return;
-        }
-
-        if (confirm(`Remove custom category '${matched.label}' permanently?`)) {
-          this.db.categories = this.db.categories.filter(c => c.id !== catId);
-          this.saveDB();
-          this.renderAdminCategories();
-          this.showToast("Custom category wiped successfully.", "success");
-        }
-      });
-    });
-  }
-
-  escapeHTML(str) {
-    if (!str) return "";
-    return str
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
-  }
-
-  async getClientIP() {
-    try {
-      // Free public IP resolver
-      const res = await fetch("https://api.ipify.org?format=json");
-      const data = await res.json();
-      return data.ip || "127.0.0.1";
-    } catch (err) {
-      // persistent simulated IP for full multi-account ban protection test in iframe sandboxes
-      let storedIp = localStorage.getItem("lw_simulated_ip");
-      if (!storedIp) {
-        const randA = Math.floor(Math.random() * 150) + 100;
-        const randB = Math.floor(Math.random() * 200) + 20;
-        storedIp = `103.45.${randA}.${randB}`;
-        localStorage.setItem("lw_simulated_ip", storedIp);
-      }
-      return storedIp;
-    }
-  }
-
-  async getIPDetails() {
-    try {
-      const response = await fetch("https://ipapi.co/json/");
-      if (response.ok) {
-        const details = await response.json();
-        return {
-          ip: details.ip || "127.0.0.1",
-          country: details.country_name || "",
-          org: details.org || "",
-          timezone: details.timezone || "",
-          region: details.region || ""
-        };
-      }
-    } catch (e) {
-      console.warn("Retrying IP details fetch via fallback due to blocker", e);
-    }
-    const ip = await this.getClientIP();
-    return { ip, country: "", org: "", timezone: "", region: "" };
-  }
-
-  isVPN(details) {
-    if (!details) return false;
-    const orgLower = (details.org || "").toLowerCase();
-    const vpnKeywords = [
-      "vpn", "proxy", "hosting", "cloud", "server", "datacenter", "mullvad", 
-      "nordvpn", "expressvpn", "surfshark", "digitalocean", "linode", "ovh", 
-      "colocation", "amazon", "google", "microsoft", "leaseweb", "vultr", "packet", 
-      "private internet", "windscribe", "tor", "exit-node", "proton", "cloudflare", 
-      "fastly", "dedicated", "contabo", "interserver", "hetzner"
-    ];
-    const isVpnOrg = vpnKeywords.some(keyword => orgLower.includes(keyword));
-    if (isVpnOrg) return true;
-
-    // Timezone discrepancy check: device timezone vs IP location timezone
-    const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (details.timezone && clientTimezone && details.timezone !== clientTimezone) {
-      return true;
-    }
-    return false;
-  }
-
-  triggerAdminSecurityAlert(type, message) {
-    if (!this.db.securityLogs) {
-      this.db.securityLogs = [];
-    }
-    const newLog = {
-      id: "sec_" + Date.now() + "_" + Math.floor(Math.random() * 999),
-      type: type, // "duplicate_ip" or "region_restriction"
-      message: message,
-      timestamp: new Date().toISOString()
-    };
-    this.db.securityLogs.unshift(newLog);
-    
-    // Keep max 150 items
-    if (this.db.securityLogs.length > 150) {
-      this.db.securityLogs = this.db.securityLogs.slice(0, 150);
-    }
-
-    if (!this.db.pendingAdminToasts) {
-      this.db.pendingAdminToasts = [];
-    }
-    this.db.pendingAdminToasts.push({
-      id: newLog.id,
-      message: message,
-      type: type
-    });
-
+  cancelBadgeRequest(reqId) {
+    this.db.badgeRequests = (this.db.badgeRequests || []).filter(r => r.id !== reqId);
     this.saveDB();
-
-    // If Admin Mode is currently active, instantly show a flashy red/amber security toast!
-    if (this.isAdminMode) {
-      this.flushAdminToasts();
-    }
-  }
-
-  flushAdminToasts() {
-    if (!this.isAdminMode) return;
-    const toasts = this.db.pendingAdminToasts || [];
-    if (toasts.length === 0) return;
-
-    toasts.forEach(t => {
-      let icon = "fa-solid fa-shield-halved text-rose-500 mr-2";
-      if (t.type === "duplicate_ip") {
-        icon = "fa-solid fa-fingerprint text-red-500 animate-bounce mr-2";
-      } else if (t.type === "region_restriction") {
-        icon = "fa-solid fa-earth-asia text-amber-500 animate-spin mr-2";
-      }
-      
-      this.showToast(`<span class="flex items-center gap-1 font-mono text-[10px] text-rose-400">
-        <i class="${icon}"></i>
-        <strong>[AUTO-SECURITY]</strong> ${this.escapeHTML(t.message)}
-      </span>`, "error");
-    });
-
-    this.db.pendingAdminToasts = [];
-    this.saveDB();
-
-    // If they are currently viewing the refer tab control, redraw in real-time
-    if (this.currentAdminTab === "refer") {
-      this.renderAdminRefer();
-    }
-  }
-
-  renderAdminMessages() {
-    const listEl = document.getElementById("admin-msg-history-list");
-    const countEl = document.getElementById("admin-msg-sent-count");
-    if (!listEl) return;
-
-    const msgs = this.db.messages || [];
-    if (countEl) countEl.innerText = `${msgs.length} Sent`;
-
-    if (msgs.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="5" class="py-6 text-center text-slate-500 font-mono text-[10px]">No sent messages history recorded.</td>
-        </tr>
-      `;
-      return;
-    }
-
-    // Sort newer first
-    const sorted = [...msgs].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    listEl.innerHTML = sorted.map(m => {
-      const dateStr = new Date(m.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
-      const recipientText = m.recipientType === "bulk" 
-        ? `<span class="bg-cyan-950/45 text-cyan-400 border border-cyan-900/30 px-2 py-0.5 rounded text-[9px] font-sans font-bold">ALL USERS</span>` 
-        : `<span class="bg-purple-950/45 text-purple-400 border border-purple-900/30 px-2 py-0.5 rounded text-[9px] font-mono font-bold">@${m.targetUsername}</span>`;
-
-      let catBadge = "";
-      if (m.category === "general") {
-        catBadge = `<span class="text-[10px] font-sans font-bold bg-slate-950 text-slate-400 py-0.5 px-2 rounded-md border border-slate-800">📢 General</span>`;
-      } else if (m.category === "deposit") {
-        catBadge = `<span class="text-[10px] font-sans font-bold bg-emerald-950/45 text-emerald-400 py-0.5 px-2 rounded-md border border-emerald-900/20">💰 Deposit</span>`;
-      } else if (m.category === "withdrawal") {
-        catBadge = `<span class="text-[10px] font-sans font-bold bg-rose-950/45 text-rose-400 py-0.5 px-2 rounded-md border border-rose-900/20">💸 Payout</span>`;
-      } else if (m.category === "bonus") {
-        catBadge = `<span class="text-[10px] font-sans font-bold bg-amber-950/45 text-amber-400 py-0.5 px-2 rounded-md border border-amber-900/20">🎁 Bonus</span>`;
-      } else if (m.category === "alert") {
-        catBadge = `<span class="text-[10px] font-sans font-bold bg-yellow-950/45 text-yellow-400 py-0.5 px-2 rounded-md border border-yellow-900/20">⚠️ Alert</span>`;
-      }
-
-      return `
-        <tr class="border-b border-slate-800/40 hover:bg-slate-950/20 transition">
-          <td class="py-3 font-mono">${recipientText}</td>
-          <td class="py-3">${catBadge}</td>
-          <td class="py-3 font-sans text-slate-200">
-            <div class="font-bold text-[11px]">${this.escapeHTML(m.subject)}</div>
-            <div class="text-[9px] text-slate-500 mt-0.5 max-w-xs break-words">${this.escapeHTML(m.content)}</div>
-          </td>
-          <td class="py-3 font-mono text-[10px] text-slate-400">${dateStr}</td>
-          <td class="py-3 text-right">
-            <button class="delete-admin-msg-btn text-rose-500 hover:text-rose-400 p-1 bg-rose-950/25 border border-rose-900/20 hover:border-rose-800/45 rounded-lg active:scale-95 transition cursor-pointer" data-id="${m.id}" title="Delete msg">
-              <i class="fa-solid fa-trash-can text-[10px]"></i>
-            </button>
-          </td>
-        </tr>
-      `;
-    }).join("");
-
-    // Wire up delete button actions
-    listEl.querySelectorAll(".delete-admin-msg-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        this.db.messages = (this.db.messages || []).filter(m => m.id !== id);
-        this.saveDB();
-        this.renderAdminMessages();
-        this.showToast("Message deleted from records.", "info");
-      });
-    });
+    this.showToast("Badge application request cancelled successfully.", "info");
+    this.renderBadgeRequestTab();
   }
 
   renderUserInbox() {
@@ -8814,6 +7109,9 @@ public class DatabaseClusterRouter {
   }
 }
 
+Object.assign(StateManager.prototype, AdminModule);
+Object.assign(StateManager.prototype, AgentModule);
+
 // Initialize Application State on DOM load
 function initApplicationLoader() {
   if (window.appInstance) return; // Prevent double initialization
@@ -9447,12 +7745,15 @@ function initApplicationLoader() {
     });
   });
 
-  // Log out action
-  document.getElementById("profile-logout-btn").addEventListener("click", () => {
-    app.currentUser = null;
-    localStorage.removeItem(app.sessionKey);
-    app.showToast("Logged out of player portal.", "info");
-    app.render();
+  // Log out action (using event delegation for dynamically loaded profile tab)
+  document.addEventListener("click", (e) => {
+    const logoutBtn = e.target.closest("#profile-logout-btn");
+    if (logoutBtn) {
+      app.currentUser = null;
+      localStorage.removeItem(app.sessionKey);
+      app.showToast("Logged out of player portal.", "info");
+      app.render();
+    }
   });
 
   // Enable Notifications Button
@@ -9981,44 +8282,68 @@ function initApplicationLoader() {
   }
 
   // Close Control Room Back To User
-  document.getElementById("exit-admin-btn").addEventListener("click", () => {
-    app.isAdminMode = false;
-    localStorage.removeItem(app.adminSessionKey);
-    app.showToast("Exited operations server space.", "info");
-    app.render();
-  });
+  const exitAdminBtn = document.getElementById("exit-admin-btn");
+  if (exitAdminBtn) {
+    exitAdminBtn.addEventListener("click", () => {
+      app.isAdminMode = false;
+      localStorage.removeItem(app.adminSessionKey);
+      app.showToast("Exited operations server space.", "info");
+      app.render();
+    });
+  }
 
   // Exit maintenance backdoor access
-  document.getElementById("exit-maintenance-backdoor").addEventListener("click", openBypass);
+  const exitMaintenanceBackdoor = document.getElementById("exit-maintenance-backdoor");
+  if (exitMaintenanceBackdoor) {
+    exitMaintenanceBackdoor.addEventListener("click", openBypass);
+  }
 
   // Modal Editing Users Saving
-  document.getElementById("admin-save-user-btn").addEventListener("click", () => {
-    app.savePlayerEditFromModal();
-  });
+  const adminSaveUserBtn = document.getElementById("admin-save-user-btn");
+  if (adminSaveUserBtn) {
+    adminSaveUserBtn.addEventListener("click", () => {
+      app.savePlayerEditFromModal();
+    });
+  }
 
-  document.getElementById("admin-close-modal-btn").addEventListener("click", () => {
-    document.getElementById("admin-user-edit-modal").classList.add("hidden");
-  });
+  const adminCloseModalBtn = document.getElementById("admin-close-modal-btn");
+  if (adminCloseModalBtn) {
+    adminCloseModalBtn.addEventListener("click", () => {
+      document.getElementById("admin-user-edit-modal").classList.add("hidden");
+    });
+  }
 
   // Lottery draw trigger
-  document.getElementById("admin-confirm-draw-btn").addEventListener("click", () => {
-    app.executeManualDrawWinner();
-  });
+  const adminConfirmDrawBtn = document.getElementById("admin-confirm-draw-btn");
+  if (adminConfirmDrawBtn) {
+    adminConfirmDrawBtn.addEventListener("click", () => {
+      app.executeManualDrawWinner();
+    });
+  }
 
-  document.getElementById("admin-close-draw-modal-btn").addEventListener("click", () => {
-    document.getElementById("admin-draw-modal").classList.add("hidden");
-    app.render();
-  });
+  const adminCloseDrawModalBtn = document.getElementById("admin-close-draw-modal-btn");
+  if (adminCloseDrawModalBtn) {
+    adminCloseDrawModalBtn.addEventListener("click", () => {
+      document.getElementById("admin-draw-modal").classList.add("hidden");
+      app.render();
+    });
+  }
 
   // Create Lottery Pool Dialog Trigger
-  document.getElementById("add-new-pool-master-btn").addEventListener("click", () => {
-    app.populateCreatePoolCategories();
-    document.getElementById("admin-create-pool-modal").classList.remove("hidden");
-  });
+  const addNewPoolMasterBtn = document.getElementById("add-new-pool-master-btn");
+  if (addNewPoolMasterBtn) {
+    addNewPoolMasterBtn.addEventListener("click", () => {
+      app.populateCreatePoolCategories();
+      document.getElementById("admin-create-pool-modal").classList.remove("hidden");
+    });
+  }
 
-  document.getElementById("admin-close-create-pool-modal").addEventListener("click", () => {
-    document.getElementById("admin-create-pool-modal").classList.add("hidden");
-  });
+  const adminCloseCreatePoolModal = document.getElementById("admin-close-create-pool-modal");
+  if (adminCloseCreatePoolModal) {
+    adminCloseCreatePoolModal.addEventListener("click", () => {
+      document.getElementById("admin-create-pool-modal").classList.add("hidden");
+    });
+  }
 
   // Toggle admin dynamic form fields based on draw mode
   const modeSelect = document.getElementById("create-pool-draw-mode");
@@ -10062,53 +8387,56 @@ function initApplicationLoader() {
 
   // Handle Form Adding Pool
   const createPoolForm = document.getElementById("admin-pool-creation-form");
-  createPoolForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const title = document.getElementById("create-pool-title").value.trim();
-    const fee = parseFloat(document.getElementById("create-pool-fee").value);
-    const prize = parseFloat(document.getElementById("create-pool-prize").value);
-    const total = parseInt(document.getElementById("create-pool-total").value);
-    const cat = document.getElementById("create-pool-cat").value;
-    const drawMode = document.getElementById("create-pool-draw-mode").value;
-    const drawDuration = parseInt(document.getElementById("create-pool-draw-time").value) || 10;
-    const exactDatetime = document.getElementById("create-pool-draw-datetime").value;
-    const desc = document.getElementById("create-pool-desc").value.trim();
+  if (createPoolForm) {
+    createPoolForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const title = document.getElementById("create-pool-title").value.trim();
+      const fee = parseFloat(document.getElementById("create-pool-fee").value);
+      const prize = parseFloat(document.getElementById("create-pool-prize").value);
+      const total = parseInt(document.getElementById("create-pool-total").value);
+      const cat = document.getElementById("create-pool-cat").value;
+      const drawMode = document.getElementById("create-pool-draw-mode").value;
+      const drawDuration = parseInt(document.getElementById("create-pool-draw-time").value) || 10;
+      const exactDatetime = document.getElementById("create-pool-draw-datetime").value;
+      const desc = document.getElementById("create-pool-desc").value.trim();
 
-    // Custom multi-winner prize extraction based on dynamic category type
-    const multiPrizesInput = document.getElementById("create-pool-multi-prizes");
-    let multiWinnerPrizes = null;
-    const selectedCatObj = app.db.categories.find(c => c.name === cat);
-    if (multiPrizesInput && multiPrizesInput.value.trim() && selectedCatObj && selectedCatObj.type === "multi") {
-      multiWinnerPrizes = multiPrizesInput.value.split(",")
-        .map(x => parseFloat(x.trim()))
-        .filter(x => !isNaN(x));
-    }
+      // Custom multi-winner prize extraction based on dynamic category type
+      const multiPrizesInput = document.getElementById("create-pool-multi-prizes");
+      let multiWinnerPrizes = null;
+      const selectedCatObj = app.db.categories.find(c => c.name === cat);
+      if (multiPrizesInput && multiPrizesInput.value.trim() && selectedCatObj && selectedCatObj.type === "multi") {
+        multiWinnerPrizes = multiPrizesInput.value.split(",")
+          .map(x => parseFloat(x.trim()))
+          .filter(x => !isNaN(x));
+      }
 
-    app.createNewLotteryPool(title, fee, prize, total, cat, drawMode, drawDuration, exactDatetime, desc, multiWinnerPrizes);
-    document.getElementById("admin-create-pool-modal").classList.add("hidden");
+      app.createNewLotteryPool(title, fee, prize, total, cat, drawMode, drawDuration, exactDatetime, desc, multiWinnerPrizes);
+      document.getElementById("admin-create-pool-modal").classList.add("hidden");
 
-    // Reset Form
-    document.getElementById("create-pool-title").value = "";
-    document.getElementById("create-pool-fee").value = "10";
-    document.getElementById("create-pool-prize").value = "500";
-    document.getElementById("create-pool-total").value = "1000";
-    document.getElementById("create-pool-draw-mode").value = "manual";
-    document.getElementById("create-pool-draw-time").value = "10";
-    document.getElementById("create-pool-draw-datetime").value = "";
-    document.getElementById("create-pool-desc").value = "";
-    if (multiPrizesInput) multiPrizesInput.value = "";
+      // Reset Form
+      document.getElementById("create-pool-title").value = "";
+      document.getElementById("create-pool-fee").value = "10";
+      document.getElementById("create-pool-prize").value = "500";
+      document.getElementById("create-pool-total").value = "1000";
+      document.getElementById("create-pool-draw-mode").value = "manual";
+      document.getElementById("create-pool-draw-time").value = "10";
+      document.getElementById("create-pool-draw-datetime").value = "";
+      document.getElementById("create-pool-desc").value = "";
+      if (multiPrizesInput) multiPrizesInput.value = "";
 
-    const timerCont = document.getElementById("create-pool-timer-container");
-    const dtCont = document.getElementById("create-pool-datetime-container");
-    const multiContainer = document.getElementById("multi-winner-config-container");
-    if (timerCont) timerCont.classList.add("hidden");
-    if (dtCont) dtCont.classList.add("hidden");
-    if (multiContainer) multiContainer.classList.add("hidden");
-  });
+      const timerCont = document.getElementById("create-pool-timer-container");
+      const dtCont = document.getElementById("create-pool-datetime-container");
+      const multiContainer = document.getElementById("multi-winner-config-container");
+      if (timerCont) timerCont.classList.add("hidden");
+      if (dtCont) dtCont.classList.add("hidden");
+      if (multiContainer) multiContainer.classList.add("hidden");
+    });
+  }
 
   // Save Settings forms
   const saveGatewaysForm = document.getElementById("admin-settings-gateways-form");
-  saveGatewaysForm.addEventListener("submit", (e) => {
+  if (saveGatewaysForm) {
+    saveGatewaysForm.addEventListener("submit", (e) => {
     e.preventDefault();
 
     const s = app.db.settings;
@@ -10163,11 +8491,13 @@ function initApplicationLoader() {
     app.saveDB();
     app.showToast("Live payment gateways and dynamic routes synchronized.", "success");
     app.render();
-  });
+    });
+  }
 
   const saveAppConfigForm = document.getElementById("admin-settings-app-config-form");
-  saveAppConfigForm.addEventListener("submit", (e) => {
-    e.preventDefault();
+  if (saveAppConfigForm) {
+    saveAppConfigForm.addEventListener("submit", (e) => {
+      e.preventDefault();
 
     app.db.settings.maintenanceMode = document.getElementById("sys-maintenance-toggle").checked;
     app.db.settings.maintenanceMessage = document.getElementById("sys-maintenance-msg").value.trim();
@@ -10187,7 +8517,8 @@ function initApplicationLoader() {
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");
     app.render();
-  });
+    });
+  }
 
   const saveWebsiteForm = document.getElementById("admin-settings-website-form");
   if (saveWebsiteForm) {
@@ -10318,82 +8649,108 @@ function initApplicationLoader() {
 
   // ================= EVENT BINDINGS FOR CUSTOM MODALS & GOOGLE DRIVE/PICKER =================
 
-  // Close details and ticket popup modals
-  document.getElementById("close-lottery-details-btn").addEventListener("click", () => {
-    document.getElementById("lottery-details-modal").classList.add("hidden");
-  });
-  
-  document.getElementById("close-ticket-info-btn").addEventListener("click", () => {
-    document.getElementById("ticket-info-modal").classList.add("hidden");
-  });
+  // Close details and ticket popup modals (delegated)
+  document.addEventListener("click", (e) => {
+    const closeLotteryBtn = e.target.closest("#close-lottery-details-btn");
+    if (closeLotteryBtn) {
+      document.getElementById("lottery-details-modal").classList.add("hidden");
+      return;
+    }
 
-  // Local user profile avatar photo upload input selection
-  document.getElementById("profile-local-upload-input").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        app.currentUser.photo = event.target.result;
-        app.saveDB();
-        app.showToast("Local profile image assigned custom avatar!", "success");
-        app.render();
-      };
-      reader.readAsDataURL(file);
+    const closeTicketBtn = e.target.closest("#close-ticket-info-btn");
+    if (closeTicketBtn) {
+      document.getElementById("ticket-info-modal").classList.add("hidden");
+      return;
+    }
+
+    const profileGoogleBtn = e.target.closest("#profile-google-photo-btn");
+    if (profileGoogleBtn) {
+      app.launchGooglePickerForAvatar();
+      return;
+    }
+
+    const gdriveAuthBtn = e.target.closest("#gdrive-authorize-btn");
+    if (gdriveAuthBtn) {
+      app.authenticateGoogle();
+      return;
+    }
+
+    const gdriveDisconnectBtn = e.target.closest("#gdrive-disconnect-btn");
+    if (gdriveDisconnectBtn) {
+      app.disconnectGoogle();
+      return;
+    }
+
+    const backupLedgerBtn = e.target.closest("#backup-ledger-btn");
+    if (backupLedgerBtn) {
+      app.backupLedgersToDrive();
+      return;
+    }
+
+    const viewBackupsBtn = e.target.closest("#view-backups-picker-btn");
+    if (viewBackupsBtn) {
+      app.browseDriveStatementsPicker();
+      return;
+    }
+
+    const depReceiptPickerBtn = e.target.closest("#dep-receipt-picker-btn");
+    if (depReceiptPickerBtn) {
+      app.launchGooglePickerForReceipt();
+      return;
+    }
+
+    const depClearReceiptBtn = e.target.closest("#dep-clear-receipt-btn");
+    if (depClearReceiptBtn) {
+      app.selectedReceiptFile = null;
+      const holder = document.getElementById("dep-selected-receipt-holder");
+      if (holder) holder.classList.add("hidden");
+      app.showToast("Receipt attachment removed.", "info");
+      return;
     }
   });
 
-  // Google Picker avatar photo select button
-  document.getElementById("profile-google-photo-btn").addEventListener("click", () => {
-    app.launchGooglePickerForAvatar();
+  // Local user profile avatar photo upload input selection & dynamic gateway instructions (delegated)
+  document.addEventListener("change", (e) => {
+    const profileUploadInput = e.target.closest("#profile-local-upload-input");
+    if (profileUploadInput) {
+      const file = profileUploadInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          app.currentUser.photo = event.target.result;
+          app.saveDB();
+          app.showToast("Local profile image assigned custom avatar!", "success");
+          app.render();
+        };
+        reader.readAsDataURL(file);
+      }
+      return;
+    }
+
+    const depGatewayInput = e.target.closest("#dep-gateway");
+    if (depGatewayInput) {
+      app.updateSelectedDepositGatewayInstructions();
+      return;
+    }
   });
 
-  // Profile Edit form submitted inside SPA Tab
-  document.getElementById("profile-edit-form-spa").addEventListener("submit", (e) => {
-    e.preventDefault();
-    const emailVal = document.getElementById("profile-edit-email").value.trim();
-    const phoneVal = document.getElementById("profile-edit-phone").value.trim();
-    const dobVal = document.getElementById("profile-edit-dob").value.trim();
+  // Profile Edit form submitted inside SPA Tab & other forms (delegated)
+  document.addEventListener("submit", (e) => {
+    const editForm = e.target.closest("#profile-edit-form-spa");
+    if (editForm) {
+      e.preventDefault();
+      const emailVal = document.getElementById("profile-edit-email").value.trim();
+      const phoneVal = document.getElementById("profile-edit-phone").value.trim();
+      const dobVal = document.getElementById("profile-edit-dob").value.trim();
 
-    app.currentUser.email = emailVal;
-    app.currentUser.phone = phoneVal;
-    app.currentUser.dob = dobVal;
+      app.currentUser.email = emailVal;
+      app.currentUser.phone = phoneVal;
+      app.currentUser.dob = dobVal;
 
-    app.saveDB();
-    app.showToast("Profile credentials synchronized successfully!", "success");
-    app.render();
-  });
-
-  // Google Drive connect, disconnect and statement methods inside wallet tab
-  document.getElementById("gdrive-authorize-btn").addEventListener("click", () => {
-    app.authenticateGoogle();
-  });
-
-  document.getElementById("gdrive-disconnect-btn").addEventListener("click", () => {
-    app.disconnectGoogle();
-  });
-
-  document.getElementById("backup-ledger-btn").addEventListener("click", () => {
-    app.backupLedgersToDrive();
-  });
-
-  document.getElementById("view-backups-picker-btn").addEventListener("click", () => {
-    app.browseDriveStatementsPicker();
-  });
-
-  // Deposit proof receipt selection with Google Drive Picker
-  document.getElementById("dep-receipt-picker-btn").addEventListener("click", () => {
-    app.launchGooglePickerForReceipt();
-  });
-
-  document.getElementById("dep-clear-receipt-btn").addEventListener("click", () => {
-    app.selectedReceiptFile = null;
-    document.getElementById("dep-selected-receipt-holder").classList.add("hidden");
-    app.showToast("Receipt attachment removed.", "info");
-  });
-
-  // Dynamic user-side deposit channels swapper
-  document.getElementById("dep-gateway").addEventListener("change", () => {
-    app.updateSelectedDepositGatewayInstructions();
+      app.saveDB();
+      app.showToast("Profile credentials synchronized successfully!", "success");
+      app.render();
+    }
   });
 
   // Click to Copy action for target line account number/addresses
