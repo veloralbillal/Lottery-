@@ -4046,7 +4046,10 @@ public class DatabaseClusterRouter {
     slides.forEach((slide, idx) => {
       // Create slide element
       const slideDiv = document.createElement("div");
-      slideDiv.className = "min-w-full h-full relative flex-shrink-0 cursor-pointer select-none overflow-hidden rounded-3xl";
+      slideDiv.className = "h-full relative cursor-pointer select-none overflow-hidden rounded-3xl";
+      slideDiv.style.width = "100%";
+      slideDiv.style.minWidth = "100%";
+      slideDiv.style.flexShrink = "0";
       slideDiv.innerHTML = `
         <img src="${slide.imageUrl || 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop'}" alt="${slide.title}" class="w-full h-full object-cover select-none pointer-events-none">
         <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent flex flex-col justify-center px-6 md:px-8 space-y-1.5">

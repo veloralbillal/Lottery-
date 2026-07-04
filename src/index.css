@@ -132,7 +132,7 @@
   transform: rotateY(180deg);
 }
 
-/* Fix 3D elements piercing through overlays */
+/* Ensure all modal overlays are extremely high in standard z-index stack without breaking fixed-positioning with 3D transforms */
 #full-screen-popup-modal,
 #congrats-splash-modal,
 #lucky-spin-modal,
@@ -148,7 +148,6 @@
 #cloud-sync-modal,
 #maintenance-backdoor-modal,
 #community-report-modal {
-  transform: translate3d(0, 0, 10000px) !important;
-  transform-style: preserve-3d !important;
+  z-index: 100000 !important;
 }
 
