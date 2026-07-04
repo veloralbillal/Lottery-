@@ -149,6 +149,7 @@ class StateManager {
     // Load dashboard templates dynamically for local client-side dev/Vite
     this.loadDashboardTabs().then(() => {
       console.log("All dashboard tabs loaded successfully.");
+      this.render();
     });
 
     // Trigger spectacular 3D loading splash screen sequence

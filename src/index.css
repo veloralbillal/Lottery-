@@ -132,3 +132,23 @@
   transform: rotateY(180deg);
 }
 
+/* Fix 3D elements piercing through overlays */
+#full-screen-popup-modal,
+#congrats-splash-modal,
+#lucky-spin-modal,
+#daily-checkin-modal,
+#vip-lounge-modal,
+#ticket-info-modal,
+#lottery-details-modal,
+#admin-user-edit-modal,
+#admin-draw-modal,
+#admin-create-pool-modal,
+#screenshot-viewer-modal,
+#offline-modal,
+#cloud-sync-modal,
+#maintenance-backdoor-modal,
+#community-report-modal {
+  transform: translate3d(0, 0, 10000px) !important;
+  transform-style: preserve-3d !important;
+}
+
