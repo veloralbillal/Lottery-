@@ -126,9 +126,9 @@
           </p>
         </div>
       </div>
-      <a href="/otp.html" target="_blank" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-[11px] py-2.5 rounded-xl transition duration-150 transform hover:scale-[1.01] cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/15">
+      <button type="button" id="profile-access-otp-btn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black text-[11px] py-2.5 rounded-xl transition duration-150 transform hover:scale-[1.01] cursor-pointer uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/15">
         <i class="fa-solid fa-shield-halved"></i> Access OTP Generator Page
-      </a>
+      </button>
     </div>
 
     <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono pt-1.5 text-left border-t border-slate-850/60">

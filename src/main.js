@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { initializeFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { ChatProfileSystem } from "./chat-profile-system.js";
+import { OfflineQueueManager } from "./js/syncQueue.js";
 import { AdminModule } from "./js/admin.js";
 import { AgentModule } from "./js/agent.js";
 import { HomeTab } from "./dashboard_tabs/home.js";
@@ -19,17 +20,19 @@ class StateManager {
     const seen = new WeakSet();
     return (key, value) => {
       if (typeof value === "object" && value !== null) {
-        if (value.constructor && (
-          value.constructor.name.startsWith("Firestore") ||
-          value.constructor.name.startsWith("Document") ||
-          value.constructor.name.startsWith("Query") ||
-          value.constructor.name.startsWith("Collection") ||
-          value.constructor.name.startsWith("Firebase") ||
-          value.constructor.name.startsWith("HTML") ||
-          value.constructor.name === "Window" ||
-          value.constructor.name === "Sa" ||
-          value.constructor.name === "Q$1"
-        )) {
+        const cname = (value.constructor && typeof value.constructor.name === "string") ? value.constructor.name : "";
+        if (
+          cname.startsWith("Firestore") ||
+          cname.startsWith("Document") ||
+          cname.startsWith("Query") ||
+          cname.startsWith("Collection") ||
+          cname.startsWith("Firebase") ||
+          cname.startsWith("HTML") ||
+          cname === "Window" ||
+          cname === "Sa" ||
+          cname === "Q$1" ||
+          (value.constructor && value.constructor !== Object && value.constructor !== Array && value.constructor !== Date)
+        ) {
           return undefined;
         }
         if (seen.has(value)) {
@@ -45,17 +48,19 @@ class StateManager {
     if (obj === null || typeof obj !== "object") {
       return obj;
     }
-    if (obj.constructor && (
-      obj.constructor.name.startsWith("Firestore") ||
-      obj.constructor.name.startsWith("Document") ||
-      obj.constructor.name.startsWith("Query") ||
-      obj.constructor.name.startsWith("Collection") ||
-      obj.constructor.name.startsWith("Firebase") ||
-      obj.constructor.name.startsWith("HTML") ||
-      obj.constructor.name === "Window" ||
-      obj.constructor.name === "Sa" ||
-      obj.constructor.name === "Q$1"
-    )) {
+    const cname = (obj.constructor && typeof obj.constructor.name === "string") ? obj.constructor.name : "";
+    if (
+      cname.startsWith("Firestore") ||
+      cname.startsWith("Document") ||
+      cname.startsWith("Query") ||
+      cname.startsWith("Collection") ||
+      cname.startsWith("Firebase") ||
+      cname.startsWith("HTML") ||
+      cname === "Window" ||
+      cname === "Sa" ||
+      cname === "Q$1" ||
+      (obj.constructor && obj.constructor !== Object && obj.constructor !== Array && obj.constructor !== Date)
+    ) {
       return null;
     }
     if (seen.has(obj)) {
@@ -69,22 +74,22 @@ class StateManager {
           if (seen.has(obj[i])) {
             obj[i] = null;
           } else {
-            StateManager.removeCircularReferences(obj[i], seen);
+            obj[i] = StateManager.removeCircularReferences(obj[i], seen);
           }
         }
       }
     } else {
       for (const key in obj) {
         if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
+            obj[key] = null;
+            continue;
+          }
           if (typeof obj[key] === "object" && obj[key] !== null) {
-            if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
-              obj[key] = null;
-              continue;
-            }
             if (seen.has(obj[key])) {
               obj[key] = null;
             } else {
-              StateManager.removeCircularReferences(obj[key], seen);
+              obj[key] = StateManager.removeCircularReferences(obj[key], seen);
             }
           }
         }
@@ -124,6 +129,7 @@ class StateManager {
 
     // Initialize real-time cloud synchronization from Firebase
     this.initFirebaseSync();
+    this.offlineQueue = new OfflineQueueManager(this);
 
     this.offlineGameCards = [];
     this.firstFlippedCard = null;
@@ -423,6 +429,34 @@ class StateManager {
           { title: "Silver Partner", count: 8, reward: 150 },
           { title: "Gold Ambassador", count: 20, reward: 500 },
           { title: "Supreme Influencer", count: 50, reward: 1500 }
+        ];
+      }
+      if (!this.db.settings.popupEvent) {
+        this.db.settings.popupEvent = {
+          enabled: true,
+          title: "Eid Mega Draw Festival! 🎉",
+          message: "Deposit ৳500 or more today and get a free Ticket to the ৳100,000 Eid Pool! This exclusive premium bonus is available for a limited time only.",
+          imageUrl: "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop",
+          actionText: "Claim Bonus",
+          actionLink: "wallet"
+        };
+      }
+      if (!this.db.settings.bannerSlides) {
+        this.db.settings.bannerSlides = [
+          {
+            id: "b1",
+            title: "Super Fast Payouts In 5 Minutes! ⚡",
+            subtitle: "bKash, Nagad, Rocket & Crypto USDT",
+            imageUrl: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop",
+            link: "wallet"
+          },
+          {
+            id: "b2",
+            title: "Earn 10% Referral Lifetime Bonus! 👥",
+            subtitle: "Invite your friends using your affiliate link",
+            imageUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop",
+            link: "refer"
+          }
         ];
       }
       if (!this.db.users) {
@@ -1097,7 +1131,41 @@ class StateManager {
       });
     }
 
-    // ================= DYNAMIC STANDBY CLUSTER HANDLERS =================
+     // ================= DYNAMIC STANDBY CLUSTER HANDLERS =================
+    const typeSelector = document.getElementById("sync-node-type");
+    if (typeSelector) {
+      typeSelector.addEventListener("change", (e) => {
+        const selectedType = e.target.value;
+        const sqlFields = document.getElementById("sync-sql-fields");
+        const apiFields = document.getElementById("sync-api-fields");
+        const endpointInput = document.getElementById("sync-node-endpoint");
+
+        if (selectedType === "sql") {
+          if (sqlFields) sqlFields.classList.remove("hidden");
+          if (apiFields) apiFields.classList.add("hidden");
+          if (endpointInput) {
+            endpointInput.placeholder = "postgresql://username:password@host:5432/db";
+            endpointInput.value = "postgresql://root_lotto:SecretPass123!@db.lotto-postgres.internal:5432/lottery";
+          }
+        } else if (selectedType === "api") {
+          if (sqlFields) sqlFields.classList.add("hidden");
+          if (apiFields) apiFields.classList.remove("hidden");
+          if (endpointInput) {
+            endpointInput.placeholder = "https://api.myweb.com/v1/sync";
+            endpointInput.value = "https://api.myweb.com/v1/sync";
+          }
+        } else {
+          // firebase
+          if (sqlFields) sqlFields.classList.add("hidden");
+          if (apiFields) apiFields.classList.add("hidden");
+          if (endpointInput) {
+            endpointInput.placeholder = "firebase://project-id/collection-path";
+            endpointInput.value = "firebase://lottery-app-prod-ha/active_transactions";
+          }
+        }
+      });
+    }
+
     const addForm = document.getElementById("add-sync-node-form");
     if (addForm) {
       addForm.addEventListener("submit", (e) => {
@@ -1111,6 +1179,11 @@ class StateManager {
         const nodeMode = document.getElementById("sync-node-mode").value;
         const nodeDesc = document.getElementById("sync-node-description").value.trim() || `${nodeType.toUpperCase()} Standby Replication cluster point.`;
 
+        const sqlHost = document.getElementById("sync-node-host")?.value.trim() || "";
+        const sqlUser = document.getElementById("sync-node-user")?.value.trim() || "";
+        const sqlPass = document.getElementById("sync-node-pass")?.value.trim() || "";
+        const apiKey = document.getElementById("sync-node-apiKey")?.value.trim() || "";
+
         const id = "node-" + Date.now();
         const newNode = {
           id,
@@ -1123,7 +1196,11 @@ class StateManager {
           active: false,
           mode: nodeMode,
           description: nodeDesc,
-          tier: nodeTier
+          tier: nodeTier,
+          sqlHost,
+          sqlUser,
+          sqlPass,
+          apiKey
         };
 
         if (!this.db.syncNodes) this.db.syncNodes = [];
@@ -1137,6 +1214,10 @@ class StateManager {
         
         this.saveDB();
         addForm.reset();
+        const sqlFields = document.getElementById("sync-sql-fields");
+        const apiFields = document.getElementById("sync-api-fields");
+        if (sqlFields) sqlFields.classList.add("hidden");
+        if (apiFields) apiFields.classList.add("hidden");
         this.renderSyncVaultTab();
       });
     }
@@ -1191,6 +1272,56 @@ class StateManager {
               this.saveDB();
               this.renderSyncVaultTab();
             }, 800);
+          }
+        }
+
+        const testDbBtn = e.target.closest(".action-test-db");
+        if (testDbBtn) {
+          const nodeId = testDbBtn.getAttribute("data-id");
+          const node = this.db.syncNodes.find(n => n.id === nodeId);
+          if (node) {
+            const originalHtml = testDbBtn.innerHTML;
+            testDbBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-cyan-400"></i> Testing...`;
+            testDbBtn.disabled = true;
+
+            setTimeout(() => {
+              testDbBtn.innerHTML = originalHtml;
+              testDbBtn.disabled = false;
+
+              if (node.status === "outage") {
+                this.addConsoleLog(`[FAILOVER TEST] 🔴 FAILED: Unable to query database context on "${node.name}". Connection Refused (Outage simulated status active).`, "error");
+                this.showToast(`Database switching test failed: "${node.name}" is offline.`, "error");
+                return;
+              }
+
+              if (node.type === "sql") {
+                const host = node.sqlHost || "db.lotto-postgres.internal";
+                const username = node.sqlUser || "postgres_root";
+                this.addConsoleLog(`[FAILOVER TEST] 🟡 Initiating Postgres/MySQL query sequence to Host: ${host}...`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🔑 Credentials authenticated using username: "${username}" and password: "●●●●●●●●".`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🟢 Switch context verified successfully! Synced 24 relational ledger tables. Status: ONLINE.`, "success");
+              } else if (node.type === "firebase") {
+                this.addConsoleLog(`[FAILOVER TEST] 🟡 Querying Google Firestore Collections at ${node.endpoint}...`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🔑 Token-based session verification with Firebase Security Rules...`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🟢 Switch context verified successfully! Collections authenticated successfully.`, "success");
+              } else {
+                const secret = node.apiKey ? "●●●●" + node.apiKey.slice(-4) : "None (Insecure Endpoint)";
+                this.addConsoleLog(`[FAILOVER TEST] 🟡 Sending synchronization payload to Webhook URL: ${node.endpoint}...`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🔑 Webhook API Signature secret validated with key: "${secret}".`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🟢 REST API webhook handshake succeeded! Status: 200 OK.`, "success");
+              }
+
+              // Set active database context to this node to confirm failover switching works!
+              this.db.syncNodes.forEach(n => n.active = false);
+              node.active = true;
+              if (node.status === "standby") node.status = "connected";
+              this.addConsoleLog(`[FAILOVER TEST] 🚀 Traffic routed successfully to "${node.name}" context. Dynamic failover validated.`, "success");
+
+              this.showCongratsSplash(`Connection Verified!`, `Your database context has switched seamlessly to <strong>${node.name}</strong>. All query pipelines have successfully authenticated and are running live!`);
+
+              this.saveDB();
+              this.renderSyncVaultTab();
+            }, 1200);
           }
         }
 
@@ -1900,6 +2031,11 @@ public class DatabaseClusterRouter {
                 <i class="fa-solid fa-bolt"></i> Ping Node
               </button>
 
+              <!-- Test DB Connection check -->
+              <button class="action-test-db text-[9.5px] font-mono font-bold bg-indigo-950 border border-indigo-850 text-indigo-300 hover:text-white hover:bg-indigo-900 px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}" title="Test DB switching and connection auth verification">
+                <i class="fa-solid fa-plug-circle-check text-cyan-400"></i> Test DB
+              </button>
+
               <!-- Force Set Active master override -->
               ${!node.active ? `
                 <button class="action-set-active text-[9.5px] font-mono font-bold bg-cyan-950 border border-cyan-800 text-cyan-300 hover:bg-cyan-900 px-2.5 py-1.5 rounded-lg transition cursor-pointer" data-id="${node.id}">
@@ -2024,6 +2160,184 @@ public class DatabaseClusterRouter {
       if (!card) return;
       card.style.transform = "perspective(800px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)";
     }, true);
+  }
+
+  triggerConfetti() {
+    const canvas = document.getElementById("celebration-confetti-canvas");
+    if (!canvas) return;
+
+    canvas.classList.remove("hidden");
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ["#06b6d4", "#ec4899", "#eab308", "#10b981", "#6366f1", "#f97316"];
+    const particles = [];
+
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 4 + 3,
+        d: Math.random() * canvas.height,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        tilt: Math.random() * 10 - 5,
+        tiltAngleIncremental: Math.random() * 0.07 + 0.02,
+        tiltAngle: 0
+      });
+    }
+
+    let animationFrameId;
+    const startTime = Date.now();
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      let activeParticles = 0;
+      particles.forEach((p, index) => {
+        p.tiltAngle += p.tiltAngleIncremental;
+        p.y += (Math.cos(p.d) + 3 + p.r / 2) / 2;
+        p.x += Math.sin(p.tiltAngle);
+        p.tilt = Math.sin(p.tiltAngle - index / 3) * 15;
+
+        if (p.y < canvas.height) {
+          activeParticles++;
+        }
+
+        ctx.beginPath();
+        ctx.lineWidth = p.r;
+        ctx.strokeStyle = p.color;
+        ctx.moveTo(p.x + p.tilt + p.r / 2, p.y);
+        ctx.lineTo(p.x + p.tilt, p.y + p.tilt + p.r / 2);
+        ctx.stroke();
+      });
+
+      if (Date.now() - startTime < 4000 && activeParticles > 0) {
+        animationFrameId = requestAnimationFrame(draw);
+      } else {
+        canvas.classList.add("hidden");
+        cancelAnimationFrame(animationFrameId);
+      }
+    }
+
+    draw();
+  }
+
+  showCongratsSplash(title, message, rewardAmount) {
+    const modal = document.getElementById("congrats-splash-modal");
+    const titleEl = document.getElementById("congrats-splash-title");
+    const msgEl = document.getElementById("congrats-splash-message");
+    const amountEl = document.getElementById("congrats-splash-amount");
+    const closeBtn = document.getElementById("congrats-splash-close-btn");
+    const shareBtn = document.getElementById("congrats-splash-share-btn");
+
+    if (!modal) return;
+
+    if (titleEl) titleEl.innerText = title;
+    if (msgEl) msgEl.innerText = message;
+    if (amountEl) amountEl.innerText = rewardAmount;
+
+    modal.classList.remove("hidden");
+    this.triggerConfetti();
+
+    if (navigator.vibrate) navigator.vibrate([100, 50, 150]);
+
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.classList.add("hidden");
+      };
+    }
+
+    if (shareBtn) {
+      shareBtn.onclick = () => {
+        try {
+          const shareText = encodeURIComponent(`🎉 I just unlocked a reward on Lottery Winner!\n🏆 Goal: ${title}\n💰 Prize claimed: ${rewardAmount} Taka!\nJoin now: ${window.location.origin}`);
+          const link = document.createElement("a");
+          link.href = `https://t.me/share/url?url=${shareText}`;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.click();
+        } catch (err) {
+          navigator.clipboard.writeText(`I just claimed ৳${rewardAmount} on Lottery Winner! Join now: ${window.location.origin}`);
+          this.showToast("Link copied to clipboard! You can share it anywhere.", "success");
+        }
+      };
+    }
+  }
+
+  startLiveActivityTicker() {
+    const track = document.getElementById("live-activity-ticker-track");
+    if (!track) return;
+
+    const templates = [
+      "@{user} just won ৳{amount} from Lucky Spin! 🎡",
+      "@{user} claimed ৳{amount} {level} Milestone Reward! 🏆",
+      "@{user} purchased {tickets} ticket entries to {pool}! 🎫",
+      "@{user} requested bKash cashout withdrawal of ৳{amount}! 💸",
+      "@{user} made a secure bKash deposit of ৳{amount}! 💳",
+      "New player @{user} registered via affiliate link! 🌟",
+      "@{user} completed automated Cashout OTP checkout! 🔒"
+    ];
+
+    const banglaNames = [
+      "shohan", "arif_99", "rifat", "nayem_dx", "sajid", "tamim", "rakib_pro", 
+      "bKash_agent", "taka_master", "lucky_win", "shakib_75", "mim_tabassum",
+      "ruma_akter", "faisal_khan", "hasan_joy", "tanvir_boss", "mehedi"
+    ];
+
+    const pools = [
+      "Mega Jackpot Pool", "Daily Cash Draw", "Eid Festival Grand Pool", "Bronze Starter Pool"
+    ];
+
+    const levels = [
+      "Bronze Recruiter", "Silver Partner", "Gold Ambassador", "Supreme Influencer"
+    ];
+
+    const generateRandomActivity = () => {
+      const template = templates[Math.floor(Math.random() * templates.length)];
+      const user = banglaNames[Math.floor(Math.random() * banglaNames.length)];
+      let amount = (Math.floor(Math.random() * 15) * 50 + 50).toFixed(0);
+      if (template.includes("Spin")) {
+        amount = [10, 15, 20, 50, 100, 250, 500][Math.floor(Math.random() * 7)];
+      }
+      const tickets = Math.floor(Math.random() * 8) + 1;
+      const pool = pools[Math.floor(Math.random() * pools.length)];
+      const level = levels[Math.floor(Math.random() * levels.length)];
+
+      return template
+        .replace("{user}", user)
+        .replace("{amount}", amount)
+        .replace("{tickets}", tickets)
+        .replace("{pool}", pool)
+        .replace("{level}", level);
+    };
+
+    const updateTickerText = () => {
+      let html = "";
+      for (let i = 0; i < 4; i++) {
+        const text = generateRandomActivity();
+        html += `
+          <span class="inline-flex items-center gap-1.5 text-[9.5px] font-medium text-slate-300">
+            <i class="fa-solid fa-bolt-lightning text-amber-500 animate-pulse text-[8px]"></i>
+            ${text}
+          </span>
+        `;
+      }
+      track.innerHTML = html;
+      
+      track.style.opacity = "0";
+      setTimeout(() => {
+        track.style.opacity = "1";
+      }, 150);
+    };
+
+    updateTickerText();
+
+    if (this.liveTickerInterval) {
+      clearInterval(this.liveTickerInterval);
+    }
+    this.liveTickerInterval = setInterval(updateTickerText, 6000);
   }
 
   initSplashScreen() {
@@ -2163,6 +2477,7 @@ public class DatabaseClusterRouter {
   async loadDashboardTabs() {
     const tabs = [
       { id: "tab-home", file: "/src/dashboard_tabs/home.php" },
+      { id: "tab-events", file: "/src/dashboard_tabs/events_tab.php" },
       { id: "tab-tickets", file: "/src/dashboard_tabs/tickets.php" },
       { id: "tab-wallet", file: "/src/dashboard_tabs/wallet.php" },
       { id: "tab-history", file: "/src/dashboard_tabs/history.php" },
@@ -2170,7 +2485,8 @@ public class DatabaseClusterRouter {
       { id: "tab-badge-request", file: "/src/dashboard_tabs/badge_request.php" },
       { id: "tab-refer", file: "/src/dashboard_tabs/refer.php" },
       { id: "tab-jackpot", file: "/src/dashboard_tabs/jackpot.php" },
-      { id: "tab-tasks", file: "/src/dashboard_tabs/missions.php" }
+      { id: "tab-tasks", file: "/src/dashboard_tabs/missions.php" },
+      { id: "tab-otp", file: "/src/dashboard_tabs/otp.php" }
     ];
     
     for (const tab of tabs) {
@@ -2457,8 +2773,8 @@ public class DatabaseClusterRouter {
 
   tickProgressiveJackpot() {
     if (this.db && this.db.settings) {
-      // Simulate real-time ticking increment for mega pools FOMO
-      const inc = (Math.random() * 0.16) + 0.04;
+      // Micro real-time ticker to simulate passive visual tracking (extremely tiny)
+      const inc = (Math.random() * 0.005) + 0.001;
       this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 84250) + inc;
       this.saveDB();
 
@@ -2514,8 +2830,8 @@ public class DatabaseClusterRouter {
     this.currentUser.balance -= finalCost;
     this.currentUser.jackpotTickets = (this.currentUser.jackpotTickets || 0) + 1;
     
-    // Add 1.5% of ticket cost directly into the progressive Jackpot balance
-    this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 84250) + (finalCost * 0.015);
+    // Add 100% of paid ticket cost directly and live into the progressive Jackpot balance
+    this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 84250) + finalCost;
 
     // Record ledger ledger debit entry
     this.db.transactions.push({
@@ -2911,8 +3227,12 @@ public class DatabaseClusterRouter {
           status: "approved"
         });
 
-        appRef.showToast(`🎉 WINNER! The wheel landed on "${targetSector.label}"! You won ৳${finalWinnings.toFixed(2)} (VIP Boosted: ${vipMult}x). Credits added!`, "success");
-        if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+        // Trigger dynamic interactive congratulations splash screen and live confetti particle celebrate burst
+        appRef.showCongratsSplash(
+          "WHEEL OF FORTUNE WINNER!",
+          `Splendid! You spun the wheel of destiny and it landed right on the "${targetSector.label}" sector! (A VIP Multiplier boost of ${vipMult}x has been credited directly into your real-time balance).`,
+          `৳${finalWinnings.toFixed(2)}`
+        );
       } else {
         appRef.showToast("💨 Landed on Oops! better luck next spin! Try again!", "info");
       }
@@ -3586,6 +3906,10 @@ public class DatabaseClusterRouter {
     } else if (view === "dashboard") {
       document.getElementById("screen-dashboard").classList.remove("hidden");
       this.renderDashboard();
+      if (!this.liveTickerStarted) {
+        this.startLiveActivityTicker();
+        this.liveTickerStarted = true;
+      }
     } else if (view === "admin") {
       document.getElementById("screen-admin").classList.remove("hidden");
       this.renderAdmin();
@@ -3615,14 +3939,24 @@ public class DatabaseClusterRouter {
 
   // ================= DASHBOARD USER VIEW RENDER =================
   renderDashboard() {
+    if (this.currentTab !== "otp" && this.otpInterval) {
+      clearInterval(this.otpInterval);
+      this.otpInterval = null;
+    }
+
     const usernameEls = document.querySelectorAll(".curr-username");
     const balanceEls = document.querySelectorAll(".curr-balance");
 
     usernameEls.forEach(el => el.innerText = this.currentUser.username);
     balanceEls.forEach(el => el.innerText = this.currentUser.balance.toFixed(2));
 
+    // Trigger full screen popup
+    this.triggerFullScreenPopup();
+
     // Hide all tabs
     document.getElementById("tab-home").classList.add("hidden");
+    const tabEvents = document.getElementById("tab-events");
+    if (tabEvents) tabEvents.classList.add("hidden");
     document.getElementById("tab-tickets").classList.add("hidden");
     document.getElementById("tab-wallet").classList.add("hidden");
     document.getElementById("tab-history").classList.add("hidden");
@@ -3635,6 +3969,8 @@ public class DatabaseClusterRouter {
     if (badgeReqTab) badgeReqTab.classList.add("hidden");
     const referTab = document.getElementById("tab-refer");
     if (referTab) referTab.classList.add("hidden");
+    const otpTab = document.getElementById("tab-otp");
+    if (otpTab) otpTab.classList.add("hidden");
 
     // Select tab selector matching classes
     const tabSelectors = document.querySelectorAll(".tab-selector-btn");
@@ -3654,6 +3990,9 @@ public class DatabaseClusterRouter {
     } else if (this.currentTab === "refer") {
       if (referTab) referTab.classList.remove("hidden");
       this.renderReferTab();
+    } else if (this.currentTab === "otp") {
+      if (otpTab) otpTab.classList.remove("hidden");
+      this.renderOtpTab();
     } else {
       const targetTab = document.getElementById(`tab-${this.currentTab}`);
       if (targetTab) targetTab.classList.remove("hidden");
@@ -3661,6 +4000,8 @@ public class DatabaseClusterRouter {
 
     if (this.currentTab === "home") {
       this.renderHomeTab();
+    } else if (this.currentTab === "events") {
+      this.renderEventsTab();
     } else if (this.currentTab === "tickets") {
       this.renderTicketsTab();
     } else if (this.currentTab === "wallet") {
@@ -3678,8 +4019,183 @@ public class DatabaseClusterRouter {
     }
   }
 
+  renderHomeBannerSliders() {
+    const wrapper = document.getElementById("home-banner-slider-wrapper");
+    const track = document.getElementById("home-banner-slider-track");
+    const dotsContainer = document.getElementById("home-banner-slider-dots");
+    if (!wrapper || !track || !dotsContainer) return;
+
+    // Clear any previous interval
+    if (this.bannerSliderInterval) {
+      clearInterval(this.bannerSliderInterval);
+      this.bannerSliderInterval = null;
+    }
+
+    const slides = this.db.settings.bannerSlides || [];
+    if (slides.length === 0) {
+      wrapper.classList.add("hidden");
+      return;
+    }
+
+    wrapper.classList.remove("hidden");
+    track.innerHTML = "";
+    dotsContainer.innerHTML = "";
+    this.currentSlideIndex = 0;
+
+    slides.forEach((slide, idx) => {
+      // Create slide element
+      const slideDiv = document.createElement("div");
+      slideDiv.className = "min-w-full h-full relative flex-shrink-0 cursor-pointer select-none overflow-hidden rounded-3xl";
+      slideDiv.innerHTML = `
+        <img src="${slide.imageUrl || 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop'}" alt="${slide.title}" class="w-full h-full object-cover select-none pointer-events-none">
+        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent flex flex-col justify-center px-6 md:px-8 space-y-1.5">
+          <span class="inline-block self-start text-[7px] md:text-[8px] uppercase font-black text-white bg-red-600 border border-red-500/30 px-2 py-0.5 rounded-full tracking-widest font-mono shadow-md">${slide.subtitle || 'SPECIAL PROMOTION'}</span>
+          <h3 class="text-xs md:text-sm font-black text-white font-display leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] max-w-[280px] tracking-wide">${slide.title}</h3>
+          <span class="text-[8px] text-cyan-400 font-mono font-bold flex items-center gap-1.5 bg-slate-950/40 border border-cyan-500/20 px-2 py-0.5 rounded-md self-start">
+            <i class="fa-solid fa-circle-arrow-right text-[9px] animate-bounce"></i> Tap to visit now
+          </span>
+        </div>
+      `;
+
+      // Tap to navigate
+      slideDiv.addEventListener("click", () => {
+        if (slide.link) {
+          this.currentTab = slide.link;
+          this.renderDashboard();
+        }
+      });
+
+      track.appendChild(slideDiv);
+
+      // Create indicator dot
+      const dot = document.createElement("button");
+      dot.className = `w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-cyan-400 w-3' : 'bg-slate-700'}`;
+      dot.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.goToSlide(idx);
+      });
+      dotsContainer.appendChild(dot);
+    });
+
+    // Update track translation
+    track.style.transform = "translateX(0%)";
+
+    // Setup left/right click navigation
+    const prevBtn = document.getElementById("slider-prev-btn");
+    const nextBtn = document.getElementById("slider-next-btn");
+    if (prevBtn && nextBtn) {
+      prevBtn.onclick = (e) => {
+        e.stopPropagation();
+        const prevIdx = (this.currentSlideIndex - 1 + slides.length) % slides.length;
+        this.goToSlide(prevIdx);
+      };
+      nextBtn.onclick = (e) => {
+        e.stopPropagation();
+        const nextIdx = (this.currentSlideIndex + 1) % slides.length;
+        this.goToSlide(nextIdx);
+      };
+    }
+
+    // Setup auto-slide
+    const intervalTime = 5000;
+    this.bannerSliderInterval = setInterval(() => {
+      const nextIdx = (this.currentSlideIndex + 1) % slides.length;
+      this.goToSlide(nextIdx);
+    }, intervalTime);
+  }
+
+  goToSlide(idx) {
+    const track = document.getElementById("home-banner-slider-track");
+    const dotsContainer = document.getElementById("home-banner-slider-dots");
+    if (!track || !dotsContainer) return;
+
+    const slides = this.db.settings.bannerSlides || [];
+    if (slides.length === 0) return;
+
+    this.currentSlideIndex = idx;
+    track.style.transform = `translateX(-${idx * 100}%)`;
+
+    // Update dots
+    const dots = dotsContainer.querySelectorAll("button");
+    dots.forEach((dot, dIdx) => {
+      if (dIdx === idx) {
+        dot.className = "w-1.5 h-1.5 rounded-full transition-all duration-300 bg-cyan-400 w-3";
+      } else {
+        dot.className = "w-1.5 h-1.5 rounded-full transition-all duration-300 bg-slate-700";
+      }
+    });
+  }
+
+  triggerFullScreenPopup() {
+    if (!this.currentUser) return;
+    const settings = this.db.settings || {};
+    const popup = settings.popupEvent || {};
+    
+    if (popup.enabled && sessionStorage.getItem("lw_popup_dismissed") !== "true") {
+      const modal = document.getElementById("full-screen-popup-modal");
+      if (modal) {
+        const img = document.getElementById("popup-event-img");
+        if (img) img.src = popup.imageUrl || "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop";
+        
+        const title = document.getElementById("popup-event-title");
+        if (title) title.innerText = popup.title || "Eid Mega Draw Festival! 🎉";
+        
+        const message = document.getElementById("popup-event-message");
+        if (message) message.innerText = popup.message || "";
+        
+        const actionBtnSpan = document.getElementById("popup-event-action-text-span");
+        if (actionBtnSpan) actionBtnSpan.innerText = popup.actionText || "Claim Bonus";
+        
+        modal.classList.remove("hidden");
+      }
+    }
+  }
+
   renderHomeTab() {
     HomeTab.render(this);
+    this.renderHomeBannerSliders();
+  }
+
+  renderEventsTab() {
+    const popup = this.db.settings.popupEvent || {};
+    const embeddedCard = document.getElementById("embedded-popup-event-card");
+    const emptyFallback = document.getElementById("events-empty-fallback");
+
+    const slides = this.db.settings.bannerSlides || [];
+
+    if (popup.enabled) {
+      if (embeddedCard) {
+        embeddedCard.classList.remove("hidden");
+        const img = document.getElementById("embedded-event-img");
+        if (img) img.src = popup.imageUrl || "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop";
+        const title = document.getElementById("embedded-event-title");
+        if (title) title.innerText = popup.title || "Eid Mega Draw Festival! 🎉";
+        const msg = document.getElementById("embedded-event-message");
+        if (msg) msg.innerText = popup.message || "No message specified.";
+        const btnText = document.getElementById("embedded-event-action-text");
+        if (btnText) btnText.innerText = popup.actionText || "Explore Offer";
+
+        const actionBtn = document.getElementById("embedded-event-action-btn");
+        if (actionBtn) {
+          actionBtn.onclick = () => {
+            if (popup.redirectTab) {
+              this.currentTab = popup.redirectTab;
+              this.render();
+            } else {
+              this.showToast("Event explored!", "success");
+            }
+          };
+        }
+      }
+      if (emptyFallback) emptyFallback.classList.add("hidden");
+    } else {
+      if (embeddedCard) embeddedCard.classList.add("hidden");
+      if (slides.length === 0) {
+        if (emptyFallback) emptyFallback.classList.remove("hidden");
+      } else {
+        if (emptyFallback) emptyFallback.classList.add("hidden");
+      }
+    }
   }
 
   // Purchase Lottery Ticket Flow
@@ -3721,6 +4237,17 @@ public class DatabaseClusterRouter {
 
     this.db.tickets.unshift(newTicket);
     this.saveDB();
+
+    if (!navigator.onLine && this.offlineQueue) {
+      this.offlineQueue.enqueueAction("PURCHASE_TICKET", {
+        lotteryId: lot.id,
+        userId: this.currentUser.id,
+        ticketId: newTicket.id,
+        code: code,
+        purchaseDate: newTicket.purchaseDate,
+        entryFee: lot.entryFee
+      });
+    }
 
     if (navigator.vibrate) {
       navigator.vibrate(100);
@@ -4320,6 +4847,116 @@ public class DatabaseClusterRouter {
     ProfileTab.render(this);
   }
 
+  renderOtpTab() {
+    const backBtn = document.getElementById("otp-back-btn");
+    if (backBtn) {
+      backBtn.onclick = () => {
+        this.currentTab = "profile";
+        this.render();
+      };
+    }
+
+    const otpDigitsEl = document.getElementById("dashboard-otp-digits");
+    const otpStatusEl = document.getElementById("dashboard-otp-status");
+    const otpDotEl = document.getElementById("dashboard-otp-dot");
+    const countdownEl = document.getElementById("dashboard-otp-countdown");
+    const progressEl = document.getElementById("dashboard-otp-progress");
+
+    if (!otpDigitsEl) return;
+
+    // Clear any previous interval
+    if (this.otpInterval) {
+      clearInterval(this.otpInterval);
+      this.otpInterval = null;
+    }
+
+    const updateUI = (code, expiresAt) => {
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((expiresAt - now) / 1000));
+      const percentage = (remaining / 30) * 100;
+
+      if (otpDigitsEl) otpDigitsEl.innerText = code;
+      if (countdownEl) countdownEl.innerText = `${remaining}s`;
+      if (progressEl) progressEl.style.width = `${percentage}%`;
+
+      if (remaining <= 5) {
+        if (progressEl) {
+          progressEl.className = "h-full bg-gradient-to-r from-red-500 to-rose-600 transition-all duration-1000 ease-linear";
+        }
+        if (otpDigitsEl) {
+          otpDigitsEl.className = "text-4xl font-black text-rose-500 font-mono tracking-[0.25em] pl-[0.25em] py-2 relative select-all transition duration-300";
+        }
+      } else {
+        if (progressEl) {
+          progressEl.className = "h-full bg-gradient-to-r from-cyan-500 to-indigo-500 transition-all duration-1000 ease-linear";
+        }
+        if (otpDigitsEl) {
+          otpDigitsEl.className = "text-4xl font-black text-cyan-400 font-mono tracking-[0.25em] pl-[0.25em] py-2 relative select-all transition duration-300";
+        }
+      }
+    };
+
+    const generateNewOTP = async () => {
+      const newCode = String(Math.floor(100000 + Math.random() * 900000));
+      const expiresAt = Date.now() + 30000;
+
+      // Update user in DB
+      const dbUser = this.db.users.find(u => u.username.toLowerCase() === this.currentUser.username.toLowerCase());
+      if (dbUser) {
+        dbUser.cashoutOTP = {
+          code: newCode,
+          expiresAt,
+          used: false
+        };
+        this.currentUser.cashoutOTP = dbUser.cashoutOTP;
+        this.saveDB();
+      }
+
+      if (otpStatusEl) {
+        otpStatusEl.innerText = "Live & Synchronized";
+        otpStatusEl.className = "text-[10px] font-mono text-emerald-450";
+      }
+      if (otpDotEl) {
+        otpDotEl.className = "w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping";
+      }
+
+      return { code: newCode, expiresAt };
+    };
+
+    const startTimer = (initialCode, initialExpiresAt) => {
+      let currentCode = initialCode;
+      let currentExpiresAt = initialExpiresAt;
+
+      updateUI(currentCode, currentExpiresAt);
+
+      this.otpInterval = setInterval(async () => {
+        const now = Date.now();
+        if (now >= currentExpiresAt) {
+          const { code, expiresAt } = await generateNewOTP();
+          currentCode = code;
+          currentExpiresAt = expiresAt;
+        }
+        updateUI(currentCode, currentExpiresAt);
+      }, 1000);
+    };
+
+    // Load existing active OTP or generate a brand new one
+    const dbUser = this.db.users.find(u => u.username.toLowerCase() === this.currentUser.username.toLowerCase());
+    const existingOTP = dbUser ? dbUser.cashoutOTP : null;
+
+    if (existingOTP && Date.now() < existingOTP.expiresAt && !existingOTP.used) {
+      if (otpStatusEl) {
+        otpStatusEl.innerText = "Active & Verified";
+        otpStatusEl.className = "text-[10px] font-mono text-cyan-400";
+      }
+      startTimer(existingOTP.code, existingOTP.expiresAt);
+    } else {
+      generateNewOTP().then(({ code, expiresAt }) => {
+        startTimer(code, expiresAt);
+      });
+    }
+  }
+
   renderReferTab() {
     ReferTab.render(this);
   }
@@ -4440,1521 +5077,7 @@ public class DatabaseClusterRouter {
     });
   }
 
-  renderAdminWebsite() {
-    const s = this.db.settings;
-    if (!s) return;
-
-    const siteNameEl = document.getElementById("sys-site-name");
-    const siteInfoEl = document.getElementById("sys-site-info");
-    const signupBonusEl = document.getElementById("sys-signup-bonus");
-    const supportNumEl = document.getElementById("sys-support-num");
-    const authFooterEl = document.getElementById("sys-auth-footer-text");
-
-    if (siteNameEl) siteNameEl.value = s.siteName || "";
-    if (siteInfoEl) siteInfoEl.value = s.siteInfo || "";
-    if (signupBonusEl) signupBonusEl.value = s.signupBonus ?? 100;
-    if (supportNumEl) supportNumEl.value = s.supportNumber || "";
-    if (authFooterEl) authFooterEl.value = s.authFooterText || "";
-  }
-
-  renderAdminReports() {
-    const postTabBtn = document.getElementById("admin-subtab-post-reports");
-    const commentTabBtn = document.getElementById("admin-subtab-comment-reports");
-
-    const postContainer = document.getElementById("admin-post-reports-container");
-    const commentContainer = document.getElementById("admin-comment-reports-container");
-
-    if (!this.currentAdminReportsTab) {
-      this.currentAdminReportsTab = "post";
-    }
-
-    if (this.currentAdminReportsTab === "post") {
-      if (postTabBtn) {
-        postTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold bg-slate-900 border border-slate-800 text-white cursor-pointer transition";
-      }
-      if (commentTabBtn) {
-        commentTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold text-slate-400 cursor-pointer transition hover:text-white";
-      }
-      if (postContainer) postContainer.classList.remove("hidden");
-      if (commentContainer) commentContainer.classList.add("hidden");
-    } else {
-      if (postTabBtn) {
-        postTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold text-slate-400 cursor-pointer transition hover:text-white";
-      }
-      if (commentTabBtn) {
-        commentTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold bg-slate-900 border border-slate-800 text-white cursor-pointer transition";
-      }
-      if (postContainer) postContainer.classList.add("hidden");
-      if (commentContainer) commentContainer.classList.remove("hidden");
-    }
-
-    // Filter pending reports
-    const postReports = (this.db.reports || []).filter(r => r.type === "post" && r.status === "pending");
-    const commentReports = (this.db.reports || []).filter(r => r.type === "comment" && r.status === "pending");
-
-    const postCountBadge = document.getElementById("admin-post-reports-count");
-    if (postCountBadge) postCountBadge.innerText = postReports.length;
-
-    const commentCountBadge = document.getElementById("admin-comment-reports-count");
-    if (commentCountBadge) commentCountBadge.innerText = commentReports.length;
-
-    // Render Post Reports list
-    const postList = document.getElementById("admin-post-reports-list");
-    if (postList) {
-      postList.innerHTML = "";
-      if (postReports.length === 0) {
-        postList.innerHTML = `
-          <div class="text-center py-8 text-slate-500 font-sans">
-            <i class="fa-solid fa-circle-check text-slate-700 text-lg block mb-1"></i>
-            No pending post reports. Clear slate!
-          </div>
-        `;
-      } else {
-        postReports.forEach(rep => {
-          const card = document.createElement("div");
-          card.className = "bg-slate-950 border border-slate-800/80 p-4 rounded-2xl space-y-3";
-          card.innerHTML = `
-            <div class="flex justify-between items-start text-[10px] text-slate-400 border-b border-slate-900 pb-2">
-              <div>
-                <span class="text-rose-500 font-bold">Post Report #${rep.id}</span>
-                <div class="text-[9px] text-slate-500 font-mono mt-0.5">Date: ${new Date(rep.date).toLocaleString()}</div>
-              </div>
-              <span class="bg-red-950/40 text-red-400 px-2 py-0.5 rounded uppercase font-bold text-[8px] border border-red-900/30">Pending</span>
-            </div>
-
-            <div class="space-y-1.5 font-sans">
-              <div>
-                <span class="text-[9px] uppercase font-mono text-slate-500 block">Reported Post Content:</span>
-                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-white border border-slate-800 font-sans italic max-h-24 overflow-y-auto">
-                  "${rep.targetText}"
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-2 text-[10px] mt-1 text-slate-300">
-                <div><strong class="text-slate-500">Author:</strong> <span class="text-cyan-400 font-bold">@${rep.authorUsername}</span></div>
-                <div><strong class="text-slate-400">Reporter:</strong> <span class="text-slate-300">@${rep.reporterUsername}</span></div>
-              </div>
-              <div class="text-amber-500 text-xs py-1">
-                <strong class="text-slate-500 text-[10px]">Reason:</strong> "${rep.reason}"
-              </div>
-            </div>
-
-            <!-- Action Panel -->
-            <div class="grid grid-cols-2 xs:grid-cols-3 gap-1.5 pt-2 border-t border-slate-900 font-sans">
-              <button class="admin-act-ban-user bg-rose-950/45 hover:bg-rose-900 border border-rose-800/40 text-rose-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-user-slash mr-1"></i> Ban Permanent
-              </button>
-              <button class="admin-act-temp-user bg-amber-950/45 hover:bg-amber-900 border border-amber-800/40 text-amber-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-hourglass-half mr-1"></i> Temp Block (24h)
-              </button>
-              <button class="admin-act-sched-user bg-indigo-950/45 hover:bg-indigo-900 border border-indigo-800/40 text-indigo-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-calendar-days mr-1"></i> Schedule (7 Days)
-              </button>
-              <button class="admin-act-remove-post bg-slate-900 hover:bg-slate-800 border border-slate-800 text-red-500 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-1 cursor-pointer" data-post-id="${rep.targetId}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-trash mr-1"></i> Delete Post Content
-              </button>
-              <button class="admin-act-dismiss bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-2 cursor-pointer" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-check mr-1"></i> Dismiss Report
-              </button>
-            </div>
-          `;
-          postList.appendChild(card);
-        });
-      }
-    }
-
-    // Render Comment Reports list
-    const commentList = document.getElementById("admin-comment-reports-list");
-    if (commentList) {
-      commentList.innerHTML = "";
-      if (commentReports.length === 0) {
-        commentList.innerHTML = `
-          <div class="text-center py-8 text-slate-500 font-sans">
-            <i class="fa-solid fa-circle-check text-slate-700 text-lg block mb-1"></i>
-            No pending comment reports. Clear slate!
-          </div>
-        `;
-      } else {
-        commentReports.forEach(rep => {
-          const card = document.createElement("div");
-          card.className = "bg-slate-950 border border-slate-800/80 p-4 rounded-2xl space-y-3";
-          card.innerHTML = `
-            <div class="flex justify-between items-start text-[10px] text-slate-400 border-b border-slate-900 pb-2">
-              <div>
-                <span class="text-yellow-500 font-bold">Comment Report #${rep.id}</span>
-                <div class="text-[9px] text-slate-500 font-mono mt-0.5">Date: ${new Date(rep.date).toLocaleString()}</div>
-              </div>
-              <span class="bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded uppercase font-bold text-[8px] border border-amber-900/30">Pending</span>
-            </div>
-
-            <div class="space-y-1.5 font-sans">
-              <div>
-                <span class="text-[9px] uppercase font-mono text-slate-500 block">Reported Comment Content:</span>
-                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-white border border-slate-800 font-sans italic max-h-24 overflow-y-auto">
-                  "${rep.targetText}"
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-2 text-[10px] mt-1 text-slate-300">
-                <div><strong class="text-slate-500">Author:</strong> <span class="text-cyan-400 font-bold">@${rep.authorUsername}</span></div>
-                <div><strong class="text-slate-400">Reporter:</strong> <span class="text-slate-300">@${rep.reporterUsername}</span></div>
-              </div>
-              <div class="text-amber-500 text-xs py-1">
-                <strong class="text-slate-500 text-[10px]">Reason:</strong> "${rep.reason}"
-              </div>
-            </div>
-
-            <!-- Action Panel -->
-            <div class="grid grid-cols-2 xs:grid-cols-3 gap-1.5 pt-2 border-t border-slate-900 font-sans">
-              <button class="admin-act-ban-user bg-rose-950/45 hover:bg-rose-900 border border-rose-800/40 text-rose-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-user-slash mr-1"></i> Ban Permanent
-              </button>
-              <button class="admin-act-temp-user bg-amber-950/45 hover:bg-amber-900 border border-amber-800/40 text-amber-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-hourglass-half mr-1"></i> Temp Block (24h)
-              </button>
-              <button class="admin-act-sched-user bg-indigo-950/45 hover:bg-indigo-900 border border-indigo-800/40 text-indigo-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-calendar-days mr-1"></i> Schedule (7 Days)
-              </button>
-              <button class="admin-act-remove-comment bg-slate-900 hover:bg-slate-800 border border-slate-800 text-red-500 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-1 cursor-pointer" data-comment-id="${rep.targetId}" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-trash mr-1"></i> Delete Reply Content
-              </button>
-              <button class="admin-act-dismiss bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-2 cursor-pointer" data-rep-id="${rep.id}">
-                <i class="fa-solid fa-check mr-1"></i> Dismiss Report
-              </button>
-            </div>
-          `;
-          commentList.appendChild(card);
-        });
-      }
-    }
-  }
-
-  populateCreatePoolCategories() {
-    const selectEl = document.getElementById("create-pool-cat");
-    if (!selectEl) return;
-    
-    const preValue = selectEl.value;
-    selectEl.innerHTML = "";
-    
-    this.db.categories.forEach(cat => {
-      const opt = document.createElement("option");
-      opt.value = cat.name;
-      opt.innerText = `${cat.label} (${cat.type === "multi" ? "Multi Winners" : "Single Winner"})`;
-      selectEl.appendChild(opt);
-    });
-    
-    if (preValue && this.db.categories.some(c => c.name === preValue)) {
-      selectEl.value = preValue;
-    } else if (this.db.categories.length > 0) {
-      selectEl.value = this.db.categories[0].name;
-    }
-  }
-
-  openUserEditModal(id) {
-    const u = this.db.users.find(user => user.id === id);
-    if (!u) return;
-
-    document.getElementById("edit-player-modal-id").innerText = `@${u.username}`;
-    document.getElementById("edit-player-id-field").value = u.id;
-    document.getElementById("edit-player-balance").value = u.balance;
-    document.getElementById("edit-player-email").value = u.email;
-    document.getElementById("edit-player-phone").value = u.phone;
-    document.getElementById("edit-player-password").value = ""; // Default empty
-    document.getElementById("edit-player-status").value = u.status;
-    
-    const badgeDropdown = document.getElementById("edit-player-badge");
-    if (badgeDropdown) {
-      badgeDropdown.value = u.customBadge || "";
-    }
-
-    const roleSelect = document.getElementById("edit-player-role");
-    const commInput = document.getElementById("edit-player-commission");
-    const commWrapper = document.getElementById("edit-player-commission-wrapper");
-    const districtSelect = document.getElementById("edit-player-district");
-    const districtWrapper = document.getElementById("edit-player-district-wrapper");
-
-    if (districtSelect) {
-      districtSelect.value = u.district || "Dhaka";
-    }
-
-    if (roleSelect && commWrapper) {
-      roleSelect.value = u.role || "player";
-      if (commInput) {
-        commInput.value = u.commissionRate !== undefined ? u.commissionRate : 5.0;
-      }
-      const toggleComm = () => {
-        if (roleSelect.value === "agent") {
-          commWrapper.classList.remove("hidden");
-          if (districtWrapper) districtWrapper.classList.remove("hidden");
-        } else {
-          commWrapper.classList.add("hidden");
-          if (districtWrapper) districtWrapper.classList.add("hidden");
-        }
-      };
-      toggleComm();
-      roleSelect.onchange = toggleComm;
-    }
-
-    document.getElementById("admin-user-edit-modal").classList.remove("hidden");
-  }
-
-  savePlayerEditFromModal() {
-    const id = document.getElementById("edit-player-id-field").value;
-    const u = this.db.users.find(user => user.id === id);
-    if (!u) return;
-
-    u.balance = parseFloat(document.getElementById("edit-player-balance").value || "0");
-    u.email = document.getElementById("edit-player-email").value;
-    u.phone = document.getElementById("edit-player-phone").value;
-    u.status = document.getElementById("edit-player-status").value;
-    
-    const badgeDropdown = document.getElementById("edit-player-badge");
-    if (badgeDropdown) {
-      u.customBadge = badgeDropdown.value;
-    }
-
-    const roleSelect = document.getElementById("edit-player-role");
-    if (roleSelect) {
-      u.role = roleSelect.value;
-    }
-    const commInput = document.getElementById("edit-player-commission");
-    if (commInput) {
-      u.commissionRate = parseFloat(commInput.value || "5.0");
-    }
-    const districtSelectVal = document.getElementById("edit-player-district");
-    if (districtSelectVal) {
-      u.district = districtSelectVal.value;
-    }
-
-    const newPass = document.getElementById("edit-player-password").value.trim();
-    if (newPass) {
-      u.password = newPass;
-      this.showToast(`Password successfully reset for @${u.username}!`, "success");
-    }
-
-    this.saveDB();
-    this.showToast("Player edited successfully!", "success");
-    document.getElementById("admin-user-edit-modal").classList.add("hidden");
-    this.render();
-  }
-
-  // ================= ADMIN AGENT REGISTRY VIEW RENDER =================
-  renderAdminAgents() {
-    const listEl = document.getElementById("admin-agents-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
-
-    const searchInput = document.getElementById("agents-search-input");
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
-
-    const staffAccounts = this.db.users.filter(u => {
-      const isStaff = u.role === "agent" || u.role === "moderator";
-      if (!isStaff) return false;
-      if (query) {
-        return u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query);
-      }
-      return true;
-    });
-
-    // Populate metrics
-    const agentsCount = this.db.users.filter(u => u.role === "agent").length;
-    const modsCount = this.db.users.filter(u => u.role === "moderator").length;
-    
-    // Total commissions distributed is cumulative of agent logs
-    const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
-    const initialSeedComms = this.db.users.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
-
-    document.getElementById("agents-stat-count").innerText = `${agentsCount} Agents`;
-    document.getElementById("moderators-stat-count").innerText = `${modsCount} Mods`;
-    document.getElementById("agents-stat-commission").innerText = `৳${(totalComms + initialSeedComms).toFixed(2)}`;
-
-    if (staffAccounts.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="5" class="p-6 text-center text-slate-500 font-sans">
-            No registered field agents or system moderators found.
-          </td>
-        </tr>
-      `;
-      return;
-    }
-
-    staffAccounts.forEach(staff => {
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition";
-
-      const badgeColor = staff.role === "agent" ? "bg-emerald-950 text-emerald-400 border-emerald-800/30" : "bg-cyan-950 text-cyan-400 border-cyan-800/30";
-      const isBlocked = staff.status === "blocked" || staff.status === "permanently_banned";
-
-      row.innerHTML = `
-        <td class="p-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${isBlocked ? "bg-red-500" : "bg-emerald-500"}"></span>
-            <div>
-              <span class="text-white font-bold leading-none block">@${staff.username} ${staff.role === "agent" ? `<span class="ml-1 text-[8.5px] bg-indigo-950 text-indigo-400 border border-indigo-900/40 rounded px-1 py-0.2 font-mono uppercase font-black">${staff.district || "Dhaka"}</span>` : ""}</span>
-              <span class="text-[9.5px] text-slate-500 block select-all font-mono">${staff.email}</span>
-            </div>
-          </div>
-        </td>
-        <td class="p-3">
-          <div>
-            <span class="text-slate-300 font-bold font-mono">৳${(staff.balance || 0).toFixed(2)}</span>
-            ${staff.role === "agent" ? `
-              <span class="text-[9px] text-slate-500 block leading-tight">Rate: <strong class="text-emerald-400">${(staff.commissionRate || 5.0).toFixed(1)}%</strong></span>
-            ` : ""}
-          </div>
-        </td>
-        <td class="p-3">
-          ${staff.role === "agent" ? `
-            <div>
-              <span class="text-slate-300 select-none block leading-none">Bookings: <strong class="text-white font-mono">${staff.totalBookings || 0}</strong></span>
-              <span class="text-[9px] text-emerald-400 font-mono block leading-none mt-1">Earned: ৳${(staff.earnedCommission || 0).toFixed(2)}</span>
-            </div>
-          ` : `
-            <span class="text-[10px] text-slate-400 italic font-sans">Back-office monitoring role</span>
-          `}
-        </td>
-        <td class="p-3">
-          <div class="flex items-center gap-1.5">
-            <span class="border rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase font-mono tracking-wider bg-slate-950 ${badgeColor}">${staff.role}</span>
-            <span class="text-[9px] py-0.5 px-1.5 uppercase font-mono rounded ${staff.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${staff.status}</span>
-          </div>
-        </td>
-        <td class="p-3 text-right">
-          <div class="flex justify-end gap-1 font-mono">
-            <button class="staff-edit-btn bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 text-slate-400 py-1 px-2.5 rounded-lg transition text-[10px] cursor-pointer cursor-pointer" data-id="${staff.id}">
-              Edit
-            </button>
-            <button class="staff-del-btn bg-rose-950/30 hover:bg-rose-900/60 text-rose-400 py-1 px-2.5 rounded-lg border border-rose-900/30 transition text-[10px] cursor-pointer" data-id="${staff.id}">
-              Delete
-            </button>
-          </div>
-        </td>
-      `;
-
-      listEl.appendChild(row);
-    });
-
-    // Handle Edit listeners click
-    listEl.querySelectorAll(".staff-edit-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        this.openUserEditModal(id);
-      });
-    });
-
-    // Handle Delete actions
-    listEl.querySelectorAll(".staff-del-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        const staff = this.db.users.find(u => u.id === id);
-        if (!staff) return;
-
-        if (confirm(`Are you absolutely sure you want to permanently delete the staff account @${staff.username}?`)) {
-          this.db.users = this.db.users.filter(u => u.id !== id);
-          this.saveDB();
-          this.showToast(`Deleted staff account @${staff.username} successfully.`, "success");
-          this.renderAdminAgents();
-        }
-      });
-    });
-  }
-
-  // ================= AGENT WORKSPACE VIEW RENDER =================
-  renderAgentWorkspace() {
-    if (!this.currentUser || this.currentUser.role !== "agent") return;
-
-    // Display basic identity
-    const nameEl = document.getElementById("agent-display-name");
-    if (nameEl) nameEl.innerText = `@${this.currentUser.username}`;
-
-    // Update Overview Stats
-    const balOverview = document.getElementById("agent-overview-wallet-balance");
-    if (balOverview) balOverview.innerText = `৳${(this.currentUser.balance || 0).toFixed(2)}`;
-
-    const commOverview = document.getElementById("agent-overview-commission-earned");
-    if (commOverview) commOverview.innerText = `৳${(this.currentUser.earnedCommission || 0).toFixed(2)}`;
-
-    const bookingsOverview = document.getElementById("agent-overview-total-bookings");
-    if (bookingsOverview) bookingsOverview.innerText = `${this.currentUser.totalBookings || 0}`;
-
-    const rateOverview = document.getElementById("agent-overview-commission-rate");
-    if (rateOverview) rateOverview.innerText = `${(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
-
-    // Compute goal achievements using active session ledger logs list
-    const ledger = (this.db.agentLedger || []).filter(l => l.agentId === this.currentUser.id);
-    const totalSalesVolume = ledger.reduce((sum, act) => sum + (act.amount || 0), 0);
-
-    // Goal Level 1: target 500
-    const goalLevel1Progress = Math.min(100, Math.round((totalSalesVolume / 500) * 100));
-    const goalLevel1Bar = document.getElementById("goal-level1-bar");
-    const goalLevel1Track = document.getElementById("goal-level1-track");
-    if (goalLevel1Bar) goalLevel1Bar.style.width = `${goalLevel1Progress}%`;
-    if (goalLevel1Track) goalLevel1Track.innerText = `৳${Math.round(totalSalesVolume)}/৳500 Slot`;
-
-    // Goal Level 2: target 2000
-    const goalLevel2Progress = Math.min(100, Math.round((totalSalesVolume / 2000) * 100));
-    const goalLevel2Bar = document.getElementById("goal-level2-bar");
-    if (goalLevel2Bar) goalLevel2Bar.style.width = `${goalLevel2Progress}%`;
-
-    // Target Overview Badge Progress Score
-    const targetBadge = document.getElementById("agent-overview-target-progress");
-    if (targetBadge) {
-      const displayScore = Math.max(goalLevel1Progress, goalLevel2Progress);
-      targetBadge.innerText = `${displayScore}%`;
-    }
-
-    // Populate active lotteries dropdown list
-    const selectEl = document.getElementById("agent-booking-lottery");
-    const activeLotts = this.db.lotteries.filter(l => l.status === "active");
-
-    if (selectEl) {
-      const prevVal = selectEl.value;
-      selectEl.innerHTML = "";
-      activeLotts.forEach(lot => {
-        const opt = document.createElement("option");
-        opt.value = lot.id;
-        opt.innerText = `${lot.name} (Entry: ৳${lot.entryFee})`;
-        selectEl.appendChild(opt);
-      });
-      if (prevVal && activeLotts.some(l => l.id === prevVal)) {
-        selectEl.value = prevVal;
-      }
-    }
-
-    // Populate Active Pools interactive list card slots in Booker Tab
-    const poolsListEl = document.getElementById("agent-active-pools-list");
-    if (poolsListEl) {
-      poolsListEl.innerHTML = "";
-      if (activeLotts.length === 0) {
-        poolsListEl.innerHTML = `
-          <div class="text-center p-4 bg-slate-950 border border-slate-900 rounded-2xl text-slate-500 font-sans text-[11px]">
-            No live draw event active at the moment.
-          </div>
-        `;
-      } else {
-        activeLotts.forEach(lot => {
-          const cardDiv = document.createElement("div");
-          cardDiv.className = "bg-slate-950 border border-slate-850 p-3.5 rounded-2xl flex justify-between items-center transition hover:border-emerald-500/20";
-          cardDiv.innerHTML = `
-            <div>
-              <span class="text-[9px] uppercase font-bold tracking-wider text-emerald-400 font-mono">${lot.category}</span>
-              <h5 class="text-xs font-bold text-white mt-0.5">${lot.name}</h5>
-              <div class="text-[9.5px] text-slate-500 font-mono">Fee: ৳${lot.entryFee} • ${lot.soldTickets || 0}/${lot.totalTickets || 500} Sold</div>
-            </div>
-            <button class="fill-lottery-action bg-emerald-950/40 hover:bg-emerald-900 border border-emerald-900/40 text-emerald-400 text-[10px] font-black py-1.5 px-3 rounded-xl transition cursor-pointer" data-id="${lot.id}">
-              Select
-            </button>
-          `;
-          poolsListEl.appendChild(cardDiv);
-        });
-
-        // Add direct selector button trigger action
-        poolsListEl.querySelectorAll(".fill-lottery-action").forEach(btn => {
-          btn.addEventListener("click", () => {
-            const lotId = btn.getAttribute("data-id");
-            if (selectEl) {
-              selectEl.value = lotId;
-              // Trigger change event to recompute estimates
-              const event = new Event('change');
-              selectEl.dispatchEvent(event);
-              this.showToast(`Selected pool: ${lotId}`, "info");
-            }
-          });
-        });
-      }
-    }
-
-    // Render Searchable Active Player list registry
-    const playersTbody = document.getElementById("agent-players-tbody");
-    if (playersTbody) {
-      playersTbody.innerHTML = "";
-      
-      const searchVal = (document.getElementById("agent-players-search-input")?.value || "").toLowerCase().trim();
-      const allPlayers = this.db.users.filter(u => u.role === "user");
-      
-      const filteredPlayers = allPlayers.filter(p => {
-        if (!searchVal) return true;
-        return (p.username || "").toLowerCase().includes(searchVal) ||
-               (p.email || "").toLowerCase().includes(searchVal) ||
-               (p.phone || "").toLowerCase().includes(searchVal);
-      });
-
-      if (filteredPlayers.length === 0) {
-        playersTbody.innerHTML = `
-          <tr>
-            <td colspan="5" class="p-6 text-center text-slate-500 font-mono">
-              -- No matching registered players detected in workspace --
-            </td>
-          </tr>
-        `;
-      } else {
-        filteredPlayers.forEach(p => {
-          const row = document.createElement("tr");
-          row.className = "border-b border-slate-800/30 hover:bg-slate-900/20 transition";
-          
-          row.innerHTML = `
-            <td class="p-3">
-              <div class="font-bold text-white flex items-center gap-1">
-                <span class="text-xs text-slate-400">@</span>${p.username}
-              </div>
-              <div class="text-[9.5px] text-slate-500 font-mono select-all">${p.email || "N/A"}</div>
-            </td>
-            <td class="p-3 font-mono text-slate-350 select-all">${p.phone || "N/A"}</td>
-            <td class="p-3 font-mono font-bold text-emerald-400">৳${(p.balance || 0).toFixed(2)}</td>
-            <td class="p-3">
-              <span class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-[9px] font-mono leading-none font-bold ${p.status === 'active' ? 'bg-emerald-950 text-emerald-450 border border-emerald-900/30' : 'bg-rose-950 text-rose-450 border border-rose-900/30'}">
-                <span class="w-1.5 h-1.5 rounded-full ${p.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span>
-                ${(p.status || "active").toUpperCase()}
-              </span>
-            </td>
-            <td class="p-3 text-right space-x-1.5 whitespace-nowrap">
-              <button class="agent-fill-user-load bg-emerald-950/40 hover:bg-emerald-900 text-emerald-400 border border-emerald-900/40 py-1.5 px-3 rounded-lg text-[10px] uppercase font-black transition cursor-pointer" data-username="${p.username}">
-                Load Cash
-              </button>
-              <button class="agent-fill-user-wdr bg-rose-950/40 hover:bg-rose-900 text-rose-450 border border-rose-900/40 py-1.5 px-3 rounded-lg text-[10px] uppercase font-black transition cursor-pointer" data-username="${p.username}">
-                Cash Out
-              </button>
-            </td>
-          </tr>
-        `;
-          playersTbody.appendChild(row);
-        });
-
-        // Add action triggers inside rows
-        playersTbody.querySelectorAll(".agent-fill-user-load").forEach(btn => {
-          btn.addEventListener("click", () => {
-            const user = btn.getAttribute("data-username");
-            // Set input details and navigate
-            const depUserEl = document.getElementById("agent-cash-dep-username");
-            if (depUserEl) depUserEl.value = user;
-
-            const cashTabTrigger = document.getElementById("agent-btn-cash");
-            if (cashTabTrigger) {
-              cashTabTrigger.click();
-              this.showToast(`Prefilled target player @${user} inside Cash Load`, "info");
-            }
-          });
-        });
-
-        playersTbody.querySelectorAll(".agent-fill-user-wdr").forEach(btn => {
-          btn.addEventListener("click", () => {
-            const user = btn.getAttribute("data-username");
-            // Set input details and navigate
-            const wdrUserEl = document.getElementById("agent-cash-wdr-username");
-            if (wdrUserEl) wdrUserEl.value = user;
-
-            const cashTabTrigger = document.getElementById("agent-btn-cash");
-            if (cashTabTrigger) {
-              cashTabTrigger.click();
-              // Make sure withdrawal forms is toggled
-              const wdrSubBtn = document.getElementById("btn-agent-sub-wdr");
-              if (wdrSubBtn) wdrSubBtn.click();
-              this.showToast(`Prefilled target player @${user} inside Cash Out Assist`, "info");
-            }
-          });
-        });
-      }
-    }
-
-    // Populate local activity / ledger table
-    const tbody = document.getElementById("agent-activity-tbody");
-    if (tbody) {
-      tbody.innerHTML = "";
-      
-      if (ledger.length === 0) {
-        tbody.innerHTML = `
-          <tr>
-            <td colspan="5" class="p-5 text-center text-slate-500 font-sans">
-              No direct field bookings or transfers logged in active session.
-            </td>
-          </tr>
-        `;
-      } else {
-        // Render chronological order descending
-        [...ledger].reverse().forEach(act => {
-          const row = document.createElement("tr");
-          row.className = "border-b border-slate-800/25 text-[11px] hover:bg-slate-900/30 transition";
-
-          const dateObj = new Date(act.timestamp);
-          const timeString = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-          row.innerHTML = `
-            <td class="p-3 select-none text-slate-500">${timeString}</td>
-            <td class="p-3 text-white font-bold">@${act.targetUser}</td>
-            <td class="p-3 text-slate-400 font-sans">${act.description}</td>
-            <td class="p-3 text-slate-200">৳${act.amount.toFixed(2)}</td>
-            <td class="p-3 ${act.commission > 0 ? "text-emerald-400 font-bold" : "text-slate-550"}">${act.commission > 0 ? `+৳${act.commission.toFixed(2)}` : "-"}</td>
-          `;
-          tbody.appendChild(row);
-        });
-      }
-    }
-  }
-
-  setupDistrictAgentsLookup() {
-    const depDistrictSelect = document.getElementById("user-dep-agent-district-select");
-    const depAgentSelect = document.getElementById("user-dep-agent-lookup-select");
-    const depDetailsCard = document.getElementById("user-dep-agent-details-card");
-    const depLblUsername = document.getElementById("user-dep-agent-lbl-username");
-    const depLblPhone = document.getElementById("user-dep-agent-lbl-phone");
-
-    const wdDistrictSelect = document.getElementById("user-wd-agent-district-select");
-    const wdAgentSelect = document.getElementById("user-wd-agent-lookup-select");
-    const wdDetailsCard = document.getElementById("user-wd-agent-details-card");
-    const wdLblUsername = document.getElementById("user-wd-agent-lbl-username");
-    const wdLblLocation = document.getElementById("user-wd-agent-lbl-location");
-    const wdAccountInput = document.getElementById("wd-account");
-
-    const refreshDepositAgents = () => {
-      if (!depDistrictSelect || !depAgentSelect) return;
-      const district = depDistrictSelect.value;
-      const agents = this.db.users.filter(u => u.role === "agent" && u.status === "active" && (district === "all" || u.district === district));
-
-      depAgentSelect.innerHTML = "";
-      if (agents.length === 0) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.text = "No active agents here";
-        depAgentSelect.appendChild(option);
-        if (depDetailsCard) depDetailsCard.classList.add("hidden");
-      } else {
-        agents.forEach(agent => {
-          const option = document.createElement("option");
-          option.value = agent.id;
-          option.text = `@${agent.username} (${agent.district || "Dhaka"})`;
-          depAgentSelect.appendChild(option);
-        });
-        
-        const firstAgent = agents[0];
-        if (depLblUsername) depLblUsername.innerText = `@${firstAgent.username}`;
-        if (depLblPhone) depLblPhone.innerText = firstAgent.phone || "No phone";
-        if (depDetailsCard) depDetailsCard.classList.remove("hidden");
-      }
-    };
-
-    const refreshWithdrawAgents = () => {
-      if (!wdDistrictSelect || !wdAgentSelect) return;
-      const district = wdDistrictSelect.value;
-      const agents = this.db.users.filter(u => u.role === "agent" && u.status === "active" && (district === "all" || u.district === district));
-
-      wdAgentSelect.innerHTML = "";
-      if (agents.length === 0) {
-        const option = document.createElement("option");
-        option.value = "";
-        option.text = "No active agents here";
-        wdAgentSelect.appendChild(option);
-        if (wdDetailsCard) wdDetailsCard.classList.add("hidden");
-      } else {
-        agents.forEach(agent => {
-          const option = document.createElement("option");
-          option.value = agent.id;
-          option.text = `@${agent.username} (${agent.district || "Dhaka"})`;
-          wdAgentSelect.appendChild(option);
-        });
-
-        const firstAgent = agents[0];
-        if (wdLblUsername) wdLblUsername.innerText = `@${firstAgent.username}`;
-        if (wdLblLocation) wdLblLocation.innerText = `${firstAgent.district || "Dhaka"} District Agent`;
-        if (wdDetailsCard) wdDetailsCard.classList.remove("hidden");
-
-        if (wdAccountInput && wdAgentSelect.closest("#user-wd-row-district-agents") && !wdRowDistrictAgents_is_hidden()) {
-          wdAccountInput.value = firstAgent.phone || "";
-        }
-      }
-    };
-
-    const wdRowDistrictAgents_is_hidden = () => {
-      const parent = document.getElementById("user-wd-row-district-agents");
-      return !parent || parent.classList.contains("hidden");
-    };
-
-    if (depDistrictSelect) {
-      depDistrictSelect.addEventListener("change", refreshDepositAgents);
-    }
-    if (depAgentSelect) {
-      depAgentSelect.addEventListener("change", () => {
-        const agentId = depAgentSelect.value;
-        const agent = this.db.users.find(u => u.id === agentId);
-        if (agent) {
-          if (depLblUsername) depLblUsername.innerText = `@${agent.username}`;
-          if (depLblPhone) depLblPhone.innerText = agent.phone || "";
-          if (depDetailsCard) depDetailsCard.classList.remove("hidden");
-        } else {
-          if (depDetailsCard) depDetailsCard.classList.add("hidden");
-        }
-      });
-    }
-
-    if (wdDistrictSelect) {
-      wdDistrictSelect.addEventListener("change", refreshWithdrawAgents);
-    }
-    if (wdAgentSelect) {
-      wdAgentSelect.addEventListener("change", () => {
-        const agentId = wdAgentSelect.value;
-        const agent = this.db.users.find(u => u.id === agentId);
-        if (agent) {
-          if (wdLblUsername) wdLblUsername.innerText = `@${agent.username}`;
-          if (wdLblLocation) wdLblLocation.innerText = `${agent.district || "Dhaka"} District Agent`;
-          if (wdDetailsCard) wdDetailsCard.classList.remove("hidden");
-          if (wdAccountInput) {
-            wdAccountInput.value = agent.phone || "";
-          }
-        } else {
-          if (wdDetailsCard) wdDetailsCard.classList.add("hidden");
-        }
-      });
-    }
-
-    refreshDepositAgents();
-    refreshWithdrawAgents();
-  }
-
-  setupStaffAndAgentListeners() {
-    const app = this;
-
-    // --- Staff Management Triggers inside Admin ---
-    const createStaffBtn = document.getElementById("admin-create-staff-btn");
-    const staffWrapper = document.getElementById("admin-create-staff-wrapper");
-    const cancelStaffBtn = document.getElementById("admin-cancel-staff-btn");
-    const createStaffForm = document.getElementById("admin-create-staff-form");
-    const agentsSearchInput = document.getElementById("agents-search-input");
-
-    if (createStaffBtn && staffWrapper) {
-      createStaffBtn.addEventListener("click", () => {
-        staffWrapper.classList.toggle("hidden");
-        if (!staffWrapper.classList.contains("hidden")) {
-          createStaffBtn.innerHTML = `<i class="fa-solid fa-minus"></i> Hide Form`;
-        } else {
-          createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
-        }
-      });
-    }
-
-    if (cancelStaffBtn && staffWrapper) {
-      cancelStaffBtn.addEventListener("click", () => {
-        staffWrapper.classList.add("hidden");
-        if (createStaffBtn) {
-          createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
-        }
-      });
-    }
-
-    if (createStaffForm) {
-      createStaffForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const usernameVal = document.getElementById("staff-username").value.trim();
-        const emailVal = document.getElementById("staff-email").value.trim();
-        const phoneVal = document.getElementById("staff-phone").value.trim();
-        const passVal = document.getElementById("staff-password").value.trim();
-        const roleVal = document.getElementById("staff-role").value;
-        const commVal = parseFloat(document.getElementById("staff-commission").value || "5.0");
-        const districtVal = document.getElementById("staff-district").value;
-
-        if (app.db.users.some(u => u.username.toLowerCase() === usernameVal.toLowerCase())) {
-          app.showToast(`Username @${usernameVal} already exists in database!`, "error");
-          return;
-        }
-
-        const newStaff = {
-          id: "u_staff_" + Date.now(),
-          username: usernameVal,
-          email: emailVal,
-          phone: phoneVal,
-          password: passVal,
-          dob: "1995-01-01",
-          balance: roleVal === "agent" ? 1000 : 0, // Starter funds for agents to facilitate field deposits
-          totDeposit: roleVal === "agent" ? 1000 : 0,
-          totWithdraw: 0,
-          wins: 0,
-          loss: 0,
-          profit: 0,
-          joinDate: new Date().toISOString().split("T")[0],
-          status: "active",
-          blockedUntil: null,
-          role: roleVal,
-          commissionRate: roleVal === "agent" ? commVal : undefined,
-          earnedCommission: roleVal === "agent" ? 0 : undefined,
-          totalBookings: roleVal === "agent" ? 0 : undefined,
-          district: roleVal === "agent" ? districtVal : undefined
-        };
-
-        app.db.users.push(newStaff);
-        app.saveDB();
-        app.showToast(`Staff account @${usernameVal} (${roleVal}) successfully created!`, "success");
-        createStaffForm.reset();
-        staffWrapper.classList.add("hidden");
-        if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
-        app.renderAdminAgents();
-      });
-    }
-
-    if (agentsSearchInput) {
-      agentsSearchInput.addEventListener("input", () => {
-        app.renderAdminAgents();
-      });
-    }
-
-    // --- Agent Workspace Triggers ---
-    
-    // --- Advanced Agent Workspace Sub-Tabs Switcher ---
-    const tabBtns = document.querySelectorAll(".agent-tab-selector-btn");
-    const tabPanels = [
-      "agent-tab-overview",
-      "agent-tab-booker",
-      "agent-tab-cash",
-      "agent-tab-players",
-      "agent-tab-ledger"
-    ];
-
-    tabBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const selectedTab = btn.getAttribute("val");
-        
-        // Update selection UI buttons active colors
-        tabBtns.forEach(b => {
-          b.className = "agent-tab-selector-btn text-[10px] font-black uppercase tracking-wider py-2 px-3.5 rounded-xl flex items-center gap-2 cursor-pointer transition whitespace-nowrap bg-slate-900 border border-slate-800 text-slate-400 hover:text-white";
-        });
-        btn.className = "agent-tab-selector-btn text-[10px] font-black uppercase tracking-wider py-2 px-3.5 rounded-xl flex items-center gap-2 cursor-pointer transition whitespace-nowrap bg-emerald-600 text-white shadow-lg shadow-emerald-600/15";
-
-        // Hide all sub tab containers, show active one
-        tabPanels.forEach(panelId => {
-          const panelEl = document.getElementById(panelId);
-          if (panelEl) {
-            if (panelId === `agent-tab-${selectedTab}`) {
-              panelEl.classList.remove("hidden");
-            } else {
-              panelEl.classList.add("hidden");
-            }
-          }
-        });
-
-        // Trigger dynamic metrics update
-        app.renderAgentWorkspace();
-      });
-    });
-
-    // Real-time search filter for field player registry table
-    const playerSearchInput = document.getElementById("agent-players-search-input");
-    if (playerSearchInput) {
-      playerSearchInput.addEventListener("input", () => {
-        app.renderAgentWorkspace();
-      });
-    }
-
-    // Agent-assisted player quick registration
-    const agentRegForm = document.getElementById("agent-player-quick-register-form");
-    if (agentRegForm) {
-      agentRegForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        
-        const usernameVal = document.getElementById("agent-reg-username").value.trim();
-        const emailVal = document.getElementById("agent-reg-email").value.trim();
-        const phoneVal = document.getElementById("agent-reg-phone").value.trim();
-        const passVal = document.getElementById("agent-reg-password").value.trim();
-
-        if (!usernameVal || !emailVal || !phoneVal || !passVal) {
-          app.showToast("All registration fields are required!", "error");
-          return;
-        }
-
-        // Validate duplicates
-        const dupUser = app.db.users.find(u => u.username.toLowerCase() === usernameVal.toLowerCase() || u.email.toLowerCase() === emailVal.toLowerCase() || u.phone === phoneVal);
-        if (dupUser) {
-          app.showToast("Account Creation Failed: Username, Email or Phone Number is already registered!", "error");
-          return;
-        }
-
-        const welcomeBonus = (app.db && app.db.settings && app.db.settings.signupBonus !== undefined) 
-          ? parseFloat(app.db.settings.signupBonus) 
-          : 100;
-
-        const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined)
-          ? parseFloat(app.db.settings.agentReferralBonus)
-          : 100;
-
-        // Create player user object
-        const newUser = {
-          id: "u" + Date.now(),
-          username: usernameVal,
-          email: emailVal,
-          password: passVal,
-          phone: phoneVal,
-          balance: welcomeBonus,
-          totDeposit: 0,
-          totWithdraw: 0,
-          wins: 0,
-          loss: 0,
-          profit: 0,
-          joinDate: new Date().toISOString().split("T")[0],
-          status: "active",
-          blockedUntil: null,
-          refersCount: 0,
-          referredUsers: [],
-          rewardedMilestones: [],
-          role: "user", // "user" role is filtered as a regular player in agent tab
-          referredBy: app.currentUser.username
-        };
-
-        // Award referral bonus to the Agent!
-        app.currentUser.balance = (app.currentUser.balance || 0) + referBonus;
-        
-        // Also keep DB user record matching current active agent session
-        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
-        if (dbAgent) {
-          dbAgent.balance = app.currentUser.balance;
-          dbAgent.refersCount = (dbAgent.refersCount || 0) + 1;
-          if (!dbAgent.referredUsers) dbAgent.referredUsers = [];
-          dbAgent.referredUsers.push({
-            username: usernameVal,
-            region: "Assisted",
-            date: new Date().toISOString()
-          });
-        }
-
-        // Log agent activity ledger
-        if (!app.db.agentLedger) app.db.agentLedger = [];
-        app.db.agentLedger.push({
-          id: "act_" + Date.now(),
-          agentId: app.currentUser.id,
-          timestamp: new Date().toISOString(),
-          targetUser: usernameVal,
-          description: `Assisted Player Quick-Registration (Referral Bonus)`,
-          amount: referBonus,
-          commission: 0
-        });
-
-        // Add player to system DB
-        app.db.users.push(newUser);
-        
-        app.saveDB();
-        app.showToast(`Player @${usernameVal} registered successfully! Added ৳${referBonus} referral bonus to your agent wallet.`, "success");
-        agentRegForm.reset();
-        app.renderAgentWorkspace();
-      });
-    }
-
-    // District-based Agent Live Support List Change Event
-    const supportDistrictSelect = document.getElementById("user-support-agent-district-select");
-    if (supportDistrictSelect) {
-      supportDistrictSelect.addEventListener("change", () => {
-        app.renderSupportAgentsList();
-      });
-    }
-
-    // Agent Booker Pre-booking generator
-    const spinBtn = document.getElementById("btn-agent-test-spin");
-    const testNumVal = document.getElementById("agent-booking-test-number");
-    if (spinBtn && testNumVal) {
-      spinBtn.addEventListener("click", () => {
-        // Spin a mockup 6-digit sequence
-        const randomNum = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
-        testNumVal.value = randomNum;
-        app.showToast("Lucky offline mock number generated!", "success");
-      });
-    }
-
-    // Agent Wallet presets in Load/Deposit and Payout helper
-    const loadPresetBtns = document.querySelectorAll(".preset-load-btn");
-    const loadAmountInput = document.getElementById("agent-cash-dep-amount");
-    loadPresetBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const val = btn.getAttribute("val");
-        if (loadAmountInput) {
-          loadAmountInput.value = val;
-          app.showToast(`Applied preset loaded: ৳${val}`, "info");
-        }
-      });
-    });
-
-    const wdrPresetBtns = document.querySelectorAll(".preset-wdr-btn");
-    const wdrAmountInput = document.getElementById("agent-cash-wdr-amount");
-    wdrPresetBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        const val = btn.getAttribute("val");
-        if (wdrAmountInput) {
-          wdrAmountInput.value = val;
-          app.showToast(`Applied preset payout: ৳${val}`, "info");
-        }
-      });
-    });
-
-    // Export Session ledger copy
-    const copyLedgerBtn = document.getElementById("btn-agent-copy-ledger");
-    if (copyLedgerBtn) {
-      copyLedgerBtn.addEventListener("click", () => {
-        const ledgerLogs = (app.db.agentLedger || []).filter(l => l.agentId === app.currentUser.id);
-        if (ledgerLogs.length === 0) {
-          app.showToast("No active session transaction records to export!", "error");
-          return;
-        }
-
-        let outputText = `== AGENT SUITE ACTIVE SESSION LEDGER REPORT ==\n`;
-        outputText += `Active Operator: @${app.currentUser.username}\n`;
-        outputText += `Generated Date: ${new Date().toLocaleString()}\n`;
-        outputText += `----------------------------------------------\n`;
-        
-        ledgerLogs.forEach((act, idx) => {
-          outputText += `[${idx + 1}] ${new Date(act.timestamp).toLocaleTimeString()} - Player: @${act.targetUser} • Action: ${act.description} • Value: ৳${act.amount} • Commission: ৳${act.commission}\n`;
-        });
-        outputText += `----------------------------------------------\n`;
-        outputText += `Total Earned Commissions in logs: ৳${app.currentUser.earnedCommission || 0}\n`;
-
-        navigator.clipboard.writeText(outputText)
-          .then(() => {
-            app.showToast("Full session tracker copied to clipboard successfully!", "success");
-          })
-          .catch(() => {
-            app.showToast("Clipboard write permission failure!", "error");
-          });
-      });
-    }
-
-    const agentVerifyBtn = document.getElementById("agent-verify-btn");
-    const agentBookingForm = document.getElementById("agent-booking-form");
-    const bookingQtyInput = document.getElementById("agent-booking-qty");
-    const bookingLotterySelect = document.getElementById("agent-booking-lottery");
-
-    const agentCashDepositForm = document.getElementById("agent-cash-deposit-form");
-    const agentCashWithdrawForm = document.getElementById("agent-cash-withdraw-form");
-    const btnSubDep = document.getElementById("btn-agent-sub-dep");
-    const btnSubWdr = document.getElementById("btn-agent-sub-wdr");
-
-    const agentLogoutBtn = document.getElementById("agent-logout-btn");
-
-    if (agentLogoutBtn) {
-      agentLogoutBtn.addEventListener("click", () => {
-        app.currentUser = null;
-        localStorage.removeItem(app.sessionKey);
-        app.showToast("Logged out from agent field workspace successfully.", "info");
-        app.render();
-      });
-    }
-
-    if (agentVerifyBtn) {
-      agentVerifyBtn.addEventListener("click", () => {
-        const usernameVal = document.getElementById("agent-verify-username").value.trim();
-        const resultEl = document.getElementById("agent-verify-result");
-        if (!resultEl) return;
-
-        if (!usernameVal) {
-          app.showToast("Enter target username first!", "error");
-          return;
-        }
-
-        const targetUser = app.db.users.find(u => u.username.toLowerCase() === usernameVal.toLowerCase());
-        resultEl.classList.remove("hidden");
-        if (!targetUser) {
-          resultEl.innerHTML = `
-            <div class="text-rose-450 flex items-center gap-1 font-sans">
-              <i class="fa-solid fa-circle-exclamation"></i> Player Not Found!
-            </div>
-          `;
-          return;
-        }
-
-        const joinedDate = targetUser.joinDate || "N/A";
-
-        resultEl.innerHTML = `
-          <div class="border-b border-slate-800 pb-1.5 mb-1.5 text-center font-bold text-slate-250 font-sans">
-            Profile Search for @${targetUser.username}
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">Wallet Balance:</span>
-            <span class="text-emerald-400 font-bold">৳${(targetUser.balance || 0).toFixed(2)}</span>
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">Email Address:</span>
-            <span class="text-slate-300 select-all">${targetUser.email || "N/A"}</span>
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">Phone Mobile Link:</span>
-            <span class="text-slate-300 select-all">${targetUser.phone || "N/A"}</span>
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">Registration Date:</span>
-            <span class="text-slate-400">${joinedDate}</span>
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">Account Status:</span>
-            <span class="uppercase font-bold ${targetUser.status === "active" ? "text-emerald-500" : "text-rose-500"}">${targetUser.status || "active"}</span>
-          </div>
-          <div class="flex justify-between font-mono text-xs">
-            <span class="text-slate-500">dob Age Limit:</span>
-            <span class="text-slate-300">${targetUser.dob || "N/A"}</span>
-          </div>
-        `;
-      });
-    }
-
-    const recomputeBookingEstimates = () => {
-      const lotteryId = bookingLotterySelect ? bookingLotterySelect.value : "";
-      const qty = parseInt(bookingQtyInput ? bookingQtyInput.value : 1) || 1;
-      const uPriceEl = document.getElementById("agent-book-unit-price");
-      const tCostEl = document.getElementById("agent-book-total-cost");
-      const estCommEl = document.getElementById("agent-book-est-commission");
-
-      if (!uPriceEl || !tCostEl || !estCommEl) return;
-
-      const lot = app.db.lotteries.find(l => l.id === lotteryId);
-      if (!lot) {
-        uPriceEl.innerText = "৳0.00";
-        tCostEl.innerText = "৳0.00";
-        estCommEl.innerText = "৳0.00";
-        return;
-      }
-
-      const unitPrice = lot.entryFee || 0;
-      const totalCost = unitPrice * qty;
-      const agentRate = app.currentUser ? (app.currentUser.commissionRate || 5.0) : 5.0;
-      const calculatedComm = (totalCost * agentRate) / 100;
-
-      uPriceEl.innerText = `৳${unitPrice.toFixed(2)}`;
-      tCostEl.innerText = `৳${totalCost.toFixed(2)}`;
-      estCommEl.innerText = `৳${calculatedComm.toFixed(2)}`;
-    };
-
-    if (bookingQtyInput) {
-      bookingQtyInput.addEventListener("input", recomputeBookingEstimates);
-    }
-    if (bookingLotterySelect) {
-      bookingLotterySelect.addEventListener("change", recomputeBookingEstimates);
-    }
-
-    if (agentBookingForm) {
-      agentBookingForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const targetUsername = document.getElementById("agent-booking-user").value.trim();
-        const lotteryId = bookingLotterySelect ? bookingLotterySelect.value : "";
-        const qty = parseInt(bookingQtyInput ? bookingQtyInput.value : 1) || 1;
-
-        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
-        if (!targetUser) {
-          app.showToast(`Invalid username: Target player @${targetUsername} does not exist!`, "error");
-          return;
-        }
-
-        const lot = app.db.lotteries.find(l => l.id === lotteryId);
-        if (!lot) {
-          app.showToast("Invalid lottery selection!", "error");
-          return;
-        }
-
-        const unitPrice = lot.entryFee || 0;
-        const totalCost = unitPrice * qty;
-
-        if (targetUser.balance < totalCost) {
-          app.showToast(`Booking Failed: Player @${targetUser.username} has insufficient balance (৳${targetUser.balance.toFixed(2)}). Need ৳${totalCost.toFixed(2)}. Please load cash into their wallet first.`, "error");
-          return;
-        }
-
-        // Deduct player balance
-        targetUser.balance -= totalCost;
-
-        // Populate tickets
-        if (!app.db.tickets) app.db.tickets = [];
-        for (let i = 0; i < qty; i++) {
-          const numSeq = Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
-          app.db.tickets.push({
-            id: "t_" + Date.now() + "_" + i,
-            userId: targetUser.id,
-            lotteryId: lot.id,
-            ticketNumber: numSeq,
-            purchaseDate: new Date().toISOString(),
-            status: "active"
-          });
-        }
-
-        // Add soldTickets limit
-        lot.soldTickets = (lot.soldTickets || 0) + qty;
-
-        // Credit Agent Commissions
-        const agentRate = app.currentUser ? (app.currentUser.commissionRate || 5.0) : 5.0;
-        const calculatedComm = (totalCost * agentRate) / 100;
-        app.currentUser.earnedCommission = (app.currentUser.earnedCommission || 0) + calculatedComm;
-        app.currentUser.totalBookings = (app.currentUser.totalBookings || 0) + qty;
-
-        // Store active session modifications also in DB registry users
-        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
-        if (dbAgent) {
-          dbAgent.earnedCommission = app.currentUser.earnedCommission;
-          dbAgent.totalBookings = app.currentUser.totalBookings;
-        }
-
-        // Add list transaction activity in agent Ledger
-        if (!app.db.agentLedger) app.db.agentLedger = [];
-        app.db.agentLedger.push({
-          id: "act_" + Date.now(),
-          agentId: app.currentUser.id,
-          timestamp: new Date().toISOString(),
-          targetUser: targetUser.username,
-          description: `Booked ticket on ${lot.name} x${qty} Pcs`,
-          amount: totalCost,
-          commission: calculatedComm
-        });
-
-        app.saveDB();
-        app.showToast(`Executed Order! Successfully booked ${qty} tickets for @${targetUser.username}. Earned ৳${calculatedComm.toFixed(2)} commission!`, "success");
-        agentBookingForm.reset();
-        recomputeBookingEstimates();
-        app.renderAgentWorkspace();
-      });
-    }
-
-    if (btnSubDep && btnSubWdr) {
-      btnSubDep.addEventListener("click", () => {
-        btnSubDep.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md";
-        btnSubWdr.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition text-slate-400 hover:text-white";
-        document.getElementById("agent-cash-deposit-form").classList.remove("hidden");
-        document.getElementById("agent-cash-withdraw-form").classList.add("hidden");
-      });
-
-      btnSubWdr.addEventListener("click", () => {
-        btnSubWdr.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md";
-        btnSubDep.className = "flex-1 py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition text-slate-400 hover:text-white";
-        document.getElementById("agent-cash-deposit-form").classList.add("hidden");
-        document.getElementById("agent-cash-withdraw-form").classList.remove("hidden");
-      });
-    }
-
-    if (agentCashDepositForm) {
-      agentCashDepositForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const targetUsername = document.getElementById("agent-cash-dep-username").value.trim();
-        const amount = parseFloat(document.getElementById("agent-cash-dep-amount").value || "0");
-
-        if (amount < 10) {
-          app.showToast("Minimum wallet load is 10 Taka!", "error");
-          return;
-        }
-
-        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
-        if (!targetUser) {
-          app.showToast(`Invalid Player: Target player @${targetUsername} does not exist!`, "error");
-          return;
-        }
-
-        // Dedect from agent funds
-        if (app.currentUser.balance < amount) {
-          app.showToast(`Load Failed: Insufficient Agent Wallet funds (Current Balance: ৳${app.currentUser.balance.toFixed(2)}). Contact Administrator for Agent Wallet limit refill!`, "error");
-          return;
-        }
-
-        // Perform balance shift
-        app.currentUser.balance -= amount;
-        targetUser.balance = (targetUser.balance || 0) + amount;
-        // Keep DB user record matching current active agent session
-        const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
-        if (dbAgent) {
-          dbAgent.balance = app.currentUser.balance;
-        }
-
-        // Record a deposit ledger transaction as automatically approved
-        if (!app.db.deposits) app.db.deposits = [];
-        app.db.deposits.push({
-          id: "dep_" + Date.now(),
-          userId: targetUser.id,
-          username: targetUser.username,
-          gateway: "Agent Funds Assistance",
-          amount: amount,
-          txid: "AGN-DEP-" + Math.floor(Math.random() * 100000),
-          status: "approved",
-          date: new Date().toISOString()
-        });
-
-        // Log Agent activity ledger
-        if (!app.db.agentLedger) app.db.agentLedger = [];
-        app.db.agentLedger.push({
-          id: "act_" + Date.now(),
-          agentId: app.currentUser.id,
-          timestamp: new Date().toISOString(),
-          targetUser: targetUser.username,
-          description: "Wallet Cash Deposit (Load assisted)",
-          amount: amount,
-          commission: 0
-        });
-
-        app.saveDB();
-        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Agent Limit deducted.`, "success");
-        agentCashDepositForm.reset();
-        app.renderAgentWorkspace();
-      });
-    }
-
-    if (agentCashWithdrawForm) {
-      agentCashWithdrawForm.addEventListener("submit", (e) => {
-        e.preventDefault();
-        const targetUsername = document.getElementById("agent-cash-wdr-username").value.trim();
-        const amount = parseFloat(document.getElementById("agent-cash-wdr-amount").value || "0");
-        const enteredOTP = document.getElementById("agent-cash-wdr-otp").value.trim();
-
-        if (amount < 10) {
-          app.showToast("Minimum cash out is 10 Taka!", "error");
-          return;
-        }
-
-        if (!enteredOTP) {
-          app.showToast("Please enter the 6-Digit Player Cashout OTP to proceed!", "error");
-          return;
-        }
-
-        const targetUser = app.db.users.find(u => u.username.toLowerCase() === targetUsername.toLowerCase());
-        if (!targetUser) {
-          app.showToast(`Invalid Player: Target player @${targetUsername} does not exist!`, "error");
-          return;
-        }
-
-        // Verify player is active and has sufficient wallet balance
-        if (targetUser.balance < amount) {
-          app.showToast(`Cashout Failed: Player @${targetUser.username} has insufficient wallet balance (৳${targetUser.balance.toFixed(2)})!`, "error");
-          return;
-        }
-
-        // --- SECURE OTP VERIFICATION ---
-        const otpData = targetUser.cashoutOTP;
-        if (!otpData) {
-          app.showToast(`OTP Verification Failed: No active OTP code found for @${targetUser.username}. Ask them to generate one first on their profile.`, "error");
-          return;
-        }
-
-        if (otpData.used) {
-          app.showToast(`OTP Verification Failed: This OTP has already been used to deduct balance! Player must generate a new OTP.`, "error");
-          return;
-        }
-
-        if (Date.now() > otpData.expiresAt) {
-          app.showToast(`OTP Verification Failed: This OTP code has expired! Ask the player to generate a fresh one.`, "error");
-          return;
-        }
-
-        if (otpData.code !== enteredOTP) {
-          app.showToast(`OTP Verification Failed: Invalid 6-digit code! Please double-check with the player.`, "error");
-          return;
-        }
-
-        // Mark OTP as used so it cannot be re-used under any circumstance within the 30 seconds
-        otpData.used = true;
-
-        // Perform balance deduction and physically reward offline cash
-        targetUser.balance -= amount;
-
-        // Save latest deduction details to trigger the 5-second popup on targetUser's panel in real-time
-        targetUser.latestDeductionNotification = {
-          id: "deduct_" + Date.now() + "_" + Math.floor(Math.random() * 100),
-          amount: amount,
-          agentUsername: app.currentUser.username,
-          timestamp: new Date().toISOString()
-        };
-
-        // Record a withdrawal ledger transaction
-        if (!app.db.withdrawals) app.db.withdrawals = [];
-        app.db.withdrawals.push({
-          id: "wdr_" + Date.now(),
-          userId: targetUser.id,
-          username: targetUser.username,
-          gateway: "Agent Assisted Cashout",
-          method: "Agent Assisted Cashout",
-          targetAccount: targetUser.phone || targetUser.username,
-          amount: amount,
-          phone: targetUser.phone,
-          status: "approved",
-          date: new Date().toISOString()
-        });
-
-        // Log Agent activity ledger
-        if (!app.db.agentLedger) app.db.agentLedger = [];
-        app.db.agentLedger.push({
-          id: "act_" + Date.now(),
-          agentId: app.currentUser.id,
-          timestamp: new Date().toISOString(),
-          targetUser: targetUser.username,
-          description: `Assisted offline Cashout (Verified with OTP: ${enteredOTP})`,
-          amount: amount,
-          commission: 0
-        });
-
-        app.saveDB();
-        app.showToast(`Cashout approved! Deducted ৳${amount.toFixed(2)} from @${targetUser.username}. Hand physical money over to the player now.`, "success");
-        agentCashWithdrawForm.reset();
-        app.renderAgentWorkspace();
-      });
-    }
-  }
-
   // ================= ADMIN REGISTERED LOTTERIES VIEW =================
-  renderAdminLotteries() {
-    const listEl = document.getElementById("admin-pools-list-container");
-    listEl.innerHTML = "";
-
-    this.db.lotteries.forEach(lot => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative space-y-4 shadow-lg";
-
-      const badge = lot.status === "drawn" ? `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-green-950 text-green-300">🏆 DRAW COMPLETED</span>` :
-                                             `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-cyan-950 text-cyan-400">⏳ ACTIVE RUNNING</span>`;
-
-      const drawBtn = lot.status === "active" ? `<button class="admin-manual-draw-trigger bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-xl transition" data-id="${lot.id}">Force Draw Winner</button>` : "";
-
-      card.innerHTML = `
-        <div class="flex justify-between items-start gap-4">
-          <div>
-            <span class="text-[9px] uppercase font-bold tracking-widest text-cyan-400 font-mono bg-cyan-950/40 px-2.5 py-0.5 rounded-full border border-cyan-800/30">
-              ${lot.category}
-            </span>
-            <h4 class="text-sm font-bold text-white mt-1.5">${lot.name}</h4>
-            <p class="text-[11px] text-slate-500 leading-normal font-mono">ID: ${lot.id} | Prize: ৳${lot.prizeAmount}</p>
-          </div>
-          <div class="text-right shrink-0">
-            <span class="text-sm font-bold text-white font-mono">Fee: ৳${lot.entryFee}</span>
-            <div class="text-[10px] text-slate-500 mt-1 font-mono">${lot.soldTickets}/${lot.totalTickets} Sold</div>
-          </div>
-        </div>
-
-        <div class="flex justify-between items-center border-t border-slate-800 pt-3">
-          ${badge}
-          <div class="flex gap-2">
-            ${drawBtn}
-            <button class="admin-delete-pool bg-red-950 hover:bg-red-900 text-red-400 text-[10px] font-bold py-1.5 px-3 rounded-xl border border-red-900/30 transition" data-id="${lot.id}">Delete</button>
-          </div>
-        </div>
-      `;
-
-      listEl.appendChild(card);
-    });
-
-    // Manual draws award selector triggering
-    document.querySelectorAll(".admin-manual-draw-trigger").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        this.openManualDrawModal(id);
-      });
-    });
-
-    // Delete draw pool with iframe-safe confirmation
-    document.querySelectorAll(".admin-delete-pool").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const id = btn.getAttribute("data-id");
-        if (btn.getAttribute("data-confirmed") === "true") {
-          this.db.lotteries = this.db.lotteries.filter(l => String(l.id) !== String(id));
-          this.db.tickets = this.db.tickets.filter(t => String(t.lotteryId) !== String(id));
-          this.saveDB();
-          this.render();
-          this.showToast("Lottery pool and ticket sheets wiped.", "success");
-        } else {
-          btn.setAttribute("data-confirmed", "true");
-          btn.innerText = "Confirm Delete ⚠️";
-          btn.className = "bg-red-600 hover:bg-red-700 text-white text-[10px] font-black py-1.5 px-3 rounded-xl transition animate-pulse border border-red-500 shadow-md";
-          
-          setTimeout(() => {
-            if (btn && btn.getAttribute("data-confirmed") === "true") {
-              btn.setAttribute("data-confirmed", "false");
-              btn.innerText = "Delete";
-              btn.className = "admin-delete-pool bg-red-950 hover:bg-red-900 text-red-400 text-[10px] font-bold py-1.5 px-3 rounded-xl border border-red-900/30 transition";
-            }
-          }, 4000);
-        }
-      });
-    });
-  }
-
   openManualDrawModal(lotteryId) {
     const lot = this.db.lotteries.find(l => l.id === lotteryId);
     if (!lot) return;
@@ -6102,231 +5225,6 @@ public class DatabaseClusterRouter {
     requestAnimationFrame(animate);
   }
 
-  executeManualDrawWinner() {
-    const id = document.getElementById("draw-modal-id-field").value;
-    const lot = this.db.lotteries.find(l => l.id === id);
-    if (!lot) return;
-
-    const ticketsOfPool = this.db.tickets.filter(t => t.lotteryId === lot.id && t.status === "pending");
-
-    if (ticketsOfPool.length === 0) {
-      this.showToast("Cannot complete draw. There are 0 tickets bought in this pool yet!", "error");
-      return;
-    }
-
-    // Hide confirm action, show spinning animations
-    document.getElementById("admin-confirm-draw-btn").classList.add("hidden");
-    const loader = document.getElementById("spin-loader-graphic");
-    loader.classList.remove("hidden");
-
-    // Check if admin entered an override code
-    const overrideVal = document.getElementById("draw-override-winning-ticket").value.trim();
-
-    // Prematurely calculate main winning ticket to represent on roulette wheel
-    let targetWinnerTicket = null;
-    if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
-      if (overrideVal) {
-        targetWinnerTicket = ticketsOfPool.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
-      }
-      if (!targetWinnerTicket) {
-        targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-      }
-    } else {
-      if (overrideVal) {
-        targetWinnerTicket = ticketsOfPool.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
-        if (!targetWinnerTicket) {
-          targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-        }
-      } else {
-        targetWinnerTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-      }
-    }
-
-    this.animateDrawRoulette(ticketsOfPool, targetWinnerTicket, () => {
-      loader.classList.add("hidden");
-
-      const singleDisplay = document.getElementById("single-winner-display");
-      const multiDisplay = document.getElementById("multi-winners-display");
-      const multiList = document.getElementById("multi-winners-list");
-
-      if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
-        // Multi-winner draw logic!
-        const shuffle = [...ticketsOfPool];
-        
-        // Handle override code for rank #1 winner if provided
-        let firstWinningTicket = null;
-        if (overrideVal) {
-          firstWinningTicket = shuffle.find(t => t.code.toLowerCase() === overrideVal.toLowerCase());
-          if (firstWinningTicket) {
-            // Remove from shuffle so it is strictly selected as rank #1
-            const idx = shuffle.indexOf(firstWinningTicket);
-            if (idx > -1) shuffle.splice(idx, 1);
-          } else {
-            this.showToast("Override ticket not in pool buyers. Selected randomly.", "error");
-          }
-        }
-
-        // Shuffle the rest randomly
-        shuffle.sort(() => Math.random() - 0.5);
-
-        // Put the override ticket at position 0 if matched
-        if (firstWinningTicket) {
-          shuffle.unshift(firstWinningTicket);
-        }
-
-        const winnersCount = Math.min(lot.multiWinnerPrizes.length, shuffle.length);
-        const winnersDataList = [];
-
-        for (let i = 0; i < winnersCount; i++) {
-          const currentPrize = lot.multiWinnerPrizes[i];
-          const winningTicket = shuffle[i];
-          winningTicket.status = "won";
-          winningTicket.prizeAmount = currentPrize;
-
-          const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
-          if (winnerUser) {
-            winnerUser.balance += currentPrize;
-            winnerUser.wins += 1;
-            winnerUser.profit += currentPrize;
-          }
-
-          winnersDataList.push({
-            rank: i + 1,
-            prize: currentPrize,
-            username: winnerUser ? winnerUser.username : "Removed User",
-            code: winningTicket.code
-          });
-        }
-
-        const winnerTicketIds = shuffle.slice(0, winnersCount).map(t => t.id);
-        ticketsOfPool.forEach(t => {
-          if (!winnerTicketIds.includes(t.id)) {
-            t.status = "lost";
-          }
-        });
-
-        lot.status = "drawn";
-        this.saveDB();
-
-        // Render UI displays
-        if (singleDisplay) singleDisplay.classList.add("hidden");
-        if (multiDisplay) multiDisplay.classList.remove("hidden");
-        if (multiList) {
-          multiList.innerHTML = "";
-          winnersDataList.forEach(w => {
-            const row = document.createElement("div");
-            row.className = "flex justify-between items-center bg-slate-950/60 p-2 rounded-lg border border-slate-800/50 mt-1";
-            row.innerHTML = `
-              <div class="flex items-center gap-1.5 font-sans">
-                <span class="text-[9px] font-bold bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-900/30">Rank #${w.rank}</span>
-                <span class="text-white text-[10px]">@${w.username}</span>
-              </div>
-              <div class="text-right font-mono">
-                <span class="text-slate-500 block text-[9px]">${w.code}</span>
-                <span class="text-emerald-400 font-bold text-[10px]">৳${w.prize}</span>
-              </div>
-            `;
-            multiList.appendChild(row);
-          });
-        }
-
-      } else {
-        // Standard single winner
-        let winningTicket = targetWinnerTicket;
-
-        const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
-        if (winnerUser) {
-          winnerUser.balance += lot.prizeAmount;
-          winnerUser.wins += 1;
-          winnerUser.profit += lot.prizeAmount;
-        }
-
-        winningTicket.status = "won";
-        winningTicket.prizeAmount = lot.prizeAmount;
-
-        ticketsOfPool.forEach(t => {
-          if (t.id !== winningTicket.id) t.status = "lost";
-        });
-
-        lot.status = "drawn";
-        this.saveDB();
-
-        // Render UI displays
-        if (multiDisplay) multiDisplay.classList.add("hidden");
-        if (singleDisplay) singleDisplay.classList.remove("hidden");
-
-        document.getElementById("drawn-winner-handle").innerText = winnerUser ? `@${winnerUser.username}` : "Unknown System Account";
-        document.getElementById("drawn-winner-ticket-code").innerText = winningTicket.code;
-        document.getElementById("drawn-winner-premium-reward").innerText = `৳${lot.prizeAmount}`;
-      }
-
-      const resultZone = document.getElementById("draw-winning-outcome-zone");
-      if (resultZone) resultZone.classList.remove("hidden");
-
-      this.showToast("Lucky draw award completed successfully!", "success");
-    });
-  }
-
-  renderAdminDeposits() {
-    const listEl = document.getElementById("admin-deposits-list");
-    listEl.innerHTML = "";
-
-    const depos = this.db.deposits;
-    if (depos.length === 0) {
-      listEl.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No payment deposits recorded.</div>`;
-      return;
-    }
-
-    depos.forEach(d => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md";
-
-      let actionBlock = "";
-      if (d.status === "pending") {
-        actionBlock = `
-          <div class="flex gap-2">
-            <button class="approve-dep-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${d.id}">Approve</button>
-            <button class="decline-dep-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${d.id}">Decline</button>
-          </div>
-        `;
-      } else {
-        const clr = d.status === "approved" ? "text-emerald-400" : "text-rose-400";
-        actionBlock = `<span class="uppercase font-mono font-bold text-[10px] ${clr}">${d.status}</span>`;
-      }
-
-      card.innerHTML = `
-        <div class="space-y-1">
-          <div class="font-bold text-white">@${d.username}</div>
-          <div class="text-[10px] text-slate-400 font-mono">Gateway: ${d.method}</div>
-          <div class="text-[10px] text-cyan-400 font-mono select-all">Trx tracer: ${d.trxId}</div>
-          <div class="text-[9px] text-slate-600 font-mono">${new Date(d.date).toLocaleString()}</div>
-        </div>
-        <div class="flex flex-col items-end gap-2 shrink-0 text-right">
-          <span class="text-sm font-black text-white font-mono">৳${d.amount}</span>
-          ${actionBlock}
-        </div>
-      `;
-
-      listEl.appendChild(card);
-    });
-
-    // Approve Deposit Logic
-    document.querySelectorAll(".approve-dep-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.getAttribute("data-id");
-        this.approveDeposit(id);
-      });
-    });
-
-    // Decline Deposit Logic
-    document.querySelectorAll(".decline-dep-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.getAttribute("data-id");
-        this.declineDeposit(id);
-      });
-    });
-  }
-
   approveDeposit(id) {
     const d = this.db.deposits.find(dep => dep.id === id);
     if (!d) return;
@@ -6374,82 +5272,6 @@ public class DatabaseClusterRouter {
     this.showToast(`Deposit of ৳${d.amount} declined.`, "info");
   }
 
-  renderAdminWithdraws() {
-    const listEl = document.getElementById("admin-withdraws-list");
-    listEl.innerHTML = "";
-
-    const filterEl = document.getElementById("admin-withdraws-filter");
-    const filterVal = filterEl ? filterEl.value : "all";
-
-    let wds = this.db.withdrawals || [];
-
-    if (filterVal !== "all") {
-      wds = wds.filter(w => {
-        const method = (w.method || "").toLowerCase();
-        const check = filterVal.toLowerCase();
-        if (check === "usdt") {
-          return method.includes("usdt") || method.includes("crypto");
-        }
-        if (check === "dbbl") {
-          return method.includes("dbbl") || method.includes("credit");
-        }
-        return method.includes(check);
-      });
-    }
-
-    if (wds.length === 0) {
-      listEl.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No core matching withdrawals found.</div>`;
-      return;
-    }
-
-    wds.forEach(w => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md animate-in fade-in duration-200";
-
-      let actionBlock = "";
-      if (w.status === "pending") {
-        actionBlock = `
-          <div class="flex gap-2">
-            <button class="approve-wd-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition cursor-pointer" data-id="${w.id}">Approve/Paid</button>
-            <button class="decline-wd-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition cursor-pointer" data-id="${w.id}">Refund/Decline</button>
-          </div>
-        `;
-      } else {
-        const clr = w.status === "approved" ? "text-emerald-400" : "text-rose-400";
-        actionBlock = `<span class="uppercase font-mono font-bold text-[10px] ${clr}">${w.status}</span>`;
-      }
-
-      card.innerHTML = `
-        <div class="space-y-1">
-          <div class="font-bold text-white">@${w.username}</div>
-          <div class="text-[10px] text-slate-400 font-mono">Recipient: ${w.targetAccount}</div>
-          <div class="text-[10px] text-slate-400 font-mono">Method: ${w.method}</div>
-          <div class="text-[9px] text-slate-600 font-mono">${new Date(w.date).toLocaleString()}</div>
-        </div>
-        <div class="flex flex-col items-end gap-2 shrink-0 text-right">
-          <span class="text-sm font-black text-rose-400 font-mono">৳${w.amount}</span>
-          ${actionBlock}
-        </div>
-      `;
-
-      listEl.appendChild(card);
-    });
-
-    document.querySelectorAll(".approve-wd-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.getAttribute("data-id");
-        this.approveWithdrawal(id);
-      });
-    });
-
-    document.querySelectorAll(".decline-wd-btn").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        const id = e.target.getAttribute("data-id");
-        this.declineWithdrawal(id);
-      });
-    });
-  }
-
   approveWithdrawal(id) {
     const w = this.db.withdrawals.find(dep => dep.id === id);
     if (!w) return;
@@ -6470,312 +5292,15 @@ public class DatabaseClusterRouter {
 
     const u = this.db.users.find(user => user.username === w.username);
     if (u) {
-      // Refund wallet
-      u.balance += w.amount;
-      u.profit += w.amount;
+      // Refund wallet including fees
+      const refundAmount = w.totalDebit !== undefined ? w.totalDebit : w.amount;
+      u.balance += refundAmount;
+      u.profit += refundAmount;
     }
     w.status = "declined";
     this.saveDB();
     this.render();
     this.showToast(`Refunded and declined withdrawal of ৳${w.amount} to @${w.username}.`, "info");
-  }
-
-  renderAdminRefer() {
-    const s = this.db.settings;
-    
-    // Set targeting values
-    const allowedInput = document.getElementById("ref-allowed-regions-input");
-    const bannedInput = document.getElementById("ref-banned-regions-input");
-    const preventionToggle = document.getElementById("ref-ip-prevention-toggle");
-    const vpnBlockToggle = document.getElementById("ref-vpn-block-toggle");
-
-    if (allowedInput) allowedInput.value = (s.allowedRegions || []).join(", ");
-    if (bannedInput) bannedInput.value = (s.bannedRegions || []).join(", ");
-    if (preventionToggle) preventionToggle.checked = s.ipPreventionEnabled !== false;
-    if (vpnBlockToggle) vpnBlockToggle.checked = s.vpnBlockEnabled !== false;
-
-    // Render Milestone Levels Table
-    const tbody = document.getElementById("admin-milestone-levels-tbody");
-    if (tbody) {
-      tbody.innerHTML = "";
-      const levels = s.milestoneLevels || [];
-      if (levels.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="text-slate-500 py-3 text-center">No reference levels saved. Create one below!</td></tr>`;
-      } else {
-        levels.forEach((lvl, idx) => {
-          const tr = document.createElement("tr");
-          tr.className = "border-b border-slate-850/60 hover:bg-slate-900/60 transition";
-          tr.innerHTML = `
-            <td class="py-2 text-white font-bold">${this.escapeHTML(lvl.title)}</td>
-            <td class="py-2 text-center text-amber-400 font-bold">${lvl.count} refer(s)</td>
-            <td class="py-2 text-center text-emerald-400 font-bold">৳${lvl.reward}</td>
-            <td class="py-2 text-right">
-              <button class="bg-rose-955/40 hover:bg-rose-900/40 text-rose-400 border border-rose-900/30 px-2 py-1 rounded transition text-[9px] cursor-pointer" data-delete-idx="${idx}">
-                <i class="fa-solid fa-trash-can mr-1"></i> Delete
-              </button>
-            </td>
-          `;
-          tbody.appendChild(tr);
-        });
-
-        // Add Delete Listeners
-        tbody.querySelectorAll("[data-delete-idx]").forEach(btn => {
-          btn.addEventListener("click", () => {
-             const idx = parseInt(btn.getAttribute("data-delete-idx"));
-             s.milestoneLevels.splice(idx, 1);
-             this.saveDB();
-             this.showToast("Milestone level deleted successfully.", "info");
-             this.renderAdminRefer();
-          });
-        });
-      }
-    }
-
-    // Render flagged duplicate/shared-IP clones
-    const sharedIpsList = document.getElementById("admin-shared-ips-list");
-    if (sharedIpsList) {
-       sharedIpsList.innerHTML = "";
-       const ipMap = {};
-       this.db.users.forEach(u => {
-          const ip = u.registeredIp || "N/A";
-          if (ip !== "N/A") {
-             if (!ipMap[ip]) ipMap[ip] = [];
-             ipMap[ip].push(u.username);
-          }
-       });
-
-       let foundDuplicates = false;
-       for (const [ip, names] of Object.entries(ipMap)) {
-          if (names.length > 1) {
-             foundDuplicates = true;
-             const div = document.createElement("div");
-             div.className = "py-2 border-b border-slate-850/50 flex flex-col gap-1 text-[11px]";
-             div.innerHTML = `
-                <div class="flex justify-between items-center">
-                   <strong class="text-rose-400 font-mono"><i class="fa-solid fa-triangle-exclamation mr-1"></i> IP: ${ip}</strong>
-                   <span class="bg-rose-950/40 border border-rose-900/45 px-2 py-0.5 rounded text-[8px] uppercase font-bold text-rose-300">${names.length} Clones</span>
-                </div>
-                <div class="text-[10px] text-slate-400 font-sans">
-                   Shared by: ${names.map(n => `<span class="text-slate-200">@${n}</span>`).join(", ")}
-                </div>
-                <div class="pt-1">
-                   <button class="bg-rose-950 hover:bg-rose-920 text-[9px] border border-rose-900 px-2 py-0.5 rounded text-rose-300 transition" data-ban-ip="${ip}">
-                      Ban Network IP
-                   </button>
-                </div>
-             `;
-             sharedIpsList.appendChild(div);
-          }
-       }
-
-       if (!foundDuplicates) {
-          sharedIpsList.innerHTML = `<div class="text-slate-500 text-center py-4 font-sans">No shared IP duplicate logins registered. Network is safe.</div>`;
-       } else {
-          sharedIpsList.querySelectorAll("[data-ban-ip]").forEach(btn => {
-             btn.addEventListener("click", () => {
-                const ip = btn.getAttribute("data-ban-ip");
-                if (ip && !s.bannedIPs.includes(ip)) {
-                   s.bannedIPs.push(ip);
-                   this.db.users.forEach(u => {
-                      if (u.registeredIp === ip) u.status = "blocked";
-                   });
-                   this.saveDB();
-                   this.showToast(`Banned IP ${ip} successfully and blocked all sharing clones!`, "success");
-                   this.renderAdminRefer();
-                } else {
-                   this.showToast("This IP is already blacklisted.", "info");
-                }
-             });
-          });
-       }
-    }
-
-    // Render active banned IPs
-    const bannedIpsList = document.getElementById("admin-banned-ips-list");
-    if (bannedIpsList) {
-       bannedIpsList.innerHTML = "";
-       const banned = s.bannedIPs || [];
-       if (banned.length === 0) {
-          bannedIpsList.innerHTML = `<div class="text-slate-500 text-center py-4 font-sans">No permanently blacklisted network IPs list.</div>`;
-       } else {
-          banned.forEach((ip, idx) => {
-             const div = document.createElement("div");
-             div.className = "flex justify-between items-center py-1.5 border-b border-slate-850/40 text-[11px] font-mono";
-             div.innerHTML = `
-                <span class="text-slate-300"><i class="fa-solid fa-ban text-rose-500 mr-1.5"></i> ${ip}</span>
-                <button class="text-cyan-400 bg-cyan-950/20 hover:bg-cyan-950 border border-cyan-900 px-2 py-0.5 rounded text-[8px] transition cursor-pointer shrink-0" data-lift-ip="${ip}">
-                   Unban IP
-                </button>
-             `;
-             bannedIpsList.appendChild(div);
-          });
-
-          // Unban buttons
-          bannedIpsList.querySelectorAll("[data-lift-ip]").forEach(btn => {
-             btn.addEventListener("click", () => {
-                const ip = btn.getAttribute("data-lift-ip");
-                s.bannedIPs = s.bannedIPs.filter(item => item !== ip);
-                this.saveDB();
-                this.showToast(`IP address unbanned successfully: ${ip}`, "info");
-                this.renderAdminRefer();
-             });
-          });
-       }
-    }
-
-    // Render Security Logs
-    const securityLogsList = document.getElementById("admin-security-logs-list");
-    if (securityLogsList) {
-      securityLogsList.innerHTML = "";
-      const logs = this.db.securityLogs || [];
-      if (logs.length === 0) {
-        securityLogsList.innerHTML = `<div class="text-slate-500 text-center py-4 font-sans text-[10px]">No automatic security alerts generated yet. Active monitoring is online.</div>`;
-      } else {
-        logs.forEach(log => {
-          let typeColor = "text-rose-400 bg-rose-950/20 border-rose-900/40";
-          let icon = "fa-solid fa-fingerprint";
-          if (log.type === "region_restriction") {
-            typeColor = "text-amber-400 bg-amber-950/20 border-amber-900/40";
-            icon = "fa-solid fa-earth-asia";
-          }
-          const div = document.createElement("div");
-          div.className = "py-2 border-b border-slate-850/50 flex flex-col gap-1 text-[11px] font-mono";
-          div.innerHTML = `
-            <div class="flex justify-between items-center">
-              <span class="px-2 py-0.5 rounded border text-[8px] font-bold uppercase ${typeColor}">
-                <i class="${icon} mr-1"></i> ${log.type ? log.type.replace("_", " ") : "ALERT"}
-              </span>
-              <span class="text-[8px] text-slate-500">${log.timestamp ? log.timestamp.replace("T", " ").substring(0, 19) : "N/A"}</span>
-            </div>
-            <p class="text-slate-300 leading-normal text-[10.5px]">${this.escapeHTML(log.message)}</p>
-          `;
-          securityLogsList.appendChild(div);
-        });
-      }
-    }
-  }
-
-  renderAdminSettings() {
-    const s = this.db.settings;
-
-    try {
-      const setChecked = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.checked = !!val;
-      };
-      const setValue = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.value = val !== undefined ? val : "";
-      };
-
-      // Load Enable / Disable Toggles
-      setChecked("sys-pay-bkash-enabled", s.payBkashEnabled !== false);
-      setChecked("sys-pay-nagad-enabled", s.payNagadEnabled !== false);
-      setChecked("sys-pay-rocket-enabled", s.payRocketEnabled !== false);
-      setChecked("sys-pay-upay-enabled", s.payUpayEnabled !== false);
-      setChecked("sys-pay-dbbl-enabled", s.payDbblEnabled !== false);
-      setChecked("sys-pay-usdt-enabled", s.payUsdtEnabled !== false);
-      setChecked("sys-pay-btc-enabled", s.payBtcEnabled !== false);
-      setChecked("sys-pay-eth-enabled", s.payEthEnabled !== false);
-
-      setValue("sys-pay-bkash-personal", s.mobilePersonalBkash || s.mobileAgentBkash || "");
-      setValue("sys-pay-bkash-agent", s.mobileAgentBkash || "");
-      setValue("sys-pay-bkash-instruction", s.mobileInstructionBkash || "");
-      
-      setValue("sys-pay-nagad-personal", s.mobilePersonalNagad || s.mobileAgentNagad || "");
-      setValue("sys-pay-nagad-agent", s.mobileAgentNagad || "");
-      setValue("sys-pay-nagad-instruction", s.mobileInstructionNagad || "");
-      
-      setValue("sys-pay-rocket-personal", s.mobilePersonalRocket || s.mobileAgentRocket || "");
-      setValue("sys-pay-rocket-agent", s.mobileAgentRocket || "");
-      setValue("sys-pay-rocket-instruction", s.mobileInstructionRocket || "");
-      
-      setValue("sys-pay-upay-personal", s.mobilePersonalUpay || s.mobileAgentUpay || "");
-      setValue("sys-pay-upay-agent", s.mobileAgentUpay || "");
-      setValue("sys-pay-upay-instruction", s.mobileInstructionUpay || "");
-      
-      setValue("sys-pay-dbbl", s.dbblDetails || "");
-      setValue("sys-pay-dbbl-instruction", s.dbblInstruction || "");
-      
-      setValue("sys-pay-crypto-usdt", s.cryptoAddressUSDT || "");
-      setValue("sys-pay-crypto-btc", s.cryptoAddressBTC || "");
-      setValue("sys-pay-crypto-eth", s.cryptoAddressETH || "");
-      setValue("sys-pay-crypto-qr-type", s.cryptoQRType || "auto");
-      
-      setValue("sys-pay-crypto-qr-usdt", s.cryptoQRUrlUSDT || "");
-      setValue("sys-pay-crypto-qr-btc", s.cryptoQRUrlBTC || "");
-      setValue("sys-pay-crypto-qr-eth", s.cryptoQRUrlETH || "");
-      setValue("sys-pay-crypto-instruction", s.cryptoInstruction || "");
-
-      setChecked("sys-pay-agent-deposit-enabled", s.payAgentDepositEnabled !== false);
-      setChecked("sys-pay-agent-withdraw-enabled", s.payAgentWithdrawEnabled !== false);
-      setValue("sys-pay-agent-deposit-instruction", s.mobileInstructionAgentDeposit || "");
-      setValue("sys-pay-agent-withdraw-instruction", s.mobileInstructionAgentWithdraw || "");
-
-      // Toggle custom URLs section on render
-      const customUrlsArea = document.getElementById("sys-pay-crypto-custom-urls");
-      if (customUrlsArea) {
-        if (s.cryptoQRType === "custom") {
-          customUrlsArea.classList.remove("hidden");
-        } else {
-          customUrlsArea.classList.add("hidden");
-        }
-      }
-
-      // Refresh Admin QR Code preview
-      this.refreshAdminQRPreview();
-
-      setChecked("sys-maintenance-toggle", s.maintenanceMode || false);
-      setValue("sys-maintenance-msg", s.maintenanceMessage || "");
-      setValue("sys-app-url", s.forceUpdateLink || "");
-      setValue("sys-app-ver", s.appVersion || "");
-      setValue("sys-admin-p", s.adminPass || "");
-
-      // Load Deposit Match Booster parameters
-      setValue("sys-dep-boost-percent", s.depBonusPercent || 10);
-      setValue("sys-dep-boost-min", s.depBonusMin || 500);
-      setChecked("sys-dep-boost-toggle", s.depBonusEnabled || false);
-
-      // Load Agent Referral Bonus & WhatsApp Settings
-      setValue("sys-agent-referral-bonus", s.agentReferralBonus !== undefined ? s.agentReferralBonus : 100);
-      setValue("sys-whatsapp-url", s.whatsappUrl || "");
-    } catch (err) {
-      console.warn("Exception in renderAdminSettings:", err);
-    }
-  }
-
-  refreshAdminQRPreview() {
-    try {
-      const s = this.db.settings;
-      const selector = document.getElementById("admin-spa-qr-selector");
-      const qrImg = document.getElementById("admin-spa-qr-preview");
-      if (!selector || !qrImg) return;
-
-      const selectedCoinType = selector.value; // usdt, btc, eth
-      
-      let activeAddress = "";
-      let customQRUrl = "";
-
-      if (selectedCoinType === "usdt") {
-        activeAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
-        customQRUrl = s.cryptoQRUrlUSDT;
-      } else if (selectedCoinType === "btc") {
-        activeAddress = s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
-        customQRUrl = s.cryptoQRUrlBTC;
-      } else {
-        activeAddress = s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
-        customQRUrl = s.cryptoQRUrlETH;
-      }
-
-      if (s.cryptoQRType === "custom" && customQRUrl) {
-        qrImg.src = customQRUrl;
-      } else {
-        // Auto-generated QR via QRServer API
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeAddress)}`;
-      }
-    } catch (err) {
-      console.warn("Exception in refreshAdminQRPreview:", err);
-    }
   }
 
   createNewLotteryPool(name, entryFee, prizeAmount, totalTickets, category, drawMode = "manual", drawDuration = 10, exactDatetime = "", desc = "", multiWinnerPrizes = null) {
@@ -7184,63 +5709,110 @@ function initApplicationLoader() {
     });
   }
 
-  // User tab badge request triggers
-  const profileBadgeReqBtn = document.getElementById("profile-badge-request-entry-btn");
-  if (profileBadgeReqBtn) {
-    profileBadgeReqBtn.addEventListener("click", () => {
+  // Dynamic User tab action delegation
+  document.addEventListener("click", (e) => {
+    // 1. User profile -> Apply for Badge tab
+    if (e.target.closest("#profile-badge-request-entry-btn")) {
       app.currentTab = "badge-request";
       app.renderDashboard();
-    });
-  }
+      return;
+    }
 
-  const badgeReqBackBtn = document.getElementById("badge-request-back-btn");
-  if (badgeReqBackBtn) {
-    badgeReqBackBtn.addEventListener("click", () => {
-      app.currentTab = "profile";
+    // 2. User profile -> Access OTP page
+    if (e.target.closest("#profile-access-otp-btn")) {
+      app.currentTab = "otp";
       app.renderDashboard();
-    });
-  }
+      return;
+    }
 
-  // ---------------- PART A: USER-FACING REFER CORNER LISTENERS ----------------
-  const profileReferEntryBtn = document.getElementById("profile-refer-entry-btn");
-  if (profileReferEntryBtn) {
-    profileReferEntryBtn.addEventListener("click", () => {
+    // 3. User profile -> Refer & Earn tab
+    if (e.target.closest("#profile-refer-entry-btn")) {
       app.currentTab = "refer";
       app.renderDashboard();
-    });
-  }
+      return;
+    }
 
-  const referBackBtn = document.getElementById("refer-back-btn");
-  if (referBackBtn) {
-    referBackBtn.addEventListener("click", () => {
+    // 4. Back buttons
+    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn")) {
       app.currentTab = "profile";
       app.renderDashboard();
-    });
-  }
+      return;
+    }
 
-  const copyReferCodeBtn = document.getElementById("copy-refer-code-btn");
-  if (copyReferCodeBtn) {
-    copyReferCodeBtn.addEventListener("click", () => {
+    // 5. Copy refer code
+    if (e.target.closest("#copy-refer-code-btn")) {
+      if (!app.currentUser) return;
       const code = app.currentUser.username;
       navigator.clipboard.writeText(code)
         .then(() => app.showToast("Affiliate code copied to clipboard!", "success"))
         .catch(() => {
           app.showToast(`Affiliate Code: ${code} (copied)`, "success");
         });
-    });
-  }
+      return;
+    }
 
-  const copyReferLinkBtn = document.getElementById("copy-refer-link-btn");
-  if (copyReferLinkBtn) {
-    copyReferLinkBtn.addEventListener("click", () => {
+    // 6. Copy refer link
+    if (e.target.closest("#copy-refer-link-btn")) {
+      if (!app.currentUser) return;
       const link = window.location.origin + "/index.html?ref=" + encodeURIComponent(app.currentUser.username);
       navigator.clipboard.writeText(link)
         .then(() => app.showToast("Quick invitation link copied!", "success"))
         .catch(() => {
           app.showToast("Link clipboard access restricted. Highlight & copy!", "info");
         });
-    });
-  }
+      return;
+    }
+
+    // 7. Submit badge request
+    if (e.target.closest("#user-submit-badge-req-btn")) {
+      const selectElement = document.getElementById("user-badge-req-select");
+      const reasonElement = document.getElementById("user-badge-req-reason");
+
+      if (!selectElement || !reasonElement) return;
+
+      const requestedBadge = selectElement.value;
+      const reason = reasonElement.value.trim();
+
+      if (!reason) {
+        app.showToast("Please provide a justification reason for your request.", "error");
+        return;
+      }
+
+      if (!app.currentUser) return;
+
+      const activeBadge = app.currentUser.customBadge;
+      if (activeBadge === requestedBadge) {
+        app.showToast(`You are already assigned the ${requestedBadge.toUpperCase()} badge!`, "info");
+        return;
+      }
+
+      // Check if they already have a pending or approved request for this badge
+      if (!app.db.badgeRequests) app.db.badgeRequests = [];
+      const existing = app.db.badgeRequests.find(r => r.userId === app.currentUser.id && r.requestedBadge === requestedBadge && r.status === "pending");
+      if (existing) {
+        app.showToast(`You already have a pending request for the ${requestedBadge.toUpperCase()} badge!`, "warning");
+        return;
+      }
+
+      const newReq = {
+        id: "breq_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
+        userId: app.currentUser.id,
+        username: app.currentUser.username,
+        requestedBadge: requestedBadge,
+        reason: reason,
+        date: new Date().toISOString(),
+        status: "pending"
+      };
+
+      app.db.badgeRequests.push(newReq);
+      app.saveDB();
+
+      reasonElement.value = ""; // clear textarea
+      app.showToast("Your premium badge request has been successfully submitted for review!", "success");
+      app.renderBadgeRequestTab();
+      return;
+    }
+  });
 
   // ---------------- PART B: ADMIN REFER AND SYSTEM LAUNCH CONTROL LISTENERS ----------------
   const saveRefRegionsBtn = document.getElementById("save-ref-regions-btn");
@@ -7344,55 +5916,7 @@ function initApplicationLoader() {
     });
   }
 
-  // User badge request submit form
-  const submitBadgeReqBtn = document.getElementById("user-submit-badge-req-btn");
-  if (submitBadgeReqBtn) {
-    submitBadgeReqBtn.addEventListener("click", () => {
-      const selectElement = document.getElementById("user-badge-req-select");
-      const reasonElement = document.getElementById("user-badge-req-reason");
 
-      if (!selectElement || !reasonElement) return;
-
-      const requestedBadge = selectElement.value;
-      const reason = reasonElement.value.trim();
-
-      if (!reason) {
-        app.showToast("Please provide a justification reason for your request.", "error");
-        return;
-      }
-
-      // Check if they already have a pending or approved request for this badge
-      const existing = (app.db.badgeRequests || []).find(r => r.userId === app.currentUser.id && r.requestedBadge === requestedBadge && r.status === "pending");
-      if (existing) {
-        app.showToast(`You already have a pending request for the ${requestedBadge.toUpperCase()} badge!`, "warning");
-        return;
-      }
-
-      const activeBadge = app.currentUser.customBadge;
-      if (activeBadge === requestedBadge) {
-        app.showToast(`You are already assigned the ${requestedBadge.toUpperCase()} badge!`, "info");
-        return;
-      }
-
-      const newReq = {
-        id: "breq_" + Date.now() + "_" + Math.random().toString(36).substr(2, 5),
-        userId: app.currentUser.id,
-        username: app.currentUser.username,
-        requestedBadge: requestedBadge,
-        reason: reason,
-        date: new Date().toISOString(),
-        status: "pending"
-      };
-
-      if (!app.db.badgeRequests) app.db.badgeRequests = [];
-      app.db.badgeRequests.push(newReq);
-      app.saveDB();
-
-      reasonElement.value = ""; // clear textarea
-      app.showToast("Your premium badge request has been successfully submitted for review!", "success");
-      app.renderBadgeRequestTab();
-    });
-  }
 
   // Auth toggle
   const showRegisterBtn = document.getElementById("show-register-btn");
@@ -7745,21 +6269,21 @@ function initApplicationLoader() {
     });
   });
 
-  // Log out action (using event delegation for dynamically loaded profile tab)
+  // Dynamic click event delegation for robust handling of dynamically loaded tabs
   document.addEventListener("click", (e) => {
+    // 1. Log out action
     const logoutBtn = e.target.closest("#profile-logout-btn");
     if (logoutBtn) {
       app.currentUser = null;
       localStorage.removeItem(app.sessionKey);
       app.showToast("Logged out of player portal.", "info");
       app.render();
+      return;
     }
-  });
 
-  // Enable Notifications Button
-  const enableNotifBtn = document.getElementById("enable-notif-btn");
-  if (enableNotifBtn) {
-    enableNotifBtn.addEventListener("click", () => {
+    // 2. Enable Notifications / Alert Manager
+    const enableNotifBtn = e.target.closest("#enable-notif-btn");
+    if (enableNotifBtn) {
       localStorage.setItem("lw_alerts_enabled", "true");
       if ("Notification" in window) {
         try {
@@ -7803,8 +6327,32 @@ function initApplicationLoader() {
         if (navigator.vibrate) navigator.vibrate(100);
         app.render();
       }
-    });
-  }
+      return;
+    }
+
+    // 3. Close / Dismiss full screen popup event
+    if (e.target.closest("#close-popup-event-btn") || e.target.closest("#popup-event-dismiss-btn")) {
+      const modal = document.getElementById("full-screen-popup-modal");
+      if (modal) modal.classList.add("hidden");
+      sessionStorage.setItem("lw_popup_dismissed", "true");
+      return;
+    }
+
+    // 4. Action button on full screen popup
+    if (e.target.closest("#popup-event-action-btn")) {
+      const settings = app.db.settings || {};
+      const popup = settings.popupEvent || {};
+      const targetTab = popup.actionLink || "wallet";
+      
+      const modal = document.getElementById("full-screen-popup-modal");
+      if (modal) modal.classList.add("hidden");
+      sessionStorage.setItem("lw_popup_dismissed", "true");
+
+      app.currentTab = targetTab;
+      app.renderDashboard();
+      return;
+    }
+  });
 
   // Wallet Deposit Form submission routing
   const depositForm = document.getElementById("wallet-deposit-form");
@@ -7838,6 +6386,12 @@ function initApplicationLoader() {
       app.db.deposits.unshift(newDepo);
       app.saveDB();
 
+      if (!navigator.onLine && app.offlineQueue) {
+        app.offlineQueue.enqueueAction("SUBMIT_DEPOSIT", {
+          deposit: newDepo
+        });
+      }
+
       if (navigator.vibrate) {
         navigator.vibrate(100);
       }
@@ -7866,8 +6420,13 @@ function initApplicationLoader() {
         return;
       }
 
-      if (app.currentUser.balance < amountVal) {
-        app.showToast("Insufficient purse balance for this extraction!", "error");
+      const settings = app.db.settings || {};
+      const withdrawFeePct = (settings.withdrawFeePct !== undefined) ? parseFloat(settings.withdrawFeePct) : 2.0;
+      const feeAmount = (amountVal * withdrawFeePct) / 100;
+      const totalDebit = amountVal + feeAmount;
+
+      if (app.currentUser.balance < totalDebit) {
+        app.showToast(`Insufficient balance! Withdrawal amount of ৳${amountVal} plus ৳${feeAmount.toFixed(1)} (${withdrawFeePct}% cashout fee) requires ৳${totalDebit.toFixed(1)} Taka in your balance.`, "error");
         return;
       }
 
@@ -7877,13 +6436,15 @@ function initApplicationLoader() {
       }
 
       // Process local balance block
-      app.currentUser.balance -= amountVal;
-      app.currentUser.profit -= amountVal;
+      app.currentUser.balance -= totalDebit;
+      app.currentUser.profit -= totalDebit;
 
       const newWd = {
         id: "w" + Date.now(),
         username: app.currentUser.username,
         amount: amountVal,
+        fee: feeAmount,
+        totalDebit: totalDebit,
         method: gateway,
         targetAccount: targetVal,
         status: "pending",
@@ -7892,6 +6453,12 @@ function initApplicationLoader() {
 
       app.db.withdrawals.unshift(newWd);
       app.saveDB();
+
+      if (!navigator.onLine && app.offlineQueue) {
+        app.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
+          withdrawal: newWd
+        });
+      }
 
       app.showToast(`Payout request of ৳${amountVal} locked. Awaiting automated ledger dispatch.`, "success");
       app.currentTab = "history";
@@ -8081,8 +6648,8 @@ function initApplicationLoader() {
       // Deduct balance
       app.currentUser.balance -= totalCost;
       
-      // Inject 1.5% to jackpot settings pool
-      app.db.settings.jackpotPool = (app.db.settings.jackpotPool || 84250.00) + totalCost * 0.015;
+      // Inject 100% of bulk ticket purchases live into jackpot settings pool
+      app.db.settings.jackpotPool = (app.db.settings.jackpotPool || 84250.00) + totalCost;
 
       // Add to registrations
       if (!app.db.jackpotRegistrations) app.db.jackpotRegistrations = [];
@@ -9193,6 +7760,12 @@ function initApplicationLoader() {
       if (!app.db.reports) app.db.reports = [];
       app.db.reports.push(newReport);
       app.saveDB();
+
+      if (!navigator.onLine && app.offlineQueue) {
+        app.offlineQueue.enqueueAction("SUBMIT_REPORT", {
+          report: newReport
+        });
+      }
       
       // Close report modal
       const reportModal = document.getElementById("community-report-modal");

@@ -1,0 +1,117 @@
+================================================================================
+LOTTERY WINNER - MASTER APPLICATION KNOWLEDGE BASE & SYSTEM DESIGN SPECIFICATIONS
+================================================================================
+
+1. OVERVIEW & VISION
+--------------------
+Lottery Winner is a highly responsive, mobile-optimized, full-stack Lottery Portal. It is designed to run seamlessly both as a Single Page Application (SPA) in real-time synced mode and as a classic PHP multi-screen platform. Its primary goal is to provide a highly secure, offline-resilient drawing platform for tickets, deposits, withdrawals, and community interactions, backed by both Firestore (Cloud) and IndexedDB (Local Failover).
+
+2. CORE FEATURES
+----------------
+- Dynamic Lottery Drawing Pools:
+  * Multiple pool categories (Single Winner, Multi Winner).
+  * Entry fees and reward prizes calculated dynamically in Bangladesh Taka (৳).
+  * Real-time automated and administrative manual drawing mechanics.
+  * Active vs Drawn state tracking on a user-by-user ticket ledger.
+
+- Player Profile & Custom Verification Badges:
+  * Comprehensive avatar customizer with support for local photo uploads.
+  * Dynamic identity badging: VIP Player, Staff Mod, Elite Star, Premium Member, Pro Active, and Royal Legend.
+  * Google Photos profile synchronization triggers.
+
+- Secure Transaction Wallet & Gateways:
+  * Deposit dispatch slips for popular mobile financial services (MFS) including bKash, Nagad, Rocket, Upay.
+  * Secure withdrawal balance requests managed via admin approval boards.
+  * Dynamic affiliate referral bonus codes.
+
+- Secure Cashout OTP System (In-App Tab):
+  * Dedicated high-security 6-digit OTP verification panel.
+  * Automated 30-second token rotation synced across client and server databases.
+  * Visual progress countdown bar transitioning colors (Cyan to Rose) as expiration approaches.
+  * Essential security layer verifying cashouts at verified offline agent counters.
+
+- Offline Synchronization Engine:
+  * "OfflineQueueManager" backed by local IndexedDB store.
+  * Intercepts and caches client operations (ticket purchases, deposits, withdrawals, and messages) when offline.
+  * Automatically detects restored internet connectivity and safely flushes pending queues.
+  * Dynamic "Floating Network Diagnostic Strip" reporting live latency, sync states, and offline status.
+
+- Interactive Support Room (Admin Console):
+  * Dynamic MFS Gateway toggles and percentage transaction fee customizations.
+  * Live players table containing options to change balances, ban accounts, or award badges.
+  * Bidirectional admin/user real-time support chat.
+
+3. TECH STACK & SYSTEM ARCHITECTURE
+------------------------------------
+- Frontend: Single Page Application (SPA) utilizing React pattern rules, styled using Tailwind CSS and Lucide Icons. Animations powered by motion/react.
+- Dev-Server & Bundling: Powered by Vite & esbuild, serving assets and routing on port 3000.
+- Databases:
+  * Local Cache: HTML5 LocalStorage and transactional IndexedDB.
+  * Cloud Server: Firebase Firestore real-time database with fully secure custom rules.
+  * Relational Server (Secondary/Legacy): PostgreSQL / Cloud SQL via Drizzle ORM.
+- Entry Points:
+  * `index.html` - Primary SPA layout and loading wrapper.
+  * `src/main.js` - Main client-side router, database synchronizer, and OTP engine.
+  * `src/js/admin.js` - Client-side SPA admin controller.
+  * `src/admin.php` - PHP Admin controller incorporating server includes.
+
+4. DATABASE DOCUMENT SCHEMAS (FIRESTORE)
+----------------------------------------
+- Users collection (`/users/{userId}`):
+  * `id`: string (unique)
+  * `username`: string
+  * `email`: string
+  * `phone`: string
+  * `dob`: string (date string)
+  * `balance`: number (current wallet balance)
+  * `totDeposit`: number
+  * `totWithdraw`: number
+  * `wins`: number
+  * `loss`: number
+  * `profit`: number
+  * `joinDate`: string
+  * `role`: "user" | "admin" | "moderator"
+  * `customBadge`: "vip" | "moderator" | "star" | "premium" | "pro" | "legend" | null
+  * `cashoutOTP`: { code: string, expiresAt: number, used: boolean }
+
+- Lotteries collection (`/lotteries/{lotteryId}`):
+  * `id`: string
+  * `name`: string
+  * `details`: string
+  * `entryFee`: number
+  * `totalTickets`: number
+  * `soldTickets`: number
+  * `category`: string
+  * `drawTime`: string
+  * `status`: "active" | "drawn"
+  * `prizeAmount`: number
+  * `drawMode`: "manual" | "auto"
+
+- Tickets collection (`/tickets/{ticketId}`):
+  * `id`: string
+  * `lotteryId`: string
+  * `userId`: string
+  * `username`: string
+  * `code`: string (6-digit ticket number)
+  * `purchaseTime`: string
+  * `status`: "pending" | "won" | "lost"
+
+- Deposits collection (`/deposits/{depositId}`):
+  * `id`: string
+  * `username`: string
+  * `amount`: number
+  * `gateway`: string
+  * `sender`: string
+  * `txid`: string
+  * `status`: "pending" | "approved" | "declined"
+  * `date`: string
+
+- Withdrawals collection (`/withdrawals/{withdrawalId}`):
+  * `id`: string
+  * `username`: string
+  * `amount`: number
+  * `gateway`: string
+  * `receiver`: string
+  * `status`: "pending" | "approved" | "declined"
+  * `date`: string
+================================================================================

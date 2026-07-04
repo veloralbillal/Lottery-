@@ -1,5 +1,35 @@
 <!-- ================= TAB: HOME (LOTTERY POOLS LIST) ================= -->
 <div id="tab-home" class="space-y-4">
+  <!-- Live Platform Activity & Winners Ticker -->
+  <div id="live-activity-ticker-container" class="bg-slate-950/80 border border-slate-900 rounded-2xl py-2 px-3.5 flex items-center gap-2.5 overflow-hidden shadow-lg backdrop-blur-md select-none font-mono text-[9px] mb-1">
+    <div class="flex items-center gap-1.5 shrink-0 bg-red-950/40 border border-red-900/30 text-red-400 px-2 py-0.5 rounded-lg font-black tracking-widest text-[8px] uppercase">
+      <span class="inline-block w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span> Live Updates
+    </div>
+    <div class="relative w-full overflow-hidden h-3.5">
+      <div id="live-activity-ticker-track" class="absolute inset-0 flex items-center gap-6 whitespace-nowrap transition-transform duration-500 ease-out">
+        <span class="text-slate-400">Loading live updates stream...</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Banner Slider (Controlled via Admin panel Event tab) -->
+  <div id="home-banner-slider-wrapper" class="relative w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mb-3 group/slider h-32 hidden">
+    <div id="home-banner-slider-track" class="flex transition-transform duration-500 ease-out h-full w-full">
+      <!-- Banners rendered dynamically here -->
+    </div>
+    <!-- Bullet navigation dots -->
+    <div id="home-banner-slider-dots" class="absolute bottom-2.5 left-1/2 -translate-x-1/2 flex gap-1.5 z-20">
+      <!-- Dots rendered dynamically here -->
+    </div>
+    <!-- Navigation arrows -->
+    <button id="slider-prev-btn" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/80 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs opacity-0 group-hover/slider:opacity-100 transition duration-300 z-20 cursor-pointer">
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <button id="slider-next-btn" class="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-slate-950/80 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center text-xs opacity-0 group-hover/slider:opacity-100 transition duration-300 z-20 cursor-pointer">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </div>
+
   <!-- Notification & Vibration Permission request alert banner card -->
   <div id="notif-permission-banner" class="hidden bg-gradient-to-r from-cyan-950/60 to-slate-900 border border-cyan-900/30 p-4 rounded-3xl relative overflow-hidden shadow-lg mb-2 flex items-center justify-between gap-3 font-mono">
     <div class="space-y-1">

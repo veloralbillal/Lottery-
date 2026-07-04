@@ -8,6 +8,10 @@
     <i class="fa-solid fa-gem text-base text-purple-400 animate-pulse"></i>
     <span>Jackpot</span>
   </button>
+  <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="events">
+    <i class="fa-solid fa-bullhorn text-base text-indigo-400"></i>
+    <span>Events</span>
+  </button>
   <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="tickets">
     <i class="fa-solid fa-receipt text-base"></i>
     <span>Tickets</span>

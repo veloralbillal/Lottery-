@@ -59,6 +59,15 @@
     </div>
   </div>
 
+  <!-- Milestone Progress Bar Container -->
+  <div id="refer-milestone-progress-container" class="space-y-3"></div>
+
+  <!-- Interactive Calculator Estimator Container -->
+  <div id="refer-calculator-container" class="space-y-3"></div>
+
+  <!-- High Converting Marketing Templates Container -->
+  <div id="refer-marketing-templates-container" class="space-y-3"></div>
+
   <!-- Dynamic Refer Bonus Levels list cards -->
   <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4">
     <h3 class="text-[10px] font-bold uppercase text-white tracking-wider flex items-center gap-1.5 border-b border-slate-850 pb-2 font-mono">

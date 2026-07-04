@@ -53,7 +53,7 @@
     </div>
 
     <p class="text-[9px] text-slate-500 block mt-4 leading-relaxed max-w-md mx-auto">
-      * Premium ticket rate is standard <span id="tab-jackpot-ticket-price-info" class="text-purple-400 font-bold">৳20.00</span>. 1.5% of ticket purchases gets instantly added into this progressive grand jackpot pool!
+      * Premium ticket rate is standard <span id="tab-jackpot-ticket-price-info" class="text-purple-400 font-bold">৳20.00</span>. 100% of ticket purchases gets instantly added live into this progressive grand jackpot pool!
     </p>
   </div>
 

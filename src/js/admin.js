@@ -56,6 +56,7 @@ export const AdminModule = {
     hideViewport("admin-tab-jackpot");
     hideViewport("admin-tab-tasks");
     hideViewport("admin-tab-agents");
+    hideViewport("admin-tab-events");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -111,6 +112,8 @@ export const AdminModule = {
         this.renderAdminSettings();
       } else if (this.currentAdminTab === "sync-vault") {
         this.renderSyncVaultTab();
+      } else if (this.currentAdminTab === "events") {
+        this.renderAdminEvents();
       } else if (this.currentAdminTab === "agents") {
         this.renderAdminAgents();
       }
@@ -1291,9 +1294,11 @@ export const AdminModule = {
 
     if (d.status !== "pending") return;
 
+    // Resolve user by ID or Username
+    const u = this.db.users.find(user => (d.userId && user.id === d.userId) || (d.username && user.username.toLowerCase() === d.username.toLowerCase()));
+
     if (outcome === "approved") {
       d.status = "approved";
-      const u = this.db.users.find(user => user.id === d.userId);
       if (u) {
         u.balance += d.amount;
         u.totDeposit += d.amount;
@@ -1306,14 +1311,15 @@ export const AdminModule = {
           targetUsername: u.username,
           category: "deposit",
           subject: "Deposit Verified Successfully",
-          content: `Great news! Your manual deposit request of ৳${d.amount} via ${d.gateway} has been verified and credited to your main balance! Transaction ID: ${d.txnid || "Agent Cashin"}.`,
+          content: `Great news! Your manual deposit request of ৳${d.amount} via ${d.gateway} has been verified and credited to your main balance! Transaction ID: ${d.txnid || d.trxId || "Agent Cashin"}.`,
           date: new Date().toISOString()
         });
+      } else {
+        this.showToast(`Deposit status set to approved, but target user could not be found.`, "warning");
       }
     } else {
       d.status = "rejected";
       this.showToast(`Deposit request has been declined.`, "info");
-      const u = this.db.users.find(user => user.id === d.userId);
       if (u) {
         if (!this.db.messages) this.db.messages = [];
         this.db.messages.push({
@@ -1472,9 +1478,11 @@ export const AdminModule = {
 
     if (w.status !== "pending") return;
 
+    // Resolve user by ID or Username
+    const u = this.db.users.find(user => (w.userId && user.id === w.userId) || (w.username && user.username.toLowerCase() === w.username.toLowerCase()));
+
     if (outcome === "approved") {
       w.status = "approved";
-      const u = this.db.users.find(user => user.id === w.userId);
       if (u) {
         u.totWithdraw += w.amount;
         this.showToast(`Payout request processed successfully! Disbursed ৳${w.amount} to @${u.username}.`, "success");
@@ -1492,10 +1500,10 @@ export const AdminModule = {
       }
     } else {
       w.status = "rejected";
-      const u = this.db.users.find(user => user.id === w.userId);
       if (u) {
-        u.balance += w.amount; // refund balance
-        this.showToast(`Payout request declined. Balance refunded to @${u.username}.`, "info");
+        const refundAmount = w.totalDebit !== undefined ? w.totalDebit : w.amount;
+        u.balance += refundAmount; // refund full debited amount
+        this.showToast(`Payout request declined. Balance ৳${refundAmount.toFixed(1)} refunded to @${u.username}.`, "info");
 
         if (!this.db.messages) this.db.messages = [];
         this.db.messages.push({
@@ -1504,7 +1512,7 @@ export const AdminModule = {
           targetUsername: u.username,
           category: "alert",
           subject: "Withdrawal Request Refused",
-          content: `Your payout request of ৳${w.amount} was rejected. The locked amount has been credited back to your wallet balance. Please review your payout account details or reach out to live chat support.`,
+          content: `Your payout request of ৳${w.amount} was rejected. The locked amount of ৳${refundAmount.toFixed(1)} has been credited back to your wallet balance. Please review your payout account details or reach out to live chat support.`,
           date: new Date().toISOString()
         });
       }
@@ -2089,6 +2097,239 @@ export const AdminModule = {
         this.renderAdminBadgeRequests(); // Redraw requests view
         this.renderAdmin(); // Sync headers count
       });
+    });
+  },
+
+  renderAdminEvents() {
+    const s = this.db.settings || {};
+    const popup = s.popupEvent || {
+      enabled: true,
+      title: "Eid Mega Draw Festival! 🎉",
+      message: "Deposit ৳500 or more today and get a free Ticket to the ৳100,000 Eid Pool! This exclusive premium bonus is available for a limited time only.",
+      imageUrl: "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop",
+      actionText: "Claim Bonus",
+      actionLink: "wallet"
+    };
+
+    // Populate popup configs
+    const enabledInput = document.getElementById("admin-popup-enabled");
+    const titleInput = document.getElementById("admin-popup-title");
+    const actionTextInput = document.getElementById("admin-popup-action-text");
+    const imageUrlInput = document.getElementById("admin-popup-image-url");
+    const redirectSelect = document.getElementById("admin-popup-redirect-tab");
+    const msgTextarea = document.getElementById("admin-popup-message");
+
+    if (enabledInput) enabledInput.checked = !!popup.enabled;
+    if (titleInput) titleInput.value = popup.title || "";
+    if (actionTextInput) actionTextInput.value = popup.actionText || "";
+    if (imageUrlInput) imageUrlInput.value = popup.imageUrl || "";
+    if (redirectSelect) redirectSelect.value = popup.actionLink || "home";
+    if (msgTextarea) msgTextarea.value = popup.message || "";
+
+    // Populate advanced financial fees
+    const depChargePctInput = document.getElementById("admin-dep-charge-pct");
+    const withdrawChargePctInput = document.getElementById("admin-withdraw-charge-pct");
+
+    if (depChargePctInput) depChargePctInput.value = (s.depositFeePct !== undefined) ? s.depositFeePct : 0;
+    if (withdrawChargePctInput) withdrawChargePctInput.value = (s.withdrawFeePct !== undefined) ? s.withdrawFeePct : 2.0;
+
+    // Render active sliding banners
+    this.renderActiveBanners();
+
+    // Bind save popup button
+    const savePopupBtn = document.getElementById("save-popup-event-btn");
+    if (savePopupBtn) {
+      savePopupBtn.onclick = (e) => {
+        e.preventDefault();
+        const enabled = enabledInput ? enabledInput.checked : false;
+        const title = titleInput ? titleInput.value.trim() : "";
+        const actionText = actionTextInput ? actionTextInput.value.trim() : "";
+        const imageUrl = imageUrlInput ? imageUrlInput.value.trim() : "";
+        const actionLink = redirectSelect ? redirectSelect.value : "home";
+        const message = msgTextarea ? msgTextarea.value.trim() : "";
+
+        this.db.settings.popupEvent = {
+          enabled,
+          title,
+          actionText,
+          imageUrl,
+          actionLink,
+          message
+        };
+        this.saveDB();
+        this.showToast("Full-Screen Popup Event settings updated!", "success");
+      };
+    }
+
+    // Bind add slide button
+    const addBannerBtn = document.getElementById("add-new-banner-btn");
+    if (addBannerBtn) {
+      addBannerBtn.onclick = (e) => {
+        e.preventDefault();
+        const bannerTitleInput = document.getElementById("admin-banner-title");
+        const bannerSubtitleInput = document.getElementById("admin-banner-subtitle");
+        const bannerImageInput = document.getElementById("admin-banner-image");
+        const bannerLinkSelect = document.getElementById("admin-banner-link-tab");
+
+        const title = bannerTitleInput ? bannerTitleInput.value.trim() : "";
+        const subtitle = bannerSubtitleInput ? bannerSubtitleInput.value.trim() : "";
+        const imageUrl = bannerImageInput ? bannerImageInput.value.trim() : "";
+        const link = bannerLinkSelect ? bannerLinkSelect.value : "home";
+
+        if (!title || !imageUrl) {
+          this.showToast("Banner Title and Image URL are required!", "error");
+          return;
+        }
+
+        if (!this.db.settings.bannerSlides) {
+          this.db.settings.bannerSlides = [];
+        }
+
+        const newSlide = {
+          id: "b_" + Date.now(),
+          title,
+          subtitle,
+          imageUrl,
+          link
+        };
+
+        this.db.settings.bannerSlides.push(newSlide);
+        this.saveDB();
+        this.showToast("New sliding banner added!", "success");
+
+        if (bannerTitleInput) bannerTitleInput.value = "";
+        if (bannerSubtitleInput) bannerSubtitleInput.value = "";
+        if (bannerImageInput) bannerImageInput.value = "";
+
+        this.renderActiveBanners();
+      };
+    }
+
+    // Bind save financial fees button
+    const saveAdvFeesBtn = document.getElementById("save-adv-fees-btn");
+    if (saveAdvFeesBtn) {
+      saveAdvFeesBtn.onclick = (e) => {
+        e.preventDefault();
+        const depFee = depChargePctInput ? parseFloat(depChargePctInput.value) : 0;
+        const withdrawFee = withdrawChargePctInput ? parseFloat(withdrawChargePctInput.value) : 2.0;
+
+        this.db.settings.depositFeePct = depFee;
+        this.db.settings.withdrawFeePct = withdrawFee;
+        this.saveDB();
+        this.showToast("Advanced financial fee configs updated!", "success");
+      };
+    }
+
+    // Bind simulation deposit button
+    const simDepositBtn = document.getElementById("sim-deposit-pulse-btn");
+    if (simDepositBtn) {
+      simDepositBtn.onclick = (e) => {
+        e.preventDefault();
+        const icon = document.getElementById("pulse-icon");
+        const spinner = document.getElementById("pulse-spinner");
+        if (icon && spinner) {
+          icon.classList.add("hidden");
+          spinner.classList.remove("hidden");
+        }
+
+        setTimeout(() => {
+          if (!this.db.deposits) this.db.deposits = [];
+          
+          // Find any user
+          const users = this.db.users || [];
+          if (users.length === 0) {
+            this.showToast("No players registered in DB to simulate deposit for!", "error");
+            if (icon && spinner) {
+              icon.classList.remove("hidden");
+              spinner.classList.add("hidden");
+            }
+            return;
+          }
+
+          const randUser = users[Math.floor(Math.random() * users.length)];
+          const amount = Math.floor(Math.random() * 4500) + 500;
+          
+          const mockDep = {
+            id: "dep_sim_" + Date.now(),
+            userId: randUser.id,
+            username: randUser.username,
+            amount,
+            gateway: ["bKash", "Nagad", "Rocket", "USDT"][Math.floor(Math.random() * 4)],
+            trxid: "TXN" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+            date: new Date().toISOString(),
+            status: "pending"
+          };
+
+          this.db.deposits.push(mockDep);
+          this.saveDB();
+
+          if (icon && spinner) {
+            icon.classList.remove("hidden");
+            spinner.classList.add("hidden");
+          }
+          this.showToast(`Simulated deposit of ৳${amount} for @${randUser.username} initialized!`, "success");
+        }, 800);
+      };
+    }
+
+    // Bind factory reset button
+    const factoryResetBtn = document.getElementById("factory-reset-db-btn");
+    if (factoryResetBtn) {
+      factoryResetBtn.onclick = (e) => {
+        e.preventDefault();
+        if (confirm("🚨 WARNING: Are you absolutely sure you want to completely wipe all database states and factory reset the application? This cannot be undone.")) {
+          localStorage.removeItem(this.dbKey);
+          this.showToast("Database completely cleared. Reloading page now...", "warning");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
+      };
+    }
+  },
+
+  renderActiveBanners() {
+    const container = document.getElementById("admin-active-banners-container");
+    if (!container) return;
+
+    const slides = this.db.settings.bannerSlides || [];
+    if (slides.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-1 md:col-span-2 text-center py-6 text-slate-500 font-sans text-xs bg-slate-950 rounded-2xl border border-slate-850">
+          No active banners. Add a banner below!
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    slides.forEach((slide) => {
+      const el = document.createElement("div");
+      el.className = "bg-slate-950 border border-slate-800 rounded-2xl p-3 flex gap-3 items-center justify-between";
+      el.innerHTML = `
+        <div class="flex gap-2.5 items-center overflow-hidden">
+          <img src="${slide.imageUrl || 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=100&auto=format&fit=crop'}" class="w-12 h-12 object-cover rounded-xl shrink-0">
+          <div class="overflow-hidden space-y-0.5">
+            <span class="text-[8px] bg-red-950 border border-red-900/40 text-red-400 px-1.5 py-0.5 rounded-full font-sans">${slide.subtitle || 'PROMO'}</span>
+            <h4 class="text-xs font-bold text-white truncate max-w-[150px] font-sans">${slide.title}</h4>
+            <span class="text-[9px] text-slate-500 block">Link: <strong class="text-cyan-400 font-sans">${slide.link}</strong></span>
+          </div>
+        </div>
+        <button class="delete-banner-btn bg-rose-950/40 hover:bg-rose-900 border border-rose-900/30 text-rose-400 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer" data-id="${slide.id}">
+          <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>
+      `;
+
+      // Event listener for delete button
+      el.querySelector(".delete-banner-btn").onclick = (e) => {
+        e.preventDefault();
+        this.db.settings.bannerSlides = this.db.settings.bannerSlides.filter(s => s.id !== slide.id);
+        this.saveDB();
+        this.showToast("Sliding banner deleted successfully!", "info");
+        this.renderActiveBanners();
+      };
+
+      container.appendChild(el);
     });
   }
 };
