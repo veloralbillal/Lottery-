@@ -151,3 +151,64 @@
   z-index: 100000 !important;
 }
 
+/* Explicit fallback background colors and filters to prevent backdrop opacity/blur rendering bugs when focus changes */
+#full-screen-popup-modal {
+  background-color: #030712 !important;
+}
+#congrats-splash-modal {
+  background-color: #020617 !important;
+}
+#lucky-spin-modal {
+  background-color: #000000 !important;
+}
+#daily-checkin-modal {
+  background-color: #000000 !important;
+}
+#vip-lounge-modal {
+  background-color: #000000 !important;
+}
+#ticket-info-modal,
+#lottery-details-modal,
+#admin-user-edit-modal,
+#admin-draw-modal,
+#admin-create-pool-modal {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+}
+#screenshot-viewer-modal {
+  background-color: rgba(2, 6, 23, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#offline-modal {
+  background-color: rgba(2, 6, 23, 1) !important;
+}
+#cloud-sync-modal {
+  background-color: rgba(2, 6, 23, 0.80) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#maintenance-backdoor-modal {
+  background-color: rgba(2, 6, 23, 0.90) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#community-report-modal {
+  background-color: rgba(2, 6, 23, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Prevent any 3D elements in the background from piercing through active modals */
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard .interactive-tilt-card,
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [style*="perspective"],
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [style*="translateZ"],
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [id*="vip-card"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth .interactive-tilt-card,
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [style*="perspective"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [style*="translateZ"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [id*="vip-card"] {
+  transform: none !important;
+  perspective: none !important;
+  transform-style: flat !important;
+}
+

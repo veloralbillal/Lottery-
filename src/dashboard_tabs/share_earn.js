@@ -4,7 +4,7 @@
  * Sets referral code copies, recruiter lists, and bonus status trackers.
  */
 
-import { ReferralExtensions } from "./referralExtensions.js";
+import { ReferralExtensions } from "./share_earn_extensions.js";
 
 export class ReferTab {
   static init(appInstance) {

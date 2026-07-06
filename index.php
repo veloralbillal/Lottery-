@@ -25,7 +25,7 @@ require_once __DIR__ . '/src/config.php';
     <link rel="stylesheet" href="/src/dashboard_tabs/history.css" />
     <link rel="stylesheet" href="/src/dashboard_tabs/profile.css" />
     <link rel="stylesheet" href="/src/dashboard_tabs/badge_request.css" />
-    <link rel="stylesheet" href="/src/dashboard_tabs/refer.css" />
+    <link rel="stylesheet" href="/src/dashboard_tabs/share_earn.css" />
     <link rel="stylesheet" href="/src/dashboard_tabs/jackpot.css" />
     <link rel="stylesheet" href="/src/dashboard_tabs/missions.css" />
     
@@ -72,7 +72,7 @@ require_once __DIR__ . '/src/config.php';
         <?php include_once __DIR__ . '/src/dashboard_tabs/history.php'; ?>
         <?php include_once __DIR__ . '/src/dashboard_tabs/profile.php'; ?>
         <?php include_once __DIR__ . '/src/dashboard_tabs/badge_request.php'; ?>
-        <?php include_once __DIR__ . '/src/dashboard_tabs/refer.php'; ?>
+        <?php include_once __DIR__ . '/src/dashboard_tabs/share_earn.php'; ?>
         <?php include_once __DIR__ . '/src/dashboard_tabs/missions.php'; ?>
       </main>
 
@@ -99,7 +99,7 @@ require_once __DIR__ . '/src/config.php';
     <script type="module" src="/src/dashboard_tabs/history.js"></script>
     <script type="module" src="/src/dashboard_tabs/profile.js"></script>
     <script type="module" src="/src/dashboard_tabs/badge_request.js"></script>
-    <script type="module" src="/src/dashboard_tabs/refer.js"></script>
+    <script type="module" src="/src/dashboard_tabs/share_earn.js"></script>
     <script type="module" src="/src/dashboard_tabs/missions.js"></script>
 
     <!-- Application script bundle -->

@@ -14,7 +14,7 @@
 
   <!-- Dynamic Banner Slider (Controlled via Admin panel Event tab) -->
   <div id="home-banner-slider-wrapper" class="relative w-full rounded-3xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-950 mb-3 group/slider h-32 hidden">
-    <div id="home-banner-slider-track" class="flex transition-transform duration-500 ease-out h-full w-full">
+    <div id="home-banner-slider-track" class="flex transition-transform duration-500 ease-out h-full">
       <!-- Banners rendered dynamically here -->
     </div>
     <!-- Bullet navigation dots -->

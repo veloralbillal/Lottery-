@@ -9,7 +9,7 @@ import { TicketsTab } from "./dashboard_tabs/tickets.js";
 import { WalletTab } from "./dashboard_tabs/wallet.js";
 import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
-import { ReferTab } from "./dashboard_tabs/refer.js";
+import { ReferTab } from "./dashboard_tabs/share_earn.js";
 import { BadgeRequestTab } from "./dashboard_tabs/badge_request.js";
 import { JackpotTab } from "./dashboard_tabs/jackpot.js";
 import { MissionsTab } from "./dashboard_tabs/missions.js";
@@ -917,9 +917,9 @@ class StateManager {
         if (!this.firestoreDocRef) {
           throw new Error("Firestore primary link is not initiated.");
         }
-        this.db = StateManager.removeCircularReferences(this.db);
+        const dbSerialized = JSON.stringify(this.db, StateManager.getCircularReplacer());
         await setDoc(this.firestoreDocRef, {
-          db: this.db,
+          db: dbSerialized,
           updatedAt: new Date().toISOString()
         }, { merge: true });
 
@@ -2484,7 +2484,7 @@ public class DatabaseClusterRouter {
       { id: "tab-history", file: "/src/dashboard_tabs/history.php" },
       { id: "tab-profile", file: "/src/dashboard_tabs/profile.php" },
       { id: "tab-badge-request", file: "/src/dashboard_tabs/badge_request.php" },
-      { id: "tab-refer", file: "/src/dashboard_tabs/refer.php" },
+      { id: "tab-refer", file: "/src/dashboard_tabs/share_earn.php" },
       { id: "tab-jackpot", file: "/src/dashboard_tabs/jackpot.php" },
       { id: "tab-tasks", file: "/src/dashboard_tabs/missions.php" },
       { id: "tab-otp", file: "/src/dashboard_tabs/otp.php" }
@@ -2774,12 +2774,7 @@ public class DatabaseClusterRouter {
 
   tickProgressiveJackpot() {
     if (this.db && this.db.settings) {
-      // Micro real-time ticker to simulate passive visual tracking (extremely tiny)
-      const inc = (Math.random() * 0.005) + 0.001;
-      this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 84250) + inc;
-      this.saveDB();
-
-      // Update the user interface
+      // Update the user interface with the current actual pool size
       const poolAmountEl = document.getElementById("jackpot-pool-amount");
       if (poolAmountEl) {
         poolAmountEl.innerText = "৳" + this.db.settings.jackpotPool.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -4046,7 +4041,7 @@ public class DatabaseClusterRouter {
     slides.forEach((slide, idx) => {
       // Create slide element
       const slideDiv = document.createElement("div");
-      slideDiv.className = "h-full relative cursor-pointer select-none overflow-hidden rounded-3xl";
+      slideDiv.className = "w-full shrink-0 h-full relative cursor-pointer select-none overflow-hidden rounded-3xl";
       slideDiv.style.width = "100%";
       slideDiv.style.minWidth = "100%";
       slideDiv.style.flexShrink = "0";
@@ -4224,6 +4219,9 @@ public class DatabaseClusterRouter {
     this.currentUser.loss += lot.entryFee;
     this.currentUser.profit -= lot.entryFee;
     lot.soldTickets += 1;
+
+    // Add 100% of ticket entry fee directly to the progressive jackpot pool
+    this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 0) + lot.entryFee;
 
     // Generate custom code e.g. LW-849502
     const digitCode = Math.floor(100000 + Math.random() * 900000);
@@ -6354,6 +6352,70 @@ function initApplicationLoader() {
 
       app.currentTab = targetTab;
       app.renderDashboard();
+      return;
+    }
+
+    // 5. VIP Lounge click delegation
+    const vipLoungeBtn = e.target.closest("#home-vip-upgrade-btn");
+    if (vipLoungeBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to browse the VIP Club Lounge!", "error");
+        return;
+      }
+      const m = document.getElementById("vip-lounge-modal");
+      if (m) {
+        m.classList.remove("hidden");
+        app.renderVipLoungePlans();
+      }
+      return;
+    }
+
+    // 6. Lucky Spin click delegation
+    const luckySpinBtn = e.target.closest("#home-lucky-spin-btn");
+    if (luckySpinBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to spin the Wheel of Fortune!", "error");
+        return;
+      }
+      const m = document.getElementById("lucky-spin-modal");
+      if (m) {
+        m.classList.remove("hidden");
+        app.renderLuckyWheel();
+      }
+      return;
+    }
+
+    // 7. Daily Check-In click delegation
+    const checkinBtn = e.target.closest("#home-checkin-bonus-btn");
+    if (checkinBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to claim Consecutive Daily Check-ins!", "error");
+        return;
+      }
+      const m = document.getElementById("daily-checkin-modal");
+      if (m) {
+        m.classList.remove("hidden");
+        app.renderDailyCheckinGrid();
+      }
+      return;
+    }
+
+    // 8. Daily Tasks click delegation
+    const tasksBtn = e.target.closest("#home-daily-tasks-btn");
+    if (tasksBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to browse daily bounty tasks!", "error");
+        return;
+      }
+      app.currentTab = "tasks";
+      app.render();
+      return;
+    }
+
+    // 9. Progressive Jackpot Buy Ticket delegation
+    const jackpotBuyBtn = e.target.closest("#buy-jackpot-ticket-btn");
+    if (jackpotBuyBtn) {
+      app.buyJackpotTicket();
       return;
     }
   });

@@ -336,8 +336,8 @@
             }
           }
           
-          fullDB = removeCircularReferences(fullDB);
-          await setDoc(firestoreDocRef, { db: fullDB }, { merge: true });
+          const dbSerialized = JSON.stringify(fullDB, getCircularReplacer());
+          await setDoc(firestoreDocRef, { db: dbSerialized }, { merge: true });
           document.getElementById("otp-status-lbl").innerText = "Live & Synchronized";
           document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-emerald-450";
         } catch (e) {
