@@ -151,84 +151,106 @@
     function getCircularReplacer() {
       const seen = new WeakSet();
       return (key, value) => {
-        if (typeof value === "object" && value !== null) {
-          const cname = (value.constructor && typeof value.constructor.name === "string") ? value.constructor.name : "";
-          if (
-            cname.startsWith("Firestore") ||
-            cname.startsWith("Document") ||
-            cname.startsWith("Query") ||
-            cname.startsWith("Collection") ||
-            cname.startsWith("Firebase") ||
-            cname.startsWith("HTML") ||
-            cname === "Window" ||
-            cname === "Sa" ||
-            cname === "Q$1" ||
-            (value.constructor && value.constructor !== Object && value.constructor !== Array && value.constructor !== Date)
-          ) {
-            return undefined;
+        try {
+          if (typeof value === "object" && value !== null) {
+            const cname = (value.constructor && typeof value.constructor.name === "string") ? value.constructor.name : "";
+            if (
+              cname.startsWith("Firestore") ||
+              cname.startsWith("Document") ||
+              cname.startsWith("Query") ||
+              cname.startsWith("Collection") ||
+              cname.startsWith("Firebase") ||
+              cname.startsWith("HTML") ||
+              cname === "Window" ||
+              cname === "Sa" ||
+              cname === "Q$1" ||
+              (value.constructor && value.constructor !== Object && value.constructor !== Array && value.constructor !== Date && value.constructor !== RegExp)
+            ) {
+              return undefined;
+            }
+            if (seen.has(value)) {
+              return undefined;
+            }
+            seen.add(value);
           }
-          if (seen.has(value)) {
-            return undefined;
-          }
-          seen.add(value);
+          return value;
+        } catch (err) {
+          return undefined;
         }
-        return value;
       };
     }
 
     function removeCircularReferences(obj, seen = new WeakSet()) {
-      if (obj === null || typeof obj !== "object") {
-        return obj;
-      }
-      const cname = (obj.constructor && typeof obj.constructor.name === "string") ? obj.constructor.name : "";
-      if (
-        cname.startsWith("Firestore") ||
-        cname.startsWith("Document") ||
-        cname.startsWith("Query") ||
-        cname.startsWith("Collection") ||
-        cname.startsWith("Firebase") ||
-        cname.startsWith("HTML") ||
-        cname === "Window" ||
-        cname === "Sa" ||
-        cname === "Q$1" ||
-        (obj.constructor && obj.constructor !== Object && obj.constructor !== Array && obj.constructor !== Date)
-      ) {
-        return null;
-      }
-      if (seen.has(obj)) {
-        return null;
-      }
-      seen.add(obj);
+      try {
+        if (obj === null || typeof obj !== "object") {
+          return obj;
+        }
+        const cname = (obj.constructor && typeof obj.constructor.name === "string") ? obj.constructor.name : "";
+        if (
+          cname.startsWith("Firestore") ||
+          cname.startsWith("Document") ||
+          cname.startsWith("Query") ||
+          cname.startsWith("Collection") ||
+          cname.startsWith("Firebase") ||
+          cname.startsWith("HTML") ||
+          cname === "Window" ||
+          cname === "Sa" ||
+          cname === "Q$1" ||
+          (obj.constructor && obj.constructor !== Object && obj.constructor !== Array && obj.constructor !== Date && obj.constructor !== RegExp)
+        ) {
+          return null;
+        }
+        if (seen.has(obj)) {
+          return null;
+        }
+        seen.add(obj);
 
-      if (Array.isArray(obj)) {
-        for (let i = 0; i < obj.length; i++) {
-          if (typeof obj[i] === "object" && obj[i] !== null) {
-            if (seen.has(obj[i])) {
-              obj[i] = null;
-            } else {
-              obj[i] = removeCircularReferences(obj[i], seen);
+        if (Array.isArray(obj)) {
+          for (let i = 0; i < obj.length; i++) {
+            if (typeof obj[i] === "object" && obj[i] !== null) {
+              if (seen.has(obj[i])) {
+                obj[i] = null;
+              } else {
+                obj[i] = removeCircularReferences(obj[i], seen);
+              }
             }
           }
-        }
-      } else {
-        for (const key in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
-              obj[key] = null;
-              continue;
-            }
-            if (typeof obj[key] === "object" && obj[key] !== null) {
-              if (seen.has(obj[key])) {
+        } else {
+          for (const key in obj) {
+            if (Object.prototype.hasOwnProperty.call(obj, key)) {
+              if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
                 obj[key] = null;
-              } else {
-                obj[key] = removeCircularReferences(obj[key], seen);
+                continue;
+              }
+              if (typeof obj[key] === "object" && obj[key] !== null) {
+                if (seen.has(obj[key])) {
+                  obj[key] = null;
+                } else {
+                  obj[key] = removeCircularReferences(obj[key], seen);
+                }
               }
             }
           }
         }
+        seen.delete(obj);
+        return obj;
+      } catch (e) {
+        return null;
       }
-      seen.delete(obj);
-      return obj;
+    }
+
+    function safeStringify(obj, fallback = "{}") {
+      try {
+        return JSON.stringify(obj, getCircularReplacer());
+      } catch (e) {
+        console.warn("OTP safeStringify failed, retrying with clean:", e);
+        try {
+          const cleaned = removeCircularReferences(obj);
+          return JSON.stringify(cleaned, getCircularReplacer());
+        } catch (err) {
+          return fallback;
+        }
+      }
     }
 
     function checkSession() {
@@ -302,7 +324,7 @@
             used: false
           };
           fullDB = removeCircularReferences(fullDB);
-          localStorage.setItem(dbKey, JSON.stringify(fullDB, getCircularReplacer()));
+          localStorage.setItem(dbKey, safeStringify(fullDB));
           
           // Update profile balance too if changed
           document.getElementById("player-balance").innerText = `৳${(dbUser.balance || 0).toFixed(2)}`;
@@ -329,14 +351,14 @@
                 // Keep local DB and Session in sync with newest cloud values
                 fullDB = removeCircularReferences(parsed);
                 const cleanedCloudUser = removeCircularReferences(cloudUser);
-                localStorage.setItem(dbKey, JSON.stringify(fullDB, getCircularReplacer()));
-                localStorage.setItem(sessionKey, JSON.stringify(cleanedCloudUser, getCircularReplacer()));
+                localStorage.setItem(dbKey, safeStringify(fullDB));
+                localStorage.setItem(sessionKey, safeStringify(cleanedCloudUser));
                 document.getElementById("player-balance").innerText = `৳${(cloudUser.balance || 0).toFixed(2)}`;
               }
             }
           }
           
-          const dbSerialized = JSON.stringify(fullDB, getCircularReplacer());
+          const dbSerialized = safeStringify(fullDB);
           await setDoc(firestoreDocRef, { db: dbSerialized }, { merge: true });
           document.getElementById("otp-status-lbl").innerText = "Live & Synchronized";
           document.getElementById("otp-status-lbl").className = "text-[10px] font-mono text-emerald-450";
@@ -398,12 +420,12 @@
               if (cloudUser.balance !== prevBalance) {
                 currentUser = cloudUser;
                 const cleanedCloudUser = removeCircularReferences(cloudUser);
-                localStorage.setItem(sessionKey, JSON.stringify(cleanedCloudUser, getCircularReplacer()));
+                localStorage.setItem(sessionKey, safeStringify(cleanedCloudUser));
                 document.getElementById("player-balance").innerText = `৳${(cloudUser.balance || 0).toFixed(2)}`;
                 
                 // Also update local DB
                 fullDB = removeCircularReferences(parsed);
-                localStorage.setItem(dbKey, JSON.stringify(fullDB, getCircularReplacer()));
+                localStorage.setItem(dbKey, safeStringify(fullDB));
               }
             }
           }

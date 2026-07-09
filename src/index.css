@@ -16,6 +16,7 @@
   --animate-shimmer-hologram: shimmerHologram 4s linear infinite;
   --animate-perspective-pulse: perspectivePulse 3s ease-in-out infinite;
   --animate-shimmer: shimmer 3s infinite;
+  --animate-spin-slow: spin 15s linear infinite;
 
   @keyframes float3d {
     0%, 100% {

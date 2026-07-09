@@ -111,4 +111,91 @@
       <!-- Dynamically rendered -->
     </div>
   </div>
+
+  <!-- ================= TIERED AGENT & SUB-AGENT AFFILIATE TREE ================= -->
+  <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4">
+    <h3 class="text-[10px] font-bold uppercase text-white tracking-wider flex items-center gap-1.5 border-b border-slate-850 pb-2 font-mono">
+      <i class="fa-solid fa-sitemap text-emerald-400"></i> Tiered Agent & Sub-Agent Affiliate Tree
+    </h3>
+    
+    <p class="text-[9px] text-slate-400 font-mono leading-relaxed">
+      Track your direct downlines (L1), indirect downlines (L2), real-time commission earnings, and request instant payouts.
+    </p>
+
+    <!-- Stat Grid -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-mono">
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-850">
+        <span class="block text-[7px] text-slate-500 font-black uppercase">Network Size</span>
+        <strong id="affiliate-network-size" class="text-[13px] font-black text-cyan-400 block mt-0.5">0 Players</strong>
+        <span class="block text-[6px] text-slate-600">L1 + L2 combined</span>
+      </div>
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-850">
+        <span class="block text-[7px] text-slate-500 font-black uppercase">Total Comms</span>
+        <strong id="affiliate-total-earned" class="text-[13px] font-black text-emerald-400 block mt-0.5">৳0.00</strong>
+        <span class="block text-[6px] text-slate-600">Lifetime accumulated</span>
+      </div>
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-850">
+        <span class="block text-[7px] text-slate-500 font-black uppercase">Paid Payouts</span>
+        <strong id="affiliate-payouts-total" class="text-[13px] font-black text-amber-400 block mt-0.5">৳0.00</strong>
+        <span class="block text-[6px] text-slate-600">Approved withdrawals</span>
+      </div>
+      <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-850">
+        <span class="block text-[7px] text-slate-500 font-black uppercase">Available Wallet</span>
+        <strong id="affiliate-available-purse" class="text-[13px] font-black text-pink-400 block mt-0.5">৳0.00</strong>
+        <span class="block text-[6px] text-slate-600">Unwithdrawn balance</span>
+      </div>
+    </div>
+
+    <!-- Active Tree View Selector / Display -->
+    <div class="space-y-2.5">
+      <span class="block text-[8px] text-slate-500 uppercase font-black font-mono">Affiliate Tree Interactive Nodes (Click to Expand L2)</span>
+      <div class="space-y-2 font-mono" id="affiliate-tree-root">
+        <!-- Renders interactive tree structure -->
+      </div>
+    </div>
+
+    <!-- Payout Request Area -->
+    <div class="border-t border-slate-800/80 pt-3.5 space-y-3 font-mono">
+      <span class="block text-[8px] text-slate-500 uppercase font-black"><i class="fa-solid fa-wallet text-pink-400"></i> Commission Cashout Request</span>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-950 p-4 rounded-2xl border border-slate-900">
+        <!-- Form to request payout -->
+        <div class="space-y-2.5">
+          <div>
+            <label class="block text-[7px] text-slate-500 uppercase font-black mb-1">Select Gateway</label>
+            <select id="affiliate-payout-gateway" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-[10px] text-slate-200 outline-none focus:border-emerald-500">
+              <option value="bkash">bKash Personal</option>
+              <option value="nagad">Nagad Personal</option>
+              <option value="rocket">Rocket Personal</option>
+              <option value="transfer">Transfer to Main Balance (Instant)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[7px] text-slate-500 uppercase font-black mb-1">Account Number (not required for Main Transfer)</label>
+            <input id="affiliate-payout-account" type="text" placeholder="e.g. 017XXXXXXXX" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-[10px] text-slate-200 outline-none placeholder-slate-600 focus:border-emerald-500">
+          </div>
+          <div>
+            <label class="block text-[7px] text-slate-500 uppercase font-black mb-1">Cashout Amount (৳)</label>
+            <div class="flex gap-1">
+              <input id="affiliate-payout-amount" type="number" step="10" min="50" placeholder="Min ৳50" class="w-full bg-slate-900 border border-slate-800 rounded-lg p-1.5 text-[10px] text-slate-200 outline-none placeholder-slate-600 focus:border-emerald-500">
+              <button id="affiliate-payout-max-btn" class="bg-slate-800 hover:bg-slate-700 text-white px-2 rounded-lg text-[8px] font-bold uppercase cursor-pointer">Max</button>
+            </div>
+          </div>
+          <button id="affiliate-submit-payout-btn" class="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:brightness-110 text-white font-black py-2 rounded-xl text-[9px] uppercase cursor-pointer shadow-md transition-all">Submit Commission Payout</button>
+        </div>
+
+        <!-- History of Payout requests -->
+        <div class="space-y-2">
+          <label class="block text-[7px] text-slate-500 uppercase font-black border-b border-slate-900/40 pb-1 flex justify-between">
+            <span>Payout Request Logs</span>
+            <span class="text-[6px] text-slate-600">(Simulated auto-approval ready)</span>
+          </label>
+          <div id="affiliate-payout-logs" class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+            <!-- Dynamic payout request entries -->
+            <div class="text-[8px] text-slate-600 text-center py-4">No payout activities recorded yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>

@@ -5,11 +5,13 @@
  */
 
 import { ReferralExtensions } from "./share_earn_extensions.js";
+import { AffiliateAgentSystem } from "./affiliate_agent_system.js";
 
 export class ReferTab {
   static init(appInstance) {
     console.log("Refer Tab Module initialized successfully.");
     ReferralExtensions.init(appInstance);
+    AffiliateAgentSystem.init(appInstance);
   }
 
   static render(appInstance) {
@@ -145,5 +147,6 @@ export class ReferTab {
 
     // Render the premium Referral Extensions (Progress bar, calculator, marketing social templates)
     ReferralExtensions.render(appInstance);
+    AffiliateAgentSystem.render(appInstance);
   }
 }

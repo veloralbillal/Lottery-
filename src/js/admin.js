@@ -56,6 +56,8 @@ export const AdminModule = {
     hideViewport("admin-tab-jackpot");
     hideViewport("admin-tab-tasks");
     hideViewport("admin-tab-agents");
+    hideViewport("admin-tab-agent-leaders");
+    hideViewport("admin-tab-subagents-list");
     hideViewport("admin-tab-events");
 
     // Dynamic pending reports counter
@@ -116,6 +118,10 @@ export const AdminModule = {
         this.renderAdminEvents();
       } else if (this.currentAdminTab === "agents") {
         this.renderAdminAgents();
+      } else if (this.currentAdminTab === "agent-leaders") {
+        this.renderAgentLeadersTab();
+      } else if (this.currentAdminTab === "subagents-list") {
+        this.renderSubAgentsListTab();
       }
     } catch (err) {
       console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
@@ -810,9 +816,32 @@ export const AdminModule = {
     const commWrapper = document.getElementById("edit-player-commission-wrapper");
     const districtSelect = document.getElementById("edit-player-district");
     const districtWrapper = document.getElementById("edit-player-district-wrapper");
+    const targetWrapper = document.getElementById("edit-player-target-wrapper");
+    const targetTicketsInput = document.getElementById("edit-agent-target-tickets");
+    const targetRewardInput = document.getElementById("edit-agent-target-reward");
 
     if (districtSelect) {
       districtSelect.value = u.district || "Dhaka";
+    }
+
+    if (targetTicketsInput) {
+      targetTicketsInput.value = u.monthlyTargetTickets !== undefined ? u.monthlyTargetTickets : 0;
+    }
+    if (targetRewardInput) {
+      targetRewardInput.value = u.monthlyTargetReward !== undefined ? u.monthlyTargetReward : 0;
+    }
+
+    const targetLotterySelect = document.getElementById("edit-agent-target-lottery");
+    if (targetLotterySelect) {
+      targetLotterySelect.innerHTML = '<option value="any">Any Active Pool</option>';
+      const activeLotts = this.db.lotteries.filter(l => l.status === "active");
+      activeLotts.forEach(lot => {
+        const opt = document.createElement("option");
+        opt.value = lot.id;
+        opt.innerText = `${lot.name} (৳${lot.entryFee})`;
+        targetLotterySelect.appendChild(opt);
+      });
+      targetLotterySelect.value = u.monthlyTargetLotteryId || "any";
     }
 
     if (roleSelect && commWrapper) {
@@ -824,9 +853,11 @@ export const AdminModule = {
         if (roleSelect.value === "agent") {
           commWrapper.classList.remove("hidden");
           if (districtWrapper) districtWrapper.classList.remove("hidden");
+          if (targetWrapper) targetWrapper.classList.remove("hidden");
         } else {
           commWrapper.classList.add("hidden");
           if (districtWrapper) districtWrapper.classList.add("hidden");
+          if (targetWrapper) targetWrapper.classList.add("hidden");
         }
       };
       toggleComm();
@@ -862,6 +893,22 @@ export const AdminModule = {
     const districtSelectVal = document.getElementById("edit-player-district");
     if (districtSelectVal) {
       u.district = districtSelectVal.value;
+    }
+
+    const targetTicketsInput = document.getElementById("edit-agent-target-tickets");
+    const targetRewardInput = document.getElementById("edit-agent-target-reward");
+    const targetLotterySelect = document.getElementById("edit-agent-target-lottery");
+    if (targetTicketsInput && targetRewardInput) {
+      const newTarget = parseInt(targetTicketsInput.value || "0");
+      const newReward = parseFloat(targetRewardInput.value || "0");
+      const newLotteryId = targetLotterySelect ? targetLotterySelect.value : "any";
+      if (u.monthlyTargetTickets !== newTarget || u.monthlyTargetReward !== newReward || u.monthlyTargetLotteryId !== newLotteryId) {
+        u.monthlyTargetTickets = newTarget;
+        u.monthlyTargetReward = newReward;
+        u.monthlyTargetLotteryId = newLotteryId;
+        u.monthlyTargetClaimed = false; // reset claimed status for new targets
+        u.monthlySalesProgress = 0; // reset progress for the new specific pool/target
+      }
     }
 
     const newPass = document.getElementById("edit-player-password").value.trim();
@@ -991,6 +1038,511 @@ export const AdminModule = {
         }
       });
     });
+  },
+
+  renderAgentLeadersTab() {
+    const listEl = document.getElementById("agent-leaders-list-tbody");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const searchInput = document.getElementById("agent-leaders-search-input");
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+      searchInput.addEventListener("input", () => this.renderAgentLeadersTab());
+      searchInput.dataset.listenerAttached = "true";
+    }
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    const leaders = this.db.users.filter(u => {
+      if (u.role !== "agent") return false;
+      if (query) {
+        return u.username.toLowerCase().includes(query) ||
+               (u.email || "").toLowerCase().includes(query) ||
+               (u.phone || "").toLowerCase().includes(query) ||
+               (u.district || "").toLowerCase().includes(query);
+      }
+      return true;
+    });
+
+    // Stats
+    const totalLeadersCount = this.db.users.filter(u => u.role === "agent").length;
+    const totalSubAgentsCount = this.db.users.filter(u => u.role === "subagent").length;
+    const activeMissionsCount = this.db.users.filter(u => u.role === "agent" && (u.monthlyTargetTickets || 0) > 0).length;
+
+    const leadersCountEl = document.getElementById("agent-leaders-stat-count");
+    if (leadersCountEl) leadersCountEl.innerText = `${totalLeadersCount} Leader${totalLeadersCount !== 1 ? 's' : ''}`;
+    
+    const subsCountEl = document.getElementById("agent-leaders-stat-subs");
+    if (subsCountEl) subsCountEl.innerText = `${totalSubAgentsCount} Sub-agent${totalSubAgentsCount !== 1 ? 's' : ''}`;
+
+    const missionsCountEl = document.getElementById("agent-leaders-stat-missions");
+    if (missionsCountEl) missionsCountEl.innerText = `${activeMissionsCount} Active Quota${activeMissionsCount !== 1 ? 's' : ''}`;
+
+    if (leaders.length === 0) {
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="6" class="p-6 text-center text-slate-500 font-sans">
+            No agent leaders matching the query found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    leaders.forEach(leader => {
+      // Count referred sub-agents
+      const leaderSubs = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === leader.username.toLowerCase());
+      const subsCount = leaderSubs.length;
+
+      // Progress bar calculation
+      const target = leader.monthlyTargetTickets || 0;
+      const progress = leader.monthlySalesProgress || 0;
+      const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+
+      const row = document.createElement("tr");
+      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition cursor-pointer";
+      
+      row.innerHTML = `
+        <td class="p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${leader.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
+            <div>
+              <span class="text-white font-bold block">@${leader.username}</span>
+              <span class="text-[9.5px] text-slate-500 block font-mono">${leader.email}</span>
+            </div>
+          </div>
+        </td>
+        <td class="p-3">
+          <span class="text-slate-300 font-bold uppercase font-mono">${leader.district || "Dhaka"}</span>
+        </td>
+        <td class="p-3">
+          <div>
+            <span class="text-white font-bold font-mono">৳${(leader.balance || 0).toFixed(2)}</span>
+            <span class="text-[9.5px] text-slate-500 block font-sans">Rate: <strong class="text-emerald-400">${(leader.commissionRate || 5.0).toFixed(1)}%</strong></span>
+          </div>
+        </td>
+        <td class="p-3">
+          <span class="bg-indigo-950 text-indigo-400 border border-indigo-900/40 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full">${subsCount} Subs</span>
+        </td>
+        <td class="p-3">
+          <div class="w-28 space-y-1">
+            <div class="flex justify-between text-[9.5px] font-mono leading-none">
+              <span class="text-slate-400">${progress}/${target}</span>
+              <span class="text-cyan-400 font-bold">${pct}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-rose-500 to-emerald-500 rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        </td>
+        <td class="p-3 text-right">
+          <button class="leader-view-btn bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 hover:border-rose-800 text-rose-450 py-1 px-2.5 rounded-lg transition text-[10px] cursor-pointer" data-id="${leader.id}">
+            View Profile
+          </button>
+        </td>
+      `;
+
+      // Make row clickable
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        this.showAgentLeaderDetail(leader.id);
+      });
+
+      listEl.appendChild(row);
+    });
+
+    listEl.querySelectorAll(".leader-view-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.showAgentLeaderDetail(id);
+      });
+    });
+  },
+
+  showAgentLeaderDetail(leaderId) {
+    const leader = this.db.users.find(u => u.id === leaderId);
+    if (!leader) return;
+
+    // Switch screens
+    document.getElementById("agent-leaders-list-view").classList.add("hidden");
+    document.getElementById("agent-leaders-detail-view").classList.remove("hidden");
+
+    // Profile settings
+    document.getElementById("detail-leader-avatar-initial").innerText = leader.username.charAt(0).toUpperCase();
+    document.getElementById("detail-leader-username").innerText = `@${leader.username}`;
+    document.getElementById("detail-leader-district-badge").innerText = (leader.district || "DHAKA").toUpperCase();
+    document.getElementById("detail-leader-email").innerText = leader.email || "N/A";
+    document.getElementById("detail-leader-phone").innerText = leader.phone || "N/A";
+    
+    const statusLbl = document.getElementById("detail-leader-status-lbl");
+    if (statusLbl) {
+      statusLbl.innerText = (leader.status || "active").toUpperCase();
+      statusLbl.className = leader.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
+    }
+
+    document.getElementById("detail-leader-balance-lbl").innerText = `৳${(leader.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-leader-commission-lbl").innerText = `${(leader.commissionRate || 5.0).toFixed(1)}%`;
+
+    // Targets & Mission
+    const target = leader.monthlyTargetTickets || 0;
+    const progress = leader.monthlySalesProgress || 0;
+    const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+    
+    document.getElementById("detail-leader-target-tickets").innerText = target;
+    document.getElementById("detail-leader-target-reward").innerText = `৳${(leader.monthlyTargetReward || 0).toFixed(2)}`;
+
+    // Target pool
+    let targetPoolName = "Any Active Pool";
+    const targetLotteryId = leader.monthlyTargetLotteryId || "any";
+    if (targetLotteryId !== "any") {
+      const foundLot = (this.db.lotteries || []).find(l => l.id === targetLotteryId);
+      if (foundLot) {
+        targetPoolName = `${foundLot.name} (৳${foundLot.entryFee})`;
+      } else {
+        targetPoolName = "Archived Pool";
+      }
+    }
+    document.getElementById("detail-leader-target-pool").innerText = targetPoolName;
+    document.getElementById("detail-leader-progress-pct").innerText = `${pct}%`;
+    document.getElementById("detail-leader-progress-bar").style.width = `${pct}%`;
+    document.getElementById("detail-leader-progress-val").innerText = `${progress} / ${target} Tickets`;
+
+    const badgeEl = document.getElementById("detail-leader-mission-badge");
+    if (badgeEl) {
+      if (target <= 0) {
+        badgeEl.innerText = "DISABLED";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-slate-950 text-slate-500 border border-slate-800";
+      } else if (progress >= target) {
+        badgeEl.innerText = "COMPLETED 🎉";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/40";
+      } else {
+        badgeEl.innerText = `${target - progress} LEFT`;
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/40 animate-pulse";
+      }
+    }
+
+    // Edit credentials click
+    const editBtn = document.getElementById("detail-leader-edit-profile-btn");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        this.openUserEditModal(leader.id);
+      };
+    }
+
+    // Populate Sub-agents
+    const subAgentsTbody = document.getElementById("detail-leader-subagents-tbody");
+    if (subAgentsTbody) {
+      subAgentsTbody.innerHTML = "";
+      const leaderSubs = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === leader.username.toLowerCase());
+
+      if (leaderSubs.length === 0) {
+        subAgentsTbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="p-4 text-center text-slate-500 italic font-sans text-xs">
+              No sub-agents recruited by this leader yet.
+            </td>
+          </tr>
+        `;
+      } else {
+        leaderSubs.forEach(sub => {
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-mono";
+          
+          const sTarget = sub.monthlyTargetTickets || 0;
+          const sProgress = sub.monthlySalesProgress || 0;
+
+          row.innerHTML = `
+            <td class="p-3 text-left font-sans">
+              <div>
+                <span class="text-white font-bold">@${sub.username}</span>
+                <span class="text-[9.5px] text-slate-500 block select-all font-mono">${sub.email}</span>
+              </div>
+            </td>
+            <td class="p-3 text-slate-300 font-bold">৳${(sub.balance || 0).toFixed(2)}</td>
+            <td class="p-3 text-emerald-400 font-bold">${(sub.commissionRate || 3.0).toFixed(1)}%</td>
+            <td class="p-3 text-white font-bold">${sub.totalBookings || 0}</td>
+            <td class="p-3 text-slate-400">${sProgress} / ${sTarget}</td>
+            <td class="p-3 font-sans">
+              <span class="text-[9.5px] py-0.5 px-2 uppercase font-bold rounded ${sub.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${sub.status || "active"}</span>
+            </td>
+            <td class="p-3 text-right">
+              <button class="leader-sub-view-btn bg-slate-950 hover:bg-slate-800 text-slate-300 text-[10px] py-1 px-2 border border-slate-800 rounded transition cursor-pointer" data-id="${sub.id}">
+                View Details
+              </button>
+            </td>
+          `;
+
+          row.querySelector(".leader-sub-view-btn").addEventListener("click", () => {
+            // Switch tabs
+            this.currentAdminTab = "subagents-list";
+            this.render();
+            this.showSubAgentDetail(sub.id);
+          });
+
+          subAgentsTbody.appendChild(row);
+        });
+      }
+    }
+
+    // Attach back button
+    document.getElementById("agent-leaders-detail-back-btn").onclick = () => {
+      document.getElementById("agent-leaders-detail-view").classList.add("hidden");
+      document.getElementById("agent-leaders-list-view").classList.remove("hidden");
+    };
+  },
+
+  renderSubAgentsListTab() {
+    const listEl = document.getElementById("subagents-list-tbody");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const searchInput = document.getElementById("subagents-list-search-input");
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+      searchInput.addEventListener("input", () => this.renderSubAgentsListTab());
+      searchInput.dataset.listenerAttached = "true";
+    }
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    const subagents = this.db.users.filter(u => {
+      if (u.role !== "subagent") return false;
+      if (query) {
+        return u.username.toLowerCase().includes(query) ||
+               (u.email || "").toLowerCase().includes(query) ||
+               (u.phone || "").toLowerCase().includes(query) ||
+               (u.referredBy || "").toLowerCase().includes(query);
+      }
+      return true;
+    });
+
+    // Compute metrics
+    const lotteries = this.db.lotteries || [];
+    const tickets = this.db.tickets || [];
+    
+    // Total subagents
+    const totalSubsCount = this.db.users.filter(u => u.role === "subagent").length;
+
+    // Direct players count
+    const subUsernames = new Set(this.db.users.filter(u => u.role === "subagent").map(u => u.username.toLowerCase()));
+    const subPlayers = this.db.users.filter(u => u.referredBy && subUsernames.has(u.referredBy.toLowerCase()));
+    const totalPlayersReferred = subPlayers.length;
+
+    // Sales volume
+    let totalSalesVol = 0;
+    const playerIds = new Set(subPlayers.map(p => p.id));
+    tickets.forEach(t => {
+      if (playerIds.has(t.userId)) {
+        const lot = lotteries.find(l => l.id === t.lotteryId);
+        if (lot) totalSalesVol += (lot.entryFee || 100);
+      }
+    });
+
+    const countEl = document.getElementById("subagents-list-stat-count");
+    if (countEl) countEl.innerText = `${totalSubsCount} Sub-agent${totalSubsCount !== 1 ? 's' : ''}`;
+
+    const salesEl = document.getElementById("subagents-list-stat-sales");
+    if (salesEl) salesEl.innerText = `৳${totalSalesVol.toFixed(2)}`;
+
+    const playersEl = document.getElementById("subagents-list-stat-players");
+    if (playersEl) playersEl.innerText = `${totalPlayersReferred} Player${totalPlayersReferred !== 1 ? 's' : ''}`;
+
+    if (subagents.length === 0) {
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="7" class="p-6 text-center text-slate-500 font-sans">
+            No sub-agent accounts matching the query found.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    subagents.forEach(sub => {
+      const sTarget = sub.monthlyTargetTickets || 0;
+      const sProgress = sub.monthlySalesProgress || 0;
+      const pct = sTarget > 0 ? Math.min(100, Math.round((sProgress / sTarget) * 100)) : 0;
+
+      const row = document.createElement("tr");
+      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition cursor-pointer";
+
+      row.innerHTML = `
+        <td class="p-3">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${sub.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
+            <div>
+              <span class="text-white font-bold block font-sans">@${sub.username}</span>
+              <span class="text-[9.5px] text-slate-500 block font-mono">${sub.email}</span>
+            </div>
+          </div>
+        </td>
+        <td class="p-3">
+          <span class="text-amber-400 font-bold font-mono">@${sub.referredBy || "System"}</span>
+        </td>
+        <td class="p-3">
+          <div>
+            <span class="text-white font-bold font-mono">৳${(sub.balance || 0).toFixed(2)}</span>
+            <span class="text-[9.5px] text-slate-500 block font-sans">Rate: <strong class="text-emerald-400">${(sub.commissionRate || 3.0).toFixed(1)}%</strong></span>
+          </div>
+        </td>
+        <td class="p-3">
+          <span class="text-slate-300 font-bold font-mono">${sub.totalBookings || 0} Bookings</span>
+        </td>
+        <td class="p-3 font-mono">
+          <div class="w-28 space-y-1">
+            <div class="flex justify-between text-[9.5px] leading-none">
+              <span class="text-slate-400">${sProgress}/${sTarget}</span>
+              <span class="text-cyan-400 font-bold">${pct}%</span>
+            </div>
+            <div class="w-full h-1.5 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        </td>
+        <td class="p-3 font-sans">
+          <span class="text-[9.5px] py-0.5 px-2 uppercase font-bold rounded ${sub.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${sub.status || "active"}</span>
+        </td>
+        <td class="p-3 text-right">
+          <button class="subagent-view-btn bg-indigo-950 hover:bg-indigo-900/60 text-indigo-400 py-1 px-2.5 rounded-lg border border-indigo-900/30 transition text-[10px] cursor-pointer font-sans" data-id="${sub.id}">
+            View Operator
+          </button>
+        </td>
+      `;
+
+      row.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        this.showSubAgentDetail(sub.id);
+      });
+
+      listEl.appendChild(row);
+    });
+
+    listEl.querySelectorAll(".subagent-view-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.showSubAgentDetail(id);
+      });
+    });
+  },
+
+  showSubAgentDetail(subId) {
+    const sub = this.db.users.find(u => u.id === subId);
+    if (!sub) return;
+
+    // Switch screens
+    document.getElementById("subagents-list-view").classList.add("hidden");
+    document.getElementById("subagents-detail-view").classList.remove("hidden");
+
+    // Profile settings
+    document.getElementById("detail-sub-avatar-initial").innerText = sub.username.charAt(0).toUpperCase();
+    document.getElementById("detail-sub-username").innerText = `@${sub.username}`;
+    document.getElementById("detail-sub-parent-lbl").innerText = `@${sub.referredBy || "System"}`;
+    document.getElementById("detail-sub-email").innerText = sub.email || "N/A";
+    document.getElementById("detail-sub-phone").innerText = sub.phone || "N/A";
+    
+    const statusLbl = document.getElementById("detail-sub-status-lbl");
+    if (statusLbl) {
+      statusLbl.innerText = (sub.status || "active").toUpperCase();
+      statusLbl.className = sub.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
+    }
+
+    document.getElementById("detail-sub-balance-lbl").innerText = `৳${(sub.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-sub-commission-lbl").innerText = `${(sub.commissionRate || 3.0).toFixed(1)}%`;
+    document.getElementById("detail-sub-bookings-lbl").innerText = `${sub.totalBookings || 0} Sales`;
+
+    // Targets & Mission
+    const target = sub.monthlyTargetTickets || 0;
+    const progress = sub.monthlySalesProgress || 0;
+    const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+    
+    document.getElementById("detail-sub-target-tickets").innerText = target;
+    document.getElementById("detail-sub-target-reward").innerText = `৳${(sub.monthlyTargetReward || 0).toFixed(2)}`;
+
+    // Target pool
+    let targetPoolName = "Any Active Pool";
+    const targetLotteryId = sub.monthlyTargetLotteryId || "any";
+    if (targetLotteryId !== "any") {
+      const foundLot = (this.db.lotteries || []).find(l => l.id === targetLotteryId);
+      if (foundLot) {
+        targetPoolName = `${foundLot.name} (৳${foundLot.entryFee})`;
+      } else {
+        targetPoolName = "Archived Pool";
+      }
+    }
+    document.getElementById("detail-sub-target-pool").innerText = targetPoolName;
+    document.getElementById("detail-sub-progress-pct").innerText = `${pct}%`;
+    document.getElementById("detail-sub-progress-bar").style.width = `${pct}%`;
+    document.getElementById("detail-sub-progress-val").innerText = `${progress} / ${target} Tickets`;
+
+    const badgeEl = document.getElementById("detail-sub-mission-badge");
+    if (badgeEl) {
+      if (target <= 0) {
+        badgeEl.innerText = "DISABLED";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-slate-950 text-slate-500 border border-slate-800";
+      } else if (progress >= target) {
+        badgeEl.innerText = "COMPLETED 🎉";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/40";
+      } else {
+        badgeEl.innerText = `${target - progress} LEFT`;
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/40 animate-pulse";
+      }
+    }
+
+    // Edit settings click
+    const editBtn = document.getElementById("detail-sub-edit-profile-btn");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        this.openUserEditModal(sub.id);
+      };
+    }
+
+    // Populate players
+    const playersTbody = document.getElementById("detail-sub-players-tbody");
+    if (playersTbody) {
+      playersTbody.innerHTML = "";
+      const subPlayers = this.db.users.filter(u => u.referredBy && u.referredBy.toLowerCase() === sub.username.toLowerCase() && u.role !== "subagent" && u.role !== "agent");
+
+      if (subPlayers.length === 0) {
+        playersTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-4 text-center text-slate-500 italic font-sans text-xs">
+              No players registered under this operator yet.
+            </td>
+          </tr>
+        `;
+      } else {
+        subPlayers.forEach(player => {
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-mono";
+
+          row.innerHTML = `
+            <td class="p-3 text-left font-sans">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${player.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
+                <span class="text-white font-bold">@${player.username}</span>
+              </div>
+            </td>
+            <td class="p-3 text-slate-300 font-bold font-mono">৳${(player.balance || 0).toFixed(2)}</td>
+            <td class="p-3 text-slate-400 font-sans">${player.email || "N/A"}</td>
+            <td class="p-3 text-slate-400">${player.phone || "N/A"}</td>
+            <td class="p-3 text-right">
+              <button class="sub-player-view-btn bg-slate-950 hover:bg-slate-850 text-slate-300 text-[10px] py-1 px-2 border border-slate-800 rounded transition cursor-pointer font-sans" data-id="${player.id}">
+                Configure User
+              </button>
+            </td>
+          `;
+
+          row.querySelector(".sub-player-view-btn").addEventListener("click", () => {
+            this.openUserEditModal(player.id);
+          });
+
+          playersTbody.appendChild(row);
+        });
+      }
+    }
+
+    // Attach back button
+    document.getElementById("subagents-detail-back-btn").onclick = () => {
+      document.getElementById("subagents-detail-view").classList.add("hidden");
+      document.getElementById("subagents-list-view").classList.remove("hidden");
+    };
   },
 
   renderAdminLotteries() {

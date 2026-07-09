@@ -3,12 +3,91 @@
 // ============================================================================
 
 export const AgentModule = {
+  checkAndClaimMonthlyTarget(operatorUser) {
+    if (!operatorUser) return;
+    const target = parseInt(operatorUser.monthlyTargetTickets || 0);
+    const reward = parseFloat(operatorUser.monthlyTargetReward || 0);
+    const progress = parseInt(operatorUser.monthlySalesProgress || 0);
+    const claimed = !!operatorUser.monthlyTargetClaimed;
+
+    if (target > 0 && progress >= target && !claimed) {
+      operatorUser.monthlyTargetClaimed = true;
+      operatorUser.balance = (operatorUser.balance || 0) + reward;
+
+      // Sync into the global database users list
+      const dbUser = this.db.users.find(u => u.id === operatorUser.id);
+      if (dbUser) {
+        dbUser.balance = operatorUser.balance;
+        dbUser.monthlyTargetClaimed = true;
+      }
+
+      // Add credit transaction entry
+      if (!this.db.transactions) this.db.transactions = [];
+      this.db.transactions.push({
+        id: "tx_" + Date.now() + "_target_bonus",
+        userId: operatorUser.id,
+        userName: operatorUser.username,
+        username: operatorUser.username,
+        amount: reward,
+        paymentMethod: "Monthly Target Bonus",
+        phone: "System Reward System",
+        transactionType: "Deposit",
+        status: "complete",
+        bonusAmount: 0,
+        notes: `Completed Monthly Sales Target: Sold ${progress}/${target} tickets!`,
+        date: new Date().toLocaleString("en-US", { hour12: true })
+      });
+
+      // Add to agent activity ledger
+      if (!this.db.agentLedger) this.db.agentLedger = [];
+      this.db.agentLedger.push({
+        id: "act_" + Date.now() + "_bonus",
+        agentId: operatorUser.id,
+        timestamp: new Date().toISOString(),
+        targetUser: operatorUser.username,
+        description: `Completed Monthly Sales Target: Sold ${progress}/${target} tickets!`,
+        amount: reward,
+        commission: reward
+      });
+
+      this.saveDB();
+
+      // Trigger standard sweet toast notification
+      this.showToast(`🎯 CONGRATULATIONS! You completed your monthly ticket sales target of ${target} tickets and instantly claimed ৳${reward.toFixed(2)} Taka reward!`, "success");
+      
+      this.render();
+    }
+  },
+
   renderAgentWorkspace() {
-    if (!this.currentUser || this.currentUser.role !== "agent") return;
+    if (!this.currentUser || (this.currentUser.role !== "agent" && this.currentUser.role !== "subagent")) return;
+
+    const ledger = (this.db.agentLedger || []).filter(l => l.agentId === this.currentUser.id);
 
     // Display basic identity
     const nameEl = document.getElementById("agent-display-name");
     if (nameEl) nameEl.innerText = `@${this.currentUser.username}`;
+
+    // Update title and tab visibility for sub-agents
+    const titleEl = document.getElementById("agent-suite-title");
+    if (titleEl) {
+      if (this.currentUser.role === "subagent") {
+        titleEl.innerText = "FIELD SUB-AGENT SUITE v2.4";
+        titleEl.className = "text-xs font-black tracking-wider text-indigo-400 font-mono";
+      } else {
+        titleEl.innerText = "FIELD AGENT SUITE v2.4";
+        titleEl.className = "text-xs font-black tracking-wider text-emerald-400 font-mono";
+      }
+    }
+
+    const subagentsBtn = document.getElementById("agent-btn-subagents");
+    if (subagentsBtn) {
+      if (this.currentUser.role === "subagent") {
+        subagentsBtn.classList.add("hidden");
+      } else {
+        subagentsBtn.classList.remove("hidden");
+      }
+    }
 
     // Update Overview Stats
     const balOverview = document.getElementById("agent-overview-wallet-balance");
@@ -23,27 +102,105 @@ export const AgentModule = {
     const rateOverview = document.getElementById("agent-overview-commission-rate");
     if (rateOverview) rateOverview.innerText = `${(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
 
-    // Compute goal achievements using active session ledger logs list
-    const ledger = (this.db.agentLedger || []).filter(l => l.agentId === this.currentUser.id);
-    const totalSalesVolume = ledger.reduce((sum, act) => sum + (act.amount || 0), 0);
+    // Render dynamic Monthly Sales Target
+    const monthlyTargetContainer = document.getElementById("agent-monthly-target-container");
+    const target = parseInt(this.currentUser.monthlyTargetTickets || 0);
+    const reward = parseFloat(this.currentUser.monthlyTargetReward || 0);
+    const progress = parseInt(this.currentUser.monthlySalesProgress || 0);
+    const claimed = !!this.currentUser.monthlyTargetClaimed;
+    const targetPct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
 
-    // Goal Level 1: target 500
-    const goalLevel1Progress = Math.min(100, Math.round((totalSalesVolume / 500) * 100));
-    const goalLevel1Bar = document.getElementById("goal-level1-bar");
-    const goalLevel1Track = document.getElementById("goal-level1-track");
-    if (goalLevel1Bar) goalLevel1Bar.style.width = `${goalLevel1Progress}%`;
-    if (goalLevel1Track) goalLevel1Track.innerText = `৳${Math.round(totalSalesVolume)}/৳500 Slot`;
+    // Trigger auto claim on workspace load if target is reached but not claimed
+    if (target > 0 && progress >= target && !claimed) {
+      this.checkAndClaimMonthlyTarget(this.currentUser);
+    }
 
-    // Goal Level 2: target 2000
-    const goalLevel2Progress = Math.min(100, Math.round((totalSalesVolume / 2000) * 100));
-    const goalLevel2Bar = document.getElementById("goal-level2-bar");
-    if (goalLevel2Bar) goalLevel2Bar.style.width = `${goalLevel2Progress}%`;
+    if (monthlyTargetContainer) {
+      const progressTextEl = document.getElementById("agent-monthly-progress-text");
+      const progressBarEl = document.getElementById("agent-monthly-progress-bar");
+      const rewardTextEl = document.getElementById("agent-monthly-reward-text");
+      const badgeEl = document.getElementById("agent-monthly-status-badge");
+      const claimBtn = document.getElementById("agent-monthly-claim-btn");
+      const poolValEl = document.getElementById("agent-monthly-pool-val");
+      const countdownValEl = document.getElementById("agent-monthly-countdown-val");
+
+      // Dynamic target pool name resolution
+      let targetPoolName = "Any Active Pool";
+      const targetLotteryId = this.currentUser.monthlyTargetLotteryId || "any";
+      if (targetLotteryId !== "any") {
+        const foundLot = (this.db.lotteries || []).find(l => l.id === targetLotteryId);
+        if (foundLot) {
+          targetPoolName = foundLot.name;
+        } else {
+          targetPoolName = "Archived Pool";
+        }
+      }
+      if (poolValEl) poolValEl.innerText = targetPoolName;
+
+      // Dynamic remaining tickets countdown
+      const remaining = Math.max(0, target - progress);
+      let countdownText = "";
+      if (target <= 0) {
+        countdownText = "Disabled";
+      } else if (remaining === 0) {
+        countdownText = "Target Achieved! 🎉";
+      } else {
+        countdownText = `${remaining} Tickets Left`;
+      }
+      if (countdownValEl) countdownValEl.innerText = countdownText;
+
+      if (target <= 0) {
+        if (badgeEl) {
+          badgeEl.innerText = "No Target Set";
+          badgeEl.className = "px-2 py-0.5 rounded-full text-[8.5px] font-mono font-bold uppercase bg-slate-950/60 border border-slate-800 text-slate-500";
+        }
+        if (progressTextEl) progressTextEl.innerText = "0 Pcs";
+        if (progressBarEl) progressBarEl.style.width = "0%";
+        if (rewardTextEl) rewardTextEl.innerText = "৳0.00 Taka";
+        if (claimBtn) claimBtn.classList.add("hidden");
+      } else {
+        if (progressTextEl) progressTextEl.innerText = `${progress} / ${target} Pcs`;
+        if (progressBarEl) progressBarEl.style.width = `${targetPct}%`;
+        if (rewardTextEl) rewardTextEl.innerText = `৳${reward.toFixed(2)} Taka`;
+
+        if (progress >= target) {
+          if (claimed || this.currentUser.monthlyTargetClaimed) {
+            if (badgeEl) {
+              badgeEl.innerText = "Claimed 🎉";
+              badgeEl.className = "px-2 py-0.5 rounded-full text-[8.5px] font-mono font-bold uppercase bg-emerald-950/60 border border-emerald-800 text-emerald-400";
+            }
+            if (claimBtn) claimBtn.classList.add("hidden");
+          } else {
+            if (badgeEl) {
+              badgeEl.innerText = "Completed 🎯";
+              badgeEl.className = "px-2 py-0.5 rounded-full text-[8.5px] font-mono font-bold uppercase bg-yellow-950/60 border border-yellow-850 text-yellow-450 animate-pulse";
+            }
+            if (claimBtn) {
+              claimBtn.classList.remove("hidden");
+              const claimRewardSpan = document.getElementById("agent-monthly-claim-btn-reward");
+              if (claimRewardSpan) claimRewardSpan.innerText = reward.toFixed(0);
+              
+              const newClaimBtn = claimBtn.cloneNode(true);
+              claimBtn.parentNode.replaceChild(newClaimBtn, claimBtn);
+              newClaimBtn.addEventListener("click", () => {
+                this.checkAndClaimMonthlyTarget(this.currentUser);
+              });
+            }
+          }
+        } else {
+          if (badgeEl) {
+            badgeEl.innerText = "In Progress ⏳";
+            badgeEl.className = "px-2 py-0.5 rounded-full text-[8.5px] font-mono font-bold uppercase bg-indigo-950/60 border border-indigo-900 text-indigo-400";
+          }
+          if (claimBtn) claimBtn.classList.add("hidden");
+        }
+      }
+    }
 
     // Target Overview Badge Progress Score
     const targetBadge = document.getElementById("agent-overview-target-progress");
     if (targetBadge) {
-      const displayScore = Math.max(goalLevel1Progress, goalLevel2Progress);
-      targetBadge.innerText = `${displayScore}%`;
+      targetBadge.innerText = `${targetPct}%`;
     }
 
     // Populate active lotteries dropdown list
@@ -232,6 +389,10 @@ export const AgentModule = {
         });
       }
     }
+
+    // --- Render Sub-Agents Tab Performance and Registry ---
+    this.renderSubAgentTab();
+    // --- End Render Sub-Agents ---
   },
 
   setupDistrictAgentsLookup() {
@@ -446,6 +607,7 @@ export const AgentModule = {
       "agent-tab-booker",
       "agent-tab-cash",
       "agent-tab-players",
+      "agent-tab-subagents",
       "agent-tab-ledger"
     ];
 
@@ -575,6 +737,9 @@ export const AgentModule = {
         app.renderAgentWorkspace();
       });
     }
+
+    // Sub-Agent: Setup Forms and Listeners from Modular Module
+    this.setupSubAgentFormsAndListeners();
 
     // District-based Agent Live Support List Change Event
     const supportDistrictSelect = document.getElementById("user-support-agent-district-select");
@@ -810,9 +975,11 @@ export const AgentModule = {
         // Add soldTickets limit
         lot.soldTickets = (lot.soldTickets || 0) + qty;
 
-        // Credit Agent Commissions
-        const agentRate = app.currentUser ? (app.currentUser.commissionRate || 5.0) : 5.0;
+        // Credit Agent/Sub-Agent Commissions and handle parent Agent Overrides
+        const isSubAgent = app.currentUser && app.currentUser.role === "subagent";
+        const agentRate = app.currentUser ? (app.currentUser.commissionRate || (isSubAgent ? 3.0 : 5.0)) : 5.0;
         const calculatedComm = (totalCost * agentRate) / 100;
+        
         app.currentUser.earnedCommission = (app.currentUser.earnedCommission || 0) + calculatedComm;
         app.currentUser.totalBookings = (app.currentUser.totalBookings || 0) + qty;
 
@@ -823,7 +990,31 @@ export const AgentModule = {
           dbAgent.totalBookings = app.currentUser.totalBookings;
         }
 
-        // Add list transaction activity in agent Ledger
+        // Increment monthly progress if matches target lottery pool
+        const myTargetLottery = app.currentUser.monthlyTargetLotteryId || "any";
+        if (myTargetLottery === "any" || myTargetLottery === lotteryId) {
+          app.currentUser.monthlySalesProgress = (app.currentUser.monthlySalesProgress || 0) + qty;
+          if (dbAgent) {
+            dbAgent.monthlySalesProgress = app.currentUser.monthlySalesProgress;
+          }
+        }
+
+        // Trigger monthly target check for current operator
+        app.checkAndClaimMonthlyTarget(app.currentUser);
+
+        // Also check if they are a sub-agent and contribute progress to parent agent
+        if (isSubAgent && app.currentUser.referredBy) {
+          const parentAgent = app.db.users.find(u => u.username.toLowerCase() === app.currentUser.referredBy.toLowerCase() && u.role === "agent");
+          if (parentAgent) {
+            const parentTargetLottery = parentAgent.monthlyTargetLotteryId || "any";
+            if (parentTargetLottery === "any" || parentTargetLottery === lotteryId) {
+              parentAgent.monthlySalesProgress = (parentAgent.monthlySalesProgress || 0) + qty;
+              app.checkAndClaimMonthlyTarget(parentAgent);
+            }
+          }
+        }
+
+        // Add direct booking activity log
         if (!app.db.agentLedger) app.db.agentLedger = [];
         app.db.agentLedger.push({
           id: "act_" + Date.now(),
@@ -834,6 +1025,44 @@ export const AgentModule = {
           amount: totalCost,
           commission: calculatedComm
         });
+
+        // Award override commission if logged-in operator is a sub-agent under an active parent agent
+        if (isSubAgent && app.currentUser.referredBy) {
+          const parentAgent = app.db.users.find(u => u.username.toLowerCase() === app.currentUser.referredBy.toLowerCase() && u.role === "agent");
+          if (parentAgent) {
+            const parentRate = parentAgent.commissionRate || 5.0;
+            const overrideRate = Math.max(0, parentRate - agentRate);
+            const overrideCommission = (totalCost * overrideRate) / 100;
+
+            if (overrideCommission > 0) {
+              parentAgent.earnedCommission = (parentAgent.earnedCommission || 0) + overrideCommission;
+              
+              // Log override commission to parent agent's ledger
+              app.db.agentLedger.push({
+                id: "act_" + Date.now() + "_over",
+                agentId: parentAgent.id,
+                timestamp: new Date().toISOString(),
+                targetUser: targetUser.username,
+                description: `Sub-Agent @${app.currentUser.username} Booking Override (${overrideRate.toFixed(1)}% split)`,
+                amount: totalCost,
+                commission: overrideCommission
+              });
+
+              // Send system notification/message to parent agent
+              if (!app.db.messages) app.db.messages = [];
+              app.db.messages.push({
+                id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+                recipientType: "specific",
+                targetUsername: parentAgent.username,
+                category: "bonus",
+                subject: `💸 Sub-Agent Override Gained: +৳${overrideCommission.toFixed(2)}!`,
+                content: `Your Sub-Agent @${app.currentUser.username} just booked ${qty} tickets for @${targetUser.username} on ${lot.name}. You earned an override commission of ৳${overrideCommission.toFixed(2)} (${overrideRate.toFixed(1)}% split)!`,
+                date: new Date().toISOString(),
+                readBy: []
+              });
+            }
+          }
+        }
 
         app.saveDB();
         app.showToast(`Executed Order! Successfully booked ${qty} tickets for @${targetUser.username}. Earned ৳${calculatedComm.toFixed(2)} commission!`, "success");
