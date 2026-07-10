@@ -5,7 +5,7 @@ import { StateManager } from "../main.js"; // In case standard serialization hel
 export const SyncCloudModule = {
   async initFirebaseSync() {
     try {
-      const configRes = await fetch("/firebase-applet-config.json");
+      const configRes = await fetch("firebase-applet-config.json");
       if (!configRes.ok) {
         console.warn("Firebase config not found or accessible.");
         return;

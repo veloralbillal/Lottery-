@@ -660,19 +660,19 @@ export class StateManager {
 
   async loadDashboardTabs() {
     const tabs = [
-      { id: "tab-home", file: "/src/dashboard_tabs/home.php" },
-      { id: "tab-events", file: "/src/dashboard_tabs/events_tab.php" },
-      { id: "tab-tickets", file: "/src/dashboard_tabs/tickets.php" },
-      { id: "tab-wallet", file: "/src/dashboard_tabs/user_balance.php" },
-      { id: "tab-history", file: "/src/dashboard_tabs/history.php" },
-      { id: "tab-profile", file: "/src/dashboard_tabs/profile.php" },
-      { id: "tab-badge-request", file: "/src/dashboard_tabs/badge_request.php" },
-      { id: "tab-refer", file: "/src/dashboard_tabs/share_earn.php" },
-      { id: "tab-jackpot", file: "/src/dashboard_tabs/jackpot.php" },
-      { id: "tab-tasks", file: "/src/dashboard_tabs/missions.php" },
-      { id: "tab-otp", file: "/src/dashboard_tabs/otp.php" },
-      { id: "admin-tab-agent-leaders", file: "/src/admin_tabs/agent_leaders.php" },
-      { id: "admin-tab-subagents-list", file: "/src/admin_tabs/subagents_admin.php" }
+      { id: "tab-home", file: "src/dashboard_tabs/home.php" },
+      { id: "tab-events", file: "src/dashboard_tabs/events_tab.php" },
+      { id: "tab-tickets", file: "src/dashboard_tabs/tickets.php" },
+      { id: "tab-wallet", file: "src/dashboard_tabs/user_balance.php" },
+      { id: "tab-history", file: "src/dashboard_tabs/history.php" },
+      { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
+      { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
+      { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
+      { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
+      { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
+      { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
+      { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
+      { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
     ];
     
     for (const tab of tabs) {

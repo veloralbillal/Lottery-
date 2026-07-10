@@ -86,6 +86,7 @@ function serveAndCopyAssetsPlugin() {
 
 export default defineConfig(() => {
   return {
+    base: "./",
     plugins: [
       tailwindcss(),
       serveAndCopyAssetsPlugin()
