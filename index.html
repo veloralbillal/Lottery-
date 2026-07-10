@@ -75,7 +75,7 @@
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Styled CSS stylesheet compiled by Vite and Tailwind CSS v4 -->
-    <link rel="stylesheet" href="/src/tailwind-built.css" />
+    <link rel="stylesheet" href="/src/index.css" />
     <style>
       /* Smooth transitions and scrollbars */
       .scrollbar-none::-webkit-scrollbar {
@@ -521,7 +521,7 @@
                 <i class="fa-solid fa-id-card text-amber-500/60"></i> Username handle
               </label>
               <div class="relative group">
-                <div class="absolute inset-0 bg-amber-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                <div class="absolute inset-0 bg-amber-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                 <div class="relative">
                   <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition-colors group-focus-within:text-amber-400"></i>
                   <input id="auth-user" type="text" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3.5 pl-11 pr-4 text-xs font-mono text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/25 transition duration-300" placeholder="lottery_pro" />
@@ -534,7 +534,7 @@
                 <i class="fa-solid fa-shield-halved text-amber-500/60"></i> Account Passphrase
               </label>
               <div class="relative group">
-                <div class="absolute inset-0 bg-amber-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                <div class="absolute inset-0 bg-amber-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                 <div class="relative">
                   <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition-colors group-focus-within:text-amber-400"></i>
                   <input id="auth-pass" type="password" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3.5 pl-11 pr-12 text-xs font-mono text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/25 transition duration-300" placeholder="••••••••" />
@@ -571,7 +571,7 @@
             <div class="space-y-2">
               <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Username handle</label>
               <div class="relative group">
-                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                 <input id="reg-user" type="text" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" placeholder="your_username" />
               </div>
             </div>
@@ -580,14 +580,14 @@
               <div class="space-y-2">
                 <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Email Address</label>
                 <div class="relative group">
-                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                   <input id="reg-email" type="email" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" placeholder="name@domain.com" />
                 </div>
               </div>
               <div class="space-y-2">
                 <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Phone Number</label>
                 <div class="relative group">
-                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                   <input id="reg-phone" type="text" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" placeholder="01712xxxxxx" />
                 </div>
               </div>
@@ -596,7 +596,7 @@
             <div class="space-y-2">
               <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Date of Birth</label>
               <div class="relative group">
-                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                 <input id="reg-dob" type="date" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" />
               </div>
             </div>
@@ -604,7 +604,7 @@
             <div class="space-y-2">
               <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Create Passphrase</label>
               <div class="relative group">
-                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                 <div class="relative">
                   <input id="reg-pass" type="password" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 pr-12 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" placeholder="••••••••" />
                   <button type="button" onclick="const p = document.getElementById('reg-pass'); p.type = p.type === 'password' ? 'text' : 'password'; this.querySelector('i').classList.toggle('fa-eye'); this.querySelector('i').classList.toggle('fa-eye-slash');" class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition cursor-pointer p-1">
@@ -618,7 +618,7 @@
               <div class="space-y-2">
                 <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">My Town / Region</label>
                 <div class="relative group">
-                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                   <select id="reg-region" required class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-3 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350 cursor-pointer">
                     <option value="Dhaka">Dhaka</option>
                     <option value="Chittagong">Chittagong</option>
@@ -634,7 +634,7 @@
               <div class="space-y-2">
                 <label class="block text-[9px] uppercase font-mono tracking-wider text-slate-400 font-bold">Refer Code (Optional)</label>
                 <div class="relative group">
-                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300"></div>
+                  <div class="absolute inset-0 bg-emerald-500/5 rounded-xl opacity-0 group-focus-within:opacity-100 blur transition duration-300 pointer-events-none"></div>
                   <input id="reg-refer-by" type="text" class="w-full bg-slate-950/90 border border-slate-850 hover:border-slate-700 rounded-xl py-3 px-4 text-xs font-mono text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/25 transition duration-350" placeholder="referrer_username" />
                 </div>
               </div>

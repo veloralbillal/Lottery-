@@ -307,9 +307,22 @@ export const AdminModule = {
       .replace(/'/g, "&#039;");
   },
 
+  async fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return response;
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  },
+
   async getClientIP() {
     try {
-      const res = await fetch("https://api.ipify.org?format=json");
+      const res = await this.fetchWithTimeout("https://api.ipify.org?format=json", {}, 2000);
       const data = await res.json();
       return data.ip || "127.0.0.1";
     } catch (err) {
@@ -326,7 +339,7 @@ export const AdminModule = {
 
   async getIPDetails() {
     try {
-      const response = await fetch("https://ipapi.co/json/");
+      const response = await this.fetchWithTimeout("https://ipapi.co/json/", {}, 2000);
       if (response.ok) {
         const details = await response.json();
         return {
