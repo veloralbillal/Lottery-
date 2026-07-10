@@ -23,6 +23,7 @@ import { JackpotTab } from "./dashboard_tabs/jackpot.js";
 import { MissionsTab } from "./dashboard_tabs/missions.js";
 import { FloatingToastNotification } from "./floating_toast.js";
 import { getDefaultDB } from "./js/defaultDB.js";
+import { bundledTabs } from "./js/bundledTabs.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -686,32 +687,61 @@ export class StateManager {
           el.innerHTML = cachedHTML;
         }
         
+        const isLocalFileProtocol = window.location.protocol === "file:";
+        
         let success = false;
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = isLocalFileProtocol ? 1 : 3;
         
         while (!success && attempts < maxAttempts) {
           try {
-            // Use cache-busting query param to ensure fresh fetch from server
-            const response = await fetch(`${tab.file}?v=${Date.now()}`);
-            if (response.ok) {
-              const text = await response.text();
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(text, 'text/html');
-              const content = doc.getElementById(tab.id);
-              const finalHTML = content ? content.innerHTML : text;
-              
-              if (finalHTML.trim() && finalHTML.trim().length > 100 && finalHTML !== el.innerHTML) {
-                el.innerHTML = finalHTML;
-                localStorage.setItem(cacheKey, finalHTML);
-              }
-              success = true;
+            let text = "";
+            if (isLocalFileProtocol) {
+              text = bundledTabs[tab.id];
+              if (!text) throw new Error(`No bundled template found for ${tab.id}`);
             } else {
-              throw new Error(`HTTP status ${response.status}`);
+              // Use cache-busting query param to ensure fresh fetch from server
+              const response = await fetch(`${tab.file}?v=${Date.now()}`);
+              if (response.ok) {
+                text = await response.text();
+              } else {
+                throw new Error(`HTTP status ${response.status}`);
+              }
             }
+            
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(text, 'text/html');
+            const content = doc.getElementById(tab.id);
+            const finalHTML = content ? content.innerHTML : text;
+            
+            if (finalHTML.trim() && finalHTML.trim().length > 100 && finalHTML !== el.innerHTML) {
+              el.innerHTML = finalHTML;
+              localStorage.setItem(cacheKey, finalHTML);
+            }
+            success = true;
           } catch (e) {
             attempts++;
             if (attempts >= maxAttempts) {
+              // Try secondary safety fallback with bundled tab
+              if (bundledTabs[tab.id]) {
+                console.log(`[Offline-Bundler] Loading secondary safety fallback for: ${tab.id}`);
+                try {
+                  const text = bundledTabs[tab.id];
+                  const parser = new DOMParser();
+                  const doc = parser.parseFromString(text, 'text/html');
+                  const content = doc.getElementById(tab.id);
+                  const finalHTML = content ? content.innerHTML : text;
+                  if (finalHTML.trim() && finalHTML.trim().length > 100) {
+                    el.innerHTML = finalHTML;
+                    localStorage.setItem(cacheKey, finalHTML);
+                    success = true;
+                    break;
+                  }
+                } catch (fallbackErr) {
+                  console.error("Secondary safety fallback failed:", fallbackErr);
+                }
+              }
+
               console.error("Failed to load tab template after multiple attempts:", tab.id, e);
               if (!el.innerHTML.trim()) {
                 el.innerHTML = `

@@ -1,16 +1,28 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
+import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
 export const SyncCloudModule = {
   async initFirebaseSync() {
     try {
-      const configRes = await fetch("firebase-applet-config.json");
-      if (!configRes.ok) {
-        console.warn("Firebase config not found or accessible.");
+      let firebaseConfig = null;
+      try {
+        const configRes = await fetch("firebase-applet-config.json");
+        if (configRes.ok) {
+          firebaseConfig = await configRes.json();
+        } else {
+          throw new Error(`HTTP status ${configRes.status}`);
+        }
+      } catch (fetchErr) {
+        console.warn("Could not fetch firebase-applet-config.json, attempting fallback:", fetchErr);
+        firebaseConfig = fallbackFirebaseConfig;
+      }
+
+      if (!firebaseConfig) {
+        console.warn("Firebase config not found, accessible, or bundled.");
         return;
       }
-      const firebaseConfig = await configRes.json();
       
       let app;
       const apps = getApps();
