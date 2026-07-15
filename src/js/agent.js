@@ -2,6 +2,8 @@
 // AGENT FIELD WORKSPACE & STAFF SERVICES MODULAR SYSTEM
 // ============================================================================
 
+import { AgentCashExtensions } from "./agent_cash_extensions.js";
+
 export const AgentModule = {
   checkAndClaimMonthlyTarget(operatorUser) {
     if (!operatorUser) return;
@@ -393,6 +395,9 @@ export const AgentModule = {
     // --- Render Sub-Agents Tab Performance and Registry ---
     this.renderSubAgentTab();
     // --- End Render Sub-Agents ---
+
+    // Render Cash Terminal Extensions
+    AgentCashExtensions.render(this);
   },
 
   setupDistrictAgentsLookup() {
@@ -740,6 +745,9 @@ export const AgentModule = {
 
     // Sub-Agent: Setup Forms and Listeners from Modular Module
     this.setupSubAgentFormsAndListeners();
+
+    // Initialize Agent Cash Extensions
+    AgentCashExtensions.init(this);
 
     // District-based Agent Live Support List Change Event
     const supportDistrictSelect = document.getElementById("user-support-agent-district-select");

@@ -5,9 +5,12 @@
  * active lottery pool interface card renderings.
  */
 
+import { HomeExtensions } from "./home_extensions.js";
+
 export class HomeTab {
   static init(appInstance) {
     console.log("Home Tab Module initialized securely.");
+    HomeExtensions.init(appInstance);
   }
 
   static render(appInstance) {
@@ -159,5 +162,8 @@ export class HomeTab {
         appInstance.purchaseTicket(id);
       });
     });
+
+    // Render Home Pools Tab extensions
+    HomeExtensions.render(appInstance);
   }
 }
