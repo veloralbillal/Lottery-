@@ -17,8 +17,118 @@
       <span class="text-[9px] uppercase font-mono bg-slate-900 border border-slate-800 text-slate-400 px-2 py-0.5 rounded">Real-time ledger</span>
     </div>
 
+    <!-- Ledger Stats Dashboard -->
+    <div class="grid grid-cols-3 gap-2 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-850 p-3 rounded-2xl font-mono text-xs shadow-md">
+      <div class="space-y-0.5 text-center border-r border-slate-850/60">
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Deposited</span>
+        <span id="ledger-stats-deposit" class="text-emerald-400 font-extrabold text-[11px]">৳0</span>
+      </div>
+      <div class="space-y-0.5 text-center border-r border-slate-850/60">
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Withdrawn</span>
+        <span id="ledger-stats-withdraw" class="text-rose-400 font-extrabold text-[11px]">৳0</span>
+      </div>
+      <div class="space-y-0.5 text-center">
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Pending</span>
+        <span id="ledger-stats-pending" class="text-amber-400 font-extrabold text-[11px]">0 Req</span>
+      </div>
+    </div>
+
+    <!-- Advanced Search & Multi-Filters Panel -->
+    <div class="bg-slate-950 border border-slate-850/80 p-3 rounded-2xl space-y-2.5 font-mono text-[10px]">
+      <div class="relative flex items-center bg-slate-900 border border-slate-800/80 rounded-xl overflow-hidden px-2.5">
+        <i class="fa-solid fa-magnifying-glass text-slate-500 text-[10px] mr-2"></i>
+        <input type="text" id="ledger-search-input" placeholder="Search by TRX / Method / Amount..." class="w-full bg-transparent border-none text-[10.5px] text-white py-1.5 outline-none placeholder-slate-600" />
+      </div>
+
+      <div class="grid grid-cols-2 gap-2">
+        <div class="space-y-1">
+          <label class="text-[8px] text-slate-500 uppercase font-bold block">Type filter</label>
+          <select id="ledger-filter-type" class="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-lg py-1.5 px-2 outline-none cursor-pointer focus:border-rose-500/80">
+            <option value="all">📁 All Types</option>
+            <option value="deposit">📥 Deposits</option>
+            <option value="withdraw">📤 Withdrawals</option>
+            <option value="other">⚙️ Adjustments/Bonus</option>
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="text-[8px] text-slate-500 uppercase font-bold block">Status filter</label>
+          <select id="ledger-filter-status" class="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-lg py-1.5 px-2 outline-none cursor-pointer focus:border-rose-500/80">
+            <option value="all">🔍 All Statuses</option>
+            <option value="approved">🟢 Approved</option>
+            <option value="pending">🟡 Pending</option>
+            <option value="declined">🔴 Declined</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- Container for deposit withdrawal lists -->
-    <div id="history-list-container" class="space-y-3"></div>
+    <div id="history-list-container" class="space-y-2.5"></div>
+  </div>
+
+  <!-- Detailed Receipt Overlay Modal -->
+  <div id="ledger-receipt-modal" class="hidden fixed inset-0 z-[999] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl animate-fade-in font-mono text-xs">
+      <!-- Receipt Header Top bar -->
+      <div class="bg-gradient-to-r from-red-600 to-rose-600 p-4 text-center relative">
+        <button type="button" id="ledger-receipt-close-btn" class="absolute right-4 top-4 text-white/85 hover:text-white text-sm cursor-pointer">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+        <i class="fa-solid fa-receipt text-white text-2xl mb-1 block animate-bounce"></i>
+        <h3 class="text-xs font-black text-white uppercase tracking-wider">Transaction Invoice</h3>
+        <p class="text-[9px] text-red-100 uppercase tracking-widest mt-0.5">Lottery Winner Portal</p>
+      </div>
+
+      <!-- Receipt Content -->
+      <div class="p-5 space-y-4">
+        <!-- Amount Block -->
+        <div class="text-center py-2 border-b border-dashed border-slate-800">
+          <span class="text-[8px] text-slate-500 uppercase block font-bold">Transaction Amount</span>
+          <span id="receipt-amount" class="text-xl font-black text-white">৳0.00</span>
+          <span id="receipt-status-badge" class="inline-block mt-1 px-2.5 py-0.5 rounded text-[8px] font-bold"></span>
+        </div>
+
+        <!-- Meta list -->
+        <div class="space-y-2 text-[10px]">
+          <div class="flex justify-between">
+            <span class="text-slate-500">Operation Type:</span>
+            <span id="receipt-type" class="text-slate-300 font-bold uppercase"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Method/Channel:</span>
+            <span id="receipt-method" class="text-white font-extrabold"></span>
+          </div>
+          <div class="flex justify-between items-center gap-2">
+            <span class="text-slate-500">Reference:</span>
+            <span id="receipt-reference" class="text-slate-300 select-all font-mono"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Timestamp:</span>
+            <span id="receipt-date" class="text-slate-400"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">System Gateway Fee:</span>
+            <span class="text-slate-500 font-bold">৳0.00 (Free)</span>
+          </div>
+        </div>
+
+        <!-- Decorative barcode representation -->
+        <div class="text-center pt-2 space-y-1 border-t border-dashed border-slate-800">
+          <div class="text-[20px] font-sans tracking-[0.25em] text-slate-600 select-none">||||| | |||| ||| |||| | ||</div>
+          <p class="text-[8px] text-slate-500">Secure cryptographic checkout authorization ledger slip</p>
+        </div>
+
+        <!-- Action tools -->
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="receipt-copy-ref-btn" class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold py-2 rounded-xl transition cursor-pointer text-[9px] flex items-center justify-center gap-1">
+            <i class="fa-solid fa-copy"></i> Copy Ref
+          </button>
+          <button id="receipt-download-btn" class="bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-xl transition cursor-pointer text-[9px] flex items-center justify-center gap-1">
+            <i class="fa-solid fa-download"></i> Save Receipt
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Community Container -->

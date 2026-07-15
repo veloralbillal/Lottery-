@@ -8,6 +8,9 @@
     <p class="text-[10px] text-slate-500">Available to purchase lottery draw pools with zero escrow delays.</p>
   </div>
 
+  <!-- PLACEHOLDER FOR EXTENSION STATS & VAULT -->
+  <div id="wallet-extensions-dashboard-placeholder" class="space-y-6"></div>
+
   <!-- AGENT DIRECTORY & LIVE WHATSAPP SUPPORT -->
   <div class="bg-gradient-to-r from-emerald-950/20 to-teal-950/20 border border-emerald-500/20 p-5 rounded-3xl space-y-4 shadow-xl">
     <div class="flex items-center justify-between border-b border-emerald-900/20 pb-3">
@@ -180,7 +183,12 @@
             <option value="Crypto ETH">Ethereum ETH</option>
           </select>
         </div>
+        <!-- CRYPTO CALCULATOR PLACEHOLDER -->
+        <div id="wallet-extensions-crypto-calc-placeholder" class="col-span-1 flex flex-col justify-end"></div>
       </div>
+
+      <!-- QUICK PRESET DEPOSIT BUTTONS PLACEHOLDER -->
+      <div id="wallet-extensions-quick-deposit-placeholder" class="space-y-1.5"></div>
 
       <div class="space-y-1.5">
         <label class="block text-[10px] uppercase font-mono text-slate-500">Amount (৳)</label>
@@ -299,6 +307,9 @@
       </div>
 
       <p class="text-[9px] text-slate-500 font-mono">* Payout withdrawals are audited and released. Standard completion: 15 mins to 1 hour.</p>
+
+      <!-- SECURITY PIN LOCK PLACEHOLDER -->
+      <div id="wallet-extensions-withdraw-security-placeholder" class="space-y-3"></div>
 
       <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-black text-xs py-3 rounded-xl shadow-lg transition active:opacity-90">
         Submit Withdrawal Ticket

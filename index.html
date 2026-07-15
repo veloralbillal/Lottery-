@@ -705,6 +705,7 @@
         <div id="tab-jackpot" class="hidden space-y-6"></div>
         <div id="tab-tasks" class="hidden space-y-6"></div>
         <div id="tab-otp" class="hidden space-y-6"></div>
+        <div id="tab-video-bounty" class="hidden space-y-6"></div>
       </main>
       <!-- Bottom System Navigation tab bar -->
       <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
@@ -818,6 +819,9 @@
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="badge-requests">
           <i class="fa-solid fa-ribbon text-rose-500"></i> Badge Requests <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-badge-requests-count-badge">0</span>
+        </button>
+        <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="video-bounty">
+          <i class="fa-solid fa-video text-rose-500"></i> Video Bounty <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-bounty-count-badge">0</span>
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="sync-vault">
           <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> Cloud Failover Vault
@@ -2551,6 +2555,9 @@
 
         </div>
       </div>
+
+      <!-- ================= ADMIN TAB: VIDEO BOUNTY SYSTEM ================= -->
+      <div id="admin-tab-video-bounty" class="hidden space-y-6"></div>
 
       <!-- ================= ADMIN TAB: DYNAMIC CATEGORY MANAGER ================= -->
       <div id="admin-tab-categories" class="hidden space-y-6">

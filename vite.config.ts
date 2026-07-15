@@ -18,6 +18,8 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
       { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
       { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
+      { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
+      { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
       { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
       { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
     ];

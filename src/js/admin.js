@@ -51,6 +51,7 @@ export const AdminModule = {
     hideViewport("admin-tab-website");
     hideViewport("admin-tab-reports");
     hideViewport("admin-tab-badge-requests");
+    hideViewport("admin-tab-video-bounty");
     hideViewport("admin-tab-refer");
     hideViewport("admin-tab-vip");
     hideViewport("admin-tab-jackpot");
@@ -74,6 +75,18 @@ export const AdminModule = {
         badgeReqsCountEl.classList.remove("hidden");
       } else {
         badgeReqsCountEl.classList.add("hidden");
+      }
+    }
+
+    // Dynamic pending video bounties counter
+    const pendingBountiesCount = (this.db.videoBounties || []).filter(vb => vb.status === "pending").length;
+    const bountyCountEl = document.getElementById("admin-bounty-count-badge");
+    if (bountyCountEl) {
+      bountyCountEl.innerText = pendingBountiesCount;
+      if (pendingBountiesCount > 0) {
+        bountyCountEl.classList.remove("hidden");
+      } else {
+        bountyCountEl.classList.add("hidden");
       }
     }
 
@@ -102,6 +115,8 @@ export const AdminModule = {
         this.renderAdminReports();
       } else if (this.currentAdminTab === "badge-requests") {
         this.renderAdminBadgeRequests();
+      } else if (this.currentAdminTab === "video-bounty") {
+        this.renderAdminVideoBounty();
       } else if (this.currentAdminTab === "refer") {
         this.renderAdminRefer();
       } else if (this.currentAdminTab === "vip") {
@@ -2661,6 +2676,212 @@ export const AdminModule = {
         this.saveDB();
         this.renderAdminBadgeRequests(); // Redraw requests view
         this.renderAdmin(); // Sync headers count
+      });
+    });
+  },
+
+  renderAdminVideoBounty() {
+    const listEl = document.getElementById("admin-bounties-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const bounties = this.db.videoBounties || [];
+
+    // Update statistics
+    const pendingCount = bounties.filter(b => b.status === "pending").length;
+    const approvedCount = bounties.filter(b => b.status === "approved").length;
+    const totalPayout = bounties.filter(b => b.status === "approved").reduce((sum, b) => sum + (b.reward || 0), 0);
+
+    const pendingCountEl = document.getElementById("admin-bounty-pending-count");
+    if (pendingCountEl) pendingCountEl.innerText = `${pendingCount} claims`;
+
+    const approvedCountEl = document.getElementById("admin-bounty-approved-count");
+    if (approvedCountEl) approvedCountEl.innerText = `${approvedCount} claims`;
+
+    const totalPayoutEl = document.getElementById("admin-bounty-total-payout");
+    if (totalPayoutEl) totalPayoutEl.innerText = `৳${totalPayout.toLocaleString()}`;
+
+    const subStatEl = document.getElementById("admin-bounties-sub-stats");
+    if (subStatEl) subStatEl.innerText = `${pendingCount} pending reviews`;
+
+    // Dynamic header bubble counter
+    const headerBadge = document.getElementById("admin-bounty-count-badge");
+    if (headerBadge) {
+      headerBadge.innerText = pendingCount;
+      if (pendingCount > 0) {
+        headerBadge.classList.remove("hidden");
+      } else {
+        headerBadge.classList.add("hidden");
+      }
+    }
+
+    if (bounties.length === 0) {
+      listEl.innerHTML = `
+        <div class="text-center py-10 bg-slate-950 border border-slate-850 rounded-2xl text-[11px] text-slate-500 font-mono">
+          <i class="fa-solid fa-video text-slate-700 text-base block mb-1"></i>
+          No video bounty claims submitted by players yet.
+        </div>
+      `;
+      return;
+    }
+
+    // Sort pending first, then newest
+    const sorted = [...bounties].sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return new Date(b.date) - new Date(a.date);
+    });
+
+    sorted.forEach(b => {
+      const item = document.createElement("div");
+      item.className = "bg-slate-950 border border-slate-850 p-4 rounded-2xl space-y-3 font-mono text-xs";
+
+      let statusColor = "bg-slate-900 text-slate-400 border border-slate-800";
+      if (b.status === "approved") {
+        statusColor = "bg-green-950 text-green-400 border border-green-800/40";
+      } else if (b.status === "rejected") {
+        statusColor = "bg-red-950 text-red-500 border border-red-850/40";
+      } else {
+        statusColor = "bg-amber-950 text-amber-500 border border-amber-800/40 animate-pulse";
+      }
+
+      const platformLabels = {
+        tiktok: "🎵 TikTok",
+        youtube: "📹 YouTube Shorts",
+        facebook: "👥 Facebook Reels",
+        instagram: "📸 Instagram Reels"
+      };
+      const pLabel = platformLabels[b.platform] || b.platform;
+
+      item.innerHTML = `
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div class="space-y-2 flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-extrabold text-white text-sm">@${b.username}</span>
+              <span class="text-[9px] text-slate-500">(${new Date(b.date).toLocaleString()})</span>
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusColor}">
+                ${b.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-900 border border-slate-850 p-2.5 rounded-xl">
+              <div>
+                <span class="text-slate-500 block uppercase text-[8px]">Platform</span>
+                <span class="text-slate-300 font-bold">${pLabel}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block uppercase text-[8px]">Views Claimed</span>
+                <span class="text-cyan-400 font-bold">${b.views.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-indigo-400 truncate">
+              <a href="${b.videoUrl}" target="_blank" class="hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-link text-[8px]"></i> URL: ${b.videoUrl}
+              </a>
+            </div>
+
+            ${b.note ? `
+              <div class="text-[11px] text-slate-300 bg-slate-900/60 border border-slate-850 p-2.5 rounded-xl italic font-sans">
+                <span class="text-[8px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">User Claim Message:</span>
+                "${b.note}"
+              </div>
+            ` : ""}
+
+            ${b.status !== "pending" && b.adminNotes ? `
+              <div class="text-[11px] text-slate-400 bg-slate-900/40 border border-slate-850 p-2.5 rounded-xl italic font-sans">
+                <span class="text-[8px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">Admin Note:</span>
+                "${b.adminNotes}"
+              </div>
+            ` : ""}
+
+            ${b.status === "approved" ? `
+              <div class="text-[11px] text-emerald-400 font-bold">
+                Rewarded payout: ৳${b.reward}
+              </div>
+            ` : ""}
+          </div>
+
+          <!-- Actions & Fields -->
+          <div class="w-full md:w-56 space-y-3 bg-slate-900 border border-slate-850 p-3 rounded-2xl">
+            ${b.status === "pending" ? `
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 text-[9px] uppercase">Reward Amount (৳100 - ৳500)</label>
+                <input type="number" id="bounty-reward-${b.id}" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-white outline-none text-xs" value="200" min="100" max="500" />
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 text-[9px] uppercase">Review Note</label>
+                <textarea id="bounty-note-${b.id}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none resize-none text-[10px]" rows="1.5" placeholder="Good review! ৳200 credited."></textarea>
+              </div>
+
+              <div class="flex gap-2">
+                <button class="admin-bounty-act-btn flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="approve" data-bounty-id="${b.id}">
+                  Approve
+                </button>
+                <button class="admin-bounty-act-btn flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="reject" data-bounty-id="${b.id}">
+                  Reject
+                </button>
+              </div>
+            ` : ""}
+
+            <button class="admin-bounty-act-btn w-full bg-slate-950 border border-slate-850 hover:bg-red-950/20 text-slate-400 hover:text-red-400 font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="delete" data-bounty-id="${b.id}">
+              Delete Record
+            </button>
+          </div>
+        </div>
+      `;
+
+      listEl.appendChild(item);
+    });
+
+    // Bind actions
+    listEl.querySelectorAll(".admin-bounty-act-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const action = btn.getAttribute("data-action");
+        const bountyId = btn.getAttribute("data-bounty-id");
+
+        const b = (this.db.videoBounties || []).find(x => x.id === bountyId);
+        if (!b) return;
+
+        if (action === "approve") {
+          const rewardVal = parseInt(document.getElementById(`bounty-reward-${bountyId}`)?.value || "200");
+          if (isNaN(rewardVal) || rewardVal < 100 || rewardVal > 500) {
+            this.showToast("Bounty reward must be between ৳100 and ৳500!", "error");
+            return;
+          }
+
+          const adminNotesVal = document.getElementById(`bounty-note-${bountyId}`)?.value?.trim() || "Good review video, ৳" + rewardVal + " bonus credited!";
+
+          b.status = "approved";
+          b.reward = rewardVal;
+          b.adminNotes = adminNotesVal;
+
+          // Credit balance to player
+          const targetUser = (this.db.users || []).find(u => u.id === b.userId || u.username === b.username);
+          if (targetUser) {
+            targetUser.balance = (targetUser.balance || 0) + rewardVal;
+            this.showToast(`Approved & credited ৳${rewardVal} to user @${targetUser.username}!`, "success");
+          } else {
+            this.showToast("Bounty approved, but user record was not found.", "info");
+          }
+
+        } else if (action === "reject") {
+          const adminNotesVal = document.getElementById(`bounty-note-${bountyId}`)?.value?.trim() || "Video review does not meet program requirements (e.g., view count/content validation).";
+
+          b.status = "rejected";
+          b.reward = 0;
+          b.adminNotes = adminNotesVal;
+          this.showToast(`Bounty claim has been rejected.`, "warning");
+
+        } else if (action === "delete") {
+          this.db.videoBounties = (this.db.videoBounties || []).filter(x => x.id !== bountyId);
+          this.showToast("Video bounty record removed from database.", "info");
+        }
+
+        this.saveDB();
+        this.renderAdminVideoBounty();
+        this.renderAdmin();
       });
     });
   },

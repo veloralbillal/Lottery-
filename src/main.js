@@ -19,6 +19,7 @@ import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
 import { ReferTab } from "./dashboard_tabs/share_earn.js";
 import { BadgeRequestTab } from "./dashboard_tabs/badge_request.js";
+import { VideoBountyTab } from "./dashboard_tabs/video_bounty.js";
 import { JackpotTab } from "./dashboard_tabs/jackpot.js";
 import { MissionsTab } from "./dashboard_tabs/missions.js";
 import { FloatingToastNotification } from "./floating_toast.js";
@@ -183,6 +184,11 @@ export class StateManager {
     // Load dashboard templates dynamically for local client-side dev/Vite
     this.loadDashboardTabs().then(() => {
       console.log("All dashboard tabs loaded successfully.");
+      VideoBountyTab.init(this);
+      ProfileTab.init(this);
+      HistoryTab.init(this);
+      WalletTab.init(this);
+      TicketsTab.init(this);
       this.render();
     });
 
@@ -672,6 +678,8 @@ export class StateManager {
       { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
       { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
       { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
+      { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
+      { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
       { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
       { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
     ];
@@ -1241,6 +1249,8 @@ export class StateManager {
     if (referTab) referTab.classList.add("hidden");
     const otpTab = document.getElementById("tab-otp");
     if (otpTab) otpTab.classList.add("hidden");
+    const videoBountyTab = document.getElementById("tab-video-bounty");
+    if (videoBountyTab) videoBountyTab.classList.add("hidden");
 
     // Select tab selector matching classes
     const tabSelectors = document.querySelectorAll(".tab-selector-btn");
@@ -1257,6 +1267,9 @@ export class StateManager {
     if (this.currentTab === "badge-request") {
       if (badgeReqTab) badgeReqTab.classList.remove("hidden");
       this.renderBadgeRequestTab();
+    } else if (this.currentTab === "video-bounty") {
+      if (videoBountyTab) videoBountyTab.classList.remove("hidden");
+      this.renderVideoBountyTab();
     } else if (this.currentTab === "refer") {
       if (referTab) referTab.classList.remove("hidden");
       this.renderReferTab();
@@ -1287,6 +1300,10 @@ export class StateManager {
     } else if (this.currentTab === "tasks") {
       this.renderTasksTab();
     }
+  }
+
+  renderVideoBountyTab() {
+    VideoBountyTab.render(this);
   }
 
   
@@ -2695,6 +2712,13 @@ function initApplicationLoader() {
       return;
     }
 
+    // User profile -> Video Bounty tab
+    if (e.target.closest("#profile-video-bounty-entry-btn")) {
+      app.currentTab = "video-bounty";
+      app.renderDashboard();
+      return;
+    }
+
     // 2. User profile -> Access OTP page
     if (e.target.closest("#profile-access-otp-btn")) {
       app.currentTab = "otp";
@@ -2710,7 +2734,7 @@ function initApplicationLoader() {
     }
 
     // 4. Back buttons
-    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn")) {
+    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn") || e.target.closest("#video-bounty-back-btn")) {
       app.currentTab = "profile";
       app.renderDashboard();
       return;
