@@ -125,23 +125,9 @@ Status: SECURED & VERIFIED
     const usernameVal = appInstance.currentUser?.username || "";
     const userIdVal = appInstance.currentUser?.id || "";
 
-    const userDepos = (appInstance.db.deposits || []).filter(d => d.username === usernameVal);
-    const userWds = (appInstance.db.withdrawals || []).filter(w => w.username === usernameVal);
-    const userTx = (appInstance.db.transactions || []).filter(tx => tx.userId === userIdVal);
-
-    // Calculate interactive totals
-    const approvedDepositSum = userDepos.filter(d => d.status === "approved").reduce((sum, d) => sum + (d.amount || 0), 0);
-    const approvedWithdrawSum = userWds.filter(w => w.status === "approved").reduce((sum, w) => sum + (w.amount || 0), 0);
-    const pendingRequestsCount = userDepos.filter(d => d.status === "pending").length + userWds.filter(w => w.status === "pending").length;
-
-    const statDepEl = document.getElementById("ledger-stats-deposit");
-    if (statDepEl) statDepEl.innerText = `৳${approvedDepositSum.toLocaleString()}`;
-
-    const statWithEl = document.getElementById("ledger-stats-withdraw");
-    if (statWithEl) statWithEl.innerText = `৳${approvedWithdrawSum.toLocaleString()}`;
-
-    const statPendEl = document.getElementById("ledger-stats-pending");
-    if (statPendEl) statPendEl.innerText = `${pendingRequestsCount} ${pendingRequestsCount === 1 ? 'Req' : 'Reqs'}`;
+    const userDepos = (appInstance.db.deposits || []).filter(d => d.username && usernameVal && d.username.toLowerCase() === usernameVal.toLowerCase());
+    const userWds = (appInstance.db.withdrawals || []).filter(w => w.username && usernameVal && w.username.toLowerCase() === usernameVal.toLowerCase());
+    const userTx = (appInstance.db.transactions || []).filter(tx => tx.userId === userIdVal || (tx.username && usernameVal && tx.username.toLowerCase() === usernameVal.toLowerCase()));
 
     // Combine into unified payment ledger items
     const allOps = [];
@@ -187,13 +173,65 @@ Status: SECURED & VERIFIED
         status: "approved", // system adjustments are immediately auto-approved
         date: tx.date || new Date().toISOString(),
         method: tx.method || tx.description || "System adjustments",
-        type: "other",
+        type: tx.type === "credit" ? "deposit" : "withdraw",
         sign: tx.type === "credit" ? "+" : "-",
         color: tx.type === "credit" ? "text-emerald-400" : "text-rose-400",
         label: refVal,
         rawReference: tx.id
       });
     });
+
+    // Load ticket purchase transactions and lottery win payouts dynamically
+    const userTickets = (appInstance.db.tickets || []).filter(t => t.userId === userIdVal);
+    userTickets.forEach(t => {
+      const lot = appInstance.db.lotteries.find(l => l.id === t.lotteryId) || {};
+      const lotName = lot.name || "Lottery Draw";
+      const entryFee = lot.entryFee || 10;
+
+      // 1. Ticket purchase
+      allOps.push({
+        id: "buy_" + t.id,
+        amount: entryFee,
+        status: "approved",
+        date: t.purchaseDate || new Date().toISOString(),
+        method: `${lot.category || "Standard"} Ticket`,
+        type: "withdraw",
+        sign: "-",
+        color: "text-rose-400",
+        label: `Ticket: ${t.code} (${lotName})`,
+        rawReference: t.code
+      });
+
+      // 2. Win prize if won
+      if (t.status === "won" && t.prizeAmount > 0) {
+        allOps.push({
+          id: "win_" + t.id,
+          amount: t.prizeAmount,
+          status: "approved",
+          date: t.purchaseDate || new Date().toISOString(),
+          method: "Lottery Prize Win 🏆",
+          type: "deposit",
+          sign: "+",
+          color: "text-emerald-400",
+          label: `Prize won: ${t.code} (${lotName})`,
+          rawReference: t.code
+        });
+      }
+    });
+
+    // Calculate interactive totals from all combined ops
+    const creditSum = allOps.filter(op => op.type === "deposit" && op.status === "approved").reduce((sum, op) => sum + op.amount, 0);
+    const debitSum = allOps.filter(op => op.type === "withdraw" && op.status === "approved").reduce((sum, op) => sum + op.amount, 0);
+    const pendingCount = allOps.filter(op => op.status === "pending").length;
+
+    const statDepEl = document.getElementById("ledger-stats-deposit");
+    if (statDepEl) statDepEl.innerText = `৳${creditSum.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+
+    const statWithEl = document.getElementById("ledger-stats-withdraw");
+    if (statWithEl) statWithEl.innerText = `৳${debitSum.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+
+    const statPendEl = document.getElementById("ledger-stats-pending");
+    if (statPendEl) statPendEl.innerText = `${pendingCount} ${pendingCount === 1 ? 'Req' : 'Reqs'}`;
 
     // Read active multi-filters & search inputs
     const searchVal = document.getElementById("ledger-search-input")?.value?.trim().toLowerCase() || "";
@@ -255,8 +293,8 @@ Status: SECURED & VERIFIED
       card.innerHTML = `
         <div class="space-y-0.5 max-w-[70%]">
           <div class="font-extrabold text-white capitalize flex items-center gap-1.5">
-            ${op.type === "deposit" ? '<i class="fa-solid fa-circle-arrow-down text-emerald-400 text-[10px]"></i>' : op.type === "withdraw" ? '<i class="fa-solid fa-circle-arrow-up text-rose-400 text-[10px]"></i>' : '<i class="fa-solid fa-gear text-slate-400 text-[10px]"></i>'}
-            ${(op.type === "deposit" || op.type === "withdraw") ? (op.type + " via " + op.method) : op.method}
+            ${op.type === "deposit" ? '<i class="fa-solid fa-circle-arrow-down text-emerald-400 text-[10px]"></i>' : '<i class="fa-solid fa-circle-arrow-up text-rose-400 text-[10px]"></i>'}
+            ${op.type === "deposit" ? "Credit" : "Debit"} via ${op.method}
           </div>
           <div class="text-[10px] text-slate-500 font-mono truncate">${trxLabel}</div>
         </div>

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { FloatingToastNotification } from "../floating_toast.js";
+import { DeviceFingerprint } from "./deviceFingerprint.js";
 
 export const LuckyWheelModule = {
   renderDailyCheckinGrid() {
@@ -88,6 +89,35 @@ export const LuckyWheelModule = {
         badgeStatus.innerText = "READY TO CLAIM";
       }
     }
+
+    // Task locker visibility
+    const taskCompleted = (this.currentUser.lastDailyTaskDate === todayStr);
+    const taskLockerPanel = document.getElementById("checkin-task-locker-panel");
+    const claimBtn = document.getElementById("checkin-claim-action-btn");
+
+    if (taskLockerPanel && claimBtn) {
+      if (todayClaimed) {
+        taskLockerPanel.classList.add("hidden");
+        claimBtn.classList.add("hidden");
+      } else {
+        if (!taskCompleted) {
+          taskLockerPanel.classList.remove("hidden");
+          claimBtn.classList.add("hidden");
+          
+          // Reset sponsor button text to let them do it again today
+          const sponsorBtn = document.getElementById("checkin-sponsor-task-btn");
+          if (sponsorBtn) {
+            sponsorBtn.href = this.db.settings.sponsorLink || "https://google.com";
+            sponsorBtn.style.pointerEvents = "auto";
+            sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (৫ সেকেন্ড)`;
+            sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
+          }
+        } else {
+          taskLockerPanel.classList.add("hidden");
+          claimBtn.classList.remove("hidden");
+        }
+      }
+    }
   },
 
   claimDailyCheckinReward() {
@@ -99,6 +129,23 @@ export const LuckyWheelModule = {
     const todayStr = new Date().toISOString().split("T")[0];
     if (this.currentUser.lastCheckinDate === todayStr) {
       this.showToast("Oops! You've already checked in today! Streak bonus will unlock again tomorrow.", "error");
+      return;
+    }
+
+    // Secondary security check: is daily task completed?
+    if (this.currentUser.lastDailyTaskDate !== todayStr) {
+      this.showToast("Please complete today's sponsor task first to unlock the claim button!", "error");
+      return;
+    }
+
+    // Device Fingerprint anti-abuse checks
+    const fp = DeviceFingerprint.getFingerprint(this.currentUser.username);
+    if (!this.db.deviceCheckins) {
+      this.db.deviceCheckins = [];
+    }
+    const alreadyClaimedFP = this.db.deviceCheckins.find(c => c.date === todayStr && c.fingerprint === fp && c.username.toLowerCase() !== this.currentUser.username.toLowerCase());
+    if (alreadyClaimedFP) {
+      this.showToast("🚫 ডিভাইস লিমিট অতিক্রম হয়েছে! এই ডিভাইস থেকে অন্য একটি অ্যাকাউন্টে ইতিমধ্যে আজকের রিওয়ার্ড সংগ্রহ করা হয়েছে।", "error");
       return;
     }
 
@@ -124,6 +171,13 @@ export const LuckyWheelModule = {
     const newStreak = (currentStreak % 7) + 1;
     this.currentUser.checkinStreak = newStreak;
     this.currentUser.lastCheckinDate = todayStr;
+
+    // Record fingerprint claim
+    this.db.deviceCheckins.push({
+      date: todayStr,
+      fingerprint: fp,
+      username: this.currentUser.username
+    });
 
     const rewardsList = this.db.settings.checkinRewards || [2, 4, 6, 8, 10, 15, 25];
     const baseVal = rewardsList[newStreak - 1];
@@ -161,18 +215,18 @@ export const LuckyWheelModule = {
 
     const ctx = canvas.getContext("2d");
     const sectors = [
-      { value: 10, label: "৳10", color: "#1e1b4b" },      // dark indigo
-      { value: 0, label: "Oops!", color: "#020617" },       // dark slate
-      { value: 20, label: "৳20", color: "#0f172a" },       // slate
-      { value: 50, label: "৳50", color: "#111827" },       // zinc
-      { value: 15, label: "৳15", color: "#1e1b4b" },       // dark indigo
-      { value: 100, label: "৳100", color: "#13141f" },     // space
-      { value: 250, label: "৳250", color: "#065f46" },     // emerald green
-      { value: 500, label: "৳500 Jackpot", color: "#701a75" } // purple royal
+      { value: 10, label: "৳10", color: "#0f766e", text: "#ffffff" },       // Vibrant Teal
+      { value: 0, label: "Oops!", color: "#334155", text: "#94a3b8" },       // Slate
+      { value: 20, label: "৳20", color: "#0284c7", text: "#ffffff" },       // Sky Blue
+      { value: 50, label: "৳50", color: "#7c3aed", text: "#ffffff" },       // Electric Purple
+      { value: 15, label: "৳15", color: "#2563eb", text: "#ffffff" },       // Royal Blue
+      { value: 100, label: "৳100", color: "#d97706", text: "#ffffff" },     // Amber Gold
+      { value: 250, label: "৳250", color: "#059669", text: "#ffffff" },     // Emerald
+      { value: 500, label: "৳500 Jackpot 👑", color: "#e11d48", text: "#ffffff" } // Neon Rose Gold
     ];
 
     const numSectors = sectors.length;
-    const arc = Math.PI * 2 / numSectors;
+    const arc = (Math.PI * 2) / numSectors;
     const center = canvas.width / 2;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -186,9 +240,9 @@ export const LuckyWheelModule = {
       ctx.lineTo(center, center);
       ctx.fill();
 
-      // Draw Sector Separators list boundaries
-      ctx.strokeStyle = "rgba(100, 116, 139, 0.2)";
-      ctx.lineWidth = 1;
+      // Draw Sector Separators
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.7)";
+      ctx.lineWidth = 2;
       ctx.stroke();
 
       // Write Sector Texts labels
@@ -196,11 +250,11 @@ export const LuckyWheelModule = {
       ctx.translate(center, center);
       ctx.rotate(angle + arc / 2);
       ctx.textAlign = "right";
-      ctx.fillStyle = "#ffffff";
-      ctx.font = 'bold 9px "JetBrains Mono", monospace';
-      ctx.shadowColor = "rgba(0,0,0,0.8)";
-      ctx.shadowBlur = 3;
-      ctx.fillText(sectors[i].label, center - 15, 3);
+      ctx.fillStyle = sectors[i].text || "#ffffff";
+      ctx.font = 'black 10px "JetBrains Mono", monospace';
+      ctx.shadowColor = "rgba(0,0,0,0.9)";
+      ctx.shadowBlur = 4;
+      ctx.fillText(sectors[i].label, center - 16, 3.5);
       ctx.restore();
     }
 
@@ -211,7 +265,9 @@ export const LuckyWheelModule = {
       const y = center + Math.sin(dotAngle) * (center - 6);
       ctx.beginPath();
       ctx.arc(x, y, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = (j % 2 === 0) ? "#f59e0b" : "#ffffff";
+      ctx.fillStyle = (j % 2 === 0) ? "#fbbf24" : "#ffffff";
+      ctx.shadowColor = "#fbbf24";
+      ctx.shadowBlur = 3;
       ctx.fill();
     }
 
@@ -233,6 +289,19 @@ export const LuckyWheelModule = {
           timerLabel.innerText = `READY IN: ${hrs}h ${mins}m`;
           timerLabel.className = "text-slate-500 font-normal";
         }
+      }
+    }
+
+    // Refresh Referral Spin Tokens display
+    const tokensLabel = document.getElementById("lucky-spin-tokens-val");
+    if (tokensLabel && this.currentUser) {
+      const tokensCount = this.currentUser.spinTokens || 0;
+      if (tokensCount > 0) {
+        tokensLabel.innerText = `${tokensCount} Token${tokensCount !== 1 ? 's' : ''} Available`;
+        tokensLabel.className = "text-amber-400 font-extrabold animate-pulse";
+      } else {
+        tokensLabel.innerText = "0 Tokens (Refer for spins)";
+        tokensLabel.className = "text-slate-500 font-normal";
       }
     }
 
@@ -303,13 +372,42 @@ export const LuckyWheelModule = {
     const triggerBtn = document.getElementById("lucky-spin-trigger-btn");
     if (!disk || !triggerBtn) return;
 
-    // Check if free or paid spin is required
+    // Check spin availability:
+    // 1. Check if user has free Spin Tokens
+    const hasToken = (this.currentUser.spinTokens || 0) > 0;
+    
+    // 2. Check if daily free spin is available (24 hrs)
     const isFree = !this.currentUser.lastSpinTime || (Date.now() - this.currentUser.lastSpinTime >= 24 * 60 * 60 * 1000);
     const spinCost = 50.00;
 
-    if (!isFree) {
+    const fp = DeviceFingerprint.getFingerprint(this.currentUser.username);
+
+    // Device fingerprint anti-abuse check for free spin
+    if (!hasToken && isFree) {
+      if (!this.db.deviceSpins) {
+        this.db.deviceSpins = [];
+      }
+      const todayStr = new Date().toISOString().split("T")[0];
+      const alreadySpunFP = this.db.deviceSpins.find(s => s.date === todayStr && s.fingerprint === fp && s.username.toLowerCase() !== this.currentUser.username.toLowerCase());
+      if (alreadySpunFP) {
+        this.showToast("🚫 ডিভাইস লিমিট অতিক্রম হয়েছে! এই ডিভাইস থেকে অন্য একটি অ্যাকাউন্টে ইতিমধ্যে আজকের ফ্রি স্পিন নেওয়া হয়েছে।", "error");
+        return;
+      }
+    }
+
+    let usedToken = false;
+
+    if (hasToken) {
+      usedToken = true;
+      this.currentUser.spinTokens--;
+      this.showToast("🎟️ Using 1 Referral Spin Token! Spin is completely free!", "success");
+    } else if (isFree) {
+      // Use daily free spin
+      this.showToast("🎁 Using your FREE Daily Spin!", "success");
+    } else {
+      // Charge spin fee
       if (this.currentUser.balance < spinCost) {
-        this.showToast(`Oops! An extra spin costs ৳${spinCost} Taka. Deposit or wait for your free daily spin!`, "error");
+        this.showToast(`Oops! An extra spin costs ৳${spinCost} Taka. Deposit, refer a friend for free spin tokens, or wait for your free daily spin!`, "error");
         return;
       }
       this.currentUser.balance -= spinCost;
@@ -359,6 +457,9 @@ export const LuckyWheelModule = {
     }
 
     const appRef = this;
+    const finalUsedToken = usedToken;
+    const finalIsFree = isFree;
+
     setTimeout(() => {
       // Resolve reward payload
       const winVal = targetSector.value;
@@ -393,9 +494,17 @@ export const LuckyWheelModule = {
         FloatingToastNotification.broadcastCustom("LUCKY WHEEL SPIN 🎡", `@<span class="text-white font-bold">${appRef.currentUser.username}</span> spun the wheel of destiny. Landed on oops/no win!`, "info");
       }
 
-      // Record cooling interval timestamp for free daily spin trigger logic
-      if (isFree) {
+      // Record cooling interval timestamp for free daily spin trigger logic (only if we didn't use a token)
+      if (finalIsFree && !finalUsedToken) {
         appRef.currentUser.lastSpinTime = Date.now();
+        if (!appRef.db.deviceSpins) {
+          appRef.db.deviceSpins = [];
+        }
+        appRef.db.deviceSpins.push({
+          date: new Date().toISOString().split("T")[0],
+          fingerprint: fp,
+          username: appRef.currentUser.username
+        });
       }
       appRef.saveDB();
 

@@ -93,6 +93,42 @@
     </button>
   </div>
 
+  <!-- Sub-Feature Games Grid (4 Options) -->
+  <div class="grid grid-cols-4 gap-1.5 mb-3">
+    <!-- Game Hub Button -->
+    <button id="home-games-hub-sub-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-purple-955/20 to-slate-900/90 border border-purple-900/15 p-1.5 rounded-xl hover:bg-slate-850 cursor-pointer text-center group transition active:scale-95 shadow-md">
+      <div class="w-7 h-7 rounded-full bg-purple-950/40 border border-purple-800/15 flex items-center justify-center mb-1 group-hover:scale-115 transition">
+        <i class="fa-solid fa-gamepad text-purple-400 text-[10px]"></i>
+      </div>
+      <span class="text-[9px] font-bold text-white block truncate">Game Hub</span>
+      <span class="text-[6.5px] text-purple-500 font-mono mt-0.5">Play & Win</span>
+    </button>
+    <!-- Group Lottery Button -->
+    <button id="home-group-lottery-sub-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-emerald-955/20 to-slate-900/90 border border-emerald-900/15 p-1.5 rounded-xl hover:bg-slate-850 cursor-pointer text-center group transition active:scale-95 shadow-md">
+      <div class="w-7 h-7 rounded-full bg-emerald-950/40 border border-emerald-800/15 flex items-center justify-center mb-1 group-hover:scale-115 transition">
+        <i class="fa-solid fa-users text-emerald-400 text-[10px]"></i>
+      </div>
+      <span class="text-[9px] font-bold text-white block truncate">Group Lottery</span>
+      <span class="text-[6.5px] text-emerald-500 font-mono mt-0.5">Split Cost</span>
+    </button>
+    <!-- Coming Soon 1 -->
+    <button id="home-coming-soon-1-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-slate-955/10 to-slate-900/90 border border-slate-800/15 p-1.5 rounded-xl opacity-60 text-center group transition active:scale-95 shadow-md">
+      <div class="w-7 h-7 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center mb-1">
+        <i class="fa-solid fa-lock text-slate-500 text-[9px]"></i>
+      </div>
+      <span class="text-[9px] font-bold text-slate-400 block truncate">Coming Soon</span>
+      <span class="text-[6.5px] text-slate-600 font-mono mt-0.5">Locked</span>
+    </button>
+    <!-- Coming Soon 2 -->
+    <button id="home-coming-soon-2-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-slate-955/10 to-slate-900/90 border border-slate-800/15 p-1.5 rounded-xl opacity-60 text-center group transition active:scale-95 shadow-md">
+      <div class="w-7 h-7 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center mb-1">
+        <i class="fa-solid fa-lock text-slate-500 text-[9px]"></i>
+      </div>
+      <span class="text-[9px] font-bold text-slate-400 block truncate">Coming Soon</span>
+      <span class="text-[6.5px] text-slate-600 font-mono mt-0.5">Locked</span>
+    </button>
+  </div>
+
   <!-- Progressive Jackpot Banner Card -->
   <div class="bg-gradient-to-r from-indigo-950/90 via-slate-900 to-purple-950/90 border border-indigo-800/40 p-4 rounded-3xl relative overflow-hidden shadow-2xl mb-3 font-mono">
     <!-- Atmospheric background glows -->

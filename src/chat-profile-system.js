@@ -779,8 +779,8 @@ export class ChatProfileSystem {
     const friendsPane = document.getElementById("subtab-friends-pane");
 
     if (targetTab === "chats") {
-      chatsBtn?.setAttribute("class", "py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/10");
-      friendsBtn?.setAttribute("class", "py-1.5 rounded-lg text-center text-[10.5px] font-black cursor-pointer transition text-slate-400 hover:text-white");
+      chatsBtn?.setAttribute("class", "py-2.5 rounded-2xl text-center text-xs font-extrabold cursor-pointer transition bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/15");
+      friendsBtn?.setAttribute("class", "py-2.5 rounded-2xl text-center text-xs font-extrabold cursor-pointer transition text-slate-400 hover:text-white");
       chatsPane?.classList.remove("hidden");
       friendsPane?.classList.add("hidden");
       this.renderChatsConversationsList();
@@ -1400,6 +1400,17 @@ export class ChatProfileSystem {
         unreadTag.classList.remove("hidden");
       } else {
         unreadTag.classList.add("hidden");
+      }
+    }
+
+    // Update sidebar messenger badge in the 3-dot toggle sidebar
+    const sidebarBadge = document.getElementById("sidebar-messenger-badge");
+    if (sidebarBadge) {
+      if (totalUnreadSocials > 0) {
+        sidebarBadge.innerText = totalUnreadSocials;
+        sidebarBadge.classList.remove("hidden");
+      } else {
+        sidebarBadge.classList.add("hidden");
       }
     }
   }

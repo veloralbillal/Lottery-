@@ -20,15 +20,15 @@
     <!-- Ledger Stats Dashboard -->
     <div class="grid grid-cols-3 gap-2 bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-850 p-3 rounded-2xl font-mono text-xs shadow-md">
       <div class="space-y-0.5 text-center border-r border-slate-850/60">
-        <span class="text-[8px] text-slate-500 uppercase block font-bold">Deposited</span>
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Total Credits</span>
         <span id="ledger-stats-deposit" class="text-emerald-400 font-extrabold text-[11px]">৳0</span>
       </div>
       <div class="space-y-0.5 text-center border-r border-slate-850/60">
-        <span class="text-[8px] text-slate-500 uppercase block font-bold">Withdrawn</span>
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Total Debits</span>
         <span id="ledger-stats-withdraw" class="text-rose-400 font-extrabold text-[11px]">৳0</span>
       </div>
       <div class="space-y-0.5 text-center">
-        <span class="text-[8px] text-slate-500 uppercase block font-bold">Pending</span>
+        <span class="text-[8px] text-slate-500 uppercase block font-bold">Pending Req</span>
         <span id="ledger-stats-pending" class="text-amber-400 font-extrabold text-[11px]">0 Req</span>
       </div>
     </div>
@@ -45,9 +45,8 @@
           <label class="text-[8px] text-slate-500 uppercase font-bold block">Type filter</label>
           <select id="ledger-filter-type" class="w-full bg-slate-900 border border-slate-800 text-slate-300 rounded-lg py-1.5 px-2 outline-none cursor-pointer focus:border-rose-500/80">
             <option value="all">📁 All Types</option>
-            <option value="deposit">📥 Deposits</option>
-            <option value="withdraw">📤 Withdrawals</option>
-            <option value="other">⚙️ Adjustments/Bonus</option>
+            <option value="deposit">📥 Credits</option>
+            <option value="withdraw">📤 Debits</option>
           </select>
         </div>
         <div class="space-y-1">

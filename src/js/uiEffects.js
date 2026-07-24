@@ -486,6 +486,7 @@ export const UIEffectsModule = {
   },
 
   renderProfileChart() {
+    if (!this.currentUser) return;
     const ctx = document.getElementById("profile-chart");
     if (!ctx) return;
 

@@ -17,6 +17,13 @@
   --animate-perspective-pulse: perspectivePulse 3s ease-in-out infinite;
   --animate-shimmer: shimmer 3s infinite;
   --animate-spin-slow: spin 15s linear infinite;
+  --animate-flap-wings: flapWings 2s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 1.5s ease-in-out infinite;
+  --animate-drift-sparkle: driftSparkle 3s ease-in-out infinite;
+  --animate-heart-beat: heartBeating 1.2s ease-in-out infinite;
+  --animate-dragon-orbit: dragonOrbit 8s linear infinite;
+  --animate-gold-shine: goldShine 2.5s ease-in-out infinite;
+  --animate-fire-burn: fireBurn 1.5s ease-in-out infinite;
 
   @keyframes float3d {
     0%, 100% {
@@ -48,6 +55,42 @@
   @keyframes shimmer {
     0% { transform: translateX(-100%); }
     100% { transform: translateX(100%); }
+  }
+
+  @keyframes flapWings {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+    50% { transform: scale(1.1) rotate(4deg); opacity: 1; }
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.04); filter: brightness(1.2); }
+  }
+
+  @keyframes driftSparkle {
+    0%, 100% { transform: translateY(0) scale(0.8); opacity: 0.5; }
+    50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
+  }
+
+  @keyframes heartBeating {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.15); }
+    60% { transform: scale(1.05); }
+  }
+
+  @keyframes dragonOrbit {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes goldShine {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes fireBurn {
+    0%, 100% { transform: translateY(0) scaleY(1); filter: hue-rotate(0deg); }
+    50% { transform: translateY(-2px) scaleY(1.12); filter: hue-rotate(10deg); }
   }
 }
 

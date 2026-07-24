@@ -10,6 +10,8 @@ export class FloatingToastNotification {
   static isRunning = false;
 
   static start(appInstance) {
+    // Disabled to prevent unwanted background popups as requested
+    return;
     if (this.isRunning) return;
     this.isRunning = true;
     

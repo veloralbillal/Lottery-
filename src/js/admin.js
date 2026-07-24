@@ -27,9 +27,11 @@ export const AdminModule = {
       }
 
       if (tabId === this.currentAdminTab) {
-        btn.className = "admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15";
+        btn.classList.add("bg-gradient-to-r", "from-red-600", "to-rose-600", "text-white", "shadow-lg");
+        btn.classList.remove("bg-slate-900", "text-slate-400");
       } else {
-        btn.className = "admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition bg-slate-900 border border-slate-800 text-slate-400 hover:text-white";
+        btn.classList.remove("bg-gradient-to-r", "from-red-600", "to-rose-600", "text-white", "shadow-lg");
+        btn.classList.add("bg-slate-900", "text-slate-400");
       }
     });
 
@@ -1708,27 +1710,69 @@ export const AdminModule = {
       winnerTicket.status = "won";
       winnerTicket.prizeAmount = lot.prizeAmount;
 
-      const winnerUser = this.db.users.find(u => u.id === winnerTicket.userId);
-      if (winnerUser) {
-        winnerUser.balance += lot.prizeAmount;
-        winnerUser.wins = (winnerUser.wins || 0) + 1;
-        winnerUser.profit = (winnerUser.profit || 0) + lot.prizeAmount;
+      if (winnerTicket.isSyndicate && winnerTicket.userIds) {
+        const share = Math.round((lot.prizeAmount / winnerTicket.userIds.length) * 100) / 100;
+        winnerTicket.userIds.forEach(uid => {
+          const u = this.db.users.find(usr => usr.id === uid);
+          if (u) {
+            u.balance += share;
+            u.wins = (u.wins || 0) + 1;
+            u.profit = (u.profit || 0) + share;
+
+            const notice = {
+              id: "msg_notice_" + Date.now() + "_" + Math.floor(Math.random() * 999),
+              recipientType: "specific",
+              targetUsername: u.username,
+              category: "notice",
+              subject: "Syndicate Jackpot Won! 🏆 (Admin Draw)",
+              content: `Congratulations! Your syndicate group "${winnerTicket.syndicateName || 'Friends Group'}" has won a split prize of ৳${share} (Total: ৳${lot.prizeAmount}) in the "${lot.name}" draw manually completed by admin!`,
+              date: new Date().toISOString(),
+              readBy: []
+            };
+            if (!this.db.messages) this.db.messages = [];
+            this.db.messages.unshift(notice);
+          }
+        });
 
         winnersArr.push({
-          username: winnerUser.username,
+          username: `Syndicate (${winnerTicket.syndicateName || 'Group'})`,
           prize: lot.prizeAmount,
           rank: 1,
           ticketCode: winnerTicket.code
         });
+      } else {
+        const winnerUser = this.db.users.find(u => u.id === winnerTicket.userId);
+        if (winnerUser) {
+          winnerUser.balance += lot.prizeAmount;
+          winnerUser.wins = (winnerUser.wins || 0) + 1;
+          winnerUser.profit = (winnerUser.profit || 0) + lot.prizeAmount;
+
+          winnersArr.push({
+            username: winnerUser.username,
+            prize: lot.prizeAmount,
+            rank: 1,
+            ticketCode: winnerTicket.code
+          });
+        }
       }
 
       tickets.forEach((t, index) => {
         if (index !== randIdx) {
           t.status = "lost";
-          const player = this.db.users.find(u => u.id === t.userId);
-          if (player) {
-            player.loss = (player.loss || 0) + 1;
-            player.profit = (player.profit || 0) - lot.entryFee;
+          if (t.isSyndicate && t.userIds) {
+            t.userIds.forEach(uid => {
+              const u = this.db.users.find(usr => usr.id === uid);
+              if (u) {
+                u.loss = (u.loss || 0) + 1;
+                u.profit = (u.profit || 0) - (lot.entryFee / t.userIds.length);
+              }
+            });
+          } else {
+            const player = this.db.users.find(u => u.id === t.userId);
+            if (player) {
+              player.loss = (player.loss || 0) + 1;
+              player.profit = (player.profit || 0) - lot.entryFee;
+            }
           }
         }
       });
@@ -2145,6 +2189,31 @@ export const AdminModule = {
   renderAdminSettings() {
     const s = this.db.settings;
     if (!s) return;
+
+    // Populate App Maintenance & Config Fields
+    const maintenanceToggle = document.getElementById("sys-maintenance-toggle");
+    if (maintenanceToggle) maintenanceToggle.checked = !!s.maintenanceMode;
+
+    const maintenanceMsg = document.getElementById("sys-maintenance-msg");
+    if (maintenanceMsg) maintenanceMsg.value = s.maintenanceMessage || "";
+
+    const appUrl = document.getElementById("sys-app-url");
+    if (appUrl) appUrl.value = s.forceUpdateLink || "";
+
+    const appVer = document.getElementById("sys-app-ver");
+    if (appVer) appVer.value = s.appVersion || "5.0";
+
+    const adminP = document.getElementById("sys-admin-p");
+    if (adminP) adminP.value = s.adminPass || "Admin123";
+
+    const sponsorLinkInput = document.getElementById("sys-checkin-sponsor-link");
+    if (sponsorLinkInput) sponsorLinkInput.value = s.sponsorLink || "https://google.com";
+
+    const agentRefBonus = document.getElementById("sys-agent-referral-bonus");
+    if (agentRefBonus) agentRefBonus.value = s.agentReferralBonus ?? 100;
+
+    const whatsappUrl = document.getElementById("sys-whatsapp-url");
+    if (whatsappUrl) whatsappUrl.value = s.whatsappUrl || "";
 
     const limitInput = document.getElementById("admin-consecutive-block-limit");
     if (limitInput) limitInput.value = s.consecutiveDrawsLimit || 5;

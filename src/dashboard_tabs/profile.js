@@ -6,9 +6,17 @@
  * lucky prediction index generator, vibe updates, and cashout PIN security setup.
  */
 
+import { CustomizerStore } from "./customizer_store.js";
+import { DeviceFingerprint } from "../js/deviceFingerprint.js";
+
 export class ProfileTab {
+  static selectedModalFrame = "none";
+
   static init(appInstance) {
     console.log("Profile Tab Module initialized successfully.");
+
+    // Initialize the new VIP Customizer Store
+    CustomizerStore.init(appInstance);
 
     // Event delegation on document to avoid duplicates or missing elements when template re-loads
     document.addEventListener("click", (e) => {
@@ -165,6 +173,73 @@ export class ProfileTab {
         this.render(appInstance);
         return;
       }
+
+      // 8. Open Profile Settings Page
+      if (e.target.closest("#profile-open-edit-modal-btn")) {
+        appInstance.currentTab = "settings";
+        appInstance.render();
+        return;
+      }
+
+      // 9. Close Profile Edit Modal
+      if (e.target.closest("#profile-close-edit-modal-btn") || (e.target.id === "profile-edit-modal")) {
+        const modal = document.getElementById("profile-edit-modal");
+        if (modal) {
+          modal.classList.add("hidden");
+        }
+        return;
+      }
+
+      // 10. Click Premium Frame option inside Modal
+      const modalFrameBtn = e.target.closest(".profile-modal-frame-btn");
+      if (modalFrameBtn) {
+        const frameVal = modalFrameBtn.getAttribute("data-frame") || "none";
+        ProfileTab.selectedModalFrame = frameVal;
+        ProfileTab.updateModalFrameSelectorUI();
+        appInstance.showToast(`Selected Frame Effect: ${frameVal.toUpperCase()} (Live Preview Synced)`, "success");
+        return;
+      }
+    });
+
+    // 11. Modal form submit listener
+    document.addEventListener("submit", (e) => {
+      const modalForm = e.target.closest("#profile-edit-modal-form");
+      if (modalForm) {
+        e.preventDefault();
+        const user = appInstance.currentUser;
+        if (!user) return;
+
+        const newUsername = document.getElementById("profile-edit-modal-username")?.value.trim();
+        const newEmail = document.getElementById("profile-edit-modal-email")?.value.trim();
+        const newPhone = document.getElementById("profile-edit-modal-phone")?.value.trim();
+        const newDob = document.getElementById("profile-edit-modal-dob")?.value.trim();
+        const newAddress = document.getElementById("profile-edit-modal-address")?.value.trim();
+        const newGlow = document.getElementById("profile-edit-modal-glow")?.value || "none";
+        const newFrame = ProfileTab.selectedModalFrame || "none";
+
+        if (!newUsername) {
+          appInstance.showToast("Username is required!", "error");
+          return;
+        }
+
+        user.username = newUsername;
+        user.email = newEmail;
+        user.phone = newPhone;
+        user.dob = newDob;
+        user.address = newAddress;
+        user.profileGlow = newGlow;
+        user.avatarFrame = newFrame;
+
+        appInstance.saveDB();
+        
+        const modal = document.getElementById("profile-edit-modal");
+        if (modal) modal.classList.add("hidden");
+
+        appInstance.showToast("Your royal profile configurations synchronized successfully!", "success");
+
+        ProfileTab.render(appInstance);
+        appInstance.render();
+      }
     });
 
     // Setup an interval to update countdown timer smoothly if on profile tab
@@ -272,6 +347,11 @@ export class ProfileTab {
   }
 
   static render(appInstance) {
+    if (!appInstance || !appInstance.currentUser) {
+      console.warn("ProfileTab.render: No active user logged in.");
+      return;
+    }
+
     // Sync unread messages indicators
     window.chatProfileHelper?.updateNotificationBadgeOff();
 
@@ -286,6 +366,18 @@ export class ProfileTab {
     if (profitEl) profitEl.innerText = (appInstance.currentUser.profit || 0).toFixed(2);
     const joinDateEl = document.getElementById("profile-join-date");
     if (joinDateEl) joinDateEl.innerText = appInstance.currentUser.joinDate || "N/A";
+
+    const fpEl = document.getElementById("profile-device-fingerprint");
+    if (fpEl) {
+      fpEl.innerText = DeviceFingerprint.getFingerprint(appInstance.currentUser.username);
+    }
+
+    const ipEl = document.getElementById("profile-device-ip");
+    if (ipEl) {
+      DeviceFingerprint.getIPAddress().then(ip => {
+        if (ipEl) ipEl.innerText = ip;
+      });
+    }
 
     // Gamification properties defaults
     const user = appInstance.currentUser;
@@ -416,15 +508,38 @@ export class ProfileTab {
       badgeContainer.innerHTML = badgesHtml;
     }
 
-    // Populate user details fields
-    const emailEl = document.getElementById("profile-edit-email");
-    if (emailEl) emailEl.value = appInstance.currentUser.email || "";
-    const phoneEl = document.getElementById("profile-edit-phone");
-    if (phoneEl) phoneEl.value = appInstance.currentUser.phone || "";
-    const dobEl = document.getElementById("profile-edit-dob");
-    if (dobEl) dobEl.value = appInstance.currentUser.dob || "";
+    // Apply Premium Profile Board Ambient Glow Animation
+    const boardContainer = document.getElementById("profile-identity-board-container");
+    if (boardContainer) {
+      boardContainer.classList.remove(
+        "shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50",
+        "shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50",
+        "shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50",
+        "shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse",
+        "shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60"
+      );
+      
+      const glow = user.profileGlow || "none";
+      if (glow === "pulse") {
+        boardContainer.classList.add("shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50");
+      } else if (glow === "cyber") {
+        boardContainer.classList.add("shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50");
+      } else if (glow === "gold") {
+        boardContainer.classList.add("shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50");
+      } else if (glow === "rainbow") {
+        boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse");
+      } else if (glow === "mystic") {
+        boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60");
+      }
+    }
 
-    // Sync Avatar Image display
+    // Apply Profile Banner Background
+    const profileBannerOverlay = document.getElementById("profile-banner-overlay");
+    if (profileBannerOverlay) {
+      CustomizerStore.applyBannerBackground(profileBannerOverlay, user.profileBanner);
+    }
+
+    // Sync Avatar Image display (for main view)
     const avatarImg = document.getElementById("profile-avatar-img");
     const avatarFallback = document.getElementById("profile-avatar-fallback");
     if (avatarImg && avatarFallback) {
@@ -438,8 +553,63 @@ export class ProfileTab {
         avatarFallback.classList.remove("hidden");
       }
     }
+
+    // Sync Avatar Image display (for modal preview)
+    const modalAvatarImg = document.getElementById("profile-edit-avatar-img");
+    const modalAvatarFallback = document.getElementById("profile-edit-avatar-fallback");
+    if (modalAvatarImg && modalAvatarFallback) {
+      if (appInstance.currentUser.photo) {
+        modalAvatarImg.src = appInstance.currentUser.photo;
+        modalAvatarImg.classList.remove("hidden");
+        modalAvatarFallback.classList.add("hidden");
+      } else {
+        modalAvatarImg.src = "";
+        modalAvatarImg.classList.add("hidden");
+        modalAvatarFallback.classList.remove("hidden");
+      }
+    }
+
+    // Render the Avatar Frame Overlay on the main page
+    const frame = appInstance.currentUser.avatarFrame || "none";
+    const overlayEl = document.getElementById("profile-frame-overlay");
+    if (overlayEl) {
+      overlayEl.innerHTML = CustomizerStore.getFrameOverlayHTML(frame);
+    }
+
     appInstance.renderProfileChart();
     appInstance.renderUserInbox();
+  }
+
+  static getFrameOverlayHTML(frame) {
+    return CustomizerStore.getFrameOverlayHTML(frame);
+  }
+
+  static updateModalFrameSelectorUI() {
+    const frame = ProfileTab.selectedModalFrame || "none";
+    
+    // Highlight buttons in the modal frame selector
+    document.querySelectorAll(".profile-modal-frame-btn").forEach(btn => {
+      const btnFrame = btn.getAttribute("data-frame") || "none";
+      if (btnFrame === frame) {
+        btn.classList.remove("border-slate-850/80");
+        btn.classList.add("border-amber-500", "bg-slate-950");
+      } else {
+        btn.classList.add("border-slate-850/80");
+        btn.classList.remove("border-amber-500", "bg-slate-950");
+      }
+    });
+
+    // Update Live Frame name display inside modal
+    const frameNameEl = document.getElementById("profile-edit-live-frame-name");
+    if (frameNameEl) {
+      frameNameEl.innerText = `Active Frame: ${frame.toUpperCase()}`;
+    }
+
+    // Update modal live preview overlay
+    const modalOverlay = document.getElementById("profile-edit-frame-overlay");
+    if (modalOverlay) {
+      modalOverlay.innerHTML = ProfileTab.getFrameOverlayHTML(frame);
+    }
   }
 }
 

@@ -66,6 +66,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <title>Lottery Winner - Premium Mobile Web Portal</title>
+    <!-- Web App Manifest & Mobile PWA Integration -->
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#030712" />
+    <link rel="apple-touch-icon" href="./logo.jpg" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered!', reg))
+            .catch(err => console.warn('Service Worker failed:', err));
+        });
+      }
+    </script>
     <!-- Google Typography Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,6 +115,57 @@
       }
       .animate-neon-pulse {
         animation: neonPulse 3s ease-in-out infinite;
+      }
+      @keyframes spinSlow {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .animate-spin-slow {
+        animation: spinSlow 15s linear infinite;
+      }
+      @keyframes flapWings {
+        0%, 100% { transform: scale(1) rotate(0deg); }
+        50% { transform: scale(1.08) rotate(10deg); }
+      }
+      .animate-flap-wings {
+        animation: flapWings 2s ease-in-out infinite;
+      }
+      @keyframes pulseGlow {
+        0%, 100% { transform: scale(1); opacity: 0.8; }
+        50% { transform: scale(1.03); opacity: 1; }
+      }
+      .animate-pulse-glow {
+        animation: pulseGlow 2.5s ease-in-out infinite;
+      }
+      @keyframes fireBurn {
+        0%, 100% { transform: rotate(0deg) scale(1); }
+        50% { transform: rotate(180deg) scale(1.05); }
+      }
+      .animate-fire-burn {
+        animation: fireBurn 5s linear infinite;
+      }
+      @keyframes driftSparkle {
+        0%, 100% { transform: translate(0, 0) scale(0.9); opacity: 0.7; }
+        50% { transform: translate(-2px, -3px) scale(1.15); opacity: 1; }
+      }
+      .animate-drift-sparkle {
+        animation: driftSparkle 3s ease-in-out infinite;
+      }
+      @keyframes heartBeat {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.22); }
+      }
+      .animate-heart-beat {
+        animation: heartBeat 1.2s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+      }
+      @keyframes goldShine {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      .animate-gold-shine {
+        background-size: 200% 200%;
+        animation: goldShine 6s ease infinite;
       }
     </style>
   </head>
@@ -543,6 +607,11 @@
                   </button>
                 </div>
               </div>
+              <div class="flex justify-end pt-1">
+                <a href="forgot_password.html" class="text-[10px] font-bold text-amber-400 hover:text-amber-300 font-mono tracking-wide transition duration-150">
+                  <i class="fa-solid fa-key-skeleton text-[8px] mr-1"></i>Forgot Passphrase?
+                </a>
+              </div>
             </div>
 
             <button type="submit" class="w-full bg-gradient-to-r from-amber-500 via-yellow-500 to-emerald-500 hover:scale-[1.01] hover:brightness-110 active:scale-[0.99] text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-[0_10px_25px_rgba(245,158,11,0.2)] transition duration-300 cursor-pointer flex items-center justify-center gap-2 tracking-wider">
@@ -700,12 +769,16 @@
         <div id="tab-wallet" class="hidden space-y-6"></div>
         <div id="tab-history" class="hidden space-y-4"></div>
         <div id="tab-profile" class="hidden space-y-5"></div>
+        <div id="tab-settings" class="hidden space-y-6"></div>
+        <div id="tab-customizer" class="hidden space-y-6"></div>
         <div id="tab-badge-request" class="hidden space-y-6"></div>
         <div id="tab-refer" class="hidden space-y-6"></div>
         <div id="tab-jackpot" class="hidden space-y-6"></div>
         <div id="tab-tasks" class="hidden space-y-6"></div>
         <div id="tab-otp" class="hidden space-y-6"></div>
+        <div id="tab-recovery" class="hidden space-y-6"></div>
         <div id="tab-video-bounty" class="hidden space-y-6"></div>
+        <div id="tab-games" class="hidden space-y-6"></div>
       </main>
       <!-- Bottom System Navigation tab bar -->
       <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
@@ -748,8 +821,13 @@
       <!-- Admin Top bar navigation -->
       <header class="flex justify-between items-center border-b border-slate-800 pb-4 mb-6">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></span>
-          <h2 class="text-xs font-black tracking-wider text-rose-500 font-mono">ADMIN PANEL CONTROL ROOM</h2>
+          <!-- Mobile Sidebar Nav Toggle Button -->
+          <button id="admin-nav-toggle-btn" class="flex items-center gap-1.5 text-xs font-bold font-mono bg-rose-950/80 border border-rose-800 text-rose-300 px-3 py-1.5 rounded-xl hover:bg-rose-900 transition cursor-pointer active:scale-95 shadow-md">
+            <i class="fa-solid fa-bars text-rose-400"></i>
+            <span>Menu Nav</span>
+          </button>
+          <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse hidden sm:inline-block"></span>
+          <h2 class="text-xs font-black tracking-wider text-rose-500 font-mono hidden xs:block">ADMIN PANEL CONTROL ROOM</h2>
         </div>
         <div class="flex items-center gap-2">
           <!-- Cloud Sync status badge for Admin screen -->
@@ -763,6 +841,120 @@
           </button>
         </div>
       </header>
+
+      <!-- Mobile Admin Navigation Sidebar Drawer Overlay -->
+      <div id="admin-sidebar-drawer" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[1000] transition-opacity">
+        <div class="fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-slate-950 border-r border-slate-800 p-5 flex flex-col justify-between overflow-y-auto font-mono text-xs shadow-2xl">
+          <div class="space-y-4">
+            <!-- Drawer Header -->
+            <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-rose-500 text-sm"></i>
+                <span class="font-black text-rose-400 uppercase tracking-wider text-xs">Admin Navigation</span>
+              </div>
+              <button id="close-admin-sidebar-btn" class="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer active:scale-95">
+                <i class="fa-solid fa-xmark text-sm"></i>
+              </button>
+            </div>
+
+            <!-- Vertical Sidebar Menu List -->
+            <div class="flex flex-col gap-1.5 max-h-[75vh] overflow-y-auto pr-1">
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="stats">
+                <span><i class="fa-solid fa-chart-pie mr-2"></i> Dashboard</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="users">
+                <span><i class="fa-solid fa-users mr-2"></i> Players</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agents">
+                <span><i class="fa-solid fa-user-shield text-emerald-400 mr-2"></i> Agents & Staff</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agent-leaders">
+                <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> Agent Leaders</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="subagents-list">
+                <span><i class="fa-solid fa-users text-indigo-400 mr-2"></i> Sub-Agents List</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="lotteries">
+                <span><i class="fa-solid fa-ticket mr-2"></i> Lotteries</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="deposits">
+                <span><i class="fa-solid fa-wallet mr-2"></i> Deposits</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="withdraws">
+                <span><i class="fa-solid fa-money-bill-transfer mr-2"></i> Payouts</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="gateways">
+                <span><i class="fa-solid fa-credit-card mr-2"></i> Pay Gateways</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="messages">
+                <span><i class="fa-solid fa-paper-plane text-cyan-400 mr-2"></i> Messages</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="categories">
+                <span><i class="fa-solid fa-shapes mr-2"></i> Categories</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="website">
+                <span><i class="fa-solid fa-globe mr-2"></i> Website Settings</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="reports">
+                <span><i class="fa-solid fa-triangle-exclamation mr-2"></i> Reports</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="refer">
+                <span><i class="fa-solid fa-users-gear text-cyan-400 mr-2"></i> Refer Control</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="vip">
+                <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> VIP Club Manager</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="jackpot">
+                <span><i class="fa-solid fa-gem text-purple-400 animate-pulse mr-2"></i> Jackpot History</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="tasks">
+                <span><i class="fa-solid fa-list-check text-cyan-400 animate-pulse mr-2"></i> Daily Tasks</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="badge-requests">
+                <span><i class="fa-solid fa-ribbon text-rose-500 mr-2"></i> Badge Requests</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="video-bounty">
+                <span><i class="fa-solid fa-video text-rose-500 mr-2"></i> Video Bounty</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="sync-vault">
+                <span><i class="fa-solid fa-cloud-arrow-up text-cyan-400 mr-2"></i> Cloud Failover</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="events">
+                <span><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i> Events & Banners</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="settings">
+                <span><i class="fa-solid fa-sliders mr-2"></i> App Settings</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-900 text-[10px] text-slate-500 text-center font-mono">
+            <span>Lottery Winner Admin System</span>
+          </div>
+        </div>
+      </div>
 
       <!-- Admin Tab Switch selectors -->
       <div class="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-none">
@@ -2049,16 +2241,21 @@
               </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="block text-slate-500 font-bold text-emerald-400">Agent Referral Bonus (৳)</label>
-                <input id="sys-agent-referral-bonus" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-emerald-500" placeholder="e.g. 100" />
+              <div class="space-y-1.5 font-mono">
+                <label class="block text-slate-500 font-bold text-amber-400">Daily Check-in Sponsor Link (URL)</label>
+                <input id="sys-checkin-sponsor-link" type="url" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-amber-500" placeholder="e.g. https://google.com" />
               </div>
-              <div class="space-y-1.5">
-                <label class="block text-slate-500 font-bold text-cyan-400">Support WhatsApp (Number/URL)</label>
-                <input id="sys-whatsapp-url" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. 8801700000000" />
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="block text-slate-500 font-bold text-emerald-400">Agent Referral Bonus (৳)</label>
+                  <input id="sys-agent-referral-bonus" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-emerald-500" placeholder="e.g. 100" />
+                </div>
+                <div class="space-y-1.5">
+                  <label class="block text-slate-500 font-bold text-cyan-400">Support WhatsApp (Number/URL)</label>
+                  <input id="sys-whatsapp-url" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. 8801700000000" />
+                </div>
               </div>
-            </div>
 
             <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
               Commit Maintenance Configuration
@@ -2682,6 +2879,72 @@
             <div class="pt-2">
               <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.01] text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:opacity-95 cursor-pointer">
                 Save & Update Website Configurations
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- APP PUSH NOTIFICATION BROADCASTER CONSOLE (NEW FEATURE) -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-6 shadow-xl text-xs font-mono">
+          <div class="border-b border-slate-800 pb-3 flex justify-between items-center">
+            <div>
+              <h3 class="text-sm font-bold uppercase text-white tracking-widest flex items-center gap-1.5">
+                <span class="text-cyan-500">■</span> Real-Time App Push Broadcaster
+              </h3>
+              <p class="text-[10px] text-slate-500 mt-0.5 font-sans">Simulate or trigger native mobile push notifications live on all player interfaces! Includes native bell audio chime.</p>
+            </div>
+            <i class="fa-solid fa-bell text-cyan-500 text-lg animate-swing"></i>
+          </div>
+
+          <form id="admin-settings-push-broadcast-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-slate-400">Push Title</label>
+                <input id="sys-push-title" type="text" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. ⚡ কুইক লটারি ড্র শুরু!" />
+                <span class="text-[9px] text-slate-500 block leading-tight">Displayed as the bold alert title header on the push card.</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-400">Push Message Body</label>
+                <input id="sys-push-message" type="text" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. কুইক লটারি ড্র আর মাত্র ১৫ সেকেন্ডে শুরু হচ্ছে! এখনই আপনার টিকিট চেক করুন।" />
+                <span class="text-[9px] text-slate-500 block leading-tight">The detailed body content of the live mobile message.</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="block text-slate-400">Notification Alert Type / Icon Badge</label>
+                <select id="sys-push-icon-type" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-cyan-500 font-bold">
+                  <option value="clover" selected>🍀 Clover Badge (Default App Icon)</option>
+                  <option value="jackpot">🎁 Gift / Progressive Jackpot Pool</option>
+                  <option value="winner">🏆 Winner Trophy / Success Badge</option>
+                  <option value="agent">👤 Verified Agent / System Alert</option>
+                  <option value="bkash">💗 bKash (Pink Mobile Banking)</option>
+                  <option value="nagad">🔥 Nagad Pay (Orange Cash-In)</option>
+                  <option value="whatsapp">💬 WhatsApp (Live Chat Support)</option>
+                </select>
+                <span class="text-[9px] text-slate-500 block leading-tight">Changes the visual vector avatar inside the notification popup card.</span>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-400">Action Redirect / Deep Link (On Tap)</label>
+                <select id="sys-push-redirect-tab" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-cyan-500 font-bold">
+                  <option value="" selected>No Redirect (Stay on current screen)</option>
+                  <option value="tab-home">🏠 Home (Dashboard Hub)</option>
+                  <option value="tab-games">🎮 Games Hub (Quick Draw & Coinflip)</option>
+                  <option value="tab-jackpot">💰 Progressive Jackpot Arena</option>
+                  <option value="tab-wallet">💳 User Wallet Balance (Cash deposit/withdaw)</option>
+                  <option value="tab-history">📊 Play History & Drawn Lotteries</option>
+                  <option value="tab-tasks">📅 Missions & Daily Check-in</option>
+                  <option value="tab-refer">🤝 Share & Earn Referral</option>
+                </select>
+                <span class="text-[9px] text-slate-500 block leading-tight">Clicking or tapping the push banner will redirect players instantly to this tab.</span>
+              </div>
+            </div>
+
+            <div class="pt-2">
+              <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-blue-500 hover:from-cyan-500 hover:to-blue-400 hover:scale-[1.01] text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:opacity-95 cursor-pointer">
+                🚀 Send Real-Time Push Notification
               </button>
             </div>
           </form>
@@ -3849,6 +4112,19 @@
             Secure Buy Ticket Now
           </button>
         </div>
+
+        <!-- Cart Abandonment Demo Helper -->
+        <div class="bg-slate-950/40 border border-slate-800/60 p-2.5 rounded-2xl flex flex-col gap-1.5 text-[10px] font-mono mt-1">
+          <span class="text-slate-400">🛒 Cart Abandonment নোটিফিকেশন টেস্ট করুন:</span>
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="demo-abandonment-fast-btn" class="flex-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 py-1.5 px-2 rounded-lg font-black border border-amber-500/20 cursor-pointer transition select-none text-[9px] text-center">
+              ১০ সেকেন্ড ফাস্ট-ফরওয়ার্ড <i class="fa-solid fa-bolt ml-0.5"></i>
+            </button>
+            <button type="button" id="demo-abandonment-now-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-300 py-1.5 px-2 rounded-lg font-black border border-slate-700 cursor-pointer transition select-none text-[9px] text-center">
+              ইনস্ট্যান্ট টেস্ট 🔔
+            </button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -3978,10 +4254,23 @@
             <span>Free Spin Timer:</span>
             <span id="lucky-spin-timer-label" class="text-emerald-400 font-bold">READY NOW</span>
           </div>
+          <!-- REFERRAL SPIN TOKENS DISPLAY -->
+          <div class="flex justify-between items-center text-slate-400 border-b border-slate-900 pb-1 sm:pb-1.5">
+            <span>🎟️ Referral Spin Tokens:</span>
+            <span id="lucky-spin-tokens-val" class="text-amber-400 font-extrabold animate-pulse">0 Tokens Available</span>
+          </div>
           <div class="flex justify-between items-center text-slate-400">
             <span>Extra spin cost:</span>
             <span class="text-white font-extrabold">৳50.00 / spin</span>
           </div>
+        </div>
+
+         <!-- Referral Free Spins promotion banner -->
+        <div class="bg-slate-950/40 border border-dashed border-slate-800 p-2.5 rounded-2xl flex items-center justify-between text-[9px] font-mono">
+          <span class="text-slate-400 font-sans">🎟️ Referral-এ ফ্রিতে স্পিন চান?</span>
+          <button type="button" id="lucky-spin-invite-btn" class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-450 px-2.5 py-1 rounded-lg font-black border border-amber-500/20 cursor-pointer transition select-none">
+            আমন্ত্রণ করুন <i class="fa-solid fa-share-nodes ml-0.5 text-[8px]"></i>
+          </button>
         </div>
  
          <!-- ================= PAST SPIN RESULTS SECTION ================= -->
@@ -4040,6 +4329,25 @@
         <!-- Consecutive Days Checklist representation -->
         <div class="grid grid-cols-4 gap-2.5 font-mono text-center" id="checkin-grid-days-container">
           <!-- Will populate Day 1 to Day 7 dynamically -->
+        </div>
+
+        <!-- Daily Task Locker Panel -->
+        <div id="checkin-task-locker-panel" class="bg-slate-950/85 border border-amber-500/25 p-4 rounded-2.5xl space-y-3 hidden">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full bg-amber-950/60 border border-amber-800/40 flex items-center justify-center shrink-0 text-amber-400">
+              <i class="fa-solid fa-lock-open text-xs animate-pulse"></i>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[10px] font-black text-amber-400 uppercase tracking-wider block font-mono">🔒 টাস্ক-লকড ডেইলি বোনাস (Unlock Required)</span>
+              <span class="text-[9px] text-slate-300 block font-sans leading-tight">আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ৫ সেকেন্ডের জন্য ভিজিট করুন।</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <a href="https://google.com" target="_blank" id="checkin-sponsor-task-btn" class="flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none">
+              <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (৫ সেকেন্ড)
+            </a>
+          </div>
         </div>
 
         <!-- Claim Action trigger button -->

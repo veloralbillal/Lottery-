@@ -18,7 +18,9 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
       { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
       { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
+      { id: "tab-recovery", file: "src/dashboard_tabs/recovery.php" },
       { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
+      { id: "tab-games", file: "src/dashboard_tabs/games.php" },
       { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
       { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
       { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
@@ -69,6 +71,37 @@ export const fallbackFirebaseConfig = ${JSON.stringify(firebaseConfig, null, 2)}
     // 1. Dev mode: Serve .php files and config JSONs
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
+        if (req.url && req.url.startsWith('/api/send-reset-email')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', async () => {
+              try {
+                const parsedBody = JSON.parse(body);
+                const expressRes = {
+                  status(code) {
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                  }
+                };
+                const { handleSendResetEmail } = await import('./src/js/apiEmailSender.js');
+                await handleSendResetEmail({ body: parsedBody }, expressRes);
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
         const decodedUrl = decodeURIComponent(req.url.split('?')[0]);
         // Resolve path relative to project root
         const filePath = path.join(process.cwd(), decodedUrl);
@@ -102,6 +135,30 @@ export const fallbackFirebaseConfig = ${JSON.stringify(firebaseConfig, null, 2)}
       if (fs.existsSync(srcConfig)) {
         fs.copyFileSync(srcConfig, destConfig);
         console.log('Copied firebase-applet-config.json to dist/');
+      }
+
+      // Copy logo.jpg to dist
+      const srcLogo = path.resolve(process.cwd(), 'logo.jpg');
+      const destLogo = path.resolve(distDir, 'logo.jpg');
+      if (fs.existsSync(srcLogo)) {
+        fs.copyFileSync(srcLogo, destLogo);
+        console.log('Copied logo.jpg to dist/');
+      }
+
+      // Copy sw.js to dist
+      const srcSw = path.resolve(process.cwd(), 'sw.js');
+      const destSw = path.resolve(distDir, 'sw.js');
+      if (fs.existsSync(srcSw)) {
+        fs.copyFileSync(srcSw, destSw);
+        console.log('Copied sw.js to dist/');
+      }
+
+      // Copy manifest.json to dist
+      const srcManifest = path.resolve(process.cwd(), 'manifest.json');
+      const destManifest = path.resolve(distDir, 'manifest.json');
+      if (fs.existsSync(srcManifest)) {
+        fs.copyFileSync(srcManifest, destManifest);
+        console.log('Copied manifest.json to dist/');
       }
 
       // Copy other JSON config if exists

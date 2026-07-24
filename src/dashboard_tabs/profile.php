@@ -1,29 +1,100 @@
 <!-- ================= TAB: PROFILE (PLAYER PROFILE & LOGOUT) ================= -->
-<div id="tab-profile" class="hidden space-y-6">
+<div id="tab-profile" class="hidden space-y-6 relative">
+
+  <!-- Sidebar Menu Drawer -->
+  <div id="profile-sidebar-menu" class="fixed top-0 right-0 h-full w-72 bg-slate-900 border-l border-slate-800 z-50 shadow-2xl translate-x-full transition-transform duration-300 ease-in-out flex flex-col">
+    <!-- Header -->
+    <div class="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-950">
+      <h3 class="text-xs font-black uppercase text-white font-mono tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-bars text-amber-500 animate-pulse"></i> Menu Options
+      </h3>
+      <button type="button" id="profile-sidebar-close-btn" class="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 hover:border-rose-500 flex items-center justify-center text-slate-400 hover:text-white transition cursor-pointer">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Options List -->
+    <div class="flex-1 p-4 space-y-3 overflow-y-auto font-sans text-xs">
+      <!-- Messenger -->
+      <button type="button" id="sidebar-opt-messenger" class="w-full flex justify-between items-center bg-slate-950 border border-slate-800/60 p-3.5 rounded-2xl hover:bg-slate-850 hover:border-slate-700 transition text-left cursor-pointer group">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-900/40 transition">
+            <i class="fa-solid fa-comments text-emerald-450"></i>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-white block">Messenger</span>
+            <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Direct chat & message hub</span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span id="sidebar-messenger-badge" class="hidden text-[10px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full">0</span>
+          <i class="fa-solid fa-chevron-right text-slate-600 text-[10px] group-hover:text-emerald-400 transition"></i>
+        </div>
+      </button>
+
+      <!-- Setting -->
+      <button type="button" id="sidebar-opt-settings" class="w-full flex justify-between items-center bg-slate-950 border border-slate-800/60 p-3.5 rounded-2xl hover:bg-slate-850 hover:border-slate-700 transition text-left cursor-pointer group">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-cyan-950/40 border border-cyan-800/30 flex items-center justify-center shrink-0 group-hover:bg-cyan-900/40 transition">
+            <i class="fa-solid fa-user-gear text-cyan-400"></i>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-white block">Setting</span>
+            <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Profile settings & security</span>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-right text-slate-600 text-[10px] group-hover:text-cyan-400 transition"></i>
+      </button>
+
+      <!-- Customize Profile -->
+      <button type="button" id="sidebar-opt-customizer" class="w-full flex justify-between items-center bg-slate-950 border border-slate-800/60 p-3.5 rounded-2xl hover:bg-slate-850 hover:border-slate-700 transition text-left cursor-pointer group">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-full bg-amber-950/40 border border-amber-800/30 flex items-center justify-center shrink-0 group-hover:bg-amber-900/40 transition">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-400 animate-pulse"></i>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-white block">Customize Decor</span>
+            <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Frames, banners & glows</span>
+          </div>
+        </div>
+        <i class="fa-solid fa-chevron-right text-slate-600 text-[10px] group-hover:text-amber-400 transition"></i>
+      </button>
+    </div>
+
+    <!-- Footer details -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950 text-center text-[9px] text-slate-500 font-mono">
+      <span>VIP SYSTEM MENU &bull; SECURE</span>
+    </div>
+  </div>
+
+  <!-- Sidebar Backdrop -->
+  <div id="profile-sidebar-backdrop" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 hidden transition-opacity duration-300 opacity-0"></div>
   
   <!-- Avatar Identity Board -->
-  <div class="relative overflow-hidden bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800/80 p-6 rounded-3xl text-center space-y-5 shadow-2xl transition duration-500 hover:border-slate-700/60">
-    <!-- Decorative soft atmospheric background glow effects -->
-    <div class="absolute -right-12 -top-12 w-40 h-40 bg-rose-500/10 rounded-full blur-[60px] pointer-events-none"></div>
-    <div class="absolute -left-12 -bottom-12 w-40 h-40 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+  <div id="profile-identity-board-container" class="relative overflow-hidden bg-gradient-to-b from-slate-900/90 to-slate-950 border border-slate-800/80 p-6 rounded-3xl text-center space-y-5 shadow-2xl transition duration-500 hover:border-slate-700/60">
+    <!-- Dynamic Banner Background Overlay -->
+    <div id="profile-banner-overlay" class="absolute inset-0 opacity-40 pointer-events-none transition-all duration-500 z-0"></div>
 
-    <!-- Advanced Avatar with Photo Upload & Picker triggers -->
-    <div class="relative w-24 h-24 mx-auto group">
-      <!-- Animated outer pulse border ring -->
-      <div class="absolute -inset-1 rounded-full bg-gradient-to-tr from-cyan-500 via-rose-500 to-amber-500 opacity-60 group-hover:opacity-100 blur-[2px] animate-spin-slow transition duration-700"></div>
-      
-      <!-- Core avatar mask -->
-      <div id="profile-avatar-container" class="relative w-24 h-24 bg-slate-950 border-2 border-slate-900 text-slate-300 rounded-full flex items-center justify-center text-4xl overflow-hidden shadow-inner font-sans">
-        <i class="fa-solid fa-user-astronaut" id="profile-avatar-fallback"></i>
-        <img id="profile-avatar-img" class="w-full h-full object-cover hidden" src="" alt="Avatar" referrerPolicy="no-referrer" />
+    <!-- 3-Dot Customize Menu Button -->
+    <button type="button" id="profile-customize-menu-btn" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-950/80 border border-slate-800/80 hover:border-amber-500/60 hover:bg-slate-900 flex items-center justify-center text-slate-400 hover:text-amber-400 transition cursor-pointer z-20" title="Customize Profile Decor">
+      <i class="fa-solid fa-ellipsis-vertical text-sm"></i>
+    </button>
+
+    <!-- Decorative soft atmospheric background glow effects -->
+    <div class="absolute -right-12 -top-12 w-40 h-40 bg-rose-500/10 rounded-full blur-[60px] pointer-events-none z-0"></div>
+    <div class="absolute -left-12 -bottom-12 w-40 h-40 bg-cyan-500/10 rounded-full blur-[60px] pointer-events-none z-0"></div>
+
+    <!-- Advanced Avatar with Photo Glow Frame Wrapper -->
+    <div class="relative w-24 h-24 mx-auto flex items-center justify-center group" id="profile-avatar-outer-wrapper">
+      <!-- Dynamic Frame Overlay Container -->
+      <div id="profile-frame-overlay" class="absolute -inset-1.5 pointer-events-none z-10 flex items-center justify-center">
+        <!-- Will be dynamically populated based on selected avatarFrame with super premium responsive effects -->
       </div>
       
-      <!-- Upload photo mini trigger button overlay -->
-      <div class="absolute bottom-0 right-0 bg-gradient-to-r from-red-600 to-rose-600 border border-slate-950 w-7.5 h-7.5 rounded-full flex items-center justify-center text-[10px] text-white cursor-pointer hover:scale-[1.15] transition-all shadow-lg shadow-black/40" title="Upload Custom Avatar Image">
-        <label class="cursor-pointer">
-          <i class="fa-solid fa-camera"></i>
-          <input type="file" id="profile-local-upload-input" accept="image/*" class="hidden" />
-        </label>
+      <!-- Core avatar mask -->
+      <div id="profile-avatar-container" class="relative w-24 h-24 bg-slate-950 border-2 border-slate-900 text-slate-300 rounded-full flex items-center justify-center text-4xl overflow-hidden shadow-inner font-sans z-0">
+        <i class="fa-solid fa-user-astronaut text-slate-500 absolute" id="profile-avatar-fallback"></i>
+        <img id="profile-avatar-img" class="absolute inset-0 w-full h-full object-cover rounded-full hidden" src="" alt="Avatar" referrerPolicy="no-referrer" />
       </div>
     </div>
 
@@ -82,71 +153,13 @@
       </div>
     </div>
 
-    <!-- Google Picker photo select options -->
-    <button id="profile-google-photo-btn" type="button" class="w-full bg-slate-950 border border-slate-800/80 hover:border-slate-700 text-amber-400 hover:text-amber-300 font-mono text-[9px] py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition max-w-[210px] mx-auto cursor-pointer shadow-sm">
-      <i class="fa-brands fa-google-drive text-amber-500"></i>
-      Sync Avatar from Google Photos
-    </button>
-
-    <!-- Stats grid metrics with custom glowing mini panels -->
-    <div class="grid grid-cols-3 gap-2 pb-1 font-mono text-center">
-      <div class="bg-slate-950 border border-slate-900 p-2.5 rounded-2xl relative shadow-md">
-        <div class="absolute top-1 right-2"><i class="fa-solid fa-trophy text-[7px] text-amber-500"></i></div>
-        <span class="text-[8px] text-slate-500 uppercase block scale-90">Lotteries Won</span>
-        <span id="profile-wins" class="text-xs font-black text-amber-400 mt-1 block">0</span>
-      </div>
-      <div class="bg-slate-950 border border-slate-900 p-2.5 rounded-2xl relative shadow-md">
-        <div class="absolute top-1 right-2"><i class="fa-solid fa-coins text-[7px] text-slate-500"></i></div>
-        <span class="text-[8px] text-slate-500 uppercase block scale-90">Total Spent</span>
-        <span id="profile-loss" class="text-xs font-bold text-slate-300 mt-1 block">0</span>
-      </div>
-      <div class="bg-slate-950 border border-slate-900 p-2.5 rounded-2xl relative shadow-md">
-        <div class="absolute top-1 right-2"><i class="fa-solid fa-chart-line text-[7px] text-cyan-400"></i></div>
-        <span class="text-[8px] text-slate-500 uppercase block scale-90">Net Profit</span>
-        <span id="profile-profit" class="text-xs font-black text-cyan-400 mt-1 block">0</span>
-      </div>
-    </div>
-
-    <!-- Spending vs Winnings Graphical Analytics Chart -->
-    <div class="bg-slate-950/80 p-4 border border-rose-950/30 rounded-3xl space-y-2 mt-1 relative">
-      <span class="text-[9px] uppercase font-bold text-slate-400 block text-center font-mono flex items-center justify-center gap-1">
-        <i class="fa-solid fa-chart-pie text-[9px] text-rose-500"></i> Spending vs Earnings Breakdown
-      </span>
-      <div class="relative h-28 w-full flex justify-center">
-        <canvas id="profile-chart" class="max-w-[180px]"></canvas>
-      </div>
-    </div>
-
-    <!-- Profile Edit fields forms element -->
-    <form id="profile-edit-form-spa" class="space-y-3.5 text-left pt-4 border-t border-slate-800/60 font-mono text-xs">
-      <div class="space-y-1">
-        <label class="block text-[8px] uppercase tracking-wider text-slate-500">Registered Email Address</label>
-        <div class="relative">
-          <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-regular fa-envelope"></i></span>
-          <input id="profile-edit-email" type="email" required class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2.5 pl-8 pr-3 text-xs text-white outline-none transition" />
-        </div>
-      </div>
-      
-      <div class="grid grid-cols-2 gap-3">
-        <div class="space-y-1">
-          <label class="block text-[8px] uppercase tracking-wider text-slate-500">Phone Mobile Link</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-solid fa-mobile-screen"></i></span>
-            <input id="profile-edit-phone" type="text" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2.5 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="01712345678" />
-          </div>
-        </div>
-        <div class="space-y-1">
-          <label class="block text-[8px] uppercase tracking-wider text-slate-500">Date of Birth</label>
-          <div class="relative">
-            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-regular fa-calendar"></i></span>
-            <input id="profile-edit-dob" type="date" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2.5 pl-8 pr-3 text-xs text-white outline-none transition" />
-          </div>
-        </div>
-      </div>
-      <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.01] text-white font-black text-xs py-3 rounded-xl transition shadow-lg mt-2 cursor-pointer">
-        <i class="fa-solid fa-circle-check mr-1 text-[11px]"></i> Update Profile Details
+    <!-- Edit Profile Settings Button Trigger -->
+    <div class="pt-3 border-t border-slate-850/65 max-w-[240px] mx-auto">
+      <button type="button" id="profile-open-edit-modal-btn" class="w-full bg-gradient-to-r from-red-600/90 to-rose-600/90 hover:from-red-600 hover:to-rose-600 border border-red-950/40 text-white font-mono text-[10px] font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition duration-200 hover:scale-[1.02] cursor-pointer shadow-lg shadow-rose-950/50">
+        <i class="fa-solid fa-user-gear text-xs animate-spin-slow"></i>
+        Edit Profile Settings
       </button>
-    </form>
+    </div>
 
     <!-- Support OTP Security Action -->
     <div class="bg-gradient-to-r from-cyan-950/30 to-indigo-950/30 border border-cyan-500/20 rounded-2xl p-4 text-left space-y-3 shadow-md mt-4">
@@ -171,6 +184,16 @@
     <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono pt-1.5 text-left border-t border-slate-850/60">
       <span>Account Registration Date:</span>
       <span id="profile-join-date" class="text-slate-300 font-bold"></span>
+    </div>
+
+    <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono pt-1.5 text-left border-t border-slate-850/60">
+      <span>Device ID (Fingerprint):</span>
+      <span id="profile-device-fingerprint" class="text-slate-300 font-bold"></span>
+    </div>
+
+    <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono pt-1.5 text-left border-t border-slate-850/60">
+      <span>IP Address:</span>
+      <span id="profile-device-ip" class="text-cyan-400 font-bold">Fetching...</span>
     </div>
   </div>
 
@@ -332,6 +355,20 @@
       <span class="text-[9px] font-bold bg-rose-950 text-rose-400 border border-rose-900/40 px-2 py-0.5 rounded-lg">Claim <i class="fa-solid fa-chevron-right text-[8px] pl-0.5"></i></span>
     </button>
 
+    <!-- Account Recovery Option -->
+    <button id="profile-recovery-entry-btn" class="w-full flex justify-between items-center bg-slate-900/90 border border-slate-800/80 p-4 rounded-2xl hover:bg-slate-850/45 transition text-left cursor-pointer">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-amber-950/40 border border-amber-800/30 flex items-center justify-center">
+          <i class="fa-solid fa-shield-key text-amber-400 text-xs animate-pulse"></i>
+        </div>
+        <div>
+          <span class="text-xs font-bold text-white block">Account Recovery & Keys</span>
+          <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Generate secure recovery codes to restore account password access</span>
+        </div>
+      </div>
+      <span class="text-[9px] font-bold bg-amber-950 text-amber-400 border border-amber-900/40 px-2 py-0.5 rounded-lg">Configure <i class="fa-solid fa-chevron-right text-[8px] pl-0.5"></i></span>
+    </button>
+
     <a href="#" id="profile-support-link" class="flex justify-between items-center bg-slate-900/90 border border-slate-800/80 p-4 rounded-2xl hover:bg-slate-850/45 transition">
       <div class="flex items-center gap-3">
         <div class="w-8 h-8 rounded-full bg-cyan-950/40 border border-cyan-800/30 flex items-center justify-center">
@@ -348,6 +385,178 @@
     <button id="profile-logout-btn" class="w-full bg-slate-900 border border-rose-950/60 hover:bg-rose-950/20 text-rose-400 font-bold text-xs py-3.5 rounded-2xl cursor-pointer transition">
       <i class="fa-solid fa-right-from-bracket mr-1 text-[11px] text-rose-500"></i> Sign Out of Current Session
     </button>
+  </div>
+
+  <!-- ================= PROFILE EDIT MODAL (SUPER PREMIUM OVERLAY) ================= -->
+  <div id="profile-edit-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-md space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto scrollbar-thin text-left">
+      <!-- Decorative radial gradient background glow -->
+      <div class="absolute right-0 top-0 w-32 h-32 bg-rose-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute left-0 bottom-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- Header with Close button -->
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h4 class="text-xs font-black text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-user-gear text-rose-500 animate-pulse"></i> Royal Profile Settings
+        </h4>
+        <button type="button" id="profile-close-edit-modal-btn" class="w-7 h-7 rounded-full bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <!-- Inner Preview of Profile picture and selected frame -->
+      <div class="flex flex-col items-center gap-2 bg-slate-950/50 p-3 rounded-2xl border border-slate-850/60 relative">
+        <div class="absolute right-2 top-2"><span class="bg-amber-950/60 text-amber-400 text-[7px] font-bold border border-amber-800/50 px-1.5 py-0.5 rounded font-mono uppercase tracking-widest animate-pulse">LIVE PREVIEW</span></div>
+        <div class="relative w-24 h-24 flex items-center justify-center" id="profile-edit-avatar-outer-wrapper">
+          <!-- Dynamic Frame Preview overlay inside the Modal -->
+          <div id="profile-edit-frame-overlay" class="absolute -inset-1.5 pointer-events-none z-10 flex items-center justify-center">
+            <!-- Loaded on frame change -->
+          </div>
+          <!-- Avatar Preview image -->
+          <div id="profile-edit-avatar-container" class="relative w-24 h-24 bg-slate-950 border-2 border-slate-900 text-slate-300 rounded-full flex items-center justify-center text-3xl overflow-hidden shadow-inner font-sans z-0">
+            <i class="fa-solid fa-user-astronaut text-slate-500" id="profile-edit-avatar-fallback"></i>
+            <img id="profile-edit-avatar-img" class="w-full h-full object-cover hidden" src="" alt="Avatar" referrerPolicy="no-referrer" />
+          </div>
+        </div>
+        
+        <!-- Live selection indicator -->
+        <span class="text-[9px] text-slate-400 font-mono" id="profile-edit-live-frame-name">Active Frame: None</span>
+      </div>
+
+      <!-- Profile edit form -->
+      <form id="profile-edit-modal-form" class="space-y-3.5 font-mono text-xs text-left">
+        
+        <!-- Username (Registered Username, can change) -->
+        <div class="space-y-1">
+          <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Player Username</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600">@</span>
+            <input id="profile-edit-modal-username" type="text" required class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" />
+          </div>
+        </div>
+
+        <!-- Email Address -->
+        <div class="space-y-1">
+          <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Email Address</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-regular fa-envelope text-[10px]"></i></span>
+            <input id="profile-edit-modal-email" type="email" required class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Mobile Link Number -->
+          <div class="space-y-1">
+            <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Mobile Number</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-solid fa-mobile-screen text-[10px]"></i></span>
+              <input id="profile-edit-modal-phone" type="text" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="01700000000" />
+            </div>
+          </div>
+          <!-- Date of Birth -->
+          <div class="space-y-1">
+            <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Date of Birth</label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-regular fa-calendar text-[10px]"></i></span>
+              <input id="profile-edit-modal-dob" type="date" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Address -->
+        <div class="space-y-1">
+          <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Residential Address</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-600"><i class="fa-solid fa-location-dot text-[10px]"></i></span>
+            <input id="profile-edit-modal-address" type="text" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="Dhaka, Bangladesh" />
+          </div>
+        </div>
+
+        <!-- Custom Photo Upload / Photo Syncer -->
+        <div class="space-y-1.5 pt-1">
+          <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Photo Upload & Sync</label>
+          <div class="flex items-center gap-2.5">
+            <!-- Local file button -->
+            <label class="flex-1 bg-slate-950 border border-slate-850 hover:border-slate-700 text-slate-300 font-mono text-[9px] py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm">
+              <i class="fa-solid fa-cloud-arrow-up text-rose-500"></i>
+              Upload Local File
+              <input type="file" id="profile-modal-upload-input" accept="image/*" class="hidden" />
+            </label>
+            <!-- Google Photos Syncer button -->
+            <button type="button" id="profile-modal-google-photo-btn" class="flex-1 bg-slate-950 border border-slate-850 hover:border-slate-700 text-amber-400 font-mono text-[9px] py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm">
+              <i class="fa-brands fa-google-drive text-amber-500"></i>
+              Google Photos
+            </button>
+          </div>
+        </div>
+
+        <!-- Avatar Profile Frame selector options (now inside Modal) -->
+        <div class="bg-slate-950/80 border border-slate-850/50 p-3 rounded-2xl space-y-2 text-center relative overflow-hidden mt-2">
+          <div class="absolute right-0 top-0 w-16 h-16 bg-amber-500/5 rounded-full blur-xl pointer-events-none"></div>
+          <span class="text-[9px] uppercase font-bold text-slate-400 block font-mono flex items-center justify-center gap-1">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-450 animate-pulse"></i> Select Premium Frame Effect
+          </span>
+          <div class="flex justify-start items-center gap-1.5 overflow-x-auto py-1 scrollbar-none" id="profile-modal-frame-selector">
+            <!-- None -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-slate-700/60 text-slate-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="none">
+              <span class="w-4 h-4 rounded-full border border-dashed border-slate-600 flex items-center justify-center"><i class="fa-solid fa-ban text-[8px]"></i></span>
+              None
+            </button>
+            <!-- Royal Crown Wings -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-amber-500/60 text-amber-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="royal">
+              <span class="w-4 h-4 rounded-full border border-amber-500/80 bg-amber-950/30 flex items-center justify-center text-amber-400"><i class="fa-solid fa-crown text-[8px]"></i></span>
+              Royal
+            </button>
+            <!-- Cyberpunk Neon -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-cyan-500/60 text-cyan-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="neon">
+              <span class="w-4 h-4 rounded-full border border-cyan-400 bg-cyan-950/30 flex items-center justify-center text-cyan-400 animate-pulse"><i class="fa-solid fa-bolt text-[8px]"></i></span>
+              Neon
+            </button>
+            <!-- Ruby Dragon -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-rose-500/60 text-rose-450 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="ruby">
+              <span class="w-4 h-4 rounded-full border border-rose-500 bg-rose-950/30 flex items-center justify-center text-rose-450"><i class="fa-solid fa-fire text-[8px]"></i></span>
+              Ruby
+            </button>
+            <!-- Cosmic Galaxy -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-purple-500/60 text-purple-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="cosmic">
+              <span class="w-4 h-4 rounded-full border border-purple-500 bg-purple-950/30 flex items-center justify-center text-purple-400"><i class="fa-solid fa-star text-[8px]"></i></span>
+              Cosmic
+            </button>
+            <!-- Phoenix Wings -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-orange-500/60 text-orange-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="phoenix">
+              <span class="w-4 h-4 rounded-full border border-orange-500 bg-orange-950/30 flex items-center justify-center text-orange-400"><i class="fa-solid fa-fire-flame-simple text-[8px]"></i></span>
+              Phoenix
+            </button>
+            <!-- Emerald Dragon -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-emerald-500/60 text-emerald-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="dragon">
+              <span class="w-4 h-4 rounded-full border border-emerald-500 bg-emerald-950/30 flex items-center justify-center text-emerald-400"><i class="fa-solid fa-dragon text-[8px]"></i></span>
+              Dragon
+            </button>
+            <!-- Sweet Love Hearts -->
+            <button type="button" class="profile-modal-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-pink-500/60 text-pink-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850/80" data-frame="love">
+              <span class="w-4 h-4 rounded-full border border-pink-500 bg-pink-950/30 flex items-center justify-center text-pink-400 animate-pulse"><i class="fa-solid fa-heart text-[8px]"></i></span>
+              Love
+            </button>
+          </div>
+        </div>
+
+        <!-- Premium VIP Animation Theme select option -->
+        <div class="space-y-1 pt-1">
+          <label class="block text-[8px] uppercase tracking-wider text-slate-500 font-bold">Premium Profile Board Ambient Glow</label>
+          <select id="profile-edit-modal-glow" class="w-full bg-slate-950 border border-slate-850 focus:border-rose-500/80 rounded-xl py-2 px-3 text-xs text-white outline-none transition font-sans">
+            <option value="none">None (Standard Dark Canvas)</option>
+            <option value="pulse">❤️ Radiant Rose Aura (Pulsing Glow)</option>
+            <option value="cyber">💙 Electric Cyan Spark (Tech Lightning)</option>
+            <option value="gold">💛 Amber VIP Royalty (Shining Crowns)</option>
+            <option value="rainbow">🌈 Rainbow Quantum Wave (Slow Smooth Cycle)</option>
+          </select>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.01] text-white font-black text-xs py-3 rounded-xl transition shadow-lg mt-3 cursor-pointer">
+          <i class="fa-solid fa-circle-check mr-1 text-[11px]"></i> Save Royal Changes
+        </button>
+      </form>
+    </div>
   </div>
 
 </div>

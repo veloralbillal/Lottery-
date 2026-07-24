@@ -17,12 +17,17 @@ import { TicketsTab } from "./dashboard_tabs/tickets.js";
 import { WalletTab } from "./dashboard_tabs/wallet.js";
 import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
+import { SettingsTab } from "./dashboard_tabs/settings.js";
+import { CustomizerStore } from "./dashboard_tabs/customizer_store.js";
 import { ReferTab } from "./dashboard_tabs/share_earn.js";
 import { BadgeRequestTab } from "./dashboard_tabs/badge_request.js";
 import { VideoBountyTab } from "./dashboard_tabs/video_bounty.js";
 import { JackpotTab } from "./dashboard_tabs/jackpot.js";
 import { MissionsTab } from "./dashboard_tabs/missions.js";
 import { FloatingToastNotification } from "./floating_toast.js";
+import { NotificationEngine } from "./js/notificationEngine.js";
+import { GameHubModule } from "./js/gameHub.js";
+import { DeviceFingerprint } from "./js/deviceFingerprint.js";
 import { getDefaultDB } from "./js/defaultDB.js";
 import { bundledTabs } from "./js/bundledTabs.js";
 
@@ -186,9 +191,11 @@ export class StateManager {
       console.log("All dashboard tabs loaded successfully.");
       VideoBountyTab.init(this);
       ProfileTab.init(this);
+      SettingsTab.init(this);
       HistoryTab.init(this);
       WalletTab.init(this);
       TicketsTab.init(this);
+      GameHubModule.init(this);
       this.render();
     });
 
@@ -361,8 +368,77 @@ export class StateManager {
         { id: "c2", name: "20 Taka Banner", label: "🎟️ ৳20 Sliders", type: "single", defaultPrizes: "" },
         { id: "c3", name: "Mega Jackpot", label: "💎 Jackpots", type: "single", defaultPrizes: "" },
         { id: "c4", name: "3 Winner Category", label: "👑 3 Winners Category", type: "multi", defaultPrizes: "50, 30, 20" },
-        { id: "c5", name: "15 Winner Category", label: "🚀 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" }
+        { id: "c5", name: "15 Winner Category", label: "🚀 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" },
+        { id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" },
+        { id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" }
       ];
+      this.saveDB();
+    }
+
+    // Dynamic database upgrade for existing local storage instances
+    if (this.db) {
+      if (!this.db.categories.some(c => c.name === "Syndicate")) {
+        this.db.categories.push({ id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" });
+      }
+      if (!this.db.categories.some(c => c.name === "Quick Draw")) {
+        this.db.categories.push({ id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" });
+      }
+      if (!this.db.syndicates) {
+        this.db.syndicates = [];
+      }
+      // Guarantee a couple of active syndicates in lobby for beautiful dynamic display
+      if (this.db.syndicates.length === 0) {
+        this.db.syndicates = [
+          {
+            id: "syn_mock_1",
+            name: "🔥 ঢাকা সিটির বিজয়ী গ্রুপ",
+            code: "SYN-DHAKA7",
+            lotteryId: "l2", // 20 Taka Super Pool
+            size: 3,
+            creatorId: "u1",
+            creatorUsername: "lottery_pro",
+            joinedUserIds: ["u1", "u2"],
+            joinedUsernames: ["lottery_pro", "lucky_player"],
+            status: "pending",
+            ticketCode: null,
+            entryFeeShare: 6.67,
+            createdAt: new Date().toISOString()
+          },
+          {
+            id: "syn_mock_2",
+            name: "💎 সিলেট লাকি ট্রিপল",
+            code: "SYN-SYLHET9",
+            lotteryId: "l3", // 50 Taka Mega Jackpot
+            size: 3,
+            creatorId: "u2",
+            creatorUsername: "lucky_player",
+            joinedUserIds: ["u2"],
+            joinedUsernames: ["lucky_player"],
+            status: "pending",
+            ticketCode: null,
+            entryFeeShare: 16.67,
+            createdAt: new Date().toISOString()
+          }
+        ];
+      }
+      // Guarantee at least one active Quick Draw pool exists
+      if (!this.db.lotteries.some(l => l.category === "Quick Draw" && l.status === "active")) {
+        const initialSold = 5;
+        const entryFee = 10;
+        this.db.lotteries.push({
+          id: "l_quick_default",
+          name: "⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (1-Min Draw)",
+          details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+          entryFee: entryFee,
+          totalTickets: 50,
+          soldTickets: initialSold,
+          category: "Quick Draw",
+          drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+          status: "active",
+          prizeAmount: Math.round(initialSold * entryFee * 0.95 * 100) / 100,
+          drawMode: "auto"
+        });
+      }
       this.saveDB();
     }
 
@@ -630,6 +706,20 @@ export class StateManager {
   saveDB() {
     try {
       if (this.db) {
+        if (this.currentUser && this.db.users) {
+          const dbUser = this.db.users.find(u => u.id === this.currentUser.id);
+          if (dbUser) {
+            dbUser.balance = this.currentUser.balance;
+            dbUser.loss = this.currentUser.loss;
+            dbUser.profit = this.currentUser.profit;
+            dbUser.wins = this.currentUser.wins || 0;
+            if (this.currentUser.communityConsent !== undefined) dbUser.communityConsent = this.currentUser.communityConsent;
+            if (this.currentUser.email !== undefined) dbUser.email = this.currentUser.email;
+            if (this.currentUser.phone !== undefined) dbUser.phone = this.currentUser.phone;
+            if (this.currentUser.dob !== undefined) dbUser.dob = this.currentUser.dob;
+          }
+          localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+        }
         this.db = StateManager.removeCircularReferences(this.db);
       }
       localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
@@ -673,12 +763,15 @@ export class StateManager {
       { id: "tab-wallet", file: "src/dashboard_tabs/user_balance.php" },
       { id: "tab-history", file: "src/dashboard_tabs/history.php" },
       { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
+      { id: "tab-settings", file: "src/dashboard_tabs/settings.php" },
       { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
       { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
       { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
       { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
       { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
+      { id: "tab-recovery", file: "src/dashboard_tabs/recovery.php" },
       { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
+      { id: "tab-games", file: "src/dashboard_tabs/games.php" },
       { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
       { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
       { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
@@ -796,6 +889,7 @@ export class StateManager {
       this.checkAndExecuteAutoDraws();
       this.checkLiveNotifications();
       this.checkFiveMinutesDrawAlerts();
+      this.checkCartAbandonmentNotification();
       this.tickProgressiveJackpot();
     }, 5000);
   }
@@ -842,6 +936,85 @@ export class StateManager {
 
     if (updatedWarnings) {
       localStorage.setItem("lw_notified_5min_warnings", StateManager.safeStringify(legacyWarnings));
+    }
+  }
+
+  addInboxNotice(userId, subject, content) {
+    const user = this.db.users.find(u => u.id === userId);
+    if (!user) return;
+    const notice = {
+      id: "msg_notice_" + Date.now() + "_" + Math.floor(Math.random() * 999),
+      recipientType: "specific",
+      targetUsername: user.username,
+      category: "notice",
+      subject: subject,
+      content: content,
+      date: new Date().toISOString(),
+      readBy: []
+    };
+    if (!this.db.messages) this.db.messages = [];
+    this.db.messages.unshift(notice);
+  }
+
+  checkCartAbandonmentNotification() {
+    if (!this.currentUser) return;
+    
+    const status = localStorage.getItem("cart_abandoned_status");
+    const lotteryId = localStorage.getItem("cart_abandoned_lottery_id");
+    const abandonedTimeStr = localStorage.getItem("cart_abandoned_time");
+    const notified = localStorage.getItem("cart_abandoned_notified");
+
+    if (status === "pending" && lotteryId && abandonedTimeStr && notified !== "true") {
+      const abandonedTime = parseInt(abandonedTimeStr);
+      const diffMs = Date.now() - abandonedTime;
+      const tenMinutesMs = 10 * 60 * 1000; // 10 minutes
+
+      if (diffMs >= tenMinutesMs) {
+        // Trigger push notification!
+        localStorage.setItem("cart_abandoned_notified", "true");
+        localStorage.setItem("cart_abandoned_status", "notified");
+
+        const lot = this.db.lotteries.find(l => l.id === lotteryId);
+        const lotName = lot ? lot.name : "আপনার লাকি টিকিটটি";
+
+        const msg = `আপনার লাকি টিকিটটি এখনো অপেক্ষা করছে! এখনই বুক করুন! (${lotName})`;
+
+        // Show push-style toast alert
+        this.showToast(msg, "warning");
+
+        // Vibrate user phone if available
+        if (navigator.vibrate) {
+          navigator.vibrate([300, 150, 300]);
+        }
+
+        // Trigger native notification if permission is granted
+        if (window.Notification && Notification.permission === "granted") {
+          try {
+            new Notification("লাকি টিকিট বুকিং সেশন ⏳", {
+              body: msg,
+              icon: "/favicon.ico"
+            });
+          } catch(e) { console.error(e); }
+        }
+
+        // Add a security message inbox notification for the user to be extremely real!
+        const autoNotice = {
+          id: "msg_abandon_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+          recipientType: "specific",
+          targetUsername: this.currentUser.username,
+          category: "notice",
+          subject: "⚠️ আপনার লাকি টিকিটটি এখনো অপেক্ষা করছে!",
+          content: `প্রিয় @${this.currentUser.username}, আপনি সম্প্রতি "${lotName}"-এর একটি লাকি টিকিট বুক করার জন্য সিলেক্ট করেছিলেন কিন্তু পেমেন্ট সম্পন্ন করেননি। টিকিটটি এখনো আপনার জন্য অপেক্ষা করছে! স্টক শেষ হওয়ার আগেই এখনই বুক করুন!`,
+          date: new Date().toISOString(),
+          readBy: []
+        };
+        if (!this.db.messages) this.db.messages = [];
+        this.db.messages.unshift(autoNotice);
+        this.saveDB();
+        
+        // Broadcast inside floating custom toast system
+        FloatingToastNotification.broadcastCustom("CART ABANDONED ALERT 🛒", `@<span class="text-white font-bold">${this.currentUser.username}</span>, আপনার লাকি টিকিটটি এখনো অপেক্ষা করছে! এখনই বুক করুন!`, "warning");
+      }
     }
   }
 
@@ -917,6 +1090,10 @@ export class StateManager {
           const ticketsOfPool = this.db.tickets.filter(t => t.lotteryId === lot.id && t.status === "pending");
 
           if (ticketsOfPool.length > 0) {
+            if (lot.category === "Quick Draw") {
+              const actualSales = ticketsOfPool.length * lot.entryFee;
+              lot.prizeAmount = Math.round(actualSales * 0.95 * 100) / 100; // 5% platform fee, distributing 95% (e.g. 5 tickets * 10 entry = 50 taka total, 47.50 taka prize)
+            }
             if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
               const shuffle = [...ticketsOfPool];
               shuffle.sort(() => Math.random() - 0.5);
@@ -928,11 +1105,94 @@ export class StateManager {
                 winningTicket.status = "won";
                 winningTicket.prizeAmount = currentPrize;
 
+                if (winningTicket.isSyndicate && winningTicket.userIds) {
+                  const share = Math.round((currentPrize / winningTicket.userIds.length) * 100) / 100;
+                  winningTicket.userIds.forEach(uid => {
+                    const u = this.db.users.find(usr => usr.id === uid);
+                    if (u) {
+                      u.balance += share;
+                      u.wins = (u.wins || 0) + 1;
+                      u.profit = (u.profit || 0) + share;
+                      
+                      this.addInboxNotice(uid, "Syndicate Prize Won! 🏆", `Congratulations! Your syndicate group "${winningTicket.syndicateName || 'Friends Group'}" has won a split prize of ৳${share} (Total: ৳${currentPrize}) in the "${lot.name}" draw!`);
+
+                      if (this.currentUser && u.id === this.currentUser.id) {
+                        this.currentUser.balance = u.balance;
+                        this.currentUser.wins = u.wins;
+                        this.currentUser.profit = u.profit;
+                        this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                        localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+                      }
+                    }
+                  });
+                } else {
+                  const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
+                  if (winnerUser) {
+                    winnerUser.balance += currentPrize;
+                    winnerUser.wins += 1;
+                    winnerUser.profit += currentPrize;
+                    
+                    if (this.currentUser && winnerUser.id === this.currentUser.id) {
+                      this.currentUser.balance = winnerUser.balance;
+                      this.currentUser.wins = winnerUser.wins;
+                      this.currentUser.profit = winnerUser.profit;
+                      this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                      localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+                    }
+                  }
+                }
+              }
+
+              const winnerTicketIds = shuffle.slice(0, winnersCount).map(t => t.id);
+              ticketsOfPool.forEach(t => {
+                if (!winnerTicketIds.includes(t.id)) {
+                  t.status = "lost";
+                  if (t.isSyndicate && t.userIds) {
+                    t.userIds.forEach(uid => {
+                      const u = this.db.users.find(usr => usr.id === uid);
+                      if (u) {
+                        u.loss = (u.loss || 0) + 1;
+                        u.profit = (u.profit || 0) - (lot.entryFee / t.userIds.length);
+                      }
+                    });
+                  }
+                }
+              });
+
+              lot.status = "drawn";
+              dbUpdated = true;
+            } else {
+              const winningTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
+
+              winningTicket.status = "won";
+              winningTicket.prizeAmount = lot.prizeAmount;
+
+              if (winningTicket.isSyndicate && winningTicket.userIds) {
+                const share = Math.round((lot.prizeAmount / winningTicket.userIds.length) * 100) / 100;
+                winningTicket.userIds.forEach(uid => {
+                  const u = this.db.users.find(usr => usr.id === uid);
+                  if (u) {
+                    u.balance += share;
+                    u.wins = (u.wins || 0) + 1;
+                    u.profit = (u.profit || 0) + share;
+                    
+                    this.addInboxNotice(uid, "Syndicate Jackpot Won! 🏆", `Congratulations! Your syndicate group "${winningTicket.syndicateName || 'Friends Group'}" has won a split prize of ৳${share} (Total: ৳${lot.prizeAmount}) in the "${lot.name}" draw!`);
+
+                    if (this.currentUser && u.id === this.currentUser.id) {
+                      this.currentUser.balance = u.balance;
+                      this.currentUser.wins = u.wins;
+                      this.currentUser.profit = u.profit;
+                      this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                      localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+                    }
+                  }
+                });
+              } else {
                 const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
                 if (winnerUser) {
-                  winnerUser.balance += currentPrize;
+                  winnerUser.balance += lot.prizeAmount;
                   winnerUser.wins += 1;
-                  winnerUser.profit += currentPrize;
+                  winnerUser.profit += lot.prizeAmount;
                   
                   if (this.currentUser && winnerUser.id === this.currentUser.id) {
                     this.currentUser.balance = winnerUser.balance;
@@ -944,48 +1204,102 @@ export class StateManager {
                 }
               }
 
-              const winnerTicketIds = shuffle.slice(0, winnersCount).map(t => t.id);
-              ticketsOfPool.forEach(t => {
-                if (!winnerTicketIds.includes(t.id)) {
-                  t.status = "lost";
-                }
-              });
-
-              lot.status = "drawn";
-              dbUpdated = true;
-            } else {
-              const winningTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
-
-              const winnerUser = this.db.users.find(u => u.id === winningTicket.userId);
-              if (winnerUser) {
-                winnerUser.balance += lot.prizeAmount;
-                winnerUser.wins += 1;
-                winnerUser.profit += lot.prizeAmount;
-                
-                if (this.currentUser && winnerUser.id === this.currentUser.id) {
-                  this.currentUser.balance = winnerUser.balance;
-                  this.currentUser.wins = winnerUser.wins;
-                  this.currentUser.profit = winnerUser.profit;
-                  this.currentUser = StateManager.removeCircularReferences(this.currentUser);
-                  localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
-                }
-              }
-
-              winningTicket.status = "won";
-              winningTicket.prizeAmount = lot.prizeAmount;
-
               ticketsOfPool.forEach(t => {
                 if (t.id !== winningTicket.id) {
                   t.status = "lost";
+                  if (t.isSyndicate && t.userIds) {
+                    t.userIds.forEach(uid => {
+                      const u = this.db.users.find(usr => usr.id === uid);
+                      if (u) {
+                        u.loss = (u.loss || 0) + 1;
+                        u.profit = (u.profit || 0) - (lot.entryFee / t.userIds.length);
+                      }
+                    });
+                  }
                 }
               });
 
               lot.status = "drawn";
               dbUpdated = true;
             }
+
+            // Spawn new Quick Draw if category is Quick Draw
+            if (lot.category === "Quick Draw") {
+              const nextId = "l_quick_" + Date.now();
+              const entryFee = 10;
+              const soldTickets = Math.floor(Math.random() * 8) + 2;
+              const newQuickDraw = {
+                id: nextId,
+                name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
+                details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+                entryFee: entryFee,
+                totalTickets: 50,
+                soldTickets: soldTickets,
+                category: "Quick Draw",
+                drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+                status: "active",
+                prizeAmount: Math.round(soldTickets * entryFee * 0.95 * 100) / 100,
+                drawMode: "auto"
+              };
+              this.db.lotteries.push(newQuickDraw);
+
+              const mockUsers = this.db.users.filter(u => !this.currentUser || u.id !== this.currentUser.id);
+              for (let k = 0; k < newQuickDraw.soldTickets; k++) {
+                const randUser = mockUsers.length > 0 
+                  ? mockUsers[Math.floor(Math.random() * mockUsers.length)]
+                  : this.db.users[Math.floor(Math.random() * this.db.users.length)];
+                this.db.tickets.push({
+                  id: "t_quick_seed_" + Date.now() + "_" + k,
+                  userId: randUser.id,
+                  lotteryId: nextId,
+                  code: "LW-" + Math.floor(100000 + Math.random() * 900000),
+                  purchaseDate: new Date().toISOString(),
+                  status: "pending",
+                  prizeAmount: 0
+                });
+              }
+              dbUpdated = true;
+            }
           } else {
             lot.status = "drawn";
             dbUpdated = true;
+
+            // Spawn next Quick Draw even if no tickets were purchased for this draw interval
+            if (lot.category === "Quick Draw") {
+              const nextId = "l_quick_" + Date.now();
+              const entryFee = 10;
+              const soldTickets = Math.floor(Math.random() * 8) + 2;
+              const newQuickDraw = {
+                id: nextId,
+                name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
+                details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+                entryFee: entryFee,
+                totalTickets: 50,
+                soldTickets: soldTickets,
+                category: "Quick Draw",
+                drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+                status: "active",
+                prizeAmount: Math.round(soldTickets * entryFee * 0.95 * 100) / 100,
+                drawMode: "auto"
+              };
+              this.db.lotteries.push(newQuickDraw);
+
+              const mockUsers = this.db.users.filter(u => !this.currentUser || u.id !== this.currentUser.id);
+              for (let k = 0; k < newQuickDraw.soldTickets; k++) {
+                const randUser = mockUsers.length > 0 
+                  ? mockUsers[Math.floor(Math.random() * mockUsers.length)]
+                  : this.db.users[Math.floor(Math.random() * this.db.users.length)];
+                this.db.tickets.push({
+                  id: "t_quick_seed_" + Date.now() + "_" + k,
+                  userId: randUser.id,
+                  lotteryId: nextId,
+                  code: "LW-" + Math.floor(100000 + Math.random() * 900000),
+                  purchaseDate: new Date().toISOString(),
+                  status: "pending",
+                  prizeAmount: 0
+                });
+              }
+            }
           }
         }
       }
@@ -1012,8 +1326,10 @@ export class StateManager {
         
         if (t.status === "won") {
           this.showToast(`🎯 Winner Alert! Your ticket ${t.code} inside "${lotName}" won the grand prize of ৳${t.prizeAmount}!`, "success");
+          NotificationEngine.trigger("DRAW WINNER! 🏆", `Your ticket ${t.code} inside "${lotName}" won the grand prize of ৳${t.prizeAmount}!`, "winner", "tab-history");
         } else {
           this.showToast(`🔔 Draw Completed: Your ticket ${t.code} inside "${lotName}" was drawn. Better luck next time!`, "normal");
+          NotificationEngine.trigger("Draw Completed 🔔", `Your ticket ${t.code} inside "${lotName}" was drawn. Better luck next time!`, "clover", "tab-history");
         }
         notifiedItems.push(t.id);
         updatedNotified = true;
@@ -1025,8 +1341,10 @@ export class StateManager {
       if ((d.status === "approved" || d.status === "declined") && !notifiedItems.includes(d.id)) {
         if (d.status === "approved") {
           this.showToast(`💰 Deposit Approved! Your request for ৳${d.amount} via ${d.method} is approved and credited!`, "success");
+          NotificationEngine.trigger("Deposit Approved! 💰", `Your request for ৳${d.amount} via ${d.method} is approved and credited!`, "gift", "tab-wallet");
         } else {
           this.showToast(`❌ Deposit Declined: Your request for ৳${d.amount} was declined by admin.`, "error");
+          NotificationEngine.trigger("Deposit Declined ❌", `Your request for ৳${d.amount} was declined by admin.`, "agent", "tab-wallet");
         }
         notifiedItems.push(d.id);
         updatedNotified = true;
@@ -1239,6 +1557,10 @@ export class StateManager {
     document.getElementById("tab-wallet").classList.add("hidden");
     document.getElementById("tab-history").classList.add("hidden");
     document.getElementById("tab-profile").classList.add("hidden");
+    const settingsTab = document.getElementById("tab-settings");
+    if (settingsTab) settingsTab.classList.add("hidden");
+    const customizerTab = document.getElementById("tab-customizer");
+    if (customizerTab) customizerTab.classList.add("hidden");
     const jpTab = document.getElementById("tab-jackpot");
     if (jpTab) jpTab.classList.add("hidden");
     const tasksTab = document.getElementById("tab-tasks");
@@ -1249,8 +1571,12 @@ export class StateManager {
     if (referTab) referTab.classList.add("hidden");
     const otpTab = document.getElementById("tab-otp");
     if (otpTab) otpTab.classList.add("hidden");
+    const recoveryTab = document.getElementById("tab-recovery");
+    if (recoveryTab) recoveryTab.classList.add("hidden");
     const videoBountyTab = document.getElementById("tab-video-bounty");
     if (videoBountyTab) videoBountyTab.classList.add("hidden");
+    const gamesTab = document.getElementById("tab-games");
+    if (gamesTab) gamesTab.classList.add("hidden");
 
     // Select tab selector matching classes
     const tabSelectors = document.querySelectorAll(".tab-selector-btn");
@@ -1276,6 +1602,12 @@ export class StateManager {
     } else if (this.currentTab === "otp") {
       if (otpTab) otpTab.classList.remove("hidden");
       this.renderOtpTab();
+    } else if (this.currentTab === "recovery") {
+      if (recoveryTab) recoveryTab.classList.remove("hidden");
+      this.renderRecoveryTab();
+    } else if (this.currentTab === "customizer") {
+      if (customizerTab) customizerTab.classList.remove("hidden");
+      this.renderCustomizerTab();
     } else {
       const targetTab = document.getElementById(`tab-${this.currentTab}`);
       if (targetTab) targetTab.classList.remove("hidden");
@@ -1293,13 +1625,23 @@ export class StateManager {
       this.renderHistoryTab();
     } else if (this.currentTab === "profile") {
       this.renderProfileTab();
+    } else if (this.currentTab === "settings") {
+      this.renderSettingsTab();
+    } else if (this.currentTab === "customizer") {
+      this.renderCustomizerTab();
     } else if (this.currentTab === "refer") {
       this.renderReferTab();
     } else if (this.currentTab === "jackpot") {
       this.renderJackpotTab();
     } else if (this.currentTab === "tasks") {
       this.renderTasksTab();
+    } else if (this.currentTab === "games") {
+      this.renderGamesTab();
     }
+  }
+
+  renderGamesTab() {
+    GameHubModule.render(this);
   }
 
   renderVideoBountyTab() {
@@ -1361,6 +1703,13 @@ export class StateManager {
 
   // Purchase Lottery Ticket Flow
   purchaseTicket(lotteryId) {
+    if (!this.currentUser) {
+      this.showToast("Please sign in or register to purchase tickets!", "error");
+      this.currentTab = "profile";
+      this.render();
+      return;
+    }
+
     const lot = this.db.lotteries.find(l => l.id === lotteryId);
     if (!lot) return;
 
@@ -1381,6 +1730,11 @@ export class StateManager {
     this.currentUser.loss += lot.entryFee;
     this.currentUser.profit -= lot.entryFee;
     lot.soldTickets += 1;
+
+    if (lot.category === "Quick Draw") {
+      // Set the prize pool dynamically to 95% of total ticket sales (keeping 5% commission)
+      lot.prizeAmount = Math.round(lot.soldTickets * lot.entryFee * 0.95 * 100) / 100;
+    }
 
     // Add 100% of ticket entry fee directly to the progressive jackpot pool
     this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 0) + lot.entryFee;
@@ -1417,9 +1771,155 @@ export class StateManager {
       navigator.vibrate(100);
     }
 
+    // Clear Cart Abandonment states on successful ticket checkout
+    localStorage.removeItem("cart_abandoned_status");
+    localStorage.removeItem("cart_abandoned_lottery_id");
+    localStorage.removeItem("cart_abandoned_time");
+    localStorage.removeItem("cart_abandoned_notified");
+
     this.showToast(`Bought ticket ${code} successfully for ৳${lot.entryFee}!`, "success");
     FloatingToastNotification.broadcastCustom("TICKET PURCHASED! 🎫", `@<span class="text-white font-bold">${this.currentUser.username}</span> purchased ticket <strong class="text-emerald-400">${code}</strong> for the ${lot.name} draw!`, "success");
-    this.currentTab = "tickets";
+    if (lot.category === "Quick Draw") {
+      this.render();
+    } else {
+      this.currentTab = "tickets";
+      this.render();
+    }
+  }
+
+  createSyndicate(lotteryId, size, teamName) {
+    if (!this.currentUser) {
+      this.showToast("Please register or login first to create a syndicate!", "error");
+      return;
+    }
+    const lot = this.db.lotteries.find(l => l.id === lotteryId);
+    if (!lot) {
+      this.showToast("Lottery not found!", "error");
+      return;
+    }
+    const shareFee = Math.round((lot.entryFee / size) * 100) / 100;
+    if (this.currentUser.balance < shareFee) {
+      this.showToast(`Insufficient balance! Your 1/${size} share is ৳${shareFee}.`, "error");
+      return;
+    }
+
+    // Deduct share fee
+    this.currentUser.balance -= shareFee;
+    
+    // Create Syndicate Object
+    const synCode = "SYN-" + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const newSyn = {
+      id: "syn_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+      name: teamName || `${this.currentUser.username}'s Team`,
+      code: synCode,
+      lotteryId: lotteryId,
+      size: size,
+      creatorId: this.currentUser.id,
+      creatorUsername: this.currentUser.username,
+      joinedUserIds: [this.currentUser.id],
+      joinedUsernames: [this.currentUser.username],
+      status: "pending",
+      ticketCode: null,
+      entryFeeShare: shareFee,
+      createdAt: new Date().toISOString()
+    };
+
+    if (!this.db.syndicates) this.db.syndicates = [];
+    this.db.syndicates.unshift(newSyn);
+    this.saveDB();
+    this.render();
+
+    this.showToast(`👥 Syndicate Group "${newSyn.name}" created successfully! Code: ${synCode}`, "success");
+    FloatingToastNotification.broadcastCustom("NEW SYNDICATE CREATED! 👥", `@<span class="text-white font-bold">${this.currentUser.username}</span> created a syndicate group <strong class="text-emerald-400">${newSyn.name}</strong> for ${lot.name}!`, "success");
+  }
+
+  joinSyndicateByCode(code) {
+    if (!this.currentUser) {
+      this.showToast("Please register or login first to join!", "error");
+      return;
+    }
+    const cleanCode = code.trim().toUpperCase();
+    const syn = (this.db.syndicates || []).find(s => s.code === cleanCode);
+    if (!syn) {
+      this.showToast("Syndicate group code not found!", "error");
+      return;
+    }
+    this.joinSyndicateById(syn.id);
+  }
+
+  joinSyndicateById(id) {
+    if (!this.currentUser) {
+      this.showToast("Please register or login first to join!", "error");
+      return;
+    }
+    const syn = (this.db.syndicates || []).find(s => s.id === id);
+    if (!syn) {
+      this.showToast("Syndicate group not found!", "error");
+      return;
+    }
+    if (syn.status !== "pending") {
+      this.showToast("This syndicate is already fully funded or completed!", "error");
+      return;
+    }
+    if (syn.joinedUserIds.includes(this.currentUser.id)) {
+      this.showToast("You are already a member of this syndicate!", "error");
+      return;
+    }
+    if (this.currentUser.balance < syn.entryFeeShare) {
+      this.showToast(`Insufficient balance! Your share is ৳${syn.entryFeeShare}.`, "error");
+      return;
+    }
+
+    const lot = this.db.lotteries.find(l => l.id === syn.lotteryId);
+    if (!lot) {
+      this.showToast("Lottery not found!", "error");
+      return;
+    }
+
+    // Deduct and Join
+    this.currentUser.balance -= syn.entryFeeShare;
+    syn.joinedUserIds.push(this.currentUser.id);
+    syn.joinedUsernames.push(this.currentUser.username);
+
+    // Check if fully funded
+    if (syn.joinedUserIds.length >= syn.size) {
+      syn.status = "active";
+      lot.soldTickets += 1;
+
+      // Buy Group Ticket!
+      const digitCode = Math.floor(100000 + Math.random() * 900000);
+      const ticketCode = `LW-${digitCode}`;
+      syn.ticketCode = ticketCode;
+
+      const newTicket = {
+        id: "t" + Date.now() + Math.floor(Math.random() * 100),
+        userId: syn.creatorId, // primary contact
+        userIds: syn.joinedUserIds, // ALL syndicate players!
+        isSyndicate: true,
+        syndicateId: syn.id,
+        syndicateName: syn.name,
+        lotteryId: lot.id,
+        code: ticketCode,
+        purchaseDate: new Date().toISOString(),
+        status: "pending",
+        prizeAmount: 0
+      };
+
+      this.db.tickets.unshift(newTicket);
+      this.db.settings.jackpotPool = (this.db.settings.jackpotPool || 0) + lot.entryFee;
+
+      this.showToast(`🎉 SUCCESS! Syndicate is fully funded. Group ticket issued: ${ticketCode}!`, "success");
+      FloatingToastNotification.broadcastCustom("👥 SYNDICATE FULLY FUNDED!", `Syndicate <strong class="text-emerald-400">${syn.name}</strong> is now active. Group ticket ${ticketCode} issued!`, "success");
+
+      // Notify all users in syndicate inbox
+      syn.joinedUserIds.forEach(uid => {
+        this.addInboxNotice(uid, "👥 Syndicate Fully Funded!", `Great news! Your syndicate group "${syn.name}" is now fully funded with ${syn.size} members. Group ticket ${ticketCode} has been officially issued for the "${lot.name}" draw!`);
+      });
+    } else {
+      this.showToast(`Successfully joined "${syn.name}"! Share the code with more friends to complete the pool.`, "success");
+    }
+
+    this.saveDB();
     this.render();
   }
 
@@ -2012,6 +2512,14 @@ export class StateManager {
     ProfileTab.render(this);
   }
 
+  renderSettingsTab() {
+    SettingsTab.render(this);
+  }
+
+  renderCustomizerTab() {
+    CustomizerStore.renderTab(this);
+  }
+
   renderOtpTab() {
     const backBtn = document.getElementById("otp-back-btn");
     if (backBtn) {
@@ -2119,6 +2627,100 @@ export class StateManager {
       generateNewOTP().then(({ code, expiresAt }) => {
         startTimer(code, expiresAt);
       });
+    }
+  }
+
+  renderRecoveryTab() {
+    const dbUser = this.db.users.find(u => u.username.toLowerCase() === this.currentUser.username.toLowerCase());
+    if (!dbUser) return;
+
+    const keyDisplay = document.getElementById("recovery-active-key");
+    const keyHint = document.getElementById("recovery-key-hint-lbl");
+    const copyBtn = document.getElementById("recovery-copy-key-btn");
+    const downloadBtn = document.getElementById("recovery-download-btn");
+    const generateBtn = document.getElementById("recovery-generate-btn");
+
+    const updateRecoveryUI = () => {
+      const code = dbUser.recoveryCode || "";
+      if (code) {
+        if (keyDisplay) keyDisplay.innerText = code;
+        if (keyHint) {
+          keyHint.innerHTML = '<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> Master Recovery Key is active and configured. Keep it secure!</span>';
+        }
+        if (copyBtn) copyBtn.classList.remove("hidden");
+        if (downloadBtn) downloadBtn.classList.remove("hidden");
+        if (generateBtn) {
+          generateBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate animate-spin-slow"></i> Regenerate Master Key';
+          generateBtn.className = "flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-amber-450 font-bold py-2.5 rounded-xl transition cursor-pointer text-[10px] flex items-center justify-center gap-1.5 uppercase tracking-wider";
+        }
+      } else {
+        if (keyDisplay) keyDisplay.innerText = "NOT GENERATED YET";
+        if (keyHint) {
+          keyHint.innerText = "You have not generated an account recovery key yet.";
+        }
+        if (copyBtn) copyBtn.classList.add("hidden");
+        if (downloadBtn) downloadBtn.classList.add("hidden");
+        if (generateBtn) {
+          generateBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Master Key';
+          generateBtn.className = "flex-1 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black py-2.5 rounded-xl transition duration-150 transform hover:scale-[1.01] cursor-pointer text-[10px] flex items-center justify-center gap-1.5 shadow-lg shadow-amber-950/20 uppercase tracking-wider";
+        }
+      }
+    };
+
+    updateRecoveryUI();
+
+    if (generateBtn) {
+      generateBtn.onclick = () => {
+        const parts = [];
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        for (let i = 0; i < 3; i++) {
+          let chunk = "";
+          for (let j = 0; j < 4; j++) {
+            chunk += chars.charAt(Math.floor(Math.random() * chars.length));
+          }
+          parts.push(chunk);
+        }
+        const generatedCode = `LWR-${parts.join("-")}`;
+        
+        dbUser.recoveryCode = generatedCode;
+        this.currentUser.recoveryCode = generatedCode;
+        this.saveDB();
+        
+        updateRecoveryUI();
+        this.showToast("Your secure account recovery key has been generated!", "success");
+      };
+    }
+
+    if (copyBtn) {
+      copyBtn.onclick = () => {
+        const code = dbUser.recoveryCode;
+        if (code) {
+          navigator.clipboard.writeText(code).then(() => {
+            this.showToast("Recovery key copied to clipboard!", "success");
+          }).catch(() => {
+            this.showToast("Failed to copy. Please manually select the code.", "error");
+          });
+        }
+      };
+    }
+
+    if (downloadBtn) {
+      downloadBtn.onclick = () => {
+        const code = dbUser.recoveryCode;
+        if (code) {
+          const textContent = `LOTTERY WINNER PORTAL - ACCOUNT SECURITY BACKUP\n================================================\nUsername: @${dbUser.username}\nRegistered Email: ${dbUser.email || "N/A"}\nMaster Recovery Key: ${code}\nDate Generated: ${new Date().toLocaleString()}\n\nCRITICAL WARNING: Keep this backup file confidential. Do not share it with anyone including site administrators.`;
+          const blob = new Blob([textContent], { type: "text/plain" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `lw_recovery_${dbUser.username}.txt`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          this.showToast("Recovery security backup file downloaded!", "success");
+        }
+      };
     }
   }
 
@@ -2575,6 +3177,53 @@ export class StateManager {
 
     // Show Modal element
     document.getElementById("lottery-details-modal").classList.remove("hidden");
+
+    // Record selection for Cart Abandonment Strategy
+    if (this.currentUser) {
+      localStorage.setItem("cart_abandoned_status", "pending");
+      localStorage.setItem("cart_abandoned_lottery_id", lot.id);
+      localStorage.setItem("cart_abandoned_time", Date.now().toString());
+      localStorage.setItem("cart_abandoned_notified", "false");
+    }
+
+    // Demo Mode fast-forward buttons inside details modal
+    const fastBtn = document.getElementById("demo-abandonment-fast-btn");
+    if (fastBtn) {
+      fastBtn.onclick = () => {
+        if (!this.currentUser) {
+          this.showToast("Please register or login first to test notifications!", "error");
+          return;
+        }
+        // Set abandonment time to 10 minutes ago
+        const tenMinsAgo = Date.now() - (10 * 60 * 1000) - 5000;
+        localStorage.setItem("cart_abandoned_time", tenMinsAgo.toString());
+        localStorage.setItem("cart_abandoned_status", "pending");
+        localStorage.setItem("cart_abandoned_notified", "false");
+        localStorage.setItem("cart_abandoned_lottery_id", lot.id);
+        
+        this.showToast("⏳ Fast-forward successful! Notification will trigger in 5 seconds.", "success");
+        document.getElementById("lottery-details-modal").classList.add("hidden");
+      };
+    }
+
+    const nowBtn = document.getElementById("demo-abandonment-now-btn");
+    if (nowBtn) {
+      nowBtn.onclick = () => {
+        if (!this.currentUser) {
+          this.showToast("Please register or login first to test notifications!", "error");
+          return;
+        }
+        // Set abandonment time to 10 minutes ago and trigger checkCartAbandonmentNotification immediately
+        const tenMinsAgo = Date.now() - (10 * 60 * 1000) - 5000;
+        localStorage.setItem("cart_abandoned_time", tenMinsAgo.toString());
+        localStorage.setItem("cart_abandoned_status", "pending");
+        localStorage.setItem("cart_abandoned_notified", "false");
+        localStorage.setItem("cart_abandoned_lottery_id", lot.id);
+        
+        this.checkCartAbandonmentNotification();
+        document.getElementById("lottery-details-modal").classList.add("hidden");
+      };
+    }
   }
 
   // Open Ticket Info Live modal
@@ -2719,6 +3368,13 @@ function initApplicationLoader() {
       return;
     }
 
+    // User profile -> Account Recovery page
+    if (e.target.closest("#profile-recovery-entry-btn")) {
+      app.currentTab = "recovery";
+      app.renderDashboard();
+      return;
+    }
+
     // 2. User profile -> Access OTP page
     if (e.target.closest("#profile-access-otp-btn")) {
       app.currentTab = "otp";
@@ -2734,7 +3390,7 @@ function initApplicationLoader() {
     }
 
     // 4. Back buttons
-    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn") || e.target.closest("#video-bounty-back-btn")) {
+    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn") || e.target.closest("#video-bounty-back-btn") || e.target.closest("#recovery-back-btn")) {
       app.currentTab = "profile";
       app.renderDashboard();
       return;
@@ -3186,6 +3842,7 @@ function initApplicationLoader() {
 
           if (isRegionAllowed) {
             referrer.refersCount = (referrer.refersCount || 0) + 1;
+            referrer.spinTokens = (referrer.spinTokens || 0) + 1; // Award Free Spin Token!
             if (!referrer.referredUsers) referrer.referredUsers = [];
             referrer.referredUsers.push({
               username: userVal,
@@ -3216,12 +3873,26 @@ function initApplicationLoader() {
                 targetUsername: referrer.username,
                 category: "bonus",
                 subject: `🎁 Referral Reward: +৳${referBonus}!`,
-                content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} has been added to your wallet.`,
+                content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} and 1 Free Spin Token have been added to your account.`,
                 date: new Date().toISOString(),
                 readBy: []
               };
               if (!app.db.messages) app.db.messages = [];
               app.db.messages.push(autoNotice);
+            } else {
+              // Standard player referral notification
+              const freeSpinNotice = {
+                id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+                recipientType: "specific",
+                targetUsername: referrer.username,
+                category: "bonus",
+                subject: "🎟️ Free Spin Token Received!",
+                content: `Congratulations! Player @${userVal} has successfully registered using your referral code. You have been awarded 1 Free Spin Token for the Fortune Wheel!`,
+                date: new Date().toISOString(),
+                readBy: []
+              };
+              if (!app.db.messages) app.db.messages = [];
+              app.db.messages.push(freeSpinNotice);
             }
 
             // Evaluate milestones
@@ -3486,6 +4157,37 @@ function initApplicationLoader() {
       app.buyJackpotTicket();
       return;
     }
+
+    // 10. Games Hub click delegation
+    const gamesHubBtn = e.target.closest("#home-games-hub-btn") || e.target.closest("#home-quick-games-hub-btn") || e.target.closest("#home-games-hub-sub-btn");
+    if (gamesHubBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to play mini rewards games!", "error");
+        return;
+      }
+      app.currentTab = "games";
+      GameHubModule.activeSubTab = "lobby";
+      app.render();
+      return;
+    }
+
+    const groupLotteryBtn = e.target.closest("#home-group-lottery-sub-btn");
+    if (groupLotteryBtn) {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register to play group syndicate lotteries!", "error");
+        return;
+      }
+      app.currentTab = "games";
+      GameHubModule.activeSubTab = "syndicate";
+      app.render();
+      return;
+    }
+
+    const comingSoonBtn = e.target.closest("#home-coming-soon-1-btn") || e.target.closest("#home-coming-soon-2-btn");
+    if (comingSoonBtn) {
+      app.showToast("This feature is coming soon! Stay tuned! 🚀", "info");
+      return;
+    }
   });
 
   // Wallet Deposit Form submission routing
@@ -3700,6 +4402,61 @@ function initApplicationLoader() {
     });
   }
 
+  // Sponsor Daily Task visit countdown trigger
+  const sponsorBtn = document.getElementById("checkin-sponsor-task-btn");
+  if (sponsorBtn) {
+    sponsorBtn.addEventListener("click", (e) => {
+      if (!app.currentUser) {
+        app.showToast("Please sign in or register first!", "error");
+        return;
+      }
+      
+      const todayStr = new Date().toISOString().split("T")[0];
+      if (app.currentUser.lastDailyTaskDate === todayStr) {
+        app.showToast("You have already completed today's sponsor task!", "info");
+        return;
+      }
+      
+      // Start countdown of 5 seconds
+      let secondsLeft = 5;
+      sponsorBtn.style.pointerEvents = "none";
+      sponsorBtn.className = "flex-1 bg-slate-800 text-slate-500 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 cursor-not-allowed";
+      
+      const interval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft > 0) {
+          sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${secondsLeft}s`;
+        } else {
+          clearInterval(interval);
+          sponsorBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> টাস্ক সম্পন্ন হয়েছে!`;
+          sponsorBtn.className = "flex-1 bg-emerald-950/45 text-emerald-400 border border-emerald-500/30 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5";
+          
+          // Complete task
+          app.currentUser.lastDailyTaskDate = todayStr;
+          app.saveDB();
+          
+          // Refresh checkin grid to reveal the claim button
+          app.renderDailyCheckinGrid();
+          app.showToast("🎉 Sponsor task completed! Daily check-in reward is now unlocked!", "success");
+        }
+      }, 1000);
+    });
+  }
+
+  // Direct Invite button to navigate to referral tab
+  const spinInviteBtn = document.getElementById("lucky-spin-invite-btn");
+  if (spinInviteBtn) {
+    spinInviteBtn.addEventListener("click", () => {
+      // Close lucky spin modal
+      const m = document.getElementById("lucky-spin-modal");
+      if (m) m.classList.add("hidden");
+      
+      // Navigate to share/earn tab
+      app.currentTab = "share_earn";
+      app.render();
+    });
+  }
+
   // Progressive Jackpot Buy Ticket
   const buyJackpotBtn = document.getElementById("buy-jackpot-ticket-btn");
   if (buyJackpotBtn) {
@@ -3750,13 +4507,45 @@ function initApplicationLoader() {
 
   // ================= ADMIN INTERACTIVE PANEL CODE =================
 
-  // Switch Admin Sub Tabs
-  document.querySelectorAll(".admin-tab-selector-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      app.currentAdminTab = btn.getAttribute("data-tab");
-      app.render();
-    });
+  // Switch Admin Sub Tabs via Event Delegation (handles both top bar & mobile sidebar drawer)
+  document.addEventListener("click", (e) => {
+    const adminTabBtn = e.target.closest(".admin-tab-selector-btn");
+    if (adminTabBtn) {
+      const tab = adminTabBtn.getAttribute("data-tab");
+      if (tab) {
+        app.currentAdminTab = tab;
+        const drawer = document.getElementById("admin-sidebar-drawer");
+        if (drawer) drawer.classList.add("hidden");
+        app.render();
+      }
+    }
   });
+
+  // Admin Mobile Nav Sidebar Drawer Toggles
+  const adminNavToggleBtn = document.getElementById("admin-nav-toggle-btn");
+  if (adminNavToggleBtn) {
+    adminNavToggleBtn.addEventListener("click", () => {
+      const drawer = document.getElementById("admin-sidebar-drawer");
+      if (drawer) drawer.classList.remove("hidden");
+    });
+  }
+
+  const closeAdminSidebarBtn = document.getElementById("close-admin-sidebar-btn");
+  if (closeAdminSidebarBtn) {
+    closeAdminSidebarBtn.addEventListener("click", () => {
+      const drawer = document.getElementById("admin-sidebar-drawer");
+      if (drawer) drawer.classList.add("hidden");
+    });
+  }
+
+  const adminSidebarDrawer = document.getElementById("admin-sidebar-drawer");
+  if (adminSidebarDrawer) {
+    adminSidebarDrawer.addEventListener("click", (e) => {
+      if (e.target === adminSidebarDrawer) {
+        adminSidebarDrawer.classList.add("hidden");
+      }
+    });
+  }
 
   // ================= Jackpot Bulk Purchase listeners =================
   const buyJpBtn = document.getElementById("tab-buy-jackpot-btn");
@@ -3827,18 +4616,47 @@ function initApplicationLoader() {
   // Handle Jackpot Qty buttons click delegation
   document.addEventListener("click", (e) => {
     if (!e.target || typeof e.target.closest !== "function") return;
+    
+    // Preset quantity buttons
     const qtyBtn = e.target.closest(".jp-qty-btn");
     if (qtyBtn) {
       const qty = qtyBtn.getAttribute("data-qty");
       const selectedInput = document.getElementById("jackpot-selected-qty");
       if (selectedInput) selectedInput.value = qty;
+      const customInput = document.getElementById("jackpot-custom-qty-input");
+      if (customInput) customInput.value = qty;
       
       // Reset color of other state elements
       document.querySelectorAll(".jp-qty-btn").forEach(b => {
-        b.className = "jp-qty-btn bg-slate-900 border border-slate-800 text-slate-400 rounded-lg py-1.5 font-bold hover:bg-slate-850 text-xs active:scale-95 transition cursor-pointer";
+        b.className = "jp-qty-btn bg-slate-900 border border-slate-800 text-slate-400 rounded-xl py-2 font-bold hover:bg-slate-850 text-xs active:scale-95 transition cursor-pointer";
       });
-      qtyBtn.className = "jp-qty-btn bg-purple-950/30 border border-purple-500/30 text-white rounded-lg py-1.5 font-bold hover:bg-slate-800 text-xs active:scale-95 transition cursor-pointer";
+      qtyBtn.className = "jp-qty-btn bg-purple-950/40 border border-purple-500/40 text-white rounded-xl py-2 font-bold hover:bg-purple-900/40 text-xs active:scale-95 transition cursor-pointer";
       
+      app.renderJackpotTab();
+      return;
+    }
+
+    // Plus quantity button
+    const plusBtn = e.target.closest("#jackpot-qty-plus-btn");
+    if (plusBtn) {
+      const customInput = document.getElementById("jackpot-custom-qty-input");
+      const selectedInput = document.getElementById("jackpot-selected-qty");
+      let currentVal = parseInt(customInput ? customInput.value : 1) || 1;
+      currentVal += 1;
+      if (customInput) customInput.value = currentVal;
+      if (selectedInput) selectedInput.value = currentVal;
+      app.renderJackpotTab();
+      return;
+    }
+  });
+
+  // Handle custom quantity input changes
+  document.addEventListener("input", (e) => {
+    if (e.target && e.target.id === "jackpot-custom-qty-input") {
+      let val = parseInt(e.target.value) || 1;
+      if (val < 1) val = 1;
+      const selectedInput = document.getElementById("jackpot-selected-qty");
+      if (selectedInput) selectedInput.value = val;
       app.renderJackpotTab();
     }
   });
@@ -4211,9 +5029,10 @@ function initApplicationLoader() {
     app.db.settings.depBonusMin = parseFloat(document.getElementById("sys-dep-boost-min").value);
     app.db.settings.depBonusEnabled = document.getElementById("sys-dep-boost-toggle").checked;
 
-    // Save Agent Referral Bonus & WhatsApp Settings
+    // Save Agent Referral Bonus, Sponsor Link & WhatsApp Settings
     app.db.settings.agentReferralBonus = parseFloat(document.getElementById("sys-agent-referral-bonus").value || "100");
     app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url").value.trim();
+    app.db.settings.sponsorLink = document.getElementById("sys-checkin-sponsor-link").value.trim();
 
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");
@@ -4235,6 +5054,26 @@ function initApplicationLoader() {
       app.saveDB();
       app.showToast("Website settings and sign-up bonus configurations stored successfully.", "success");
       app.render();
+    });
+  }
+
+  // Handle Admin Push Notification Broadcast Form (New Feature)
+  const broadcastPushForm = document.getElementById("admin-settings-push-broadcast-form");
+  if (broadcastPushForm) {
+    broadcastPushForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      const title = document.getElementById("sys-push-title").value.trim();
+      const message = document.getElementById("sys-push-message").value.trim();
+      const iconType = document.getElementById("sys-push-icon-type").value;
+      const redirectTab = document.getElementById("sys-push-redirect-tab").value;
+
+      NotificationEngine.trigger(title, message, iconType, redirectTab);
+      app.showToast("🚀 Real-Time App Push Notification broadcasted successfully!", "success");
+
+      // Reset inputs cleanly
+      document.getElementById("sys-push-title").value = "";
+      document.getElementById("sys-push-message").value = "";
     });
   }
 
@@ -4364,7 +5203,7 @@ function initApplicationLoader() {
       return;
     }
 
-    const profileGoogleBtn = e.target.closest("#profile-google-photo-btn");
+    const profileGoogleBtn = e.target.closest("#profile-google-photo-btn") || e.target.closest("#profile-modal-google-photo-btn");
     if (profileGoogleBtn) {
       app.launchGooglePickerForAvatar();
       return;
@@ -4412,7 +5251,7 @@ function initApplicationLoader() {
 
   // Local user profile avatar photo upload input selection & dynamic gateway instructions (delegated)
   document.addEventListener("change", (e) => {
-    const profileUploadInput = e.target.closest("#profile-local-upload-input");
+    const profileUploadInput = e.target.closest("#profile-local-upload-input") || e.target.closest("#profile-modal-upload-input") || e.target.closest("#customizer-tab-upload-input");
     if (profileUploadInput) {
       const file = profileUploadInput.files[0];
       if (file) {
@@ -5256,6 +6095,7 @@ function initApplicationLoader() {
     app.setupStaffAndAgentListeners();
     app.setupDistrictAgentsLookup();
     FloatingToastNotification.start(app);
+    NotificationEngine.init(app);
   }
 }
 
