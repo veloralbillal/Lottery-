@@ -569,11 +569,17 @@ export class ProfileTab {
       }
     }
 
-    // Render the Avatar Frame Overlay on the main page
+    // Render the Avatar Frame & 3D Animation Overlay on the main page
     const frame = appInstance.currentUser.avatarFrame || "none";
     const overlayEl = document.getElementById("profile-frame-overlay");
     if (overlayEl) {
       overlayEl.innerHTML = CustomizerStore.getFrameOverlayHTML(frame);
+    }
+
+    const animOverlayEl = document.getElementById("profile-anim-overlay");
+    if (animOverlayEl) {
+      const glow = appInstance.currentUser.profileGlow || appInstance.currentUser.profileAnimation || "none";
+      animOverlayEl.innerHTML = CustomizerStore.getAnimationOverlayHTML(glow);
     }
 
     appInstance.renderProfileChart();

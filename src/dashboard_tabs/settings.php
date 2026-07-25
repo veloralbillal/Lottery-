@@ -1,4 +1,4 @@
-<!-- ================= TAB: USER SETTINGS & SECURITY ================= -->
+<!-- ================= TAB: USER SETTINGS & ADVANCED CONTROL HUB ================= -->
 <div id="tab-settings" class="hidden space-y-6 relative font-sans">
 
   <!-- Navigation Bar / Header -->
@@ -9,15 +9,15 @@
       </button>
       <div>
         <h2 class="text-sm font-black text-white font-display uppercase tracking-wider flex items-center gap-2">
-          <i class="fa-solid fa-gear text-cyan-400 animate-spin-slow"></i> User Settings
+          <i class="fa-solid fa-sliders text-cyan-400 animate-spin-slow"></i> Settings & Advanced Control Hub
         </h2>
-        <p class="text-[10px] text-slate-400 font-mono">Manage account, security PIN & profile appearance</p>
+        <p class="text-[10px] text-slate-400 font-mono">Performance engine, 2FA vault, webhooks, API tokens & system diagnostics</p>
       </div>
     </div>
     
     <div class="hidden sm:flex items-center gap-2">
       <span class="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> SECURE SESSION
+        <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span> SECURE ADVANCED ENGINE
       </span>
     </div>
   </div>
@@ -47,180 +47,101 @@
         <span class="bg-slate-900 border border-slate-800 px-2 py-0.5 rounded text-slate-300">
           Role: <strong class="text-cyan-400 uppercase" id="settings-summary-role">Player</strong>
         </span>
+        <span class="bg-cyan-950/80 border border-cyan-800/60 px-2 py-0.5 rounded text-cyan-300">
+          2FA: <strong class="text-emerald-400 uppercase" id="settings-summary-2fa">Disabled</strong>
+        </span>
       </div>
     </div>
   </div>
 
-  <!-- Settings Grid Layout -->
+  <!-- Advanced Settings Grid Layout -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-    <!-- 1. PERSONAL INFORMATION CARD -->
+    <!-- 1. AI & SYSTEM PERFORMANCE ENGINE -->
     <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-4">
       <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
         <div class="w-8 h-8 rounded-xl bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400">
-          <i class="fa-solid fa-id-card text-xs"></i>
+          <i class="fa-solid fa-microchip text-xs"></i>
         </div>
         <div>
-          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Personal Details</h3>
-          <p class="text-[9px] text-slate-500 font-sans">Update name, contact & address information</p>
+          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">AI & System Performance Engine</h3>
+          <p class="text-[9px] text-slate-500 font-sans">FPS rate, dynamic cache purge & real-time fraud monitoring</p>
         </div>
       </div>
 
-      <form id="settings-personal-form" class="space-y-3 font-sans text-xs">
+      <div class="space-y-3.5 text-xs">
+        <!-- Render Speed / FPS Selector -->
         <div class="space-y-1">
-          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Username / Display Name</label>
-          <div class="relative">
-            <i class="fa-solid fa-user absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-            <input type="text" id="settings-input-username" required class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="Username" />
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Email Address</label>
-          <div class="relative">
-            <i class="fa-solid fa-envelope absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-            <input type="email" id="settings-input-email" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="user@domain.com" />
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="space-y-1">
-            <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Phone Number</label>
-            <div class="relative">
-              <i class="fa-solid fa-phone absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-              <input type="tel" id="settings-input-phone" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="01700000000" />
-            </div>
-          </div>
-
-          <div class="space-y-1">
-            <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Date of Birth</label>
-            <div class="relative">
-              <i class="fa-solid fa-calendar absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-              <input type="date" id="settings-input-dob" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition text-slate-300" />
-            </div>
-          </div>
-        </div>
-
-        <div class="space-y-1">
-          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Address / City</label>
-          <div class="relative">
-            <i class="fa-solid fa-location-dot absolute left-3 top-2.5 text-slate-500 text-xs"></i>
-            <input type="text" id="settings-input-address" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none transition" placeholder="Dhaka, Bangladesh" />
-          </div>
-        </div>
-
-        <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer flex items-center justify-center gap-1.5 mt-2 font-mono">
-          <i class="fa-solid fa-floppy-disk text-xs"></i> Save Personal Info
-        </button>
-      </form>
-    </div>
-
-    <!-- 2. PROFILE APPEARANCE & CUSTOMIZATION CARD -->
-    <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-4">
-      <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
-        <div class="w-8 h-8 rounded-xl bg-amber-950/60 border border-amber-800/40 flex items-center justify-center text-amber-400">
-          <i class="fa-solid fa-palette text-xs"></i>
-        </div>
-        <div>
-          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Appearance & Decor</h3>
-          <p class="text-[9px] text-slate-500 font-sans">Avatar frames, glow auras & profile photos</p>
-        </div>
-      </div>
-
-      <form id="settings-appearance-form" class="space-y-3.5 font-sans text-xs">
-        <!-- Photo Upload & Google Photos -->
-        <div class="space-y-1.5">
-          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Avatar Photo Sync</label>
-          <div class="flex items-center gap-2">
-            <label class="flex-1 bg-slate-950 border border-slate-800 hover:border-slate-700 text-slate-300 font-mono text-[9px] py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm">
-              <i class="fa-solid fa-cloud-arrow-up text-rose-500"></i>
-              Upload File
-              <input type="file" id="settings-upload-input" accept="image/*" class="hidden" />
-            </label>
-            <button type="button" id="settings-google-photo-btn" class="flex-1 bg-slate-950 border border-slate-800 hover:border-slate-700 text-amber-400 font-mono text-[9px] py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shadow-sm">
-              <i class="fa-brands fa-google-drive text-amber-500"></i>
-              Google Photos
-            </button>
-          </div>
-        </div>
-
-        <!-- Frame Selector -->
-        <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-2 text-center relative overflow-hidden">
-          <span class="text-[9px] uppercase font-bold text-slate-400 block font-mono flex items-center justify-center gap-1">
-            <i class="fa-solid fa-wand-magic-sparkles text-amber-450 animate-pulse"></i> Select Avatar Frame Effect
-          </span>
-          <div class="flex justify-start items-center gap-1.5 overflow-x-auto py-1 scrollbar-none" id="settings-frame-selector">
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-slate-700 text-slate-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="none">
-              <span class="w-4 h-4 rounded-full border border-dashed border-slate-600 flex items-center justify-center"><i class="fa-solid fa-ban text-[8px]"></i></span>
-              None
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-amber-500/60 text-amber-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="royal">
-              <span class="w-4 h-4 rounded-full border border-amber-500/80 bg-amber-950/30 flex items-center justify-center text-amber-400"><i class="fa-solid fa-crown text-[8px]"></i></span>
-              Royal
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-cyan-500/60 text-cyan-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="neon">
-              <span class="w-4 h-4 rounded-full border border-cyan-400 bg-cyan-950/30 flex items-center justify-center text-cyan-400"><i class="fa-solid fa-bolt text-[8px]"></i></span>
-              Neon
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-rose-500/60 text-rose-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="ruby">
-              <span class="w-4 h-4 rounded-full border border-rose-500 bg-rose-950/30 flex items-center justify-center text-rose-400"><i class="fa-solid fa-fire text-[8px]"></i></span>
-              Ruby
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-purple-500/60 text-purple-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="cosmic">
-              <span class="w-4 h-4 rounded-full border border-purple-500 bg-purple-950/30 flex items-center justify-center text-purple-400"><i class="fa-solid fa-star text-[8px]"></i></span>
-              Cosmic
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-orange-500/60 text-orange-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="phoenix">
-              <span class="w-4 h-4 rounded-full border border-orange-500 bg-orange-950/30 flex items-center justify-center text-orange-400"><i class="fa-solid fa-fire-flame-simple text-[8px]"></i></span>
-              Phoenix
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-emerald-500/60 text-emerald-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="dragon">
-              <span class="w-4 h-4 rounded-full border border-emerald-500 bg-emerald-950/30 flex items-center justify-center text-emerald-400"><i class="fa-solid fa-dragon text-[8px]"></i></span>
-              Dragon
-            </button>
-            <button type="button" class="settings-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-pink-500/60 text-pink-400 cursor-pointer flex flex-col items-center gap-1 border-slate-800" data-frame="love">
-              <span class="w-4 h-4 rounded-full border border-pink-500 bg-pink-950/30 flex items-center justify-center text-pink-400"><i class="fa-solid fa-heart text-[8px]"></i></span>
-              Love
-            </button>
-          </div>
-        </div>
-
-        <!-- Ambient Glow Aura -->
-        <div class="space-y-1">
-          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Profile Board Ambient Glow</label>
-          <select id="settings-select-glow" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500/80 rounded-xl py-2 px-3 text-xs text-white outline-none transition font-sans">
-            <option value="none">None (Standard Dark Canvas)</option>
-            <option value="pulse">❤️ Radiant Rose Aura (Pulsing Glow)</option>
-            <option value="cyber">💙 Electric Cyan Spark (Tech Lightning)</option>
-            <option value="gold">💛 Amber VIP Royalty (Shining Crowns)</option>
-            <option value="rainbow">🌈 Rainbow Quantum Wave (Slow Smooth Cycle)</option>
+          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Graphics & Animation Frame Rate</label>
+          <select id="settings-select-fps" class="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl py-2 px-3 text-xs text-white outline-none font-mono">
+            <option value="60">⚡ 60 FPS Smooth Balanced Mode</option>
+            <option value="120">🚀 120 FPS High-Refresh Ultra Gaming Mode</option>
+            <option value="30">🔋 30 FPS Power Saver & Low Bandwidth</option>
           </select>
         </div>
 
-        <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer flex items-center justify-center gap-1.5 mt-2 font-mono">
-          <i class="fa-solid fa-sparkles text-xs"></i> Save Appearance Decor
-        </button>
-      </form>
+        <!-- AI Real-Time Risk & Fraud Monitor Toggle -->
+        <div class="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-850">
+          <div class="space-y-0.5 pr-2">
+            <span class="font-bold text-white block">AI Fraud & IP Shift Monitor</span>
+            <span class="text-[9px] text-slate-500 block leading-tight">Auto-lock cashouts if sudden geographic anomaly detected</span>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer shrink-0">
+            <input type="checkbox" id="settings-toggle-ai-risk" class="sr-only peer" checked />
+            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-500"></div>
+          </label>
+        </div>
+
+        <!-- Cache Purge & Database Re-indexer -->
+        <div class="bg-slate-950/80 border border-slate-850 p-3.5 rounded-2xl space-y-2">
+          <div class="flex justify-between items-center font-mono text-[9.5px]">
+            <span class="text-slate-400">Local Cache Storage:</span>
+            <span id="settings-cache-size" class="text-cyan-400 font-bold">1.42 MB</span>
+          </div>
+          <button type="button" id="settings-btn-clear-cache" class="w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-cyan-500/60 text-cyan-400 font-bold py-2 px-3 rounded-xl transition text-[10px] font-mono cursor-pointer flex items-center justify-center gap-1.5">
+            <i class="fa-solid fa-broom text-xs"></i> Purge Local Cache & Re-index Storage
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- 3. ACCOUNT SECURITY & PIN CARD -->
+    <!-- 2. ADVANCED SECURITY & 2FA VAULT -->
     <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-4">
       <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
         <div class="w-8 h-8 rounded-xl bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400">
           <i class="fa-solid fa-shield-halved text-xs"></i>
         </div>
         <div>
-          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Security PIN & Password</h3>
-          <p class="text-[9px] text-slate-500 font-sans">Cashout PIN verification & password security</p>
+          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Advanced Security & 2FA Vault</h3>
+          <p class="text-[9px] text-slate-500 font-sans">Two-Factor Authenticator, Cashout PIN & Active Sessions</p>
         </div>
       </div>
 
-      <form id="settings-security-form" class="space-y-3 font-sans text-xs">
+      <!-- 2FA Authenticator Button & Status -->
+      <div class="bg-slate-950/90 border border-slate-850 p-3.5 rounded-2xl space-y-2.5">
+        <div class="flex justify-between items-center">
+          <span class="text-[10px] font-mono font-bold text-white uppercase flex items-center gap-1.5">
+            <i class="fa-solid fa-key text-emerald-400"></i> Two-Factor Auth (2FA)
+          </span>
+          <span id="settings-2fa-status-badge" class="text-[8px] font-mono px-2 py-0.5 rounded font-bold bg-rose-950 text-rose-400 border border-rose-800/60">
+            INACTIVE
+          </span>
+        </div>
+        <p class="text-[9px] text-slate-400 font-sans leading-tight">
+          Protect account cashouts with Google Authenticator or Authy App TOTP codes.
+        </p>
+        <button type="button" id="settings-btn-open-2fa-modal" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-2 px-3 rounded-xl transition text-[10px] font-mono cursor-pointer flex items-center justify-center gap-1.5 shadow-md">
+          <i class="fa-solid fa-qrcode text-xs"></i> Configure 2FA Authenticator
+        </button>
+      </div>
+
+      <!-- Security PIN & Password Form -->
+      <form id="settings-security-form" class="space-y-3 font-sans text-xs pt-1">
         <!-- Security PIN -->
         <div class="bg-slate-950/80 border border-slate-800/80 p-3 rounded-2xl space-y-2">
           <div class="flex justify-between items-center">
             <span class="text-[9px] font-mono font-bold text-slate-300 uppercase flex items-center gap-1">
-              <i class="fa-solid fa-key text-emerald-400"></i> 4-Digit Cashout Security PIN
+              <i class="fa-solid fa-lock text-emerald-400"></i> 4-Digit Cashout Security PIN
             </span>
             <span id="settings-pin-status-badge" class="text-[8px] font-mono px-2 py-0.5 rounded font-bold bg-slate-900 text-slate-400">
               Not Set
@@ -238,7 +159,7 @@
         </div>
 
         <!-- Change Password -->
-        <div class="space-y-2 pt-1">
+        <div class="space-y-2">
           <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Change Password</label>
           <input type="password" id="settings-old-pass" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl py-2 px-3 text-xs text-white outline-none" placeholder="Current Password" />
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -247,63 +168,198 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer flex items-center justify-center gap-1.5 mt-2 font-mono">
+        <button type="submit" class="w-full bg-slate-850 hover:bg-slate-800 text-emerald-400 border border-emerald-800/60 font-black text-xs py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 font-mono">
           <i class="fa-solid fa-lock text-xs"></i> Update Security Credentials
         </button>
       </form>
+
+      <!-- Active Sessions Manager -->
+      <div class="pt-2 border-t border-slate-800 flex items-center justify-between font-mono text-[9.5px]">
+        <div class="text-slate-400">
+          <span>Active Device Sessions:</span>
+          <strong class="text-white block font-sans text-xs">1 Active (Current Browser)</strong>
+        </div>
+        <button type="button" id="settings-btn-terminate-sessions" class="bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 px-2.5 py-1.5 rounded-xl transition text-[9px] font-mono cursor-pointer">
+          <i class="fa-solid fa-right-from-bracket"></i> Terminate Other Sessions
+        </button>
+      </div>
     </div>
 
-    <!-- 4. APP PREFERENCES & DEVICE INFO CARD -->
+    <!-- 3. WEBHOOK AUTOMATION & ALERT CHANNELS -->
     <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-4">
       <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
         <div class="w-8 h-8 rounded-xl bg-purple-950/60 border border-purple-800/40 flex items-center justify-center text-purple-400">
-          <i class="fa-solid fa-sliders text-xs"></i>
+          <i class="fa-solid fa-bell text-xs"></i>
         </div>
         <div>
-          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Preferences & System</h3>
-          <p class="text-[9px] text-slate-500 font-sans">System sound effects, privacy & device links</p>
+          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Webhook Automation & Alerts</h3>
+          <p class="text-[9px] text-slate-500 font-sans">Discord/Telegram Webhooks & granular notification channels</p>
         </div>
       </div>
 
-      <div class="space-y-3 text-xs">
-        <!-- Sound FX Toggle -->
-        <div class="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-850">
-          <div class="space-y-0.5">
-            <span class="font-bold text-white block">Sound Effects</span>
-            <span class="text-[9px] text-slate-500 block leading-tight">Interactive audio for clicks & draw wins</span>
+      <div class="space-y-3.5 text-xs">
+        <!-- Discord / Telegram Webhook Input -->
+        <div class="space-y-1.5">
+          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Custom Webhook Alert Endpoint</label>
+          <div class="flex items-center gap-2">
+            <div class="relative flex-1">
+              <i class="fa-solid fa-link absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+              <input type="url" id="settings-webhook-url" class="w-full bg-slate-950 border border-slate-800 focus:border-purple-500/80 rounded-xl py-2 pl-8 pr-3 text-xs text-white outline-none font-mono" placeholder="https://discord.com/api/webhooks/..." />
+            </div>
+            <button type="button" id="settings-btn-save-webhook" class="bg-purple-600 hover:bg-purple-500 text-white font-mono text-[10px] font-bold py-2 px-3 rounded-xl transition cursor-pointer shrink-0">
+              Save Webhook
+            </button>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="settings-toggle-sound" class="sr-only peer" checked />
-            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-          </label>
+          <button type="button" id="settings-btn-test-webhook" class="text-[9px] text-purple-400 hover:underline font-mono flex items-center gap-1">
+            <i class="fa-solid fa-paper-plane"></i> Send Test Webhook Payload
+          </button>
         </div>
 
-        <!-- Community Leaderboard Consent -->
-        <div class="flex items-center justify-between p-3 bg-slate-950 rounded-2xl border border-slate-850">
-          <div class="space-y-0.5">
-            <span class="font-bold text-white block">Community Visibility</span>
-            <span class="text-[9px] text-slate-500 block leading-tight">Display username on public winner boards</span>
+        <!-- Notification Channels Toggles -->
+        <div class="space-y-2">
+          <span class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">System Alert Preferences</span>
+          
+          <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-850">
+            <span class="text-slate-300 text-[11px]">Jackpot Draw Countdown Alerts</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="settings-toggle-draw-alerts" class="sr-only peer" checked />
+              <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500"></div>
+            </label>
           </div>
-          <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" id="settings-toggle-community" class="sr-only peer" checked />
-            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-          </label>
-        </div>
 
-        <!-- Device Info Display -->
-        <div class="p-3 bg-slate-950/80 rounded-2xl border border-slate-850/80 space-y-1.5 font-mono text-[9px]">
-          <div class="flex justify-between items-center text-slate-400">
-            <span>Device Fingerprint:</span>
-            <span id="settings-device-fingerprint" class="text-slate-200 font-bold"></span>
+          <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-850">
+            <span class="text-slate-300 text-[11px]">Messenger Direct PM Alerts</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="settings-toggle-pm-alerts" class="sr-only peer" checked />
+              <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500"></div>
+            </label>
           </div>
-          <div class="flex justify-between items-center text-slate-400">
-            <span>IP Connection:</span>
-            <span id="settings-device-ip" class="text-cyan-400 font-bold">Connected</span>
+
+          <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-850">
+            <span class="text-slate-300 text-[11px]">Sound Effects & Audio Feedback</span>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="settings-toggle-sound" class="sr-only peer" checked />
+              <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500"></div>
+            </label>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- 4. POWER USER API & DIAGNOSTIC HUB -->
+    <div class="bg-slate-900/90 border border-slate-800 p-5 rounded-3xl shadow-xl space-y-4">
+      <div class="flex items-center gap-2.5 border-b border-slate-800 pb-3">
+        <div class="w-8 h-8 rounded-xl bg-amber-950/60 border border-amber-800/40 flex items-center justify-center text-amber-400">
+          <i class="fa-solid fa-code text-xs"></i>
+        </div>
+        <div>
+          <h3 class="text-xs font-black text-white uppercase tracking-wider font-mono">Developer API & Diagnostics</h3>
+          <p class="text-[9px] text-slate-500 font-sans">API Key token, account vault JSON export & network ping diagnostics</p>
+        </div>
+      </div>
+
+      <div class="space-y-3.5 text-xs">
+        <!-- Developer API Secret Key Token -->
+        <div class="space-y-1.5">
+          <label class="block text-[9px] uppercase tracking-wider text-slate-400 font-mono font-bold">Personal API Bearer Token</label>
+          <div class="flex items-center gap-2">
+            <input type="password" id="settings-api-token" readonly value="lw_sec_token_9837a1f8021c" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-xs text-amber-300 font-mono outline-none" />
+            <button type="button" id="settings-btn-copy-token" class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-amber-400 font-mono text-[10px] font-bold py-2 px-3 rounded-xl transition cursor-pointer">
+              <i class="fa-solid fa-copy"></i> Copy
+            </button>
+            <button type="button" id="settings-btn-regen-token" class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-300 font-mono text-[10px] font-bold py-2 px-3 rounded-xl transition cursor-pointer" title="Regenerate Token">
+              <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Export Account Vault Data -->
+        <div class="bg-slate-950/80 border border-slate-850 p-3 rounded-2xl flex items-center justify-between gap-2 font-mono text-[9.5px]">
+          <div>
+            <span class="text-white font-bold block">Account Ledger & Data Export</span>
+            <span class="text-slate-500 text-[8.5px] block">Download full ledger, tickets & stats in structured JSON format</span>
+          </div>
+          <button type="button" id="settings-btn-export-json" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/40 px-3 py-2 rounded-xl transition text-[9.5px] font-mono cursor-pointer shrink-0 flex items-center gap-1.5">
+            <i class="fa-solid fa-download"></i> Export JSON
+          </button>
+        </div>
+
+        <!-- Network Diagnostic & Server Node Selector -->
+        <div class="p-3 bg-slate-950 rounded-2xl border border-slate-850 space-y-2 font-mono text-[9px]">
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Server Cluster Node:</span>
+            <select id="settings-select-node" class="bg-slate-900 border border-slate-800 text-cyan-400 font-bold rounded-lg px-2 py-1 outline-none text-[9px]">
+              <option value="bd">Asia-East (BD Dhaka Node)</option>
+              <option value="sg">Singapore GCP Cloud Node</option>
+              <option value="eu">Frankfurt High-Speed Node</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center text-slate-400">
+            <span>Network Round-Trip Latency:</span>
+            <span id="settings-latency-ping" class="text-emerald-400 font-bold">24 ms (Optimal)</span>
+          </div>
+
+          <button type="button" id="settings-btn-run-ping" class="w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold py-1.5 rounded-lg transition text-[9px] cursor-pointer flex items-center justify-center gap-1">
+            <i class="fa-solid fa-network-wired text-cyan-400"></i> Run Latency Speed Diagnostic
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 2FA SETUP MODAL -->
+  <div id="settings-2fa-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="relative bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm space-y-4 shadow-2xl text-center">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+        <h4 class="text-xs font-black text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-shield-halved text-emerald-400"></i> Google Authenticator 2FA
+        </h4>
+        <button type="button" id="settings-close-2fa-modal-btn" class="w-7 h-7 rounded-full bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer">
+          <i class="fa-solid fa-xmark text-xs"></i>
+        </button>
+      </div>
+
+      <div id="settings-2fa-active-banner" class="hidden bg-emerald-950/70 border border-emerald-800/80 p-2.5 rounded-2xl text-[10px] text-emerald-300 font-mono font-bold flex items-center justify-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+        Google Authenticator 2FA is ACTIVE
+      </div>
+
+      <p class="text-[10px] text-slate-400 font-sans leading-relaxed">
+        Google Authenticator বা Authy অ্যাপ দিয়ে নিচের QR কোডটি স্ক্যান করুন অথবা Secret Key টি কপি করে অ্যাপে যুক্ত করুন।
+      </p>
+
+      <!-- Real QR Code Container -->
+      <div id="settings-2fa-qr-container" class="w-40 h-40 mx-auto bg-white p-2 rounded-2xl flex items-center justify-center shadow-lg border-2 border-emerald-500/80">
+        <div class="text-slate-500 text-xs font-mono animate-pulse">Generating QR...</div>
+      </div>
+
+      <!-- Secret Key with Copy Button -->
+      <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-850 space-y-1.5">
+        <span class="text-slate-500 block text-[8px] font-mono font-bold uppercase tracking-wider">SECRET SEED KEY:</span>
+        <div class="flex items-center justify-between gap-2 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800">
+          <strong id="settings-2fa-seed" class="text-emerald-400 font-mono text-xs tracking-widest select-all">JBSWY3DPEHPK3PXP</strong>
+          <button type="button" id="settings-2fa-copy-key-btn" class="bg-emerald-950 hover:bg-emerald-900 border border-emerald-800/60 text-emerald-400 text-[9px] font-mono font-bold px-2 py-1 rounded-lg transition cursor-pointer flex items-center gap-1 shrink-0">
+            <i class="fa-solid fa-copy text-[10px]"></i> Copy Key
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-1.5 text-left">
+        <label class="block text-[8px] uppercase tracking-wider text-slate-400 font-mono font-bold">Enter 6-Digit Code from Authenticator App</label>
+        <input type="text" id="settings-2fa-code" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="123456" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl py-2 px-3 text-center text-white font-mono text-base tracking-widest outline-none" />
+      </div>
+
+      <div class="space-y-2">
+        <button type="button" id="settings-btn-verify-2fa" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer font-mono flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-circle-check"></i> Verify & Activate 2FA
+        </button>
+        <button type="button" id="settings-btn-disable-2fa" class="hidden w-full bg-rose-950/80 hover:bg-rose-900 border border-rose-800/60 text-rose-300 font-bold text-xs py-2 rounded-xl transition cursor-pointer font-mono flex items-center justify-center gap-1.5">
+          <i class="fa-solid fa-lock-open"></i> Disable 2FA
+        </button>
+      </div>
+    </div>
   </div>
 
 </div>

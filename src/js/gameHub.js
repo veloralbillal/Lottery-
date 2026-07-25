@@ -633,7 +633,7 @@ export const GameHubModule = {
                     </div>
                   </div>
                   <div class="text-right">
-                    <span class="text-emerald-400 font-extrabold block">৳${l.prizeAmount.toFixed(1)}</span>
+                    <span class="text-emerald-400 font-extrabold block">৳${(l.prizeAmount ?? l.prizePool ?? 0).toFixed(1)}</span>
                     <span class="text-slate-400 text-[8px] font-bold block">${winnerName}</span>
                   </div>
                 </div>
@@ -719,7 +719,7 @@ export const GameHubModule = {
                 <label class="text-slate-400 block mb-1">লটারি সিলেক্ট করুন (Target Draw)</label>
                 <select id="games-syn-create-lottery" class="w-full text-xs text-white bg-slate-950 border border-slate-850 rounded-xl px-2.5 py-2 outline-none focus:border-red-500">
                   ${appInstance.db.lotteries.filter(l => l.category !== "Quick Draw" && l.status === "active").map(l => `
-                    <option value="${l.id}">${l.name} (৳${l.entryFee} Entry, Prize: ৳${l.prizeAmount})</option>
+                    <option value="${l.id}">${l.name} (৳${l.entryFee || 0} Entry, Prize: ৳${l.prizeAmount || l.prizePool || 0})</option>
                   `).join("")}
                 </select>
               </div>
@@ -788,7 +788,7 @@ export const GameHubModule = {
                     </div>
                     <div>
                       <span class="block text-[7.5px] text-slate-500">Draw Prize</span>
-                      <strong class="text-yellow-400">৳${lot.prizeAmount}</strong>
+                      <strong class="text-yellow-400">৳${lot.prizeAmount || lot.prizePool || 0}</strong>
                     </div>
                   </div>
 

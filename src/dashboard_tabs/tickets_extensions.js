@@ -166,9 +166,10 @@ export class TicketsExtensions {
       optionsHTML = `<option value="">⚠️ No Active Draw Pools Available</option>`;
     } else {
       activeLotteries.forEach(l => {
+        const prizeVal = l.prizeAmount ?? l.prizePool ?? 0;
         optionsHTML += `
           <option value="${l.id}">
-            🎰 ${l.name} (৳${l.entryFee} Fee | Prize: ৳${l.prizeAmount.toLocaleString()})
+            🎰 ${l.name} (৳${l.entryFee || 0} Fee | Prize: ৳${Number(prizeVal).toLocaleString()})
           </option>
         `;
       });
@@ -474,7 +475,7 @@ export class TicketsExtensions {
             <div class="flex justify-between"><span class="text-slate-500">Ticket Code:</span> <strong class="text-white">${ticket.code}</strong></div>
             <div class="flex justify-between"><span class="text-slate-500">Draw Pool:</span> <strong class="text-slate-300 truncate max-w-[150px]">${lot.name}</strong></div>
             <div class="flex justify-between"><span class="text-slate-500">Purchase Date:</span> <strong class="text-slate-400">${new Date(ticket.purchaseDate).toLocaleDateString()}</strong></div>
-            <div class="flex justify-between"><span class="text-slate-500">Est. Pool Prize:</span> <strong class="text-white">৳${lot.prizeAmount.toLocaleString()}</strong></div>
+            <div class="flex justify-between"><span class="text-slate-500">Est. Pool Prize:</span> <strong class="text-white">৳${Number(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}</strong></div>
           </div>
 
           <button type="button" data-id="${ticket.id}" class="verifier-view-ticket-btn w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-extrabold text-[9px] py-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer">
@@ -593,9 +594,9 @@ export class TicketsExtensions {
       } else if (sortBy === "date-asc") {
         return new Date(a.purchaseDate) - new Date(b.purchaseDate);
       } else if (sortBy === "prize-desc") {
-        return lotB.prizeAmount - lotA.prizeAmount;
+        return (lotB.prizeAmount || lotB.prizePool || 0) - (lotA.prizeAmount || lotA.prizePool || 0);
       } else if (sortBy === "prize-asc") {
-        return lotA.prizeAmount - lotB.prizeAmount;
+        return (lotA.prizeAmount || lotA.prizePool || 0) - (lotB.prizeAmount || lotB.prizePool || 0);
       }
       return 0;
     });

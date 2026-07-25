@@ -16,14 +16,17 @@
     <!-- Options List -->
     <div class="flex-1 p-4 space-y-3 overflow-y-auto font-sans text-xs">
       <!-- Messenger -->
-      <button type="button" id="sidebar-opt-messenger" class="w-full flex justify-between items-center bg-slate-950 border border-slate-800/60 p-3.5 rounded-2xl hover:bg-slate-850 hover:border-slate-700 transition text-left cursor-pointer group">
+      <button type="button" id="sidebar-opt-messenger" class="w-full flex justify-between items-center bg-slate-950 border border-slate-800/60 p-3.5 rounded-2xl hover:bg-slate-850 hover:border-slate-700 transition text-left cursor-pointer group relative overflow-hidden">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center shrink-0 group-hover:bg-emerald-900/40 transition">
             <i class="fa-solid fa-comments text-emerald-450"></i>
           </div>
           <div>
-            <span class="text-xs font-bold text-white block">Messenger</span>
-            <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Direct chat & message hub</span>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-bold text-white block">VIP Messenger</span>
+              <span class="text-[8px] bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-1.5 py-0.2 rounded uppercase tracking-wider">PRO</span>
+            </div>
+            <span class="text-[9px] text-slate-500 block leading-tight mt-0.5">Encrypted chat, calls, stickers & gifts</span>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -86,6 +89,9 @@
 
     <!-- Advanced Avatar with Photo Glow Frame Wrapper -->
     <div class="relative w-24 h-24 mx-auto flex items-center justify-center group" id="profile-avatar-outer-wrapper">
+      <!-- Dynamic 3D Animation Overlay Container -->
+      <div id="profile-anim-overlay" class="absolute -inset-3 pointer-events-none z-20 flex items-center justify-center"></div>
+
       <!-- Dynamic Frame Overlay Container -->
       <div id="profile-frame-overlay" class="absolute -inset-1.5 pointer-events-none z-10 flex items-center justify-center">
         <!-- Will be dynamically populated based on selected avatarFrame with super premium responsive effects -->

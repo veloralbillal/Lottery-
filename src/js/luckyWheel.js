@@ -94,22 +94,32 @@ export const LuckyWheelModule = {
     const taskCompleted = (this.currentUser.lastDailyTaskDate === todayStr);
     const taskLockerPanel = document.getElementById("checkin-task-locker-panel");
     const claimBtn = document.getElementById("checkin-claim-action-btn");
+    const isTaskRequired = (this.db.settings.sponsorTaskRequired !== false);
 
     if (taskLockerPanel && claimBtn) {
       if (todayClaimed) {
         taskLockerPanel.classList.add("hidden");
         claimBtn.classList.add("hidden");
       } else {
-        if (!taskCompleted) {
+        if (isTaskRequired && !taskCompleted) {
           taskLockerPanel.classList.remove("hidden");
           claimBtn.classList.add("hidden");
           
+          // Dynamic instruction text from admin config
+          const instrEl = document.getElementById("checkin-sponsor-instruction-text");
+          if (instrEl) {
+            instrEl.innerText = this.db.settings.sponsorLinkInstruction || "আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ভিজিট করুন।";
+          }
+
           // Reset sponsor button text to let them do it again today
           const sponsorBtn = document.getElementById("checkin-sponsor-task-btn");
           if (sponsorBtn) {
+            const btnTitle = this.db.settings.sponsorLinkTitle || "স্পন্সর লিংক ভিজিট করুন";
+            const timerSec = this.db.settings.sponsorTaskTimer ?? 5;
             sponsorBtn.href = this.db.settings.sponsorLink || "https://google.com";
+            sponsorBtn.target = "_blank";
             sponsorBtn.style.pointerEvents = "auto";
-            sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (৫ সেকেন্ড)`;
+            sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> ${btnTitle} (${timerSec}s)`;
             sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
           }
         } else {
@@ -132,8 +142,9 @@ export const LuckyWheelModule = {
       return;
     }
 
-    // Secondary security check: is daily task completed?
-    if (this.currentUser.lastDailyTaskDate !== todayStr) {
+    // Secondary security check: is daily task required & completed?
+    const isTaskRequired = (this.db.settings.sponsorTaskRequired !== false);
+    if (isTaskRequired && this.currentUser.lastDailyTaskDate !== todayStr) {
       this.showToast("Please complete today's sponsor task first to unlock the claim button!", "error");
       return;
     }

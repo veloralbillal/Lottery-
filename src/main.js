@@ -30,6 +30,7 @@ import { GameHubModule } from "./js/gameHub.js";
 import { DeviceFingerprint } from "./js/deviceFingerprint.js";
 import { getDefaultDB } from "./js/defaultDB.js";
 import { bundledTabs } from "./js/bundledTabs.js";
+import { TOTP } from "./js/totp.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -320,6 +321,12 @@ export class StateManager {
       }
       if (s.spinPrice === undefined) s.spinPrice = 50;
       if (s.checkinRewards === undefined) s.checkinRewards = [2, 4, 6, 8, 10, 15, 25];
+      if (s.sponsorLink === undefined) s.sponsorLink = "https://google.com";
+      if (s.sponsorLinkTitle === undefined) s.sponsorLinkTitle = "স্পন্সর লিংক ভিজিট করুন";
+      if (s.sponsorLinkInstruction === undefined) s.sponsorLinkInstruction = "আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ভিজিট করুন।";
+      if (s.sponsorTaskTimer === undefined) s.sponsorTaskTimer = 5;
+      if (s.sponsorTaskRequired === undefined) s.sponsorTaskRequired = true;
+      if (s.sponsorAutoOpen === undefined) s.sponsorAutoOpen = true;
       if (s.depBonusPercent === undefined) s.depBonusPercent = 10;
       if (s.depBonusMin === undefined) s.depBonusMin = 500;
       if (s.depBonusEnabled === undefined) s.depBonusEnabled = true;
@@ -3124,7 +3131,7 @@ export class StateManager {
     document.getElementById("detail-lot-name").innerText = lot.name;
     document.getElementById("detail-lot-desc").innerText = lot.details || "Experience live high-payout draws.";
     document.getElementById("detail-lot-fee").innerText = `৳${lot.entryFee}`;
-    document.getElementById("detail-lot-prize").innerText = `৳${lot.prizeAmount}`;
+    document.getElementById("detail-lot-prize").innerText = `৳${lot.prizeAmount || lot.prizePool || 0}`;
     document.getElementById("detail-lot-sales").innerText = `${lot.soldTickets} / ${lot.totalTickets}`;
     
     const lotDrawTime = new Date(lot.drawTime).toLocaleString("en-US", {
@@ -3236,7 +3243,7 @@ export class StateManager {
     document.getElementById("popup-ticket-code").innerText = ticket.code;
     document.getElementById("popup-ticket-lottery").innerText = lot.name;
     document.getElementById("popup-ticket-date").innerText = new Date(ticket.purchaseDate).toLocaleDateString();
-    document.getElementById("popup-ticket-prize").innerText = `৳${lot.prizeAmount}`;
+    document.getElementById("popup-ticket-prize").innerText = `৳${lot.prizeAmount || lot.prizePool || 0}`;
 
     const statusEl = document.getElementById("popup-ticket-status");
     const winDetails = document.getElementById("popup-ticket-live-win");
@@ -3248,7 +3255,7 @@ export class StateManager {
     if (ticket.status === "won") {
       statusEl.className = "font-bold text-emerald-400";
       statusEl.innerText = "🏆 WINNER";
-      document.getElementById("popup-ticket-reward-amount").innerText = ticket.prizeAmount;
+      document.getElementById("popup-ticket-reward-amount").innerText = ticket.prizeAmount || lot.prizeAmount || lot.prizePool || 0;
       winDetails.classList.remove("hidden");
     } else if (ticket.status === "lost") {
       statusEl.className = "font-bold text-slate-500";
@@ -3595,6 +3602,86 @@ function initApplicationLoader() {
     });
   }
 
+  // Helper function for 2FA Google Authenticator verification during login
+  async function prompt2FAForUser(user, app) {
+    return new Promise((resolve) => {
+      let modal = document.getElementById("login-2fa-modal");
+      if (!modal) {
+        modal = document.createElement("div");
+        modal.id = "login-2fa-modal";
+        modal.className = "fixed inset-0 bg-slate-950/90 backdrop-blur-md z-[100000] flex items-center justify-center p-4";
+        modal.innerHTML = `
+          <div class="relative bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm space-y-4 shadow-2xl text-center">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h4 class="text-xs font-black text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Google Authenticator 2FA
+              </h4>
+              <button type="button" id="login-2fa-cancel-btn" class="w-7 h-7 rounded-full bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer">
+                <i class="fa-solid fa-xmark text-xs"></i>
+              </button>
+            </div>
+            <p class="text-[10px] text-slate-300 font-sans">
+              Welcome back <strong class="text-emerald-400">@<span id="login-2fa-user-name"></span></strong>! Enter your 6-digit code from Google Authenticator:
+            </p>
+            <input type="text" id="login-2fa-code-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="123456" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl py-2.5 px-3 text-center text-white font-mono text-lg tracking-widest outline-none" autofocus />
+            <div class="flex gap-2">
+              <button type="button" id="login-2fa-submit-btn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer font-mono flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-right-to-bracket"></i> Verify & Login
+              </button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(modal);
+      }
+
+      const userNameEl = document.getElementById("login-2fa-user-name");
+      if (userNameEl) userNameEl.innerText = user.username;
+      const codeInput = document.getElementById("login-2fa-code-input");
+      if (codeInput) codeInput.value = "";
+      modal.classList.remove("hidden");
+      if (codeInput) setTimeout(() => codeInput.focus(), 100);
+
+      const cleanup = (result) => {
+        modal.classList.add("hidden");
+        resolve(result);
+      };
+
+      const submitBtn = document.getElementById("login-2fa-submit-btn");
+      const cancelBtn = document.getElementById("login-2fa-cancel-btn");
+
+      if (submitBtn) {
+        submitBtn.onclick = async () => {
+          const code = codeInput ? codeInput.value.trim() : "";
+          if (!code || code.length !== 6 || isNaN(code)) {
+            if (app && app.showToast) app.showToast("Please enter a valid 6-digit 2FA code!", "warning");
+            return;
+          }
+          const isValid = await TOTP.verifyCode(user.twoFactorSecret, code);
+          if (isValid) {
+            cleanup(true);
+          } else {
+            if (app && app.showToast) app.showToast("❌ Invalid 2FA Code. Check Google Authenticator and try again.", "error");
+            if (codeInput) {
+              codeInput.value = "";
+              codeInput.focus();
+            }
+          }
+        };
+      }
+
+      if (cancelBtn) cancelBtn.onclick = () => cleanup(false);
+
+      if (codeInput) {
+        codeInput.onkeydown = async (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            if (submitBtn) submitBtn.click();
+          }
+        };
+      }
+    });
+  }
+
   // Login Trigger Action
   const loginForm = document.getElementById("auth-login-form");
   if (loginForm) {
@@ -3678,6 +3765,15 @@ function initApplicationLoader() {
         if (matched.status === "permanently_banned") {
           app.showToast("This account has been permanently barred by operations manager.", "error");
           return;
+        }
+
+        // Check 2FA Google Authenticator
+        if (matched.twoFactorEnabled && matched.twoFactorSecret) {
+          const verified = await prompt2FAForUser(matched, app);
+          if (!verified) {
+            app.showToast("Login cancelled: Google Authenticator 2FA code required.", "warning");
+            return;
+          }
         }
 
         app.currentUser = StateManager.removeCircularReferences(matched);
@@ -4405,7 +4501,10 @@ function initApplicationLoader() {
   // Sponsor Daily Task visit countdown trigger
   const sponsorBtn = document.getElementById("checkin-sponsor-task-btn");
   if (sponsorBtn) {
+    let sponsorInterval = null;
+
     sponsorBtn.addEventListener("click", (e) => {
+      e.preventDefault();
       if (!app.currentUser) {
         app.showToast("Please sign in or register first!", "error");
         return;
@@ -4417,29 +4516,122 @@ function initApplicationLoader() {
         return;
       }
       
-      // Start countdown of 5 seconds
-      let secondsLeft = 5;
+      const targetUrl = app.db.settings.sponsorLink || "https://google.com";
+      const totalTimer = parseInt(app.db.settings.sponsorTaskTimer ?? 5, 10);
+
+      // Log click attempt in sponsorClickLogs DB
+      if (!app.db.sponsorClickLogs) app.db.sponsorClickLogs = [];
+      const clickLog = {
+        id: "spc_" + Date.now() + "_" + Math.random().toString(36).substr(2, 4),
+        userId: app.currentUser.id || app.currentUser.userName,
+        userName: app.currentUser.userName,
+        url: targetUrl,
+        timestamp: new Date().toLocaleString("en-US", { hour12: true }),
+        date: todayStr,
+        verified: false,
+        timeSpentSeconds: 0
+      };
+      app.db.sponsorClickLogs.push(clickLog);
+      app.saveDB();
+
+      // Open target URL in new window/tab
+      try {
+        window.open(targetUrl, "_blank");
+      } catch (err) {
+        console.warn("Could not open window", err);
+      }
+
+      // Show Anti-Cheat Verification Modal
+      const verifyModal = document.getElementById("sponsor-verify-modal");
+      const countdownNumEl = document.getElementById("sponsor-verify-countdown-num");
+      const progressBar = document.getElementById("sponsor-verify-progress-bar");
+      const timeStatusEl = document.getElementById("sponsor-verify-time-status");
+
+      if (verifyModal) verifyModal.classList.remove("hidden");
+      if (countdownNumEl) countdownNumEl.innerText = totalTimer;
+      if (progressBar) progressBar.style.width = "0%";
+      if (timeStatusEl) timeStatusEl.innerText = `VERIFYING (${totalTimer}s)`;
+
       sponsorBtn.style.pointerEvents = "none";
       sponsorBtn.className = "flex-1 bg-slate-800 text-slate-500 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 cursor-not-allowed";
-      
-      const interval = setInterval(() => {
+      sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${totalTimer}s`;
+
+      if (sponsorInterval) clearInterval(sponsorInterval);
+
+      let secondsLeft = totalTimer;
+      const startTime = Date.now();
+
+      sponsorInterval = setInterval(() => {
         secondsLeft--;
-        if (secondsLeft > 0) {
-          sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${secondsLeft}s`;
-        } else {
-          clearInterval(interval);
-          sponsorBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> টাস্ক সম্পন্ন হয়েছে!`;
-          sponsorBtn.className = "flex-1 bg-emerald-950/45 text-emerald-400 border border-emerald-500/30 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5";
-          
-          // Complete task
+        const elapsedSec = Math.floor((Date.now() - startTime) / 1000);
+        const pct = Math.min(100, Math.round((elapsedSec / Math.max(1, totalTimer)) * 100));
+
+        if (progressBar) progressBar.style.width = `${pct}%`;
+        if (countdownNumEl) countdownNumEl.innerText = Math.max(0, secondsLeft);
+        if (timeStatusEl) timeStatusEl.innerText = secondsLeft > 0 ? `VERIFYING (${secondsLeft}s)` : "COMPLETE";
+
+        sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${Math.max(0, secondsLeft)}s`;
+
+        if (secondsLeft <= 0) {
+          clearInterval(sponsorInterval);
+          sponsorInterval = null;
+
+          // Anti-cheat strict time verification check
+          const actualStay = Math.floor((Date.now() - startTime) / 1000);
+          if (actualStay < Math.max(1, totalTimer - 1)) {
+            if (verifyModal) verifyModal.classList.add("hidden");
+            sponsorBtn.style.pointerEvents = "auto";
+            sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
+            sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
+            app.showToast("⚠️ Anti-Cheat Warning: Minimum stay requirement was not satisfied!", "error");
+            return;
+          }
+
+          // Complete verification successfully
+          clickLog.verified = true;
+          clickLog.timeSpentSeconds = actualStay;
           app.currentUser.lastDailyTaskDate = todayStr;
           app.saveDB();
-          
-          // Refresh checkin grid to reveal the claim button
+
+          if (verifyModal) verifyModal.classList.add("hidden");
+
+          sponsorBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> টাস্ক সম্পন্ন হয়েছে!`;
+          sponsorBtn.className = "flex-1 bg-emerald-950/45 text-emerald-400 border border-emerald-500/30 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5";
+
           app.renderDailyCheckinGrid();
-          app.showToast("🎉 Sponsor task completed! Daily check-in reward is now unlocked!", "success");
+          if (app.admin && typeof app.admin.renderSponsorClickAnalytics === "function") {
+            app.admin.renderSponsorClickAnalytics();
+          }
+          app.showToast("🎉 Anti-Cheat Verified! Sponsor task completed & check-in reward unlocked!", "success");
         }
       }, 1000);
+
+      // Bind Modal buttons
+      const reopenBtn = document.getElementById("sponsor-reopen-link-btn");
+      if (reopenBtn && !reopenBtn.dataset.bound) {
+        reopenBtn.dataset.bound = "true";
+        reopenBtn.addEventListener("click", () => {
+          try {
+            window.open(targetUrl, "_blank");
+          } catch (e) {}
+        });
+      }
+
+      const cancelBtn = document.getElementById("sponsor-cancel-verify-btn");
+      if (cancelBtn && !cancelBtn.dataset.bound) {
+        cancelBtn.dataset.bound = "true";
+        cancelBtn.addEventListener("click", () => {
+          if (sponsorInterval) {
+            clearInterval(sponsorInterval);
+            sponsorInterval = null;
+          }
+          if (verifyModal) verifyModal.classList.add("hidden");
+          sponsorBtn.style.pointerEvents = "auto";
+          sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
+          sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
+          app.showToast("Sponsor link verification cancelled.", "info");
+        });
+      }
     });
   }
 
@@ -5029,14 +5221,38 @@ function initApplicationLoader() {
     app.db.settings.depBonusMin = parseFloat(document.getElementById("sys-dep-boost-min").value);
     app.db.settings.depBonusEnabled = document.getElementById("sys-dep-boost-toggle").checked;
 
-    // Save Agent Referral Bonus, Sponsor Link & WhatsApp Settings
-    app.db.settings.agentReferralBonus = parseFloat(document.getElementById("sys-agent-referral-bonus").value || "100");
-    app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url").value.trim();
-    app.db.settings.sponsorLink = document.getElementById("sys-checkin-sponsor-link").value.trim();
+    // Save Agent Referral Bonus & WhatsApp Settings
+    app.db.settings.agentReferralBonus = parseFloat(document.getElementById("sys-agent-referral-bonus")?.value || "100");
+    app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url")?.value.trim() || "";
 
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");
     app.render();
+    });
+  }
+
+  const saveCheckinSponsorForm = document.getElementById("admin-settings-checkin-sponsor-form");
+  if (saveCheckinSponsorForm) {
+    saveCheckinSponsorForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const s = app.db.settings;
+      s.sponsorTaskRequired = document.getElementById("sys-checkin-task-required")?.checked !== false;
+      s.sponsorLink = document.getElementById("sys-checkin-sponsor-link")?.value.trim() || "https://google.com";
+      s.sponsorLinkTitle = document.getElementById("sys-checkin-sponsor-title")?.value.trim() || "স্পন্সর লিংক ভিজিট করুন";
+      s.sponsorLinkInstruction = document.getElementById("sys-checkin-sponsor-instruction")?.value.trim() || "আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ভিজিট করুন।";
+      s.sponsorTaskTimer = parseInt(document.getElementById("sys-checkin-sponsor-timer")?.value || "5", 10);
+      s.sponsorAutoOpen = document.getElementById("sys-checkin-auto-open")?.checked !== false;
+
+      const newRewards = [];
+      for (let i = 1; i <= 7; i++) {
+        const val = parseFloat(document.getElementById(`sys-checkin-reward-day${i}`)?.value || "0");
+        newRewards.push(val > 0 ? val : (i * 2));
+      }
+      s.checkinRewards = newRewards;
+
+      app.saveDB();
+      app.showToast("⚙️ Daily Check-In & Sponsor Link settings saved!", "success");
+      app.render();
     });
   }
 

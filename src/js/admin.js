@@ -1,6 +1,7 @@
 // ============================================================================
 // ADMIN PANEL MODULAR SYSTEM
 // ============================================================================
+import { CheckinSettingsTab } from "../admin_tabs/checkinSettings.js";
 
 export const AdminModule = {
   renderAdmin() {
@@ -58,6 +59,7 @@ export const AdminModule = {
     hideViewport("admin-tab-vip");
     hideViewport("admin-tab-jackpot");
     hideViewport("admin-tab-tasks");
+    hideViewport("admin-tab-checkin");
     hideViewport("admin-tab-agents");
     hideViewport("admin-tab-agent-leaders");
     hideViewport("admin-tab-subagents-list");
@@ -127,6 +129,8 @@ export const AdminModule = {
         this.renderAdminJackpot();
       } else if (this.currentAdminTab === "tasks") {
         this.renderAdminTasks();
+      } else if (this.currentAdminTab === "checkin") {
+        this.renderAdminCheckin();
       } else if (this.currentAdminTab === "settings" || this.currentAdminTab === "gateways") {
         this.renderAdminSettings();
       } else if (this.currentAdminTab === "sync-vault") {
@@ -2186,6 +2190,10 @@ export const AdminModule = {
     });
   },
 
+  renderAdminCheckin() {
+    CheckinSettingsTab.renderCheckinSettings(this);
+  },
+
   renderAdminSettings() {
     const s = this.db.settings;
     if (!s) return;
@@ -2205,9 +2213,6 @@ export const AdminModule = {
 
     const adminP = document.getElementById("sys-admin-p");
     if (adminP) adminP.value = s.adminPass || "Admin123";
-
-    const sponsorLinkInput = document.getElementById("sys-checkin-sponsor-link");
-    if (sponsorLinkInput) sponsorLinkInput.value = s.sponsorLink || "https://google.com";
 
     const agentRefBonus = document.getElementById("sys-agent-referral-bonus");
     if (agentRefBonus) agentRefBonus.value = s.agentReferralBonus ?? 100;
@@ -2290,6 +2295,71 @@ export const AdminModule = {
       }
     } catch (err) {
       console.warn("Exception in refreshAdminQRPreview:", err);
+    }
+  },
+
+  renderSponsorClickAnalytics() {
+    const totalEl = document.getElementById("admin-sponsor-total-clicks");
+    const verifiedEl = document.getElementById("admin-sponsor-verified-visits");
+    const todayEl = document.getElementById("admin-sponsor-today-clicks");
+    const rateEl = document.getElementById("admin-sponsor-success-rate");
+    const countEl = document.getElementById("admin-sponsor-log-count");
+    const tbody = document.getElementById("admin-sponsor-click-logs-body");
+
+    if (!totalEl || !tbody) return;
+
+    const logs = this.db.sponsorClickLogs || [];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const totalCount = logs.length;
+    const verifiedCount = logs.filter(l => l.verified).length;
+    const todayCount = logs.filter(l => l.date === todayStr).length;
+    const rate = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 100;
+
+    totalEl.innerText = totalCount;
+    verifiedEl.innerText = verifiedCount;
+    todayEl.innerText = todayCount;
+    rateEl.innerText = `${rate}%`;
+    if (countEl) countEl.innerText = `${totalCount} records`;
+
+    if (logs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="p-4 text-center text-slate-500 text-[10px] italic">No click logs recorded yet.</td>
+        </tr>`;
+    } else {
+      // Show newest 25 logs
+      const sortedLogs = [...logs].reverse().slice(0, 25);
+      tbody.innerHTML = sortedLogs.map(l => {
+        const isVerified = l.verified;
+        const statusBadge = isVerified
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-[9px] font-bold"><i class="fa-solid fa-circle-check"></i> Verified</span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-400 text-[9px] font-bold"><i class="fa-solid fa-clock"></i> Pending / Failed</span>`;
+
+        return `
+          <tr class="hover:bg-slate-900/60 transition">
+            <td class="p-2.5 pl-3 font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-user text-amber-500 text-[10px]"></i> ${l.userName || "Guest"}
+            </td>
+            <td class="p-2.5 text-slate-400 text-[10px]">${l.timestamp || l.date || "N/A"}</td>
+            <td class="p-2.5">${statusBadge}</td>
+            <td class="p-2.5 pr-3 text-right font-bold text-slate-300">${l.timeSpentSeconds || 0}s</td>
+          </tr>`;
+      }).join("");
+    }
+
+    // Attach clear listener
+    const clearBtn = document.getElementById("clear-sponsor-click-logs-btn");
+    if (clearBtn && !clearBtn.dataset.bound) {
+      clearBtn.dataset.bound = "true";
+      clearBtn.addEventListener("click", () => {
+        if (confirm("Are you sure you want to reset and clear all sponsor link click logs?")) {
+          this.db.sponsorClickLogs = [];
+          this.saveDB();
+          this.renderSponsorClickAnalytics();
+          this.showToast("Sponsor link click history cleared.", "info");
+        }
+      });
     }
   },
 

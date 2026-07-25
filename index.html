@@ -927,6 +927,10 @@
                 <span><i class="fa-solid fa-list-check text-cyan-400 animate-pulse mr-2"></i> Daily Tasks</span>
                 <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
               </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="checkin">
+                <span><i class="fa-solid fa-calendar-check text-amber-400 mr-2"></i> Daily Check-In Control</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="badge-requests">
                 <span><i class="fa-solid fa-ribbon text-rose-500 mr-2"></i> Badge Requests</span>
                 <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
@@ -1008,6 +1012,9 @@
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="tasks">
           <i class="fa-solid fa-list-check text-cyan-400 animate-pulse"></i> Daily Tasks
+        </button>
+        <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="checkin">
+          <i class="fa-solid fa-calendar-check text-amber-400"></i> Daily Check-In
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="badge-requests">
           <i class="fa-solid fa-ribbon text-rose-500"></i> Badge Requests <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-badge-requests-count-badge">0</span>
@@ -2202,6 +2209,182 @@
         </div>
       </div>
 
+      <!-- ================= ADMIN TAB: DAILY CHECK-IN CONTROL ================= -->
+      <div id="admin-tab-checkin" class="hidden space-y-6">
+        <!-- DAILY CHECK-IN & SPONSOR LINK ADVANCED SETTINGS -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+            <div>
+              <h3 class="text-xs font-bold font-mono tracking-wider uppercase text-amber-400 flex items-center gap-2">
+                <i class="fa-solid fa-calendar-check text-amber-500 animate-pulse"></i> Daily Check-In & Sponsor Link Control (Advanced)
+              </h3>
+              <p class="text-[10px] text-slate-400 font-sans mt-0.5">Manage the sponsor link, visit timer, instruction note, and daily bonus rewards required for user check-in claims.</p>
+            </div>
+            <span class="text-[9px] font-mono px-2.5 py-1 bg-amber-950/60 border border-amber-800/50 text-amber-400 rounded-lg font-black uppercase shrink-0">Admin Control</span>
+          </div>
+
+          <form id="admin-settings-checkin-sponsor-form" class="space-y-4 text-xs font-mono">
+            <!-- Requirement Toggle -->
+            <div class="flex justify-between items-center bg-slate-950 p-3.5 border border-slate-800 rounded-2xl">
+              <div>
+                <span class="text-xs font-bold text-white block">Mandatory Link Visit (Task Locker)</span>
+                <span class="text-[10px] text-slate-400 block font-sans">If enabled, users must click the link & wait before unlocking the check-in claim button</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input id="sys-checkin-task-required" type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            <!-- Sponsor Destination URL & Title -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div class="space-y-1.5">
+                <label class="block text-slate-400 font-bold">Sponsor Destination URL</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-amber-500 text-xs"><i class="fa-solid fa-link"></i></span>
+                  <input id="sys-checkin-sponsor-link" type="url" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-white outline-none focus:border-amber-500 text-xs" placeholder="e.g. https://t.me/your_channel or https://google.com" required />
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-400 font-bold">Button Display Label</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-amber-500 text-xs"><i class="fa-solid fa-i-cursor"></i></span>
+                  <input id="sys-checkin-sponsor-title" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-white outline-none focus:border-amber-500 text-xs" placeholder="e.g. স্পন্সর লিংক ভিজিট করুন" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Instruction Note & Wait Timer -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+              <div class="md:col-span-2 space-y-1.5">
+                <label class="block text-slate-400 font-bold">User Instruction Note</label>
+                <input id="sys-checkin-sponsor-instruction" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500 text-xs" placeholder="e.g. আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ভিজিট করুন।" />
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-400 font-bold">Verification Timer (Seconds)</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-2.5 text-amber-500 text-xs"><i class="fa-solid fa-stopwatch"></i></span>
+                  <input id="sys-checkin-sponsor-timer" type="number" min="0" max="300" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-white outline-none focus:border-amber-500 text-xs" placeholder="5" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Auto Open Toggle -->
+            <div class="flex justify-between items-center bg-slate-955/50 p-3 border border-slate-800/80 rounded-2xl">
+              <div>
+                <span class="text-xs font-bold text-slate-200 block">Auto-Open Link in New Tab on Click</span>
+                <span class="text-[10px] text-slate-500 block font-sans">Automatically opens the URL when user taps the button</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                <input id="sys-checkin-auto-open" type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-500"></div>
+              </label>
+            </div>
+
+            <!-- Custom 7 Days Bonus Amount Config -->
+            <div class="space-y-2 pt-1 border-t border-slate-800/80">
+              <span class="block text-xs font-bold text-amber-400">7-Day Consecutive Check-In Base Cash Rewards (৳)</span>
+              <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 1</label>
+                  <input id="sys-checkin-reward-day1" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 2</label>
+                  <input id="sys-checkin-reward-day2" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 3</label>
+                  <input id="sys-checkin-reward-day3" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 4</label>
+                  <input id="sys-checkin-reward-day4" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 5</label>
+                  <input id="sys-checkin-reward-day5" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 6</label>
+                  <input id="sys-checkin-reward-day6" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+                <div>
+                  <label class="block text-[9px] text-slate-500 text-center font-bold">Day 7</label>
+                  <input id="sys-checkin-reward-day7" type="number" step="0.5" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1.5 px-2 text-center text-white outline-none focus:border-amber-500 text-xs font-bold" />
+                </div>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs py-3 rounded-xl transition shadow-lg cursor-pointer">
+              <i class="fa-solid fa-floppy-disk mr-1"></i> Save Daily Check-In & Sponsor Link Config
+            </button>
+          </form>
+
+          <!-- LIVE SPONSOR CLICK ANALYTICS & VISIT LOGS (FEATURE 10) -->
+          <div class="mt-6 pt-5 border-t border-slate-800 space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 class="text-xs font-bold font-mono uppercase text-amber-400 flex items-center gap-1.5">
+                  <i class="fa-solid fa-chart-line text-amber-500"></i> Sponsor Link Click Analytics & Anti-Cheat Logs
+                </h4>
+                <p class="text-[10px] text-slate-400 font-sans">Real-time stats of total clicks, anti-cheat verified site visits, and user verification logs.</p>
+              </div>
+              <button id="clear-sponsor-click-logs-btn" type="button" class="px-3 py-1.5 bg-rose-950/50 border border-rose-800/60 hover:bg-rose-900/60 text-rose-300 text-[10px] font-bold rounded-lg transition shrink-0 cursor-pointer flex items-center gap-1 self-start sm:self-auto">
+                <i class="fa-solid fa-trash-can text-[9px]"></i> Clear Click Logs
+              </button>
+            </div>
+
+            <!-- Metrics Grid -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
+              <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-2xl">
+                <span class="text-[9px] text-slate-500 font-bold uppercase block">Total Click Attempts</span>
+                <span id="admin-sponsor-total-clicks" class="text-base font-black text-white block mt-0.5">0</span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-2xl">
+                <span class="text-[9px] text-slate-500 font-bold uppercase block">Verified Visits (5s+)</span>
+                <span id="admin-sponsor-verified-visits" class="text-base font-black text-emerald-400 block mt-0.5">0</span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-2xl">
+                <span class="text-[9px] text-slate-500 font-bold uppercase block">Today's Visits</span>
+                <span id="admin-sponsor-today-clicks" class="text-base font-black text-amber-400 block mt-0.5">0</span>
+              </div>
+              <div class="bg-slate-950 border border-slate-800/80 p-3 rounded-2xl">
+                <span class="text-[9px] text-slate-500 font-bold uppercase block">Verification Rate</span>
+                <span id="admin-sponsor-success-rate" class="text-base font-black text-cyan-400 block mt-0.5">100%</span>
+              </div>
+            </div>
+
+            <!-- Click Logs Table -->
+            <div class="bg-slate-950 border border-slate-800/80 rounded-2xl overflow-hidden">
+              <div class="px-3 py-2 bg-slate-900/80 border-b border-slate-800 text-[10px] font-bold text-slate-400 font-mono uppercase flex justify-between items-center">
+                <span>Recent User Click Activity Logs</span>
+                <span id="admin-sponsor-log-count" class="text-slate-500">0 records</span>
+              </div>
+              <div class="max-h-52 overflow-y-auto">
+                <table class="w-full text-left border-collapse text-[11px] font-mono">
+                  <thead class="bg-slate-900/50 text-slate-500 text-[9px] uppercase sticky top-0">
+                    <tr>
+                      <th class="p-2.5 pl-3">User</th>
+                      <th class="p-2.5">Date & Time</th>
+                      <th class="p-2.5">Anti-Cheat Status</th>
+                      <th class="p-2.5 pr-3 text-right">Stay Time</th>
+                    </tr>
+                  </thead>
+                  <tbody id="admin-sponsor-click-logs-body" class="divide-y divide-slate-800/60 text-slate-300">
+                    <tr>
+                      <td colspan="4" class="p-4 text-center text-slate-500 text-[10px] italic">No click logs recorded yet.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ================= ADMIN TAB: SETTINGS APP CONFIGS ================= -->
       <div id="admin-tab-settings" class="hidden space-y-6">
         <!-- CORE APPLICATION SYSTEMS SETTINGS (CONSOLIDATED MAINTENANCE & APKS) -->
@@ -2240,11 +2423,6 @@
                 <input id="sys-admin-p" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500" placeholder="Required for management" />
               </div>
             </div>
-
-              <div class="space-y-1.5 font-mono">
-                <label class="block text-slate-500 font-bold text-amber-400">Daily Check-in Sponsor Link (URL)</label>
-                <input id="sys-checkin-sponsor-link" type="url" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-amber-500" placeholder="e.g. https://google.com" />
-              </div>
 
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-1.5">
@@ -4339,7 +4517,7 @@
             </div>
             <div class="space-y-0.5">
               <span class="text-[10px] font-black text-amber-400 uppercase tracking-wider block font-mono">🔒 টাস্ক-লকড ডেইলি বোনাস (Unlock Required)</span>
-              <span class="text-[9px] text-slate-300 block font-sans leading-tight">আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ৫ সেকেন্ডের জন্য ভিজিট করুন।</span>
+              <span id="checkin-sponsor-instruction-text" class="text-[9px] text-slate-300 block font-sans leading-tight">আজকের বোনাস আনলক করতে নিচের স্পন্সর লিংকটি ভিজিট করুন।</span>
             </div>
           </div>
           
@@ -4357,6 +4535,53 @@
 
         <div class="text-[9px] text-slate-500 text-center font-sans">
           * Checked-in states reset if sequential checkin interval extends past 36 hours. Open every day to claim max prizes!
+        </div>
+      </div>
+    </div>
+
+    <!-- ANTI-CHEAT SPONSOR LINK VERIFICATION MODAL -->
+    <div id="sponsor-verify-modal" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-[9999] overflow-y-auto">
+      <div class="bg-slate-900 border border-amber-500/30 p-6 rounded-3xl w-full max-w-sm space-y-5 shadow-2xl relative text-center animate-in fade-in zoom-in-95 duration-200">
+        <div class="w-16 h-16 mx-auto rounded-full bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 relative">
+          <i class="fa-solid fa-stopwatch text-2xl animate-pulse"></i>
+          <div class="absolute inset-0 rounded-full border-2 border-amber-500/20 animate-ping opacity-25"></div>
+        </div>
+
+        <div class="space-y-1.5">
+          <h3 class="text-sm font-black font-mono text-white uppercase tracking-wider flex items-center justify-center gap-2">
+            <i class="fa-solid fa-shield-halved text-amber-400"></i> Anti-Cheat Site Visit
+          </h3>
+          <p id="sponsor-verify-modal-desc" class="text-xs text-slate-300 font-sans leading-relaxed">
+            স্পন্সর ওয়েবসাইটটি খোলা হয়েছে। বোনাস আনলক করতে অনুগ্রহ করে <span id="sponsor-verify-countdown-num" class="text-amber-400 font-mono font-black text-sm">5</span> সেকেন্ড অপেক্ষা করুন।
+          </p>
+        </div>
+
+        <!-- Animated Progress Bar -->
+        <div class="space-y-1">
+          <div class="w-full bg-slate-950 border border-slate-800 rounded-full h-3 p-0.5 overflow-hidden">
+            <div id="sponsor-verify-progress-bar" class="bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-1000 ease-linear" style="width: 0%"></div>
+          </div>
+          <div class="flex justify-between text-[9px] font-mono text-slate-500 font-bold px-1">
+            <span>START</span>
+            <span id="sponsor-verify-time-status">VERIFYING (5s)</span>
+            <span>READY</span>
+          </div>
+        </div>
+
+        <div class="bg-amber-950/30 border border-amber-900/40 p-3 rounded-2xl text-[10px] text-amber-300/90 font-sans text-left space-y-1">
+          <div class="font-bold font-mono text-amber-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-triangle-exclamation"></i> Anti-Bypass Rule
+          </div>
+          <p class="leading-tight text-[9.5px]">ট্যাব বন্ধ করলে বা সাইটে ন্যূনতম সময় ভিজিট না করলে আপনার ভিজিট আনলক বাতিল হবে।</p>
+        </div>
+
+        <div class="flex gap-2">
+          <button id="sponsor-reopen-link-btn" type="button" class="flex-1 bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-300 font-bold text-xs py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-amber-400"></i> Re-open Link
+          </button>
+          <button id="sponsor-cancel-verify-btn" type="button" class="bg-slate-950 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 font-bold text-xs py-2.5 px-4 rounded-xl transition border border-slate-800 cursor-pointer">
+            Cancel
+          </button>
         </div>
       </div>
     </div>

@@ -112,7 +112,7 @@ export class HomeTab {
                   <label class="text-[10px] font-mono text-slate-400 block mb-1">লটারি সিলেক্ট করুন (Target Draw)</label>
                   <select id="syn-create-lottery" class="w-full text-xs text-white bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 outline-none focus:border-red-500">
                     ${appInstance.db.lotteries.filter(l => l.category !== "Quick Draw" && l.status === "active").map(l => `
-                      <option value="${l.id}">${l.name} (৳${l.entryFee} Entry, Prize: ৳${l.prizeAmount})</option>
+                      <option value="${l.id}">${l.name} (৳${l.entryFee || 0} Entry, Prize: ৳${l.prizeAmount || l.prizePool || 0})</option>
                     `).join("")}
                   </select>
                 </div>
@@ -268,7 +268,8 @@ export class HomeTab {
                       // Find if this group ticket won
                       const winningTicket = appInstance.db.tickets.find(t => t.lotteryId === s.lotteryId && t.isSyndicate && t.syndicateId === s.id);
                       if (winningTicket && winningTicket.status === "won") {
-                        const splitAmt = Math.round((winningTicket.prizeAmount / s.size) * 100) / 100;
+                        const winAmt = winningTicket.prizeAmount || 0;
+                        const splitAmt = Math.round((winAmt / s.size) * 100) / 100;
                         resultLabel = `<span class="text-emerald-400 font-bold">+৳${splitAmt} Split Won! 🎉</span>`;
                       } else {
                         resultLabel = `<span class="text-slate-500">Lost 😢</span>`;
@@ -279,7 +280,8 @@ export class HomeTab {
                         statusLabel = `<span class="bg-slate-800 text-slate-400 px-2 py-0.5 rounded text-[9px]">Drawn</span>`;
                         const winningTicket = appInstance.db.tickets.find(t => t.lotteryId === s.lotteryId && t.isSyndicate && t.syndicateId === s.id);
                         if (winningTicket && winningTicket.status === "won") {
-                          const splitAmt = Math.round((winningTicket.prizeAmount / s.size) * 100) / 100;
+                          const winAmt = winningTicket.prizeAmount || 0;
+                          const splitAmt = Math.round((winAmt / s.size) * 100) / 100;
                           resultLabel = `<span class="text-emerald-400 font-bold">+৳${splitAmt} Split Won! 🎉</span>`;
                         } else {
                           resultLabel = `<span class="text-slate-500">Lost 😢</span>`;
@@ -486,7 +488,7 @@ export class HomeTab {
                             ${winnerCode}
                           </span>
                         </div>
-                        <span class="text-emerald-400 font-mono font-bold text-xs mt-1 block">৳${l.prizeAmount} Prize</span>
+                        <span class="text-emerald-400 font-mono font-bold text-xs mt-1 block">৳${l.prizeAmount || l.prizePool || 0} Prize</span>
                       </div>
                     </div>
                   `;
@@ -619,7 +621,7 @@ export class HomeTab {
         <div class="flex justify-between items-center border-t border-slate-800/80 pt-3 text-[11px] font-mono">
           <div class="flex items-center gap-1.5 text-slate-400">
             <i class="fa-solid fa-trophy text-rose-500"></i>
-            <span>Prize: <span class="text-white font-bold">৳${lot.prizeAmount}</span></span>
+            <span>Prize: <span class="text-white font-bold">৳${lot.prizeAmount || lot.prizePool || 0}</span></span>
           </div>
           <button class="buy-pool-btn bg-gradient-to-r from-red-600 to-rose-600 hover:scale-103 text-white text-[11px] font-black py-2 px-4 rounded-xl shadow-lg transition active:opacity-90" data-id="${lot.id}">
             Buy Ticket
