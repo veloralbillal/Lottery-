@@ -218,6 +218,32 @@ export function getDefaultDB() {
         date: "2026-06-13T16:00:00Z"
       }
     ],
+    webPushAds: [
+      {
+        id: "ad_101",
+        title: "🔥 ৫০% ডিপোজিট ক্যাশব্যাক বোনাস!",
+        message: "আজই বিকাশ বা নগদে ৫০০ টাকা ডিপোজিট করে ৫০০ টাকা অতিরিক্ত বোনাস গ্রহণ করুন।",
+        imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800",
+        ctaText: "👉 Claim Bonus Now",
+        iconType: "bkash",
+        targetTab: "tab-wallet",
+        targetAudience: "all",
+        clicks: 42,
+        date: new Date(Date.now() - 3600000 * 5).toISOString()
+      },
+      {
+        id: "ad_102",
+        title: "🎰 ৳১,০০,০০০ মেগা লটারি ড্র স্টার্ট!",
+        message: "আজ রাতের মেগা জ্যাকপট টিকিটের ড্র হতে আর মাত্র ৩০ মিনিট বাকি! এখনই টিকিট নিশ্চিত করুন।",
+        imageUrl: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=800",
+        ctaText: "🎟️ Buy Ticket ৳10",
+        iconType: "jackpot",
+        targetTab: "tab-jackpot",
+        targetAudience: "all",
+        clicks: 89,
+        date: new Date(Date.now() - 3600000 * 24).toISOString()
+      }
+    ],
     settings: {
       mobileAgentBkash: "01799228833",
       mobileAgentNagad: "01855221144",

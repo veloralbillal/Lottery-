@@ -64,6 +64,7 @@ export const AdminModule = {
     hideViewport("admin-tab-agent-leaders");
     hideViewport("admin-tab-subagents-list");
     hideViewport("admin-tab-events");
+    hideViewport("admin-tab-splash");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -137,6 +138,8 @@ export const AdminModule = {
         this.renderSyncVaultTab();
       } else if (this.currentAdminTab === "events") {
         this.renderAdminEvents();
+      } else if (this.currentAdminTab === "splash") {
+        this.renderAdminSplashConfig();
       } else if (this.currentAdminTab === "agents") {
         this.renderAdminAgents();
       } else if (this.currentAdminTab === "agent-leaders") {
@@ -2263,6 +2266,93 @@ export const AdminModule = {
     if (qrTypeSelect) qrTypeSelect.onchange = toggleCustomFields;
 
     this.refreshAdminQRPreview();
+    this.renderWebPushAdsHistory();
+  },
+
+  renderWebPushAdsHistory() {
+    const tbody = document.getElementById("web-push-ads-history-tbody");
+    if (!tbody) return;
+
+    if (!this.db.webPushAds) this.db.webPushAds = [];
+
+    if (this.db.webPushAds.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-6 text-center text-slate-500 font-sans italic text-xs">
+            No Web Push Ad campaigns dispatched yet. Use the console above to broadcast your first promo ad!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = this.db.webPushAds.map(ad => {
+      const dateStr = ad.date ? new Date(ad.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Just now";
+      const targetLabel = {
+        all: "🌐 All Players",
+        vip: "👑 VIP Members",
+        unverified: "⚠️ Unverified",
+        agents: "👤 Agents"
+      }[ad.targetAudience] || "🌐 All Players";
+
+      return `
+        <tr class="hover:bg-slate-850/60 transition">
+          <td class="py-2.5 px-2">
+            <div class="flex items-center gap-2">
+              ${ad.imageUrl ? `<img src="${ad.imageUrl}" class="w-7 h-7 rounded-lg object-cover border border-slate-800 shrink-0" alt="ad" />` : `<div class="w-7 h-7 rounded-lg bg-cyan-950 text-cyan-400 flex items-center justify-center font-bold shrink-0"><i class="fa-solid fa-rectangle-ad text-xs"></i></div>`}
+              <div>
+                <span class="font-bold text-white block line-clamp-1">${ad.title}</span>
+                <span class="text-[9px] text-slate-500 line-clamp-1 font-sans">${ad.message}</span>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-2">
+            <span class="inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[9px] font-bold text-cyan-300">${targetLabel}</span>
+          </td>
+          <td class="py-2.5 px-2 text-center font-mono text-[10px] text-slate-400">
+            ${(ad.targetTab || "none").replace("tab-", "")}
+          </td>
+          <td class="py-2.5 px-2 text-center font-bold text-emerald-400 font-mono">
+            ${ad.clicks || 0}
+          </td>
+          <td class="py-2.5 px-2 text-right font-mono text-[10px] text-slate-400 whitespace-nowrap">
+            ${dateStr}
+          </td>
+          <td class="py-2.5 px-2 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <button data-resend-ad="${ad.id}" class="resend-ad-btn px-2 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800/60 text-cyan-300 rounded text-[9px] font-bold transition cursor-pointer" title="Re-dispatch Campaign">
+                🚀 Re-Send
+              </button>
+              <button data-delete-ad="${ad.id}" class="delete-ad-btn p-1 text-slate-500 hover:text-rose-400 transition cursor-pointer" title="Delete Log">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Attach event listeners for Re-Send and Delete buttons
+    tbody.querySelectorAll(".resend-ad-btn").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-resend-ad");
+        const ad = this.db.webPushAds.find(a => a.id === id);
+        if (ad) {
+          NotificationEngine.triggerWebPushAd(ad);
+          this.showToast(`🚀 Web Push Ad "${ad.title}" re-dispatched!`, "success");
+        }
+      };
+    });
+
+    tbody.querySelectorAll(".delete-ad-btn").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-delete-ad");
+        this.db.webPushAds = this.db.webPushAds.filter(a => a.id !== id);
+        this.saveDB();
+        this.renderWebPushAdsHistory();
+        this.showToast("Web Push Ad log deleted.", "info");
+      };
+    });
   },
 
   refreshAdminQRPreview() {
@@ -3256,5 +3346,172 @@ export const AdminModule = {
 
       container.appendChild(el);
     });
+  },
+
+  renderAdminSplashConfig() {
+    if (!this.db.settings) this.db.settings = {};
+    if (this.db.settings.splashEnabled === undefined) this.db.settings.splashEnabled = true;
+    if (!this.db.settings.splashTitle) this.db.settings.splashTitle = "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 5;
+    if (this.db.settings.splashShowWinnerCard === undefined) this.db.settings.splashShowWinnerCard = true;
+    if (!this.db.settings.splashFeaturedWinner) this.db.settings.splashFeaturedWinner = "auto";
+
+    const isEnabled = this.db.settings.splashEnabled !== false;
+    const badgeEl = document.getElementById("admin-splash-status-badge");
+    if (badgeEl) {
+      if (isEnabled) {
+        badgeEl.className = "px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-black text-[10px]";
+        badgeEl.innerText = "ENABLED 🟢";
+      } else {
+        badgeEl.className = "px-2.5 py-0.5 rounded bg-red-950 text-red-400 border border-red-800/60 font-black text-[10px]";
+        badgeEl.innerText = "DISABLED 🔴";
+      }
+    }
+
+    // Toggle button binding
+    const toggleBtn = document.getElementById("admin-toggle-splash-enable-btn");
+    if (toggleBtn) {
+      toggleBtn.onclick = (e) => {
+        e.preventDefault();
+        this.db.settings.splashEnabled = !this.db.settings.splashEnabled;
+        this.saveDB();
+        const stateStr = this.db.settings.splashEnabled ? "Enabled" : "Disabled";
+        this.showToast(`Startup Splash Screen is now ${stateStr}!`, this.db.settings.splashEnabled ? "success" : "warning");
+        this.renderAdminSplashConfig();
+      };
+    }
+
+    // Test button binding
+    const testBtn = document.getElementById("admin-test-splash-btn");
+    if (testBtn) {
+      testBtn.onclick = (e) => {
+        e.preventDefault();
+        if (window.uiEffects && typeof window.uiEffects.triggerTestSplash === "function") {
+          window.uiEffects.triggerTestSplash();
+        } else {
+          this.showToast("Triggering splash screen preview...", "info");
+          const splashEl = document.getElementById("splash-screen");
+          if (splashEl) {
+            splashEl.classList.remove("hidden");
+            splashEl.style.opacity = "1";
+            setTimeout(() => {
+              splashEl.style.opacity = "0";
+              setTimeout(() => splashEl.classList.add("hidden"), 500);
+            }, 5000);
+          }
+        }
+      };
+    }
+
+    // Determine Top #1 Winner for Preview Card
+    const users = this.db.users || [];
+    let topWinner = null;
+    const featuredId = this.db.settings.splashFeaturedWinner;
+    if (featuredId && featuredId !== "auto") {
+      topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
+    }
+    if (!topWinner && users.length) {
+      topWinner = [...users].sort((a,b) => (b.profit||0) - (a.profit||0))[0];
+    }
+
+    const previewContainer = document.getElementById("admin-top-winner-preview-container");
+    if (previewContainer) {
+      if (topWinner) {
+        const photoUrl = topWinner.photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+        previewContainer.innerHTML = `
+          <div class="flex items-center gap-3.5">
+            <!-- SVIP TOP 1 FRAME WITH PROFILE PHOTO -->
+            <div class="relative w-14 h-14 shrink-0 flex items-center justify-center select-none py-1">
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center animate-bounce" style="animation-duration: 2s;">
+                <i class="fa-solid fa-crown text-amber-300 text-xs drop-shadow-[0_0_8px_rgba(251,191,36,1)]"></i>
+              </div>
+              <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 p-[2px] animate-spin-slow shadow-[0_0_15px_rgba(251,191,36,0.8)] pointer-events-none">
+                <div class="w-full h-full bg-slate-950 rounded-full"></div>
+              </div>
+              <div class="absolute -inset-1.5 rounded-full border border-amber-400/40 animate-pulse pointer-events-none"></div>
+              <div class="absolute left-[-8px] top-[calc(50%-8px)] z-20 pointer-events-none">
+                <i class="fa-solid fa-feather text-amber-300 text-xs drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform -rotate-[25deg]"></i>
+              </div>
+              <div class="absolute right-[-8px] top-[calc(50%-8px)] z-20 pointer-events-none">
+                <i class="fa-solid fa-feather text-amber-300 text-xs drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform rotate-[25deg] scale-x-[-1]"></i>
+              </div>
+              <div class="w-11 h-11 rounded-full overflow-hidden relative z-10 border-2 border-amber-300/90 bg-slate-900 shadow-inner flex items-center justify-center">
+                <img src="${photoUrl}" class="w-full h-full object-cover" alt="Top Winner Profile" />
+              </div>
+              <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 font-black text-[7px] font-mono px-1.5 py-0.5 rounded-full border border-amber-200 shadow-md uppercase whitespace-nowrap tracking-tighter">
+                TOP 1 SVIP
+              </div>
+            </div>
+
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[8px] font-black uppercase text-amber-300 tracking-wider bg-amber-950/90 px-2 py-0.5 rounded border border-amber-700/60 font-mono flex items-center gap-1">
+                  <i class="fa-solid fa-trophy text-[9px] text-amber-400"></i> TOP 1 WINNER
+                </span>
+                <span class="text-[9px] font-mono text-slate-400">ID: <strong class="text-cyan-300">#${topWinner.id}</strong></span>
+              </div>
+              <h4 class="text-sm font-black text-white font-sans">@${topWinner.username}</h4>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 text-right">
+            <div>
+              <span class="block text-[8px] font-mono text-slate-400 uppercase">App Logo</span>
+              <img src="./logo.jpg" class="w-8 h-8 rounded-lg border border-amber-400/80 object-cover inline-block" />
+            </div>
+            <div>
+              <span class="block text-[8px] font-mono text-slate-400 uppercase">Top Profit</span>
+              <span class="font-black text-amber-300 text-base font-mono">৳${(topWinner.profit || 1250000).toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        previewContainer.innerHTML = `
+          <div class="text-slate-400 text-xs font-mono">No players registered in database yet. Default fallback top winner card will be shown.</div>
+        `;
+      }
+    }
+
+    // Populate user select dropdown
+    const winnerSelect = document.getElementById("sys-splash-featured-winner");
+    if (winnerSelect) {
+      winnerSelect.innerHTML = `<option value="auto">🔥 Auto-Detect (Highest Profit Player)</option>`;
+      users.forEach(u => {
+        const isSelected = (featuredId === u.id || featuredId === u.username) ? "selected" : "";
+        winnerSelect.innerHTML += `<option value="${u.id}" ${isSelected}>@${u.username} (ID: #${u.id} - Profit: ৳${(u.profit||0).toLocaleString()})</option>`;
+      });
+      winnerSelect.value = featuredId || "auto";
+    }
+
+    // Populate form fields
+    const titleInput = document.getElementById("sys-splash-title");
+    if (titleInput) titleInput.value = this.db.settings.splashTitle;
+
+    const durationInput = document.getElementById("sys-splash-duration");
+    if (durationInput) durationInput.value = this.db.settings.splashDuration;
+
+    const showCardSelect = document.getElementById("sys-splash-show-winner-card");
+    if (showCardSelect) showCardSelect.value = this.db.settings.splashShowWinnerCard ? "true" : "false";
+
+    // Bind form submit
+    const form = document.getElementById("admin-splash-config-form");
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const title = document.getElementById("sys-splash-title")?.value?.trim();
+        const duration = parseInt(document.getElementById("sys-splash-duration")?.value || "5");
+        const featured = document.getElementById("sys-splash-featured-winner")?.value || "auto";
+        const showWinner = document.getElementById("sys-splash-show-winner-card")?.value === "true";
+
+        this.db.settings.splashTitle = title || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+        this.db.settings.splashDuration = isNaN(duration) ? 5 : Math.max(2, Math.min(15, duration));
+        this.db.settings.splashFeaturedWinner = featured;
+        this.db.settings.splashShowWinnerCard = showWinner;
+
+        this.saveDB();
+        this.showToast("Splash Screen settings saved & applied successfully!", "success");
+        this.renderAdminSplashConfig();
+      };
+    }
   }
 };

@@ -5273,23 +5273,143 @@ function initApplicationLoader() {
     });
   }
 
-  // Handle Admin Push Notification Broadcast Form (New Feature)
+  // Handle Admin Web Push Ads Broadcaster Form
   const broadcastPushForm = document.getElementById("admin-settings-push-broadcast-form");
   if (broadcastPushForm) {
+    // Permission badge refresh function
+    const refreshStatusBarBadge = () => {
+      const badge = document.getElementById("admin-status-bar-permission-badge");
+      if (!badge) return;
+
+      if (!("Notification" in window)) {
+        badge.textContent = "UNSUPPORTED ⚠️";
+        badge.className = "px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700 font-black text-[10px]";
+        return;
+      }
+
+      const perm = Notification.permission;
+      if (perm === "granted") {
+        badge.textContent = "ACTIVE 🟢";
+        badge.className = "px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-black text-[10px]";
+      } else if (perm === "denied") {
+        badge.textContent = "BLOCKED 🔴";
+        badge.className = "px-2 py-0.5 rounded bg-rose-950 text-rose-400 border border-rose-800/60 font-black text-[10px]";
+      } else {
+        badge.textContent = "ENABLE NEEDED 🟡";
+        badge.className = "px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800/60 font-black text-[10px]";
+      }
+    };
+
+    refreshStatusBarBadge();
+
+    // Enable Status Bar Permission button listener
+    const enablePermBtn = document.getElementById("admin-enable-status-bar-perm-btn");
+    if (enablePermBtn) {
+      enablePermBtn.addEventListener("click", () => {
+        NotificationEngine.requestNativePermission().then(() => {
+          refreshStatusBarBadge();
+        });
+      });
+    }
+
+    // Test Status Bar Push button listener
+    const testPushBtn = document.getElementById("admin-test-status-bar-push-btn");
+    if (testPushBtn) {
+      testPushBtn.addEventListener("click", () => {
+        NotificationEngine.trigger(
+          "🚀 Status Bar Push Alert Test!",
+          "Service Worker notification delivered to mobile & desktop status bar!",
+          "bkash",
+          "tab-wallet"
+        );
+        app.showToast("⚡ Status bar push test dispatched!", "success");
+      });
+    }
+
+    // Preset dropdown listener
+    const presetSelect = document.getElementById("sys-push-preset-select");
+    if (presetSelect) {
+      presetSelect.addEventListener("change", () => {
+        if (presetSelect.value) {
+          const imgUrlInput = document.getElementById("sys-push-image-url");
+          if (imgUrlInput) imgUrlInput.value = presetSelect.value;
+        }
+      });
+    }
+
+    // Live preview button listener
+    const previewBtn = document.getElementById("sys-push-preview-btn");
+    if (previewBtn) {
+      previewBtn.addEventListener("click", () => {
+        const title = document.getElementById("sys-push-title").value.trim() || "🔥 ৫০% ডিপোজিট ক্যাশব্যাক অফার!";
+        const message = document.getElementById("sys-push-message").value.trim() || "বিকাশে ডিপোজিট করে আজই ক্যাশব্যাক ইনস্ট্যান্ট বোনাস উপভোগ করুন!";
+        const imageUrl = document.getElementById("sys-push-image-url").value.trim() || "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800";
+        const ctaText = document.getElementById("sys-push-cta-text").value.trim() || "👉 Claim Offer Now";
+        const iconType = document.getElementById("sys-push-icon-type").value || "bkash";
+        const redirectTab = document.getElementById("sys-push-redirect-tab").value || "tab-wallet";
+
+        NotificationEngine.triggerWebPushAd({
+          title,
+          message,
+          imageUrl,
+          ctaText,
+          iconType,
+          targetTab: redirectTab
+        });
+      });
+    }
+
+    // Form submit listener (Broadcast Web Push Ad)
     broadcastPushForm.addEventListener("submit", (e) => {
       e.preventDefault();
 
       const title = document.getElementById("sys-push-title").value.trim();
       const message = document.getElementById("sys-push-message").value.trim();
+      const imageUrl = document.getElementById("sys-push-image-url").value.trim();
+      const ctaText = document.getElementById("sys-push-cta-text").value.trim();
       const iconType = document.getElementById("sys-push-icon-type").value;
       const redirectTab = document.getElementById("sys-push-redirect-tab").value;
+      const targetAudience = document.getElementById("sys-push-target-audience").value;
 
-      NotificationEngine.trigger(title, message, iconType, redirectTab);
-      app.showToast("🚀 Real-Time App Push Notification broadcasted successfully!", "success");
+      const adData = {
+        id: "ad_" + Date.now(),
+        title,
+        message,
+        imageUrl,
+        ctaText,
+        iconType,
+        targetTab: redirectTab,
+        targetAudience,
+        clicks: 0,
+        date: new Date().toISOString()
+      };
 
-      // Reset inputs cleanly
+      if (!app.db.webPushAds) app.db.webPushAds = [];
+      app.db.webPushAds.unshift(adData);
+      app.saveDB();
+
+      // Trigger Web Push Ad locally & broadcast
+      NotificationEngine.triggerWebPushAd(adData);
+
+      app.showToast("🚀 Web Push Ad Campaign dispatched successfully to network!", "success");
+
+      // Refresh campaign history
+      app.renderWebPushAdsHistory();
+
+      // Reset text inputs
       document.getElementById("sys-push-title").value = "";
       document.getElementById("sys-push-message").value = "";
+    });
+  }
+
+  // Clear push history button
+  const clearPushHistBtn = document.getElementById("clear-push-history-btn");
+  if (clearPushHistBtn) {
+    clearPushHistBtn.addEventListener("click", () => {
+      app.db.webPushAds = [];
+      app.saveDB();
+      app.renderWebPushAdsHistory();
+      app.showToast("Web Push Ad campaign history cleared.", "info");
     });
   }
 

@@ -225,52 +225,134 @@ export const UIEffectsModule = {
 
   initSplashScreen() {
     const splashScreen = document.getElementById("splash-screen");
+    if (!splashScreen) return;
+
+    // Check if splash screen is disabled in app settings
+    const settings = window.app?.db?.settings || {};
+    if (settings.splashEnabled === false) {
+      splashScreen.classList.add("hidden");
+      return;
+    }
+
+    this.runSplashScreenSequence();
+  },
+
+  runSplashScreenSequence() {
+    const splashScreen = document.getElementById("splash-screen");
     const progress = document.getElementById("splash-progress");
     const percent = document.getElementById("splash-percent");
     const card = document.getElementById("splash-3d-card");
-
     if (!splashScreen) return;
 
-    // 1. Continuous 3D auto-rotation logic for the card (when no mouse is hovering)
-    let isHovered = false;
+    splashScreen.classList.remove("hidden");
+    splashScreen.style.opacity = "1";
 
+    // 1. Update dynamic splash content with settings & Top #1 Winner
+    const settings = window.app?.db?.settings || {};
+    const titleText = settings.splashTitle || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+    const titleEl = document.getElementById("splash-headline-text");
+    if (titleEl) titleEl.innerText = titleText;
+
+    // Update Top #1 Winner details
+    let topWinner = null;
+    const featuredId = settings.splashFeaturedWinner;
+    const users = window.app?.db?.users || [];
+    if (featuredId && featuredId !== "auto") {
+      topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
+    }
+    if (!topWinner && users.length) {
+      topWinner = [...users].sort((a,b) => (b.profit||0) - (a.profit||0))[0];
+    }
+
+    const winnerCard = document.getElementById("splash-top-winner-card");
+    if (winnerCard) {
+      if (settings.splashShowWinnerCard === false) {
+        winnerCard.classList.add("hidden");
+      } else {
+        winnerCard.classList.remove("hidden");
+        const winnerNameEl = document.getElementById("splash-winner-username");
+        const winnerIdEl = document.getElementById("splash-winner-id");
+        const winnerPrizeEl = document.getElementById("splash-winner-prize");
+        const winnerPhotoEl = document.getElementById("splash-winner-photo");
+
+        if (winnerNameEl) winnerNameEl.innerText = `@${topWinner ? topWinner.username : 'lottery_pro'}`;
+        if (winnerIdEl) winnerIdEl.innerText = `ID: #${topWinner ? topWinner.id : '101'}`;
+        if (winnerPrizeEl) winnerPrizeEl.innerText = `৳${(topWinner ? (topWinner.profit || 1250000) : 1250000).toLocaleString()}`;
+        if (winnerPhotoEl) {
+          const defaultPhoto = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+          winnerPhotoEl.src = (topWinner && topWinner.photo) ? topWinner.photo : defaultPhoto;
+        }
+      }
+    }
+
+    // 2. Setup Skip Button
+    const skipBtn = document.getElementById("splash-skip-btn");
+    let isDismissed = false;
+    const dismissSplash = () => {
+      if (isDismissed) return;
+      isDismissed = true;
+      splashScreen.style.opacity = "0";
+      setTimeout(() => {
+        splashScreen.classList.add("hidden");
+      }, 500);
+    };
+
+    if (skipBtn) {
+      skipBtn.onclick = () => dismissSplash();
+    }
+
+    // 3. Continuous 3D rotation
+    let isHovered = false;
     if (card) {
-      card.addEventListener("mouseenter", () => { isHovered = true; });
-      card.addEventListener("mouseleave", () => { 
+      card.onmouseenter = () => { isHovered = true; };
+      card.onmouseleave = () => { 
         isHovered = false; 
         card.style.transition = "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)";
-      });
+      };
     }
 
     const autoRotateInterval = setInterval(() => {
-      if (isHovered || !card) return;
-      // Cycle through a gentle infinity loop or sinusoidal tilt
+      if (isHovered || !card || isDismissed) return;
       const time = Date.now() * 0.0015;
       const rotateY = Math.sin(time) * 15 + 10;
       const rotateX = Math.cos(time * 0.8) * 10 + 8;
       card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.02, 1.02, 1.02)`;
     }, 30);
 
-    // 2. Animate progress bar from 0% to 100%
-    let percentage = 0;
+    // 4. Duration in seconds (Default: 5 sec)
+    const totalDurationSec = settings.splashDuration || 5;
+    const totalDurationMs = totalDurationSec * 1000;
+    const updateIntervalMs = 50;
+    const totalSteps = totalDurationMs / updateIntervalMs;
+    let step = 0;
+
+    const timerTextEl = document.getElementById("splash-timer-text");
+
     const progressInterval = setInterval(() => {
-      if (percentage < 100) {
-        // Vary increment to mimic asymmetric network loading profile
-        const increment = Math.floor(Math.random() * 4) + 1;
-        percentage = Math.min(100, percentage + increment);
-        if (progress) progress.style.width = `${percentage}%`;
-        if (percent) percent.innerText = `${percentage}%`;
-      } else {
+      if (isDismissed) {
         clearInterval(progressInterval);
         clearInterval(autoRotateInterval);
-
-        // Transition fade out elegantly
-        splashScreen.style.opacity = "0";
-        setTimeout(() => {
-          splashScreen.classList.add("hidden");
-        }, 750);
+        return;
       }
-    }, 40);
+
+      step++;
+      const percentage = Math.min(100, Math.floor((step / totalSteps) * 100));
+      const remainingSec = Math.max(0, Math.ceil((totalDurationMs - (step * updateIntervalMs)) / 1000));
+
+      if (progress) progress.style.width = `${percentage}%`;
+      if (percent) percent.innerText = `${percentage}%`;
+      if (timerTextEl) timerTextEl.innerHTML = `<i class="fa-solid fa-clock animate-spin"></i> Auto-closing in ${remainingSec}s`;
+
+      if (step >= totalSteps) {
+        clearInterval(progressInterval);
+        clearInterval(autoRotateInterval);
+        dismissSplash();
+      }
+    }, updateIntervalMs);
+  },
+
+  triggerTestSplash() {
+    this.runSplashScreenSequence();
   },
 
   init3DAuthCard() {
