@@ -351,11 +351,24 @@ export const ExtraGamesModule = {
       const bet = this.getBetAmount("crash-bet-amount");
       if (!this.deductBalance(bet)) return;
 
+      let crashVal;
+      const rCrash = Math.random();
+      if (rCrash < 0.40) {
+        // 40% instant crash at 1.00x - 1.07x
+        crashVal = (1.00 + Math.random() * 0.07).toFixed(2);
+      } else if (rCrash < 0.80) {
+        // 40% low crash at 1.08x - 1.50x
+        crashVal = (1.08 + Math.random() * 0.42).toFixed(2);
+      } else {
+        // 20% rare crash up to 2.80x
+        crashVal = (1.51 + Math.pow(Math.random(), 2) * 1.29).toFixed(2);
+      }
+
       this.gameState = {
         running: true,
         bet: bet,
         mult: 1.00,
-        crashPoint: (1.1 + Math.random() * 8.5).toFixed(2), // Random crash point up to 9.6
+        crashPoint: crashVal,
         interval: null
       };
 
@@ -1232,12 +1245,12 @@ export const ExtraGamesModule = {
               <button id="tower-cashout" class="hidden w-full py-3.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black font-mono text-xs rounded-xl shadow-xl shadow-amber-500/20 transition cursor-pointer active:scale-95 uppercase tracking-wider border border-amber-300/40">
                 Cash Out ৳<span id="tower-cash-val">0.00</span> 🏆
               </button>
-              <div class="text-[8.5px] text-slate-400 font-mono text-center">Avoid 1 hidden trap per tier to reach Tier 5 (5.60x multiplier)!</div>
+              <div class="text-[8.5px] text-slate-400 font-mono text-center">Find the ONLY 1 safe tile per tier among 2 hidden traps!</div>
             </div>
           </div>
 
           <div class="bg-slate-950/60 p-2.5 rounded-xl border border-slate-850/60 text-center text-[8px] text-slate-500 font-mono">
-            Platform Commission: 5% fee on net profits. 2 out of 3 tiles are safe per level!
+            Platform Commission: 5% fee on net profits. Only 1 out of 3 tiles is safe per level (33% win chance)!
           </div>
         </div>
       </div>
@@ -1321,16 +1334,17 @@ export const ExtraGamesModule = {
         this.gameState.currentRow = 1;
         this.gameState.multiplier = 1.00;
 
-        // Configure trap positions for each of the 5 rows
+        // Configure safe tile position for each of the 5 rows (other 2 tiles are TRAPS)
         this.gameState.rowsConfig = [];
         for (let i = 0; i <= 5; i++) {
-          this.gameState.rowsConfig.push(Math.floor(Math.random() * 3)); // Trap is at index 0, 1, or 2
+          this.gameState.rowsConfig.push(Math.floor(Math.random() * 3)); // Safe tile is at index 0, 1, or 2
         }
       }
 
       if (rowNum !== this.gameState.currentRow) return;
 
-      const isTrap = this.gameState.rowsConfig[rowNum] === colNum;
+      // Safe tile is stored in rowsConfig, so clicking any other tile hits a TRAP (2 traps, 1 safe)
+      const isTrap = this.gameState.rowsConfig[rowNum] !== colNum;
 
       if (isTrap) {
         // Trap hit! Lose
@@ -2567,11 +2581,24 @@ export const ExtraGamesModule = {
 
         const autoTarget = parseFloat(autoCashInput?.value || "0") || 0;
 
+        let flyPoint;
+        const rJet = Math.random();
+        if (rJet < 0.40) {
+          // 40% instant flyaway at 1.00x - 1.06x
+          flyPoint = (1.00 + Math.random() * 0.06).toFixed(2);
+        } else if (rJet < 0.80) {
+          // 40% low flyaway at 1.07x - 1.55x
+          flyPoint = (1.07 + Math.random() * 0.48).toFixed(2);
+        } else {
+          // 20% rare flyaway up to 3.00x
+          flyPoint = (1.56 + Math.pow(Math.random(), 2) * 1.44).toFixed(2);
+        }
+
         this.gameState = {
           running: true,
           bet: bet,
           mult: 1.00,
-          flyawayPoint: (1.05 + Math.random() * 12).toFixed(2),
+          flyawayPoint: flyPoint,
           autoCashTarget: autoTarget,
           interval: null
         };

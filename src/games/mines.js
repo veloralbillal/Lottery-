@@ -20,7 +20,7 @@ function combin(n, r) {
 export const MinesGame = {
   state: {
     active: false,
-    minesCount: 3,
+    minesCount: 5,
     bet: 10,
     grid: [], // Array of 25 cells: { index, isMine, clicked }
     clicks: 0,
@@ -123,7 +123,7 @@ export const MinesGame = {
     const safeCells = totalCells - minesCount;
     const prob = combin(safeCells, clicks) / combin(totalCells, clicks);
     if (prob <= 0) return 1.0;
-    const rawMult = 0.95 / prob; // 5% house edge
+    const rawMult = 0.68 / prob; // 32% high house edge (low win chance/payouts)
     return Math.max(1.01, parseFloat(rawMult.toFixed(2)));
   },
 
