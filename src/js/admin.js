@@ -3457,7 +3457,7 @@ export const AdminModule = {
           <div class="flex items-center gap-4 text-right">
             <div>
               <span class="block text-[8px] font-mono text-slate-400 uppercase">App Logo</span>
-              <img src="./logo.jpg" class="w-8 h-8 rounded-lg border border-amber-400/80 object-cover inline-block" />
+              <img src="./logo.jpg" class="w-8 h-8 rounded-lg border border-amber-400/80 object-cover inline-block" style="width: 32px; height: 32px; max-width: 32px; max-height: 32px; object-fit: cover;" />
             </div>
             <div>
               <span class="block text-[8px] font-mono text-slate-400 uppercase">Top Profit</span>
