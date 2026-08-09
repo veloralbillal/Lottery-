@@ -3352,7 +3352,7 @@ export const AdminModule = {
     if (!this.db.settings) this.db.settings = {};
     if (this.db.settings.splashEnabled === undefined) this.db.settings.splashEnabled = true;
     if (!this.db.settings.splashTitle) this.db.settings.splashTitle = "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
-    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 5;
+    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 3;
     if (this.db.settings.splashShowWinnerCard === undefined) this.db.settings.splashShowWinnerCard = true;
     if (!this.db.settings.splashFeaturedWinner) this.db.settings.splashFeaturedWinner = "auto";
 

@@ -328,7 +328,7 @@
       </div>
 
       <!-- BOTTOM PROGRESS & AUTO-DISMISS CONTROLLER -->
-      <div class="w-full max-w-[360px] sm:max-w-md space-y-1.5 relative pb-2 z-20">
+      <div class="w-full max-w-[360px] sm:max-w-md space-y-2 relative pb-2 z-20 text-center">
         <!-- Progress Bar -->
         <div class="h-[6px] w-full bg-slate-900/90 border border-slate-800 rounded-full overflow-hidden relative p-[0.5px]">
           <div id="splash-progress" class="h-full bg-gradient-to-r from-indigo-600 via-amber-400 to-cyan-400 rounded-full w-0 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(251,191,36,0.6)]"></div>
@@ -336,12 +336,39 @@
 
         <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
           <span id="splash-timer-text" class="flex items-center gap-1.5 text-amber-300 font-bold">
-            <i class="fa-solid fa-clock animate-spin"></i> Auto-closing in 5s
+            <i class="fa-solid fa-clock animate-spin text-amber-400"></i> Auto-closing in 2s
           </span>
           <span id="splash-percent" class="font-bold text-cyan-400">0%</span>
         </div>
+
+        <!-- Prominent Enter App Action Button -->
+        <button id="splash-enter-btn" type="button" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black font-mono text-xs rounded-xl shadow-[0_0_20px_rgba(251,191,36,0.4)] transition cursor-pointer active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2 mt-1 z-30">
+          <span>ENTER APP NOW</span>
+          <i class="fa-solid fa-arrow-right text-[11px]"></i>
+        </button>
+        <p class="text-[9px] font-mono text-slate-500 pt-0.5">Tap anywhere on screen to enter immediately</p>
       </div>
     </div>
+
+    <!-- Inline Emergency Safety Script: Guarantees splash screen automatically closes after 2.5s or on click -->
+    <script>
+      (function(){
+        function forceCloseSplash() {
+          var s = document.getElementById('splash-screen');
+          if (s && !s.classList.contains('hidden')) {
+            s.style.opacity = '0';
+            setTimeout(function(){ s.classList.add('hidden'); }, 300);
+          }
+        }
+        // Fail-safe auto close timer
+        setTimeout(forceCloseSplash, 2800);
+        // Instant close on tap/click anywhere
+        var splash = document.getElementById('splash-screen');
+        if (splash) {
+          splash.addEventListener('click', forceCloseSplash);
+        }
+      })();
+    </script>
 
     <!-- Global Floating Toasts Container -->
     <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[999] flex flex-col gap-2 max-w-sm w-full px-4 pointer-events-none"></div>

@@ -238,121 +238,111 @@ export const UIEffectsModule = {
   },
 
   runSplashScreenSequence() {
-    const splashScreen = document.getElementById("splash-screen");
-    const progress = document.getElementById("splash-progress");
-    const percent = document.getElementById("splash-percent");
-    const card = document.getElementById("splash-3d-card");
-    if (!splashScreen) return;
+    try {
+      const splashScreen = document.getElementById("splash-screen");
+      const progress = document.getElementById("splash-progress");
+      const percent = document.getElementById("splash-percent");
+      const card = document.getElementById("splash-3d-card");
+      if (!splashScreen) return;
 
-    splashScreen.classList.remove("hidden");
-    splashScreen.style.opacity = "1";
+      splashScreen.classList.remove("hidden");
+      splashScreen.style.opacity = "1";
 
-    // 1. Update dynamic splash content with settings & Top #1 Winner
-    const settings = window.app?.db?.settings || {};
-    const titleText = settings.splashTitle || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
-    const titleEl = document.getElementById("splash-headline-text");
-    if (titleEl) titleEl.innerText = titleText;
+      // 1. Update dynamic splash content with settings & Top #1 Winner
+      const settings = window.app?.db?.settings || {};
+      const titleText = settings.splashTitle || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+      const titleEl = document.getElementById("splash-headline-text");
+      if (titleEl) titleEl.innerText = titleText;
 
-    // Update Top #1 Winner details
-    let topWinner = null;
-    const featuredId = settings.splashFeaturedWinner;
-    const users = window.app?.db?.users || [];
-    if (featuredId && featuredId !== "auto") {
-      topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
-    }
-    if (!topWinner && users.length) {
-      topWinner = [...users].sort((a,b) => (b.profit||0) - (a.profit||0))[0];
-    }
+      // Update Top #1 Winner details
+      let topWinner = null;
+      const featuredId = settings.splashFeaturedWinner;
+      const users = window.app?.db?.users || [];
+      if (featuredId && featuredId !== "auto") {
+        topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
+      }
+      if (!topWinner && users.length) {
+        topWinner = [...users].sort((a,b) => (b.profit||0) - (a.profit||0))[0];
+      }
 
-    const winnerCard = document.getElementById("splash-top-winner-card");
-    if (winnerCard) {
-      if (settings.splashShowWinnerCard === false) {
-        winnerCard.classList.add("hidden");
-      } else {
-        winnerCard.classList.remove("hidden");
-        const winnerNameEl = document.getElementById("splash-winner-username");
-        const winnerIdEl = document.getElementById("splash-winner-id");
-        const winnerPrizeEl = document.getElementById("splash-winner-prize");
-        const winnerPhotoEl = document.getElementById("splash-winner-photo");
+      const winnerCard = document.getElementById("splash-top-winner-card");
+      if (winnerCard) {
+        if (settings.splashShowWinnerCard === false) {
+          winnerCard.classList.add("hidden");
+        } else {
+          winnerCard.classList.remove("hidden");
+          const winnerNameEl = document.getElementById("splash-winner-username");
+          const winnerIdEl = document.getElementById("splash-winner-id");
+          const winnerPrizeEl = document.getElementById("splash-winner-prize");
+          const winnerPhotoEl = document.getElementById("splash-winner-photo");
 
-        if (winnerNameEl) winnerNameEl.innerText = `@${topWinner ? topWinner.username : 'lottery_pro'}`;
-        if (winnerIdEl) winnerIdEl.innerText = `ID: #${topWinner ? topWinner.id : '101'}`;
-        if (winnerPrizeEl) winnerPrizeEl.innerText = `৳${(topWinner ? (topWinner.profit || 1250000) : 1250000).toLocaleString()}`;
-        if (winnerPhotoEl) {
-          const defaultPhoto = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
-          winnerPhotoEl.src = (topWinner && topWinner.photo) ? topWinner.photo : defaultPhoto;
+          if (winnerNameEl) winnerNameEl.innerText = `@${topWinner ? topWinner.username : 'lottery_pro'}`;
+          if (winnerIdEl) winnerIdEl.innerText = `ID: #${topWinner ? topWinner.id : '101'}`;
+          if (winnerPrizeEl) winnerPrizeEl.innerText = `৳${(topWinner ? (topWinner.profit || 1250000) : 1250000).toLocaleString()}`;
+          if (winnerPhotoEl) {
+            const defaultPhoto = "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+            winnerPhotoEl.src = (topWinner && topWinner.photo) ? topWinner.photo : defaultPhoto;
+          }
         }
       }
-    }
 
-    // 2. Setup Skip Button
-    const skipBtn = document.getElementById("splash-skip-btn");
-    let isDismissed = false;
-    const dismissSplash = () => {
-      if (isDismissed) return;
-      isDismissed = true;
-      splashScreen.style.opacity = "0";
-      setTimeout(() => {
-        splashScreen.classList.add("hidden");
-      }, 500);
-    };
+      // 2. Setup Dismiss Logic (Skip, Enter Button, or Tap Anywhere)
+      const skipBtn = document.getElementById("splash-skip-btn");
+      const enterBtn = document.getElementById("splash-enter-btn");
+      let isDismissed = false;
 
-    if (skipBtn) {
-      skipBtn.onclick = () => dismissSplash();
-    }
-
-    // 3. Continuous 3D rotation
-    let isHovered = false;
-    if (card) {
-      card.onmouseenter = () => { isHovered = true; };
-      card.onmouseleave = () => { 
-        isHovered = false; 
-        card.style.transition = "transform 0.5s cubic-bezier(0.25, 1, 0.5, 1)";
+      const dismissSplash = () => {
+        if (isDismissed) return;
+        isDismissed = true;
+        splashScreen.style.opacity = "0";
+        setTimeout(() => {
+          splashScreen.classList.add("hidden");
+        }, 400);
       };
-    }
 
-    const autoRotateInterval = setInterval(() => {
-      if (isHovered || !card || isDismissed) return;
-      if (window.innerWidth < 640) {
-        card.style.transform = "none";
-        return;
-      }
-      const time = Date.now() * 0.0015;
-      const rotateY = Math.sin(time) * 12 + 8;
-      const rotateX = Math.cos(time * 0.8) * 8 + 6;
-      card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.01, 1.01, 1.01)`;
-    }, 30);
+      if (skipBtn) skipBtn.onclick = (e) => { e.stopPropagation(); dismissSplash(); };
+      if (enterBtn) enterBtn.onclick = (e) => { e.stopPropagation(); dismissSplash(); };
+      splashScreen.onclick = () => dismissSplash();
 
-    // 4. Duration in seconds (Default: 5 sec)
-    const totalDurationSec = settings.splashDuration || 5;
-    const totalDurationMs = totalDurationSec * 1000;
-    const updateIntervalMs = 50;
-    const totalSteps = totalDurationMs / updateIntervalMs;
-    let step = 0;
+      // 3. Duration in seconds (Default: 2.5 sec for fast, non-blocking response)
+      const totalDurationSec = Math.min(settings.splashDuration || 2.5, 3.5);
+      const totalDurationMs = totalDurationSec * 1000;
+      const updateIntervalMs = 50;
+      const totalSteps = totalDurationMs / updateIntervalMs;
+      let step = 0;
 
-    const timerTextEl = document.getElementById("splash-timer-text");
+      const timerTextEl = document.getElementById("splash-timer-text");
 
-    const progressInterval = setInterval(() => {
-      if (isDismissed) {
-        clearInterval(progressInterval);
-        clearInterval(autoRotateInterval);
-        return;
-      }
+      const progressInterval = setInterval(() => {
+        if (isDismissed) {
+          clearInterval(progressInterval);
+          return;
+        }
 
-      step++;
-      const percentage = Math.min(100, Math.floor((step / totalSteps) * 100));
-      const remainingSec = Math.max(0, Math.ceil((totalDurationMs - (step * updateIntervalMs)) / 1000));
+        step++;
+        const percentage = Math.min(100, Math.floor((step / totalSteps) * 100));
+        const remainingSec = Math.max(0, Math.ceil((totalDurationMs - (step * updateIntervalMs)) / 1000));
 
-      if (progress) progress.style.width = `${percentage}%`;
-      if (percent) percent.innerText = `${percentage}%`;
-      if (timerTextEl) timerTextEl.innerHTML = `<i class="fa-solid fa-clock animate-spin"></i> Auto-closing in ${remainingSec}s`;
+        if (progress) progress.style.width = `${percentage}%`;
+        if (percent) percent.innerText = `${percentage}%`;
+        if (timerTextEl) timerTextEl.innerHTML = `<i class="fa-solid fa-clock animate-spin text-amber-400"></i> Auto-closing in ${remainingSec}s`;
 
-      if (step >= totalSteps) {
-        clearInterval(progressInterval);
-        clearInterval(autoRotateInterval);
+        if (step >= totalSteps) {
+          clearInterval(progressInterval);
+          dismissSplash();
+        }
+      }, updateIntervalMs);
+
+      // Emergency safety backup timer - guarantees dismissal after duration + 500ms
+      setTimeout(() => {
         dismissSplash();
-      }
-    }, updateIntervalMs);
+      }, totalDurationMs + 500);
+
+    } catch (err) {
+      console.warn("Splash screen error safely caught:", err);
+      const splashScreen = document.getElementById("splash-screen");
+      if (splashScreen) splashScreen.classList.add("hidden");
+    }
   },
 
   triggerTestSplash() {
