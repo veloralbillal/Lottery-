@@ -313,10 +313,14 @@ export const UIEffectsModule = {
 
     const autoRotateInterval = setInterval(() => {
       if (isHovered || !card || isDismissed) return;
+      if (window.innerWidth < 640) {
+        card.style.transform = "none";
+        return;
+      }
       const time = Date.now() * 0.0015;
-      const rotateY = Math.sin(time) * 15 + 10;
-      const rotateX = Math.cos(time * 0.8) * 10 + 8;
-      card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.02, 1.02, 1.02)`;
+      const rotateY = Math.sin(time) * 12 + 8;
+      const rotateX = Math.cos(time * 0.8) * 8 + 6;
+      card.style.transform = `perspective(1000px) rotateY(${rotateY}deg) rotateX(${rotateX}deg) scale3d(1.01, 1.01, 1.01)`;
     }, 30);
 
     // 4. Duration in seconds (Default: 5 sec)
