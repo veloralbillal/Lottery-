@@ -359,6 +359,9 @@
             s.style.opacity = '0';
             setTimeout(function(){ s.classList.add('hidden'); }, 300);
           }
+          if (window.app && typeof window.app.render === 'function') {
+            try { window.app.render(); } catch(e){}
+          }
         }
         // Fail-safe auto close timer
         setTimeout(forceCloseSplash, 2800);

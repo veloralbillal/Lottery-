@@ -295,8 +295,14 @@ export const UIEffectsModule = {
         if (isDismissed) return;
         isDismissed = true;
         splashScreen.style.opacity = "0";
+        if (window.app && typeof window.app.render === "function") {
+          window.app.render();
+        }
         setTimeout(() => {
           splashScreen.classList.add("hidden");
+          if (window.app && typeof window.app.render === "function") {
+            window.app.render();
+          }
         }, 400);
       };
 

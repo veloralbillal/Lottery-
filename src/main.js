@@ -188,6 +188,9 @@ export class StateManager {
     this.init3DTiltEffect();
 
     // Load dashboard templates dynamically for local client-side dev/Vite
+    // Guarantee immediate UI render so login screen or dashboard shows instantly without delay
+    this.render();
+
     this.loadDashboardTabs().then(() => {
       console.log("All dashboard tabs loaded successfully.");
       VideoBountyTab.init(this);
@@ -197,6 +200,9 @@ export class StateManager {
       WalletTab.init(this);
       TicketsTab.init(this);
       GameHubModule.init(this);
+      this.render();
+    }).catch(err => {
+      console.warn("Non-fatal dashboard tabs load exception caught:", err);
       this.render();
     });
 
@@ -787,83 +793,47 @@ export class StateManager {
     for (const tab of tabs) {
       const el = document.getElementById(tab.id);
       if (el) {
-        // Try to load from cache first for instant loading and offline support
         const cacheKey = `tab_cache_${tab.id}`;
-        const cachedHTML = localStorage.getItem(cacheKey);
-        // Only trust cache if it has reasonable size to avoid corrupt/blank state
-        if (cachedHTML && cachedHTML.trim().length > 100 && !el.innerHTML.trim()) {
-          el.innerHTML = cachedHTML;
-        }
         
-        const isLocalFileProtocol = window.location.protocol === "file:";
-        
-        let success = false;
-        let attempts = 0;
-        const maxAttempts = isLocalFileProtocol ? 1 : 3;
-        
-        while (!success && attempts < maxAttempts) {
+        // 1. Instant load from bundledTabs if available
+        if (bundledTabs && bundledTabs[tab.id]) {
           try {
-            let text = "";
-            if (isLocalFileProtocol) {
-              text = bundledTabs[tab.id];
-              if (!text) throw new Error(`No bundled template found for ${tab.id}`);
-            } else {
-              // Use cache-busting query param to ensure fresh fetch from server
-              const response = await fetch(`${tab.file}?v=${Date.now()}`);
-              if (response.ok) {
-                text = await response.text();
-              } else {
-                throw new Error(`HTTP status ${response.status}`);
-              }
-            }
-            
+            const text = bundledTabs[tab.id];
             const parser = new DOMParser();
             const doc = parser.parseFromString(text, 'text/html');
             const content = doc.getElementById(tab.id);
             const finalHTML = content ? content.innerHTML : text;
-            
-            if (finalHTML.trim() && finalHTML.trim().length > 100 && finalHTML !== el.innerHTML) {
+            if (finalHTML && finalHTML.trim().length > 20) {
               el.innerHTML = finalHTML;
-              localStorage.setItem(cacheKey, finalHTML);
             }
-            success = true;
-          } catch (e) {
-            attempts++;
-            if (attempts >= maxAttempts) {
-              // Try secondary safety fallback with bundled tab
-              if (bundledTabs[tab.id]) {
-                console.log(`[Offline-Bundler] Loading secondary safety fallback for: ${tab.id}`);
-                try {
-                  const text = bundledTabs[tab.id];
-                  const parser = new DOMParser();
-                  const doc = parser.parseFromString(text, 'text/html');
-                  const content = doc.getElementById(tab.id);
-                  const finalHTML = content ? content.innerHTML : text;
-                  if (finalHTML.trim() && finalHTML.trim().length > 100) {
-                    el.innerHTML = finalHTML;
-                    localStorage.setItem(cacheKey, finalHTML);
-                    success = true;
-                    break;
-                  }
-                } catch (fallbackErr) {
-                  console.error("Secondary safety fallback failed:", fallbackErr);
-                }
-              }
+          } catch (bErr) {
+            console.warn("Could not parse bundledTab for:", tab.id, bErr);
+          }
+        } else {
+          // Fallback to cache if bundledTabs is somehow not present
+          const cachedHTML = localStorage.getItem(cacheKey);
+          if (cachedHTML && cachedHTML.trim().length > 100 && !el.innerHTML.trim()) {
+            el.innerHTML = cachedHTML;
+          }
+        }
 
-              console.error("Failed to load tab template after multiple attempts:", tab.id, e);
-              if (!el.innerHTML.trim()) {
-                el.innerHTML = `
-                  <div class="p-6 bg-slate-900 border border-red-500/20 rounded-2xl text-center space-y-3">
-                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl animate-bounce"></i>
-                    <p class="text-[11px] font-mono text-slate-400">Offline: Could not load dynamic module "${tab.id}".</p>
-                    <button onclick="window.appInstance.loadDashboardTabs()" class="text-[10px] font-mono text-cyan-400 hover:underline cursor-pointer">Retry Connection</button>
-                  </div>
-                `;
+        // 2. Try background fetch ONLY if running on http server and el is still empty
+        if (!el.innerHTML.trim()) {
+          try {
+            const response = await fetch(`${tab.file}?v=${Date.now()}`);
+            if (response.ok) {
+              const text = await response.text();
+              const parser = new DOMParser();
+              const doc = parser.parseFromString(text, 'text/html');
+              const content = doc.getElementById(tab.id);
+              const finalHTML = content ? content.innerHTML : text;
+              if (finalHTML.trim() && finalHTML.trim().length > 100) {
+                el.innerHTML = finalHTML;
+                localStorage.setItem(cacheKey, finalHTML);
               }
-            } else {
-              // Wait briefly before retrying (exponential backoff)
-              await new Promise(resolve => setTimeout(resolve, 500 * attempts));
             }
+          } catch (e) {
+            console.warn(`Static/Offline fetch notice for ${tab.id}:`, e.message);
           }
         }
       }
