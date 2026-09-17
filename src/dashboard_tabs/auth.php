@@ -90,34 +90,110 @@
   </div>
 
   <!-- Main Login Container block -->
-  <div id="auth-login-box" class="z-10 max-w-sm w-full mx-auto my-auto py-8">
-    <div class="interactive-tilt-card holo-glass-gradient border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-md space-y-5">
-      <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-400">Player Sign-In</h2>
-        <button id="show-register-btn" class="text-[11px] font-black text-rose-500 font-mono hover:underline">Register Account</button>
+  <div id="auth-login-box" class="z-10 max-w-sm w-full mx-auto my-auto py-4">
+    <div class="interactive-tilt-card bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl space-y-5 relative overflow-hidden">
+      <!-- Ambient gold/emerald accent line -->
+      <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-500"></div>
+      
+      <div class="flex justify-between items-center border-b border-slate-800/80 pb-3.5">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.6)]"></span>
+          <div>
+            <h2 class="text-xs font-black uppercase tracking-wider text-white font-display">Player Sign-In</h2>
+            <p class="text-[9px] font-mono text-slate-400 leading-none mt-0.5">Enter account credentials</p>
+          </div>
+        </div>
+        <button id="show-register-btn" type="button" class="text-[10px] font-bold text-amber-400 font-mono hover:text-amber-300 transition duration-200 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 px-3 py-1.5 rounded-xl cursor-pointer active:scale-95">
+          + Register
+        </button>
+      </div>
+
+      <!-- Quick Credential Assist Bar -->
+      <div class="bg-slate-950/80 border border-slate-850 rounded-2xl p-2.5 flex items-center justify-between gap-2">
+        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+          <i class="fa-solid fa-bolt text-amber-400 text-xs"></i> 1-Click:
+        </span>
+        <div class="flex items-center gap-1.5">
+          <button type="button" onclick="document.getElementById('auth-user').value='Admin'; document.getElementById('auth-pass').value='Admin123'; app.showToast('Admin credentials filled', 'info');" class="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold transition active:scale-95 cursor-pointer">
+            Admin
+          </button>
+          <button type="button" onclick="const p = (app.db.users && app.db.users[0]) ? app.db.users[0].username : 'player1'; document.getElementById('auth-user').value=p; document.getElementById('auth-pass').value='pass123'; app.showToast('Demo credentials filled', 'info');" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-mono font-bold transition active:scale-95 cursor-pointer">
+            Player
+          </button>
+        </div>
       </div>
 
       <form id="auth-login-form" class="space-y-4">
         <div class="space-y-1.5">
-          <label class="block text-[10px] uppercase font-mono text-slate-500">Username handle</label>
-          <div class="relative">
-            <i class="fa-solid fa-user absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
-            <input id="auth-user" type="text" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs font-mono text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition" placeholder="lottery_pro" />
+          <label class="block text-[9.5px] uppercase font-mono tracking-wider text-slate-400 font-semibold flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-user text-amber-400/80 text-xs"></i> Username or Email</span>
+            <span class="text-slate-500 text-[8.5px] font-normal font-mono">Required</span>
+          </label>
+          <div class="relative group">
+            <i class="fa-solid fa-id-card absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition group-focus-within:text-amber-400"></i>
+            <input id="auth-user" type="text" required autocomplete="username" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-xs font-mono text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition placeholder:text-slate-600" placeholder="e.g. Admin or player_handle" />
           </div>
         </div>
 
         <div class="space-y-1.5">
-          <label class="block text-[10px] uppercase font-mono text-slate-500">Account Passphrase</label>
-          <div class="relative">
-            <i class="fa-solid fa-lock absolute left-4 top-1/2 -translate-y-1/2 text-slate-600 text-xs"></i>
-            <input id="auth-pass" type="password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-xs font-mono text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition" placeholder="••••••••" />
+          <div class="flex items-center justify-between">
+            <label class="block text-[9.5px] uppercase font-mono tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-amber-400/80 text-xs"></i> Passphrase
+            </label>
+            <a href="forgot_password.html" class="text-[10px] font-mono font-bold text-amber-400 hover:text-amber-300 transition">
+              Forgot?
+            </a>
+          </div>
+          <div class="relative group">
+            <i class="fa-solid fa-shield-halved absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition group-focus-within:text-amber-400"></i>
+            <input id="auth-pass" type="password" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-11 text-xs font-mono text-white outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500/30 transition placeholder:text-slate-600" placeholder="••••••••••••" />
+            <button type="button" onclick="const p = document.getElementById('auth-pass'); p.type = p.type === 'password' ? 'text' : 'password'; this.querySelector('i').classList.toggle('fa-eye'); this.querySelector('i').classList.toggle('fa-eye-slash');" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-amber-400 transition cursor-pointer p-1" title="Show or hide password">
+              <i class="fa-solid fa-eye-slash text-xs"></i>
+            </button>
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.02] text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:opacity-90">
-          Access Player Area
+        <!-- Keep Session Active -->
+        <div class="flex items-center justify-between pt-0.5 text-xs">
+          <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" id="auth-remember-me" checked class="w-3.5 h-3.5 rounded bg-slate-950 border-slate-800 text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-amber-500" />
+            <span class="text-[10.5px] font-mono text-slate-400">Remember session</span>
+          </label>
+          <span class="text-[9.5px] font-mono text-emerald-400 flex items-center gap-1">
+            <i class="fa-solid fa-shield-check text-xs"></i> 256-Bit SSL
+          </span>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:brightness-110 active:scale-[0.99] text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-[0_10px_25px_rgba(245,158,11,0.25)] transition duration-200 cursor-pointer flex items-center justify-center gap-2 tracking-wider uppercase font-display">
+          <span>Access Player Area</span>
+          <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
         </button>
       </form>
+
+      <!-- Alternative Web Portal Link -->
+      <div class="border-t border-slate-800/80 pt-3 flex items-center justify-between text-[10px] font-mono text-slate-400">
+        <span>PHP Server Portal:</span>
+        <a href="login_page.php" class="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 hover:underline">
+          <span>Standard Portal Login</span>
+          <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- Trust Badges Underneath Card -->
+    <div class="grid grid-cols-3 gap-2 mt-4 text-center">
+      <div class="bg-slate-900/40 border border-slate-850 rounded-xl p-2.5">
+        <i class="fa-solid fa-dice text-amber-400 text-xs mb-0.5 block"></i>
+        <span class="text-[9px] font-mono font-medium text-slate-400 block">Fair RNG</span>
+      </div>
+      <div class="bg-slate-900/40 border border-slate-850 rounded-xl p-2.5">
+        <i class="fa-solid fa-bolt text-emerald-400 text-xs mb-0.5 block"></i>
+        <span class="text-[9px] font-mono font-medium text-slate-400 block">Instant Draw</span>
+      </div>
+      <div class="bg-slate-900/40 border border-slate-850 rounded-xl p-2.5">
+        <i class="fa-solid fa-wallet text-cyan-400 text-xs mb-0.5 block"></i>
+        <span class="text-[9px] font-mono font-medium text-slate-400 block">bKash/Nagad</span>
+      </div>
     </div>
   </div>
 

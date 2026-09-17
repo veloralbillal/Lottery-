@@ -747,27 +747,6 @@ export class StateManager {
     }
   }
 
-  async 
-
-  async 
-
-  async 
-
-  
-
-  
-
-
-  
-
-  
-
-  
-
-  
-
-  
-
   async loadDashboardTabs() {
     const tabs = [
       { id: "tab-home", file: "src/dashboard_tabs/home.php" },
@@ -1507,7 +1486,9 @@ export class StateManager {
 
   // ================= AUTH (LOGIN / SIGNUP) VIEW RENDER =================
   renderAuth() {
-    // Managed purely by simple toggles inside HTML
+    if ((window as any).generateMathCaptcha) {
+      (window as any).generateMathCaptcha();
+    }
   }
 
   // ================= DASHBOARD USER VIEW RENDER =================
@@ -3552,25 +3533,140 @@ function initApplicationLoader() {
 
 
 
-  // Auth toggle
-  const showRegisterBtn = document.getElementById("show-register-btn");
-  const showLoginBtn = document.getElementById("show-login-btn");
-  const signupBox = document.getElementById("auth-signup-box");
-  const loginBox = document.getElementById("auth-login-box");
+  // Auth toggle, Segmented Tabs & Security Math Captcha
+  let loginNum1 = 3, loginNum2 = 4, regNum1 = 5, regNum2 = 2;
 
-  if (showRegisterBtn && signupBox && loginBox) {
-    showRegisterBtn.addEventListener("click", () => {
-      loginBox.classList.add("hidden");
-      signupBox.classList.remove("hidden");
-    });
+  function generateMathCaptcha() {
+    loginNum1 = Math.floor(Math.random() * 9) + 1;
+    loginNum2 = Math.floor(Math.random() * 9) + 1;
+    const loginQ = document.getElementById("loginQuestion");
+    if (loginQ) loginQ.innerText = `${loginNum1} + ${loginNum2} =`;
+    const loginA = document.getElementById("loginAnswer") as HTMLInputElement | null;
+    if (loginA) loginA.value = "";
+
+    regNum1 = Math.floor(Math.random() * 9) + 1;
+    regNum2 = Math.floor(Math.random() * 9) + 1;
+    const regQ = document.getElementById("regQuestion");
+    if (regQ) regQ.innerText = `${regNum1} + ${regNum2} =`;
+    const regA = document.getElementById("regAnswer") as HTMLInputElement | null;
+    if (regA) regA.value = "";
   }
 
-  if (showLoginBtn && signupBox && loginBox) {
-    showLoginBtn.addEventListener("click", () => {
-      signupBox.classList.add("hidden");
-      loginBox.classList.remove("hidden");
-    });
+  function validateLoginCaptcha(): boolean {
+    const ansEl = document.getElementById("loginAnswer") as HTMLInputElement | null;
+    if (!ansEl || !ansEl.value) return false;
+    return parseInt(ansEl.value, 10) === (loginNum1 + loginNum2);
   }
+
+  function validateRegCaptcha(): boolean {
+    const ansEl = document.getElementById("regAnswer") as HTMLInputElement | null;
+    if (!ansEl || !ansEl.value) return false;
+    return parseInt(ansEl.value, 10) === (regNum1 + regNum2);
+  }
+
+  function solveCaptcha(type: 'login' | 'reg') {
+    if (type === 'login') {
+      const ansEl = document.getElementById("loginAnswer") as HTMLInputElement | null;
+      if (ansEl) ansEl.value = String(loginNum1 + loginNum2);
+    } else {
+      const ansEl = document.getElementById("regAnswer") as HTMLInputElement | null;
+      if (ansEl) ansEl.value = String(regNum1 + regNum2);
+    }
+  }
+
+  (window as any).generateMathCaptcha = generateMathCaptcha;
+  (window as any).validateLoginCaptcha = validateLoginCaptcha;
+  (window as any).validateRegCaptcha = validateRegCaptcha;
+  (window as any).solveCaptcha = solveCaptcha;
+
+  const switchTab = (tab: 'signin' | 'register') => {
+    const formContainer = document.getElementById("formContainer");
+    const signInTab = document.getElementById("signInTab");
+    const registerTab = document.getElementById("registerTab");
+
+    if (tab === 'register') {
+      formContainer?.classList.add("show-register");
+      registerTab?.classList.add("active");
+      signInTab?.classList.remove("active");
+    } else {
+      formContainer?.classList.remove("show-register");
+      signInTab?.classList.add("active");
+      registerTab?.classList.remove("active");
+    }
+    generateMathCaptcha();
+  };
+
+  (window as any).switchTab = switchTab;
+  (window as any).switchAuthTab = (mode: 'login' | 'register') => switchTab(mode === 'login' ? 'signin' : 'register');
+
+  // 1-Click Fast Registration
+  (window as any).handleOneClickReg = async () => {
+    const autoUser = 'winner_' + Math.floor(100000 + Math.random() * 900000);
+    const autoPass = Math.random().toString(36).slice(-8);
+
+    const genUserEl = document.getElementById("genUser");
+    const genPassEl = document.getElementById("genPass");
+    if (genUserEl) genUserEl.innerText = autoUser;
+    if (genPassEl) genPassEl.innerText = autoPass;
+
+    const welcomeBonus = 50;
+    const clientIp = await app.getClientIP();
+    const newUser = {
+      id: "u" + Date.now(),
+      username: autoUser,
+      fullName: "Instant Player",
+      email: `${autoUser}@lottery.local`,
+      password: autoPass,
+      phone: "017" + Math.floor(10000000 + Math.random() * 90000000),
+      dob: "2000-01-01",
+      balance: welcomeBonus,
+      totDeposit: 0,
+      totWithdraw: 0,
+      wins: 0,
+      loss: 0,
+      profit: 0,
+      joinDate: new Date().toISOString().split("T")[0],
+      status: "active",
+      blockedUntil: null,
+      region: "Dhaka",
+      registeredIp: clientIp,
+      refersCount: 0,
+      referredUsers: [],
+      rewardedMilestones: [],
+      role: "player",
+      referredBy: null
+    };
+
+    app.db.users.push(newUser);
+    app.saveDB();
+
+    (window as any).lastOneClickUser = newUser;
+
+    const modal = document.getElementById("credModal");
+    if (modal) modal.style.display = "flex";
+  };
+
+  (window as any).closeModal = () => {
+    const modal = document.getElementById("credModal");
+    if (modal) modal.style.display = "none";
+
+    const user = (window as any).lastOneClickUser;
+    if (user) {
+      try {
+        navigator.clipboard.writeText(`Username: ${user.username}\nPassword: ${user.password}`);
+      } catch (e) {}
+
+      app.currentUser = StateManager.removeCircularReferences(user);
+      localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
+      app.showToast(`Welcome! $50 bonus credited. Logged in as @${user.username}`, "success");
+      app.render();
+    } else {
+      switchTab('signin');
+    }
+  };
+
+  // Initial captcha trigger on load
+  setTimeout(() => generateMathCaptcha(), 300);
 
   // Helper function for 2FA Google Authenticator verification during login
   async function prompt2FAForUser(user, app) {
@@ -3653,13 +3749,20 @@ function initApplicationLoader() {
   }
 
   // Login Trigger Action
-  const loginForm = document.getElementById("auth-login-form");
+  const loginForm = document.getElementById("signInForm") || document.getElementById("auth-login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
-        const userEl = document.getElementById("auth-user");
-        const passEl = document.getElementById("auth-pass");
+        const loginAnsEl = document.getElementById("loginAnswer") as HTMLInputElement | null;
+        if (loginAnsEl && !validateLoginCaptcha()) {
+          app.showToast("Security Math Captcha incorrect! Please check the math answer.", "error");
+          generateMathCaptcha();
+          return;
+        }
+
+        const userEl = document.getElementById("auth-user") as HTMLInputElement | null;
+        const passEl = document.getElementById("auth-pass") as HTMLInputElement | null;
         if (!userEl || !passEl) {
           app.showToast("Login fields missing from DOM.", "error");
           return;
@@ -3710,6 +3813,7 @@ function initApplicationLoader() {
         const matched = app.db.users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
         if (!matched) {
           app.showToast("Username or password invalid. Access Denied.", "error");
+          generateMathCaptcha();
           return;
         }
 
@@ -3758,30 +3862,39 @@ function initApplicationLoader() {
   }
 
   // Sign up Trigger Action
-  const registerForm = document.getElementById("auth-signup-form");
+  const registerForm = document.getElementById("registerForm") || document.getElementById("auth-signup-form");
   if (registerForm) {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
-        const userEl = document.getElementById("reg-user");
-        const emailEl = document.getElementById("reg-email");
-        const phoneEl = document.getElementById("reg-phone");
-        const dobEl = document.getElementById("reg-dob");
-        const passEl = document.getElementById("reg-pass");
-        const regionEl = document.getElementById("reg-region");
-        const referByEl = document.getElementById("reg-refer-by");
+        const regAnsEl = document.getElementById("regAnswer") as HTMLInputElement | null;
+        if (regAnsEl && !validateRegCaptcha()) {
+          app.showToast("Security Math Captcha incorrect! Please check the math answer.", "error");
+          generateMathCaptcha();
+          return;
+        }
 
-        if (!userEl || !emailEl || !phoneEl || !dobEl || !passEl || !regionEl) {
+        const userEl = document.getElementById("reg-user") as HTMLInputElement | null;
+        const passEl = document.getElementById("reg-pass") as HTMLInputElement | null;
+        const nameEl = document.getElementById("reg-fullname") as HTMLInputElement | null;
+        const emailEl = document.getElementById("reg-email") as HTMLInputElement | null;
+        const phoneEl = document.getElementById("reg-phone") as HTMLInputElement | null;
+        const dobEl = document.getElementById("reg-dob") as HTMLInputElement | null;
+        const regionEl = document.getElementById("reg-region") as HTMLInputElement | null;
+        const referByEl = document.getElementById("reg-refer-by") as HTMLInputElement | null;
+
+        if (!userEl || !passEl) {
           app.showToast("Registration form elements are missing.", "error");
           return;
         }
 
         const userVal = userEl.value.trim();
-        const emailVal = emailEl.value.trim();
-        const phoneVal = phoneEl.value.trim();
-        const dobVal = dobEl.value;
         const passVal = passEl.value;
-        const regionVal = regionEl.value;
+        const nameVal = nameEl ? nameEl.value.trim() : userVal;
+        const emailVal = emailEl && emailEl.value ? emailEl.value.trim() : `${userVal.toLowerCase()}@lottery.local`;
+        const phoneVal = phoneEl && phoneEl.value ? phoneEl.value.trim() : "017" + Math.floor(10000000 + Math.random() * 90000000);
+        const dobVal = dobEl && dobEl.value ? dobEl.value : "2000-01-01";
+        const regionVal = regionEl && regionEl.value ? regionEl.value : "Dhaka";
         const referByVal = referByEl ? referByEl.value.trim() : "";
 
         // Validation
