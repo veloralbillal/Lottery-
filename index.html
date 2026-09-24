@@ -6787,6 +6787,23 @@
           box.classList.remove('hidden');
         }
       });
+
+      // 🚨 EMERGENCY LOAD TIMEOUT: If app doesn't start in 8s, show rescue message
+      setTimeout(() => {
+        const splash = document.getElementById('splash-screen');
+        if (splash && !splash.classList.contains('hidden')) {
+          console.warn("App load timeout detected. Offering rescue...");
+          const bypass = document.getElementById('emergency-bypass');
+          if (bypass) {
+            bypass.classList.remove('hidden');
+            bypass.innerHTML += `
+              <div class="mt-2 p-2 bg-red-900/80 text-white text-[8px] rounded border border-red-500 max-w-[200px]">
+                App taking too long to start. If screen is black, try "Skip Splash" or check your internet.
+              </div>
+            `;
+          }
+        }
+      }, 8000);
     </script>
 
     <!-- Application script bundle -->

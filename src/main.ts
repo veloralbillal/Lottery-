@@ -155,76 +155,92 @@ export class StateManager {
   }
 
   constructor() {
-    this.dbKey = "lottery_winner_db";
-    this.sessionKey = "lw_user_session";
-    this.adminSessionKey = "lw_admin_session";
-    this.currentTab = "home"; // home, tickets, wallet, history, profile
-    this.currentAdminTab = "stats"; // stats, users, lotteries, deposits, withdraws, settings
-    this.currentUser = null;
-    this.isAdminMode = false;
-    this.drawAnimationTimeout = null;
-    this.googleAuthToken = null;
-    this.selectedReceiptFile = null;
-    this.countdownInterval = null;
-    this.currentHomeCategory = "all";
-    this.historySubTab = "ledger"; // ledger, community
-    this.currentAdminReportsTab = "post"; // post, comment
-    this.communitySearchQuery = "";
-    this.adminPlayersSearchQuery = "";
-    this.communityFilter = "recent";
-    this.genTier = "free"; // 'free' or 'premium' for standby code generator
+    try {
+      this.dbKey = "lottery_winner_db";
+      this.sessionKey = "lw_user_session";
+      this.adminSessionKey = "lw_admin_session";
+      this.currentTab = "home"; // home, tickets, wallet, history, profile
+      this.currentAdminTab = "stats"; // stats, users, lotteries, deposits, withdraws, settings
+      this.currentUser = null;
+      this.isAdminMode = false;
+      this.drawAnimationTimeout = null;
+      this.googleAuthToken = null;
+      this.selectedReceiptFile = null;
+      this.countdownInterval = null;
+      this.currentHomeCategory = "all";
+      this.historySubTab = "ledger"; // ledger, community
+      this.currentAdminReportsTab = "post"; // post, comment
+      this.communitySearchQuery = "";
+      this.adminPlayersSearchQuery = "";
+      this.communityFilter = "recent";
+      this.genTier = "free"; // 'free' or 'premium' for standby code generator
 
-    // Load or bootstrap database
-    this.initDatabase();
-    this.loadSession();
-    this.startAutoDrawChecker();
+      // Load or bootstrap database
+      this.initDatabase();
+      this.loadSession();
+      this.startAutoDrawChecker();
 
-    this.syncState = 'synced';
-    this.lastSyncedTime = new Date();
+      this.syncState = 'synced';
+      this.lastSyncedTime = new Date();
 
-    // Initialize real-time cloud synchronization from Firebase
-    this.initFirebaseSync();
-    this.offlineQueue = new OfflineQueueManager(this);
+      // Initialize real-time cloud synchronization from Firebase
+      try {
+        this.initFirebaseSync();
+      } catch (fbErr) {
+        console.error("Critical Firebase Sync Fail:", fbErr);
+      }
+      
+      this.offlineQueue = new OfflineQueueManager(this);
 
-    this.offlineGameCards = [];
-    this.firstFlippedCard = null;
-    this.secondFlippedCard = null;
-    this.isFlippedTimeoutActive = false;
-    this.offlineScore = 0;
+      this.offlineGameCards = [];
+      this.firstFlippedCard = null;
+      this.secondFlippedCard = null;
+      this.isFlippedTimeoutActive = false;
+      this.offlineScore = 0;
 
-    // Initialize network status monitoring for offline mode UI
-    this.initNetworkMonitoring();
+      // Initialize network status monitoring for offline mode UI
+      this.initNetworkMonitoring();
 
-    // Initialize cloud sync diagnostics modal and click triggers
-    this.initSyncClickHandlers();
+      // Initialize cloud sync diagnostics modal and click triggers
+      this.initSyncClickHandlers();
 
-    // Initialize 3D immersive card tilts and micro-animations
-    this.init3DTiltEffect();
+      // Initialize 3D immersive card tilts and micro-animations
+      this.init3DTiltEffect();
 
-    // Load dashboard templates dynamically for local client-side dev/Vite
-    // Guarantee immediate UI render so login screen or dashboard shows instantly without delay
-    this.render();
-
-    this.loadDashboardTabs().then(() => {
-      console.log("All dashboard tabs loaded successfully.");
-      HomeTab.init(this);
-      VideoBountyTab.init(this);
-      ProfileTab.init(this);
-      SettingsTab.init(this);
-      HistoryTab.init(this);
-      WalletTab.init(this);
-      TicketsTab.init(this);
-      GameHubModule.init(this);
-      LiveDrawRevealEngine.init(this);
+      // Load dashboard templates dynamically for local client-side dev/Vite
+      // Guarantee immediate UI render so login screen or dashboard shows instantly without delay
       this.render();
-    }).catch(err => {
-      console.warn("Non-fatal dashboard tabs load exception caught:", err);
-      this.render();
-    });
 
-    // Trigger spectacular 3D loading splash screen sequence
-    this.initSplashScreen();
-    this.init3DAuthCard();
+      this.loadDashboardTabs().then(() => {
+        console.log("All dashboard tabs loaded successfully.");
+        HomeTab.init(this);
+        VideoBountyTab.init(this);
+        ProfileTab.init(this);
+        SettingsTab.init(this);
+        HistoryTab.init(this);
+        WalletTab.init(this);
+        TicketsTab.init(this);
+        GameHubModule.init(this);
+        LiveDrawRevealEngine.init(this);
+        this.render();
+      }).catch(err => {
+        console.warn("Non-fatal dashboard tabs load exception caught:", err);
+        this.render();
+      });
+
+      // Trigger spectacular 3D loading splash screen sequence
+      this.initSplashScreen();
+      this.init3DAuthCard();
+    } catch (criticalError) {
+      console.error("FATAL CONSTRUCTION ERROR:", criticalError);
+      // Emergency display if the constructor fails
+      const msg = document.getElementById("debug-error-msg");
+      const box = document.getElementById("debug-error-box");
+      if (msg && box) {
+        msg.innerText = `Boot Crash: ${criticalError.message}`;
+        box.classList.remove("hidden");
+      }
+    }
   }
 
   initDatabase() {
