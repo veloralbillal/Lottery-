@@ -299,21 +299,35 @@ export const UIEffectsModule = {
         
         const safeRender = () => {
           try {
+            console.log("Safe Render Triggered...");
             if (typeof this.render === "function") {
               this.render();
+            } else if (window.appInstance && typeof window.appInstance.render === "function") {
+              window.appInstance.render();
             } else if (window.app && typeof window.app.render === "function") {
               window.app.render();
             }
           } catch (e) {
             console.error("Render failed during splash dismissal:", e);
+            const debugMsg = document.getElementById("debug-error-msg");
+            const debugBox = document.getElementById("debug-error-box");
+            if (debugMsg && debugBox) {
+              debugMsg.innerText = `Splash Render Fail: ${e.message}`;
+              debugBox.classList.remove("hidden");
+            }
           }
         };
 
+        splashScreen.style.opacity = "0";
+        splashScreen.style.pointerEvents = "none"; // Immediately allow clicks through
+        
         safeRender();
         
         setTimeout(() => {
           splashScreen.classList.add("hidden");
           safeRender();
+          // Final safety check 
+          setTimeout(safeRender, 100);
         }, 400);
       };
 

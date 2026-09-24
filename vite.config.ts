@@ -340,6 +340,17 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       allowedHosts: true
     },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      emptyOutDir: true,
+      sourcemap: true,
+      rollupOptions: {
+        input: {
+          main: path.resolve(__dirname, 'index.html')
+        }
+      }
+    }
   };
 });
 

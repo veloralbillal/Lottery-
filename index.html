@@ -110,23 +110,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Chart.js for data visualization -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Tailwind CSS CDN for pure static hosting (GitHub Pages / Netlify / Vercel) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            colors: {
-              'slate-850': '#18202f',
-              'slate-955': '#05070e',
-              'rose-955': '#2d060a'
-            }
-          }
-        }
-      }
-    </script>
     <!-- Styled CSS stylesheet compiled by Vite and Tailwind CSS v4 -->
     <link rel="stylesheet" href="src/index.css" />
+    <!-- Tailwind CSS CDN removed to prefer Vite-bundled Tailwind v4 -->
     <style>
       /* Image layout safeguard for static hosting */
       img {
@@ -302,8 +288,12 @@
     </style>
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
-    <div id="debug-error-box" class="hidden fixed top-0 left-0 right-0 z-[10000] bg-rose-900/90 text-white p-4 text-xs font-mono break-words whitespace-pre-wrap max-h-[200px] overflow-y-auto border-b border-rose-500">
-      APP ERROR DEBUG CONSOLE:
+    <div id="debug-error-box" class="hidden fixed top-0 left-0 right-0 z-[10000] bg-rose-900/90 text-white p-4 text-[10px] font-mono break-words whitespace-pre-wrap max-h-[300px] overflow-y-auto border-b-2 border-rose-500 shadow-2xl">
+      <div class="font-bold mb-1 flex justify-between">
+        <span>⚠️ APP RECOVERY CONSOLE</span>
+        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="bg-white/20 px-2 rounded">Dismiss</button>
+      </div>
+      <div id="debug-error-msg"></div>
     </div>
 
     <!-- ================= STUNNING VOICE CLUB + LOTTERY HYBRID SPLASH SCREEN ================= -->
@@ -340,6 +330,12 @@
         <span>Skip</span>
         <i class="fa-solid fa-angles-right text-[10px]"></i>
       </button>
+
+      <div id="emergency-bypass" class="hidden absolute bottom-6 right-6 z-[3000]">
+         <button onclick="document.getElementById('splash-screen').classList.add('hidden'); if(window.appInstance) { window.appInstance.render(); } else { alert('App script failed to load. Please check your internet or console for 404 errors.'); }" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-full text-xs font-black shadow-2xl border-2 border-white/20 animate-pulse transition-all active:scale-95">
+           SKIP SPLASH (EMERGENCY)
+         </button>
+      </div>
 
       <!-- TOP HEADER BRANDING: VOICE CLUB ROOM + LOTTERY JACKPOT -->
       <div class="relative pt-1 sm:pt-3 flex flex-col items-center gap-1.5 animate-fade-in z-20 text-center">

@@ -1,5 +1,5 @@
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { initializeApp, getApps } from "firebase/app";
+import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot } from "firebase/firestore";
 import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 

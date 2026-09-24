@@ -1,7 +1,8 @@
+import "./index.css";
 import { SyncCloudModule } from "./js/syncCloud.js";
 import { UIEffectsModule } from "./js/uiEffects.js";
-import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { initializeApp, getApps } from "firebase/app";
+import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "firebase/firestore";
 import { ChatProfileSystem } from "./chat-profile-system.js";
 import { OfflineQueueManager } from "./js/syncQueue.js";
 import { AdminModule } from "./js/admin.js";
@@ -156,6 +157,7 @@ export class StateManager {
 
   constructor() {
     try {
+      console.log("StateManager: Initializing...");
       this.dbKey = "lottery_winner_db";
       this.sessionKey = "lw_user_session";
       this.adminSessionKey = "lw_admin_session";
@@ -185,8 +187,9 @@ export class StateManager {
 
       // Initialize real-time cloud synchronization from Firebase
       try {
+        console.log("StateManager: Initializing Firebase...");
         this.initFirebaseSync();
-      } catch (fbErr) {
+      } catch (fbErr: any) {
         console.error("Critical Firebase Sync Fail:", fbErr);
       }
       
@@ -209,6 +212,7 @@ export class StateManager {
 
       // Load dashboard templates dynamically for local client-side dev/Vite
       // Guarantee immediate UI render so login screen or dashboard shows instantly without delay
+      console.log("StateManager: Initial Render...");
       this.render();
 
       this.loadDashboardTabs().then(() => {
@@ -229,9 +233,20 @@ export class StateManager {
       });
 
       // Trigger spectacular 3D loading splash screen sequence
+      console.log("StateManager: Starting Splash Screen...");
       this.initSplashScreen();
       this.init3DAuthCard();
-    } catch (criticalError) {
+
+      // 🛡️ EMERGENCY SAFETY RENDER: Force render after 5 seconds if still black
+      setTimeout(() => {
+         const splash = document.getElementById("splash-screen");
+         if (splash && splash.classList.contains("hidden")) {
+            console.log("Safety check: Ensuring app is rendered...");
+            this.render();
+         }
+      }, 5000);
+
+    } catch (criticalError: any) {
       console.error("FATAL CONSTRUCTION ERROR:", criticalError);
       // Emergency display if the constructor fails
       const msg = document.getElementById("debug-error-msg");
