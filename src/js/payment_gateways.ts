@@ -132,17 +132,6 @@ export class PaymentGateways {
     this.openUddoktaPayModal(amount);
   }
 
-  static launchZiniPayCheckout() {
-    console.log("[PaymentGateways] Launching ZiniPay Instant Checkout");
-    const depInput = document.getElementById("dep-amount") as HTMLInputElement;
-    let amount = depInput ? parseFloat(depInput.value) : 0;
-    if (!amount || isNaN(amount) || amount < 20) {
-      amount = 500;
-      if (depInput) depInput.value = "500";
-    }
-    this.openZiniPayModal(amount);
-  }
-
   static launchCryptomusCheckout() {
     console.log("[PaymentGateways] Launching Cryptomus Instant Checkout");
     const depInput = document.getElementById("dep-amount") as HTMLInputElement;
