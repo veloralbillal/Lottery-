@@ -95,37 +95,47 @@ export class StateManager {
       }
       seen.add(obj);
 
-      if (Array.isArray(obj)) {
+      // We clone to avoid modifying the live object in-place during cleaning
+      const isArray = Array.isArray(obj);
+      const result = isArray ? [] : {};
+
+      if (isArray) {
         for (let i = 0; i < obj.length; i++) {
-          if (typeof obj[i] === "object" && obj[i] !== null) {
-            if (seen.has(obj[i])) {
-              obj[i] = null;
+          const val = obj[i];
+          if (typeof val === "object" && val !== null) {
+            if (seen.has(val)) {
+              result[i] = null;
             } else {
-              obj[i] = StateManager.removeCircularReferences(obj[i], seen);
+              result[i] = StateManager.removeCircularReferences(val, seen);
             }
+          } else {
+            result[i] = val;
           }
         }
       } else {
         for (const key in obj) {
           if (Object.prototype.hasOwnProperty.call(obj, key)) {
             if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
-              obj[key] = null;
               continue;
             }
-            if (typeof obj[key] === "object" && obj[key] !== null) {
-              if (seen.has(obj[key])) {
-                obj[key] = null;
+            const val = obj[key];
+            if (typeof val === "object" && val !== null) {
+              if (seen.has(val)) {
+                result[key] = null;
               } else {
-                obj[key] = StateManager.removeCircularReferences(obj[key], seen);
+                result[key] = StateManager.removeCircularReferences(val, seen);
               }
+            } else {
+              result[key] = val;
             }
           }
         }
       }
       seen.delete(obj);
-      return obj;
+      return result;
     } catch (e) {
-      return null;
+      console.warn("Circular cleaning failed for node, returning original as best-effort:", e);
+      return obj;
     }
   }
 
@@ -219,7 +229,7 @@ export class StateManager {
 
   initDatabase() {
     let raw = localStorage.getItem(this.dbKey);
-    if (!raw) {
+    if (!raw || raw === "undefined" || raw === "null") {
       const defaultDB = getDefaultDB();
       localStorage.setItem(this.dbKey, StateManager.safeStringify(defaultDB));
       this.db = defaultDB;
@@ -228,14 +238,41 @@ export class StateManager {
         this.db = JSON.parse(raw);
         if (this.db) {
           this.db = StateManager.removeCircularReferences(this.db);
+        } else {
+          throw new Error("Parsed DB is null");
         }
       } catch (e) {
         console.error("Failed to parse local DB raw. Resetting to default database state.", e);
         localStorage.removeItem(this.dbKey);
-        this.initDatabase();
-        return;
+        const defaultDB = getDefaultDB();
+        localStorage.setItem(this.dbKey, StateManager.safeStringify(defaultDB));
+        this.db = defaultDB;
       }
     }
+
+    // 🛡️ CRITICAL: Guarantee ALL collections exist to prevent crashes in render()
+    if (!this.db) this.db = getDefaultDB();
+    if (!this.db.users) this.db.users = [];
+    if (!this.db.lotteries) this.db.lotteries = [];
+    if (!this.db.tickets) this.db.tickets = [];
+    if (!this.db.deposits) this.db.deposits = [];
+    if (!this.db.withdrawals) this.db.withdrawals = [];
+    if (!this.db.settings) this.db.settings = (getDefaultDB() as any).settings || {};
+    if (!this.db.categories) this.db.categories = [];
+    if (!this.db.syndicates) this.db.syndicates = [];
+    if (!this.db.communityPosts) this.db.communityPosts = [];
+    if (!this.db.communityComments) this.db.communityComments = [];
+    if (!this.db.reports) this.db.reports = [];
+    if (!this.db.badgeRequests) this.db.badgeRequests = [];
+    if (!this.db.messages) this.db.messages = [];
+    if (!this.db.taskSubmissions) this.db.taskSubmissions = [];
+    if (!this.db.dailyTasks) this.db.dailyTasks = [];
+    if (!this.db.jackpotRegistrations) this.db.jackpotRegistrations = [];
+    if (!this.db.transactions) this.db.transactions = [];
+    if (!this.db.spinHistory) this.db.spinHistory = [];
+    if (!this.db.securityLogs) this.db.securityLogs = [];
+    if (!this.db.pendingAdminToasts) this.db.pendingAdminToasts = [];
+    if (!this.db.webPushAds) this.db.webPushAds = [];
 
     // Guarantee Refer/IP configurations exist
     if (this.db) {
@@ -774,9 +811,10 @@ export class StateManager {
           }
           localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
         }
-        this.db = StateManager.removeCircularReferences(this.db);
+        // Save cleaned version to localStorage
+        const cleanedDB = StateManager.removeCircularReferences(this.db);
+        localStorage.setItem(this.dbKey, StateManager.safeStringify(cleanedDB));
       }
-      localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
     } catch (e) {
       console.error("Failed to safely serialize database:", e);
     }
@@ -1502,74 +1540,89 @@ export class StateManager {
   }
 
   render() {
-    this.checkLiveNotifications();
+    try {
+      this.checkLiveNotifications();
 
-    // Dynamically update site settings and branding texts globally
-    const settings = (this.db && this.db.settings) ? this.db.settings : {};
-    const siteName = settings.siteName || "Lottery Winner";
-    const siteInfo = settings.siteInfo || "Premium Mobile Play Portal";
-    const supportNum = settings.supportNumber || "01700000000";
+      // Dynamically update site settings and branding texts globally
+      const settings = (this.db && this.db.settings) ? this.db.settings : {};
+      const siteName = settings.siteName || "Lottery Winner";
+      const siteInfo = settings.siteInfo || "Premium Mobile Play Portal";
+      const supportNum = settings.supportNumber || "01700000000";
 
-    document.title = siteName;
+      document.title = siteName;
 
-    const authFooterBrand = document.getElementById("sys-auth-footer-brand");
-    if (authFooterBrand) {
-      authFooterBrand.innerText = settings.authFooterText || "© 2026 Lottery Winner Mobile Limited (Registered)";
-    }
-
-    const authBonusIndicator = document.getElementById("auth-signup-bonus-indicator");
-    if (authBonusIndicator) {
-      authBonusIndicator.innerText = `৳${settings.signupBonus ?? 100} Starter Wallet Balance`;
-    }
-
-    document.querySelectorAll(".brand-site-name").forEach(el => {
-      el.innerText = siteName;
-    });
-
-    document.querySelectorAll(".brand-site-info").forEach(el => {
-      el.innerText = siteInfo;
-    });
-
-    const supLink = document.getElementById("profile-support-link");
-    if (supLink) {
-      supLink.href = `tel:${supportNum}`;
-    }
-
-    const supSubtitle = document.getElementById("profile-support-subtitle");
-    if (supSubtitle) {
-      supSubtitle.innerText = `Call BD Support: ${supportNum}`;
-    }
-
-    const view = this.getAppView();
-    // Hide all view screens
-    document.getElementById("screen-maintenance").classList.add("hidden");
-    document.getElementById("screen-auth").classList.add("hidden");
-    document.getElementById("screen-dashboard").classList.add("hidden");
-    document.getElementById("screen-admin").classList.add("hidden");
-    const agentScreen = document.getElementById("screen-agent");
-    if (agentScreen) agentScreen.classList.add("hidden");
-
-    if (view === "maintenance") {
-      document.getElementById("screen-maintenance").classList.remove("hidden");
-      this.renderMaintenance();
-    } else if (view === "auth") {
-      document.getElementById("screen-auth").classList.remove("hidden");
-      this.renderAuth();
-    } else if (view === "dashboard") {
-      document.getElementById("screen-dashboard").classList.remove("hidden");
-      this.renderDashboard();
-      if (!this.liveTickerStarted) {
-        this.startLiveActivityTicker();
-        this.liveTickerStarted = true;
+      const authFooterBrand = document.getElementById("sys-auth-footer-brand");
+      if (authFooterBrand) {
+        authFooterBrand.innerText = settings.authFooterText || "© 2026 Lottery Winner Mobile Limited (Registered)";
       }
-    } else if (view === "admin") {
-      document.getElementById("screen-admin").classList.remove("hidden");
-      LiveDrawRevealEngine.closeWinningDrawRevealModal();
-      this.renderAdmin();
-    } else if (view === "agent") {
-      if (agentScreen) {
-        agentScreen.classList.remove("hidden");
-        this.renderAgentWorkspace();
+
+      const authBonusIndicator = document.getElementById("auth-signup-bonus-indicator");
+      if (authBonusIndicator) {
+        authBonusIndicator.innerText = `৳${settings.signupBonus ?? 100} Starter Wallet Balance`;
+      }
+
+      document.querySelectorAll(".brand-site-name").forEach(el => {
+        (el as HTMLElement).innerText = siteName;
+      });
+
+      document.querySelectorAll(".brand-site-info").forEach(el => {
+        (el as HTMLElement).innerText = siteInfo;
+      });
+
+      const supLink = document.getElementById("profile-support-link") as HTMLAnchorElement | null;
+      if (supLink) {
+        supLink.href = `tel:${supportNum}`;
+      }
+
+      const supSubtitle = document.getElementById("profile-support-subtitle");
+      if (supSubtitle) {
+        supSubtitle.innerText = `Call BD Support: ${supportNum}`;
+      }
+
+      const view = this.getAppView();
+      // Safe screen hiding
+      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent"];
+      screens.forEach(s => {
+        const el = document.getElementById(s);
+        if (el) el.classList.add("hidden");
+      });
+
+      if (view === "maintenance") {
+        const el = document.getElementById("screen-maintenance");
+        if (el) el.classList.remove("hidden");
+        this.renderMaintenance();
+      } else if (view === "auth") {
+        const el = document.getElementById("screen-auth");
+        if (el) el.classList.remove("hidden");
+        this.renderAuth();
+      } else if (view === "dashboard") {
+        const el = document.getElementById("screen-dashboard");
+        if (el) el.classList.remove("hidden");
+        this.renderDashboard();
+        if (!this.liveTickerStarted) {
+          this.startLiveActivityTicker();
+          this.liveTickerStarted = true;
+        }
+      } else if (view === "admin") {
+        const el = document.getElementById("screen-admin");
+        if (el) el.classList.remove("hidden");
+        LiveDrawRevealEngine.closeWinningDrawRevealModal();
+        this.renderAdmin();
+      } else if (view === "agent") {
+        const agentScreen = document.getElementById("screen-agent");
+        if (agentScreen) {
+          agentScreen.classList.remove("hidden");
+          this.renderAgentWorkspace();
+        }
+      }
+    } catch (renderError) {
+      console.error("CRITICAL RENDER ERROR:", renderError);
+      // Emergency display for the user if the app crashes
+      const debugMsg = document.getElementById("debug-error-msg");
+      const debugBox = document.getElementById("debug-error-box");
+      if (debugMsg && debugBox) {
+        debugMsg.innerText = `Render Crash: ${renderError.message}`;
+        debugBox.classList.remove("hidden");
       }
     }
   }

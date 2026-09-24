@@ -294,19 +294,26 @@ export const UIEffectsModule = {
       const dismissSplash = () => {
         if (isDismissed) return;
         isDismissed = true;
+        console.log("Dismissing splash screen...");
         splashScreen.style.opacity = "0";
-        if (typeof this.render === "function") {
-          this.render();
-        } else if (window.app && typeof window.app.render === "function") {
-          window.app.render();
-        }
+        
+        const safeRender = () => {
+          try {
+            if (typeof this.render === "function") {
+              this.render();
+            } else if (window.app && typeof window.app.render === "function") {
+              window.app.render();
+            }
+          } catch (e) {
+            console.error("Render failed during splash dismissal:", e);
+          }
+        };
+
+        safeRender();
+        
         setTimeout(() => {
           splashScreen.classList.add("hidden");
-          if (typeof this.render === "function") {
-            this.render();
-          } else if (window.app && typeof window.app.render === "function") {
-            window.app.render();
-          }
+          safeRender();
         }, 400);
       };
 

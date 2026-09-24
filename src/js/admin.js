@@ -1190,13 +1190,13 @@ export const AdminModule = {
     }
 
     // Filtering
-    let staffAccounts = this.db.users.filter(u => u.role === "agent" || u.role === "moderator");
+    let staffAccounts = this.db.users.filter(u => u.role === "agent" || u.role === "moderator" || u.role === "subagent");
     if (query) {
       staffAccounts = staffAccounts.filter(u => u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query));
     }
 
     if (this.adminAgentsActiveFilter === "agent") {
-      staffAccounts = staffAccounts.filter(u => u.role === "agent");
+      staffAccounts = staffAccounts.filter(u => u.role === "agent" || u.role === "subagent");
     } else if (this.adminAgentsActiveFilter === "moderator") {
       staffAccounts = staffAccounts.filter(u => u.role === "moderator");
     } else if (this.adminAgentsActiveFilter === "blocked") {
@@ -1224,8 +1224,8 @@ export const AdminModule = {
         ? "● Active / সচল"
         : "● Suspended";
 
-      const districtLabel = staff.role === "agent" ? (staff.district || "Dhaka") : "SYSTEM";
-      const badgeColorClass = staff.role === "agent" ? "text-emerald-400 border-emerald-500/10 text-emerald-300" : "text-cyan-400 border-cyan-500/10 text-cyan-300";
+      const districtLabel = (staff.role === "agent" || staff.role === "subagent") ? (staff.district || "Dhaka") : "SYSTEM";
+      const badgeColorClass = (staff.role === "agent" || staff.role === "subagent") ? "text-emerald-400 border-emerald-500/10 text-emerald-300" : "text-cyan-400 border-cyan-500/10 text-cyan-300";
 
       card.innerHTML = `
         <div class="flex items-start justify-between">

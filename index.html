@@ -6747,6 +6747,48 @@
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client"></script>
 
+    <!-- APP ERROR DEBUG CONSOLE -->
+    <div id="debug-error-box" class="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] p-2 z-[999999] hidden font-mono break-all border-b-2 border-white shadow-2xl">
+      <div class="flex justify-between items-center mb-1">
+        <strong>⚠️ APP CRASH DETECTED:</strong>
+        <button onclick="location.reload()" class="bg-white text-red-600 px-2 py-0.5 rounded font-black">RELOAD</button>
+      </div>
+      <div id="debug-error-msg"></div>
+      <div class="mt-2 text-[8px] opacity-80">Check the browser console (F12) for more details.</div>
+    </div>
+
+    <!-- EMERGENCY SPLASH BYPASS -->
+    <div id="emergency-bypass" class="fixed bottom-4 right-4 z-[3000] hidden">
+      <button onclick="document.getElementById('splash-screen').classList.add('hidden'); if(window.app) window.app.render();" class="bg-slate-800 text-slate-400 text-[9px] px-3 py-1 rounded-full border border-slate-700">Skip Splash</button>
+    </div>
+
+    <script>
+      window.addEventListener('error', function(e) {
+        console.error("Global Error Caught:", e.error);
+        const msg = document.getElementById('debug-error-msg');
+        const box = document.getElementById('debug-error-box');
+        if (msg && box) {
+          msg.innerText = e.message + " at " + e.filename + ":" + e.lineno;
+          box.classList.remove('hidden');
+        }
+        // If it's likely a splash screen related hang, show the emergency bypass after 3 seconds
+        setTimeout(() => {
+          const bypass = document.getElementById('emergency-bypass');
+          if (bypass) bypass.classList.remove('hidden');
+        }, 3000);
+      });
+      
+      window.addEventListener('unhandledrejection', function(e) {
+        console.error("Unhandled Promise Rejection:", e.reason);
+        const msg = document.getElementById('debug-error-msg');
+        const box = document.getElementById('debug-error-box');
+        if (msg && box) {
+          msg.innerText = "Promise Error: " + (e.reason?.message || e.reason);
+          box.classList.remove('hidden');
+        }
+      });
+    </script>
+
     <!-- Application script bundle -->
     <script type="module" src="src/main.ts"></script>
   </body>

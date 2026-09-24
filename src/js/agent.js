@@ -528,7 +528,8 @@ export const AgentModule = {
     const createStaffForm = document.getElementById("admin-create-staff-form");
     const agentsSearchInput = document.getElementById("agents-search-input");
 
-    if (createStaffBtn && staffWrapper) {
+    if (createStaffBtn && staffWrapper && !createStaffBtn.dataset.listenerAttached) {
+      createStaffBtn.dataset.listenerAttached = "true";
       createStaffBtn.addEventListener("click", () => {
         staffWrapper.classList.toggle("hidden");
         if (!staffWrapper.classList.contains("hidden")) {
@@ -548,7 +549,8 @@ export const AgentModule = {
       });
     }
 
-    if (createStaffForm) {
+    if (createStaffForm && !createStaffForm.dataset.listenerAttached) {
+      createStaffForm.dataset.listenerAttached = "true";
       createStaffForm.addEventListener("submit", (e) => {
         e.preventDefault();
         const usernameVal = document.getElementById("staff-username").value.trim();
