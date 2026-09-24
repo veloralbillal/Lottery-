@@ -228,7 +228,7 @@ export const UIEffectsModule = {
     if (!splashScreen) return;
 
     // Check if splash screen is disabled in app settings
-    const settings = window.app?.db?.settings || {};
+    const settings = (this.db && this.db.settings) || (window.app?.db?.settings) || {};
     if (settings.splashEnabled === false) {
       splashScreen.classList.add("hidden");
       return;
@@ -249,7 +249,7 @@ export const UIEffectsModule = {
       splashScreen.style.opacity = "1";
 
       // 1. Update dynamic splash content with settings & Top #1 Winner
-      const settings = window.app?.db?.settings || {};
+      const settings = (this.db && this.db.settings) || (window.app?.db?.settings) || {};
       const titleText = settings.splashTitle || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
       const titleEl = document.getElementById("splash-headline-text");
       if (titleEl) titleEl.innerText = titleText;
@@ -257,7 +257,7 @@ export const UIEffectsModule = {
       // Update Top #1 Winner details
       let topWinner = null;
       const featuredId = settings.splashFeaturedWinner;
-      const users = window.app?.db?.users || [];
+      const users = (this.db && this.db.users) || (window.app?.db?.users) || [];
       if (featuredId && featuredId !== "auto") {
         topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
       }
@@ -295,12 +295,16 @@ export const UIEffectsModule = {
         if (isDismissed) return;
         isDismissed = true;
         splashScreen.style.opacity = "0";
-        if (window.app && typeof window.app.render === "function") {
+        if (typeof this.render === "function") {
+          this.render();
+        } else if (window.app && typeof window.app.render === "function") {
           window.app.render();
         }
         setTimeout(() => {
           splashScreen.classList.add("hidden");
-          if (window.app && typeof window.app.render === "function") {
+          if (typeof this.render === "function") {
+            this.render();
+          } else if (window.app && typeof window.app.render === "function") {
             window.app.render();
           }
         }, 400);

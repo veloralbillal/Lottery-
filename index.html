@@ -2,6 +2,29 @@
 <html lang="en">
   <head>
     <script>
+      // Single Page Apps for GitHub Pages
+      // https://github.com/rafgraph/spa-github-pages
+      (function(l) {
+        if (l.search[1] === '/' ) {
+          var decoded = l.search.slice(1).split('&').map(function(s) { 
+            return s.replace(/~and~/g, '&')
+          }).join('?');
+          window.history.replaceState(null, null,
+              l.pathname.slice(0, -1) + decoded + l.hash
+          );
+        }
+      }(window.location));
+    </script>
+    <script>
+      // Emergency Error Logger for Production
+      window.addEventListener('error', function(e) {
+        console.error('CRITICAL APP ERROR:', e.error);
+        const debugBox = document.getElementById('debug-error-box');
+        if (debugBox) {
+          debugBox.classList.remove('hidden');
+          debugBox.innerText += "\n" + (e.error?.message || e.message || "Unknown error");
+        }
+      });
       (function() {
         const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable"];
         const shouldFilter = (args) => {
@@ -279,6 +302,9 @@
     </style>
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
+    <div id="debug-error-box" class="hidden fixed top-0 left-0 right-0 z-[10000] bg-rose-900/90 text-white p-4 text-xs font-mono break-words whitespace-pre-wrap max-h-[200px] overflow-y-auto border-b border-rose-500">
+      APP ERROR DEBUG CONSOLE:
+    </div>
 
     <!-- ================= STUNNING VOICE CLUB + LOTTERY HYBRID SPLASH SCREEN ================= -->
     <div id="splash-screen" class="fixed inset-0 bg-[#060814] z-[2000] flex flex-col items-center justify-between p-3 sm:p-5 select-none overflow-y-auto transition-all duration-750 ease-out">
