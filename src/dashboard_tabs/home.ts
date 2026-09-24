@@ -15,6 +15,12 @@ export class HomeTab {
 
   static render(appInstance) {
     appInstance.updateNotificationBanner();
+    if (typeof appInstance.startLiveActivityTicker === "function") {
+      appInstance.startLiveActivityTicker();
+    }
+    if (typeof appInstance.renderHomeBannerSliders === "function") {
+      appInstance.renderHomeBannerSliders();
+    }
     const listEl = document.getElementById("pools-list-container");
     if (!listEl) return;
     listEl.innerHTML = "";
@@ -28,9 +34,9 @@ export class HomeTab {
       const allBtn = document.createElement("button");
       allBtn.setAttribute("data-category", "all");
       if (appInstance.currentHomeCategory === "all") {
-        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15 cursor-pointer transition active:scale-95";
+        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-yellow-200/50 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-slate-950 shadow-lg shadow-amber-600/30 cursor-pointer transition active:scale-95";
       } else {
-        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-slate-900 text-slate-400 hover:text-white cursor-pointer transition active:scale-95 shadow-md";
+        allBtn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-gradient-to-b from-[#131728] to-[#0c0f1c] text-slate-300 hover:text-white hover:border-amber-500/40 cursor-pointer transition active:scale-95 shadow-md";
       }
       allBtn.innerHTML = "🎯 All Pools";
       tabsCont.appendChild(allBtn);
@@ -43,15 +49,15 @@ export class HomeTab {
         const isActive = (appInstance.currentHomeCategory === cat.name);
         if (isActive) {
           if (cat.type === "multi") {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-emerald-500 text-slate-950 font-bold shadow-lg shadow-emerald-500/15 cursor-pointer transition active:scale-95";
+            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-300/50 bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/30 cursor-pointer transition active:scale-95";
           } else {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border-0 bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-lg shadow-red-600/15 cursor-pointer transition active:scale-95";
+            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-yellow-200/50 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-slate-950 shadow-lg shadow-amber-600/30 cursor-pointer transition active:scale-95";
           }
         } else {
           if (cat.type === "multi") {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-900/30 bg-slate-900 text-emerald-400 hover:text-emerald-300 cursor-pointer transition active:scale-95 shadow-md";
+            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-emerald-900/30 bg-gradient-to-b from-[#131728] to-[#0c0f1c] text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/40 cursor-pointer transition active:scale-95 shadow-md";
           } else {
-            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-slate-900 text-slate-400 hover:text-white cursor-pointer transition active:scale-95 shadow-md";
+            btn.className = "home-cat-tab-btn shrink-0 text-[10px] font-black px-4 py-2 rounded-full border border-slate-800 bg-gradient-to-b from-[#131728] to-[#0c0f1c] text-slate-300 hover:text-white hover:border-amber-500/40 cursor-pointer transition active:scale-95 shadow-md";
           }
         }
         btn.innerHTML = cat.label;
@@ -557,22 +563,62 @@ export class HomeTab {
       return lot.category === appInstance.currentHomeCategory;
     });
 
-    if (filteredLotteries.length === 0) {
-      listEl.innerHTML = `
-        <div class="bg-slate-900/50 border border-slate-800/80 p-8 rounded-3xl text-center space-y-2 mt-2">
-          <p class="text-xs text-slate-500 font-mono">No active draw pools in this category right now.</p>
+    // Top Lottery Jackpot Ticker Strip
+    const jackpotPoolVal = appInstance.db.settings?.jackpotPool || 1584200;
+    const tickerContainer = document.createElement("div");
+    tickerContainer.className = "w-full overflow-hidden bg-gradient-to-r from-amber-950/60 via-slate-900 to-amber-950/60 border border-amber-500/30 rounded-2xl py-2 px-3 relative shadow-[0_0_15px_rgba(251,191,36,0.15)]";
+    tickerContainer.innerHTML = `
+      <div class="flex items-center gap-2 overflow-hidden">
+        <div class="flex items-center gap-1.5 shrink-0 bg-amber-500/20 border border-amber-400/40 px-2 py-0.5 rounded-full text-amber-300 font-mono text-[9px] font-black uppercase tracking-wider">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+          <span>🎰 LIVE JACKPOT</span>
         </div>
-      `;
+        <div class="overflow-hidden whitespace-nowrap flex-1">
+          <div class="animate-lotto-ticker flex items-center gap-6 text-[10px] font-mono text-amber-200">
+            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${jackpotPoolVal.toLocaleString()}</strong></span>
+            <span>•</span>
+            <span class="flex items-center gap-1">🎟️ লাকি ৭ ড্র লাইভ রানিং!</span>
+            <span>•</span>
+            <span class="text-emerald-300 font-bold flex items-center gap-1">🏆 সর্বশেষ বিজয়ী: @shanto (৳৫০,০০০)</span>
+            <span>•</span>
+            <span class="flex items-center gap-1">⚡ ১ ক্লিকে বিকাশ / নগদ / ক্রিপ্টো ডিপোজিট</span>
+            <span>•</span>
+            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${jackpotPoolVal.toLocaleString()}</strong></span>
+            <span>•</span>
+            <span class="flex items-center gap-1">🎟️ লাকি ৭ ড্র লাইভ রানিং!</span>
+            <span>•</span>
+            <span class="text-emerald-300 font-bold flex items-center gap-1">🏆 সর্বশেষ বিজয়ী: @shanto (৳৫০,০০০)</span>
+          </div>
+        </div>
+      </div>
+    `;
+    listEl.appendChild(tickerContainer);
+
+    if (filteredLotteries.length === 0) {
+      const emptyDiv = document.createElement("div");
+      emptyDiv.className = "bg-slate-900/50 border border-slate-800/80 p-8 rounded-3xl text-center space-y-2 mt-2";
+      emptyDiv.innerHTML = `<p class="text-xs text-slate-500 font-mono">No active draw pools in this category right now.</p>`;
+      listEl.appendChild(emptyDiv);
       return;
     }
 
-    filteredLotteries.forEach(lot => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative overflow-hidden space-y-4 shadow-xl cursor-pointer hover:border-cyan-500/20 transition-all duration-300";
+    // Ball style variations for authentic lottery look
+    const ballStyles = [
+      { class: "lottery-ball-gold", icon: "7️⃣" },
+      { class: "lottery-ball-rose", icon: "🎱" },
+      { class: "lottery-ball-cyan", icon: "🎰" },
+      { class: "lottery-ball-emerald", icon: "💎" },
+      { class: "lottery-ball-purple", icon: "👑" }
+    ];
 
-      const badgeColor = lot.category.includes("10") ? "bg-emerald-950 text-emerald-400 border border-emerald-800/40" :
-                         lot.category.includes("20") ? "bg-cyan-950 text-cyan-400 border border-cyan-800/40" :
-                         "bg-rose-950 text-rose-400 border border-rose-800/40";
+    filteredLotteries.forEach((lot, idx) => {
+      const card = document.createElement("div");
+      card.className = "lottery-ticket-card rounded-3xl p-5 relative overflow-hidden space-y-4 shadow-2xl cursor-pointer transition-all duration-300";
+
+      const ballTheme = ballStyles[idx % ballStyles.length];
+      const badgeColor = lot.category.includes("10") ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40" :
+                         lot.category.includes("20") ? "bg-cyan-950/80 text-cyan-300 border border-cyan-500/40" :
+                         "bg-amber-950/80 text-amber-300 border border-amber-500/40";
 
       const progress = Math.min(100, Math.round((lot.soldTickets / lot.totalTickets) * 100));
       const cardDrawTime = new Date(lot.drawTime).toLocaleString("en-US", {
@@ -584,53 +630,104 @@ export class HomeTab {
       });
 
       card.innerHTML = `
-        <div class="flex justify-between items-start gap-2">
-          <div>
-            <span class="text-[9px] uppercase font-bold tracking-widest ${badgeColor} px-2.5 py-0.5 rounded-full">
-              ${lot.category}
-            </span>
-            <h3 class="text-sm font-bold text-white mt-1.5">${lot.name}</h3>
-            <p class="text-[11px] text-slate-400 leading-normal mt-1">${lot.details}</p>
+        <!-- Top Lottery Ticket Stub Header -->
+        <div class="flex justify-between items-start gap-3">
+          <div class="flex items-start gap-3">
+            <!-- 3D Lottery Ball Emblem -->
+            <div class="lottery-ball-3d ${ballTheme.class} shrink-0 mt-0.5">
+              <span>${ballTheme.icon}</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 text-[10px] uppercase font-mono font-bold tracking-wider text-slate-400">
+                <span class="text-amber-400">🎟️ ${lot.category}</span>
+                <span aria-hidden="true" class="text-slate-600">·</span>
+                ${lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0 ? `
+                  <span class="text-purple-400 font-extrabold">👑 ${lot.multiWinnerPrizes.length} Winners Pool</span>
+                ` : `
+                  <span class="text-cyan-400 font-semibold">⭐ Lucky Draw</span>
+                `}
+              </div>
+              <h3 class="text-sm font-black text-white mt-1.5 flex items-center gap-1.5">
+                ${lot.name}
+              </h3>
+              <p class="text-[11px] text-slate-400 leading-normal mt-0.5 line-clamp-2">${lot.details}</p>
+            </div>
           </div>
-          <div class="text-right shrink-0">
-            <span class="text-xs text-slate-500 font-mono block">Entry Fee</span>
-            <span class="text-base font-black text-white font-mono block">৳${lot.entryFee}</span>
+          
+          <!-- Entry Fee Ticket Badge -->
+          <div class="text-right shrink-0 bg-slate-950/40 border-l border-amber-400/20 pl-3.5 pr-1 py-1">
+            <span class="text-[9px] text-amber-300/80 font-mono font-bold uppercase tracking-widest block leading-none">মূল্য</span>
+            <span class="text-lg font-black text-white font-mono block mt-1 leading-none">৳${lot.entryFee}</span>
           </div>
         </div>
 
-        <!-- Target Draw Date & Time -->
-        <div class="flex justify-between items-center text-[10px] text-slate-400 bg-slate-950/40 px-3 py-2 rounded-xl font-mono">
-          <div class="flex items-center gap-1.5 text-slate-400">
-            <i class="fa-regular fa-clock text-cyan-400"></i>
-            <span>Draw Scheduled:</span>
+        <!-- Lottery Prize & Draw Schedule Box -->
+        <div class="grid grid-cols-2 gap-2 bg-gradient-to-r from-slate-950 via-[#0a0d1c] to-slate-950 border border-amber-500/20 p-2.5 rounded-2xl">
+          <div class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-400/40 flex items-center justify-center text-amber-300 text-sm shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.3)]">
+              🏆
+            </div>
+            <div>
+              <span class="text-[8.5px] font-mono text-slate-400 uppercase tracking-wider block">জ্যাকপট প্রাইজ</span>
+              <strong class="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 font-mono drop-shadow">
+                ৳${(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}
+              </strong>
+            </div>
           </div>
-          <span class="text-white font-bold">${cardDrawTime}</span>
+
+          <div class="flex items-center gap-2 justify-end text-right border-l border-slate-800/80 pl-2">
+            <div>
+              <span class="text-[8.5px] font-mono text-slate-400 uppercase tracking-wider block">ড্র এর সময়</span>
+              <span class="text-[10px] text-cyan-300 font-mono font-bold block">${cardDrawTime}</span>
+            </div>
+            <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 text-xs shrink-0">
+              <i class="fa-regular fa-clock"></i>
+            </div>
+          </div>
         </div>
 
-        <!-- Progress of Pools -->
+        <!-- Ticket Perforated Divider with Side Notches -->
+        <div class="relative py-1">
+          <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+          <div class="lottery-ticket-dashed"></div>
+          <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
+        </div>
+
+        <!-- Sold Tickets Lottery Progress -->
         <div class="space-y-1.5">
-          <div class="flex justify-between text-[10px] font-mono text-slate-500">
-            <span>Sold Tickets Progress</span>
-            <span class="text-cyan-400 font-bold">${progress}% (${lot.soldTickets}/${lot.totalTickets})</span>
+          <div class="flex justify-between text-[10px] font-mono">
+            <span class="text-slate-400 flex items-center gap-1">
+              <i class="fa-solid fa-ticket-simple text-amber-400"></i> টিকেট বিক্রয় সম্পন্ন
+            </span>
+            <span class="text-amber-300 font-black">${progress}% (${lot.soldTickets}/${lot.totalTickets} টিকেট)</span>
           </div>
-          <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
-            <div class="h-full bg-gradient-to-r from-cyan-500 to-rose-500" style="width: ${progress}%"></div>
+          <div class="w-full h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800/80 p-0.5">
+            <div class="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-yellow-400 rounded-full shadow-[0_0_10px_rgba(251,191,36,0.6)]" style="width: ${progress}%"></div>
           </div>
         </div>
 
-        <div class="flex justify-between items-center border-t border-slate-800/80 pt-3 text-[11px] font-mono">
-          <div class="flex items-center gap-1.5 text-slate-400">
-            <i class="fa-solid fa-trophy text-rose-500"></i>
-            <span>Prize: <span class="text-white font-bold">৳${lot.prizeAmount || lot.prizePool || 0}</span></span>
+        <!-- Bottom Action Bar -->
+        <div class="flex justify-between items-center pt-1 text-[11px] font-mono">
+          <div class="text-[10px] text-slate-400 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>${lot.totalTickets - lot.soldTickets} টিকেট বাকি আছে</span>
           </div>
-          <button class="buy-pool-btn bg-gradient-to-r from-red-600 to-rose-600 hover:scale-103 text-white text-[11px] font-black py-2 px-4 rounded-xl shadow-lg transition active:opacity-90" data-id="${lot.id}">
-            Buy Ticket
+          <button class="buy-pool-btn lottery-ticket-btn px-4 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs uppercase tracking-wide cursor-pointer active:scale-95" data-id="${lot.id}">
+            <i class="fa-solid fa-ticket"></i>
+            <span>টিকেট কিনুন (৳${lot.entryFee})</span>
           </button>
         </div>
       `;
 
+      card.setAttribute("data-lottery-id", lot.id);
+      card.setAttribute("data-id", lot.id);
+
       card.addEventListener("click", (e) => {
-        if (e.target.closest(".buy-pool-btn")) return;
+        const target = e.target;
+        if (target && typeof target.closest === "function" && target.closest(".buy-pool-btn")) {
+          return;
+        }
+        e.stopPropagation();
         appInstance.openLotteryDetailsPop(lot.id);
       });
 
@@ -640,8 +737,11 @@ export class HomeTab {
     document.querySelectorAll(".buy-pool-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const id = e.target.getAttribute("data-id");
-        appInstance.purchaseTicket(id);
+        const target = e.currentTarget;
+        const id = target ? target.getAttribute("data-id") : null;
+        if (id) {
+          appInstance.purchaseTicket(id);
+        }
       });
     });
 

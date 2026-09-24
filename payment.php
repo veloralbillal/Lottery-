@@ -15,6 +15,14 @@ $error_msg = "";
 
 // Ensure required payment settings keys exist in the database or insert defaults safely
 $required_keys = [
+    'payMasterEnabled' => 'true',
+    'payUddoktapayEnabled' => 'true',
+    'payZinipayEnabled' => 'true',
+    'payBkashEnabled' => 'false',
+    'payNagadEnabled' => 'false',
+    'payRocketEnabled' => 'false',
+    'payUsdtEnabled' => 'false',
+    'payAgentDepositEnabled' => 'false',
     'mobileAgentBkash' => '01799228833',
     'mobileTypeBkash' => 'personal',
     'mobileInstructionBkash' => 'Send money to our bKash Personal number, then enter your TrxID below for approval.',
@@ -58,7 +66,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         $stmt_save = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
         
+        $toggle_keys = ['payMasterEnabled', 'payUddoktapayEnabled', 'payZinipayEnabled', 'payBkashEnabled', 'payNagadEnabled', 'payRocketEnabled', 'payUsdtEnabled', 'payAgentDepositEnabled'];
+        foreach ($toggle_keys as $tkey) {
+            $val = isset($_POST[$tkey]) ? 'true' : 'false';
+            $stmt_save->execute([$tkey, $val, $val]);
+        }
+
         foreach ($required_keys as $key => $def_val) {
+            if (in_array($key, $toggle_keys)) continue;
             $post_val = isset($_POST[$key]) ? trim($_POST[$key]) : '';
             $stmt_save->execute([$key, $post_val, $post_val]);
         }
@@ -172,6 +187,117 @@ foreach ($required_keys as $key => $def_val) {
         <!-- Setup Form fields -->
         <form action="payment.php" method="POST" class="space-y-6">
             <input type="hidden" name="action" value="update_gateways">
+
+            <!-- GATEWAY ENABLE / DISABLE SWITCHBOARD CARD -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl">
+                <div class="flex items-center gap-2 pb-2 border-b border-slate-800/60">
+                    <div class="w-8 h-8 rounded-lg bg-teal-950/50 text-teal-400 flex items-center justify-center text-sm border border-teal-900/30">
+                        <i class="fa-solid fa-toggle-on"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Gateway Enable / Disable Switchboard (Live Sync)</h3>
+                        <p class="text-[10px] text-slate-500 font-mono">Toggle payment gateways ON or OFF. Disabled gateways will instantly hide and deactivate in the user panel.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs font-mono">
+                    <!-- Master Switch -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-white font-bold block">Master Gateways Switch</span>
+                            <span class="text-[9px] text-slate-500">Global killswitch</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payMasterEnabled" value="true" <?php echo ($settings['payMasterEnabled'] !== 'false' && $settings['payMasterEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- UddoktaPay -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-emerald-400 font-bold block">UddoktaPay</span>
+                            <span class="text-[9px] text-slate-500">Automated PGW</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payUddoktapayEnabled" value="true" <?php echo ($settings['payUddoktapayEnabled'] !== 'false' && $settings['payUddoktapayEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- ZiniPay -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-cyan-400 font-bold block">ZiniPay</span>
+                            <span class="text-[9px] text-slate-500">Instant PGW</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payZinipayEnabled" value="true" <?php echo ($settings['payZinipayEnabled'] !== 'false' && $settings['payZinipayEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- bKash -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-pink-400 font-bold block">bKash Personal</span>
+                            <span class="text-[9px] text-slate-500">Send Money channel</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payBkashEnabled" value="true" <?php echo ($settings['payBkashEnabled'] !== 'false' && $settings['payBkashEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Nagad -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-orange-400 font-bold block">Nagad Personal</span>
+                            <span class="text-[9px] text-slate-500">Send Money channel</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payNagadEnabled" value="true" <?php echo ($settings['payNagadEnabled'] !== 'false' && $settings['payNagadEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Rocket -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-purple-400 font-bold block">Rocket Mobile</span>
+                            <span class="text-[9px] text-slate-500">Mobile banking</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payRocketEnabled" value="true" <?php echo ($settings['payRocketEnabled'] !== 'false' && $settings['payRocketEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- USDT Crypto -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-teal-300 font-bold block">Crypto USDT</span>
+                            <span class="text-[9px] text-slate-500">TRC-20 protocol</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payUsdtEnabled" value="true" <?php echo ($settings['payUsdtEnabled'] !== 'false' && $settings['payUsdtEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+
+                    <!-- Agent Desk -->
+                    <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl flex items-center justify-between">
+                        <div>
+                            <span class="text-amber-300 font-bold block">Agent Desk</span>
+                            <span class="text-[9px] text-slate-500">Manual agent deposit</span>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" name="payAgentDepositEnabled" value="true" <?php echo ($settings['payAgentDepositEnabled'] !== 'false' && $settings['payAgentDepositEnabled'] !== false) ? 'checked' : ''; ?> class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
+                        </label>
+                    </div>
+                </div>
+            </div>
 
             <!-- MOBILE BANKING ACCOUNTS CARD -->
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-6 shadow-xl">

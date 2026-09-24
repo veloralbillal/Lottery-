@@ -12,6 +12,9 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-tickets", file: "src/dashboard_tabs/tickets.php" },
       { id: "tab-wallet", file: "src/dashboard_tabs/user_balance.php" },
       { id: "tab-history", file: "src/dashboard_tabs/history.php" },
+      { id: "tab-deposit", file: "src/dashboard_tabs/deposit.php" },
+      { id: "tab-withdraw", file: "src/dashboard_tabs/withdraw.php" },
+      { id: "tab-agent", file: "src/dashboard_tabs/agent.php" },
       { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
       { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
       { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
@@ -90,7 +93,7 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
                     res.end(JSON.stringify(data));
                   }
                 };
-                const { handleSendResetEmail } = await import('./src/js/apiEmailSender.ts');
+                const { handleSendResetEmail } = await import('./src/js/apiEmailSender.js');
                 await handleSendResetEmail({ body: parsedBody }, expressRes);
               } catch (e) {
                 res.statusCode = 500;
@@ -100,6 +103,129 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
             });
             return;
           }
+        }
+
+        if (req.url && req.url.startsWith('/api/uddoktapay/create-checkout')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', async () => {
+              try {
+                const parsedBody = JSON.parse(body || '{}');
+                const expressRes = {
+                  status(code) {
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                  }
+                };
+                const { handleUddoktaPayCheckout } = await import('./src/js/apiUddoktaPay.js');
+                await handleUddoktaPayCheckout({ body: parsedBody }, expressRes);
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ status: false, message: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
+        if (req.url && req.url.startsWith('/api/uddoktapay/verify-payment')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', async () => {
+              try {
+                const parsedBody = JSON.parse(body || '{}');
+                const expressRes = {
+                  status(code) {
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                  }
+                };
+                const { handleUddoktaPayVerify } = await import('./src/js/apiUddoktaPay.js');
+                await handleUddoktaPayVerify({ body: parsedBody }, expressRes);
+              } catch (e) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ status: false, message: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
+        // Live Draw Broadcast & Latest Draw Endpoints
+        if (req.url && req.url.startsWith('/api/draws/broadcast')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', () => {
+              try {
+                const parsedBody = JSON.parse(body || '{}');
+                if (parsedBody && parsedBody.id) {
+                  (globalThis as any).__latestDrawEvent = parsedBody;
+                  if (!(globalThis as any).__drawEventHistory) (globalThis as any).__drawEventHistory = [];
+                  (globalThis as any).__drawEventHistory.unshift(parsedBody);
+                  if ((globalThis as any).__drawEventHistory.length > 50) {
+                    (globalThis as any).__drawEventHistory.pop();
+                  }
+                }
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: true, latest: (globalThis as any).__latestDrawEvent || null }));
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ success: false, error: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
+        if (req.url && req.url.startsWith('/api/draws/latest')) {
+          res.statusCode = 200;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({
+            success: true,
+            latest: (globalThis as any).__latestDrawEvent || null,
+            history: ((globalThis as any).__drawEventHistory || []).slice(0, 10)
+          }));
+          return;
+        }
+
+        if (req.url && (req.url.startsWith('/api_settings.php') || req.url.startsWith('/api/settings'))) {
+          res.setHeader('Content-Type', 'application/json');
+          res.setHeader('Cache-Control', 'no-cache');
+          // Return default and saved runtime gateway status settings
+          const defaultSettings = {
+            payMasterEnabled: 'true',
+            payUddoktapayEnabled: 'true',
+            payZinipayEnabled: 'true',
+            payCryptomusEnabled: 'true',
+            payBkashEnabled: 'false',
+            payNagadEnabled: 'false',
+            payRocketEnabled: 'false',
+            payUsdtEnabled: 'false',
+            payAgentDepositEnabled: 'false'
+          };
+          res.end(JSON.stringify(defaultSettings));
+          return;
         }
 
         const decodedUrl = decodeURIComponent(req.url.split('?')[0]);

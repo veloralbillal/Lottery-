@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
@@ -44,10 +44,71 @@ export const SyncCloudModule = {
       }, dbId);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
       console.log("Firebase sync engine initialized successfully.");
-      await this.loadFromCloud();
+      
+      // Start subscribing to live Firestore updates
+      this.listenToCloud();
     } catch (e) {
       console.warn("Failed to initialize Firebase Sync:", e.message || e);
     }
+  },
+
+  listenToCloud() {
+    if (!this.firestoreDocRef) return;
+    
+    // Safety check to prevent duplicate listeners
+    if (this.firestoreUnsubscribe) {
+      try {
+        this.firestoreUnsubscribe();
+      } catch (e) {
+        console.warn("Failed to unsubscribe old listener:", e);
+      }
+    }
+
+    this.setSyncState("loading");
+
+    this.firestoreUnsubscribe = onSnapshot(this.firestoreDocRef, (docSnap) => {
+      try {
+        if (docSnap.exists()) {
+          // If we are currently uploading a write operation, ignore our immediate echoing snapshot to avoid write/read loops
+          if (this.syncState === "syncing") {
+            return;
+          }
+
+          const cloudData = docSnap.data().db;
+          if (cloudData) {
+            let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
+            if (parsed) {
+              parsed = this.constructor.removeCircularReferences(parsed);
+            }
+            this.db = parsed;
+            
+            if (this.currentUser) {
+              const freshUser = this.db.users.find(u => u.username === this.currentUser.username);
+              if (freshUser) {
+                this.currentUser = this.constructor.removeCircularReferences(freshUser);
+                localStorage.setItem(this.sessionKey, this.constructor.safeStringify(freshUser));
+              }
+            }
+            localStorage.setItem(this.dbKey, this.constructor.safeStringify(this.db));
+            
+            // Re-render everything immediately across all screens/tabs
+            this.render();
+            console.log("Database successfully synced with Firebase cloud (Real-time update received).");
+            this.setSyncState("synced");
+          }
+        } else {
+          // If the document doesn't exist yet, initialize it on cloud
+          this.syncToCloud();
+        }
+      } catch (err) {
+        console.warn("Error processing real-time snapshot payload:", err);
+        this.setSyncState("error");
+      }
+    }, (error) => {
+      console.warn("Firestore real-time listener subscription error:", error);
+      // Silently operate in local-first offline fallback mode to avoid environment/sandbox warnings
+      this.setSyncState("offline");
+    });
   },
 
   async loadFromCloud() {

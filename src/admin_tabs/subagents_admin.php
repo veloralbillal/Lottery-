@@ -40,24 +40,18 @@
     </div>
 
     <!-- Subagents List Card -->
-    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
-      <div class="overflow-x-auto font-sans">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-slate-800 text-[10px] font-mono font-bold text-slate-400 uppercase select-none">
-              <th class="p-3">Sub-Agent Operator</th>
-              <th class="p-3">Parent Leader</th>
-              <th class="p-3">Balance & Commission</th>
-              <th class="p-3">Direct Bookings</th>
-              <th class="p-3">Mission Quota</th>
-              <th class="p-3">Status</th>
-              <th class="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="subagents-list-tbody" class="divide-y divide-slate-800/50">
-            <!-- Populated dynamically -->
-          </tbody>
-        </table>
+    <div class="space-y-4">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono font-black">Sub-Agents Operator Directory / সাব-এজেন্ট তালিকা</span>
+        <span class="text-[10px] text-slate-500 font-mono flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+          <span>Realtime Field Operators</span>
+        </span>
+      </div>
+      
+      <!-- Beautiful cards-based grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="subagents-list-cards-grid">
+        <!-- Populated dynamically via admin.js -->
       </div>
     </div>
   </div>

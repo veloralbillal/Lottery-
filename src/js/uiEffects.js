@@ -154,13 +154,13 @@ export const UIEffectsModule = {
     if (!track) return;
 
     const templates = [
-      "@{user} just won ৳{amount} from Lucky Spin! 🎡",
-      "@{user} claimed ৳{amount} {level} Milestone Reward! 🏆",
-      "@{user} purchased {tickets} ticket entries to {pool}! 🎫",
-      "@{user} requested bKash cashout withdrawal of ৳{amount}! 💸",
-      "@{user} made a secure bKash deposit of ৳{amount}! 💳",
-      "New player @{user} registered via affiliate link! 🌟",
-      "@{user} completed automated Cashout OTP checkout! 🔒"
+      "<span class='text-amber-300 font-bold'>@{user}</span> won <strong class='text-emerald-400 font-black'>৳{amount}</strong> from Lucky Spin! 🎡",
+      "<span class='text-amber-300 font-bold'>@{user}</span> claimed <strong class='text-amber-300 font-black'>৳{amount}</strong> {level} Reward! 🏆",
+      "<span class='text-amber-300 font-bold'>@{user}</span> bought <strong class='text-cyan-300 font-bold'>{tickets} tickets</strong> in {pool}! 🎫",
+      "<span class='text-amber-300 font-bold'>@{user}</span> received instant bKash cashout of <strong class='text-emerald-400 font-black'>৳{amount}</strong>! ⚡",
+      "<span class='text-amber-300 font-bold'>@{user}</span> deposited <strong class='text-emerald-400 font-black'>৳{amount}</strong> via Nagad (10% Bonus)! 💳",
+      "New player <span class='text-amber-300 font-bold'>@{user}</span> joined via affiliate link! 🌟",
+      "<span class='text-amber-300 font-bold'>@{user}</span> cashed out <strong class='text-emerald-400 font-black'>৳{amount}</strong> via Rocket! 💸"
     ];
 
     const banglaNames = [
@@ -170,7 +170,7 @@ export const UIEffectsModule = {
     ];
 
     const pools = [
-      "Mega Jackpot Pool", "Daily Cash Draw", "Eid Festival Grand Pool", "Bronze Starter Pool"
+      "Mega Jackpot Pool", "Daily Cash Draw", "Eid Festival Grand Pool", "৳10 Slider Pool", "৳20 Slider Pool"
     ];
 
     const levels = [
@@ -201,8 +201,8 @@ export const UIEffectsModule = {
       for (let i = 0; i < 4; i++) {
         const text = generateRandomActivity();
         html += `
-          <span class="inline-flex items-center gap-1.5 text-[9.5px] font-medium text-slate-300">
-            <i class="fa-solid fa-bolt-lightning text-amber-500 animate-pulse text-[8px]"></i>
+          <span class="inline-flex items-center gap-1.5 text-[9.5px] font-mono text-slate-300 whitespace-nowrap">
+            <i class="fa-solid fa-bolt text-amber-400 animate-pulse text-[8px]"></i>
             ${text}
           </span>
         `;
@@ -220,7 +220,7 @@ export const UIEffectsModule = {
     if (this.liveTickerInterval) {
       clearInterval(this.liveTickerInterval);
     }
-    this.liveTickerInterval = setInterval(updateTickerText, 6000);
+    this.liveTickerInterval = setInterval(updateTickerText, 4500);
   },
 
   initSplashScreen() {
@@ -616,24 +616,32 @@ export const UIEffectsModule = {
   },
 
   showToast(message, type = "info") {
-    const container = document.getElementById("toast-container");
-    if (!container) return;
+    let container = document.getElementById("toast-container");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "toast-container";
+      container.className = "fixed inset-0 z-[999999] flex flex-col items-center justify-center p-4 pointer-events-none text-center";
+      document.body.appendChild(container);
+    }
 
     const toast = document.createElement("div");
-    toast.className = `flex items-center gap-2 px-4 py-3 rounded-2xl shadow-xl border text-xs font-mono text-white transition-all transform translate-y-2 opacity-0 duration-350 shrink-0 select-none ${
-      type === "success" ? "bg-emerald-950 border-emerald-500/30 text-emerald-300" :
-      type === "error" ? "bg-rose-950 border-rose-500/30 text-rose-300" :
-      "bg-slate-900 border-slate-700 text-slate-300"
+    toast.className = `app-toast-item flex items-center justify-center gap-2.5 px-5 py-3.5 rounded-2xl shadow-2xl border-2 text-xs font-mono font-bold text-white transition-all transform scale-95 opacity-0 duration-300 pointer-events-auto select-none text-center ${
+      type === "success" ? "bg-slate-950/98 border-emerald-500 text-emerald-300 shadow-emerald-950/60" :
+      type === "error" ? "bg-slate-950/98 border-rose-500 text-rose-300 shadow-rose-950/60" :
+      type === "warning" ? "bg-slate-950/98 border-amber-500 text-amber-300 shadow-amber-950/60" :
+      "bg-slate-950/98 border-cyan-500 text-cyan-300 shadow-cyan-950/60"
     }`;
 
     const icon = document.createElement("i");
-    icon.className = `fa-solid ${
+    icon.className = `fa-solid text-sm shrink-0 ${
       type === "success" ? "fa-circle-check text-emerald-400" :
       type === "error" ? "fa-circle-xmark text-rose-400" :
+      type === "warning" ? "fa-triangle-exclamation text-amber-400" :
       "fa-circle-info text-cyan-400"
     }`;
 
     const text = document.createElement("span");
+    text.className = "leading-snug break-words";
     text.innerText = message;
 
     toast.appendChild(icon);
@@ -642,14 +650,16 @@ export const UIEffectsModule = {
 
     // Trigger animation
     setTimeout(() => {
-      toast.classList.remove("translate-y-2", "opacity-0");
+      toast.classList.remove("scale-95", "opacity-0");
+      toast.classList.add("scale-100", "opacity-100");
     }, 10);
 
     // Remove
     setTimeout(() => {
-      toast.classList.add("translate-y-2", "opacity-0");
-      setTimeout(() => toast.remove(), 400);
-    }, 4500);
+      toast.classList.remove("scale-100", "opacity-100");
+      toast.classList.add("scale-95", "opacity-0");
+      setTimeout(() => toast.remove(), 350);
+    }, 4000);
   },
 
   renderHomeBannerSliders() {
@@ -676,20 +686,113 @@ export const UIEffectsModule = {
     this.currentSlideIndex = 0;
 
     slides.forEach((slide, idx) => {
+      // Determine themed visuals for the slide
+      const textToScan = `${slide.title || ''} ${slide.subtitle || ''} ${slide.link || ''}`.toLowerCase();
+      let badgeHtml = "";
+      let tagHtml = "";
+      let actionText = "Tap to explore";
+      let actionBtnClass = "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 shadow-amber-600/30";
+      let iconMarkup = "";
+      let bgBackdrop = "bg-gradient-to-r from-[#0d1022] via-[#0f142b]/95 to-[#1a1433]/90";
+      let fallbackImg = "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=800&auto=format&fit=crop";
+
+      if (textToScan.includes("refer") || textToScan.includes("bonus") || textToScan.includes("invite") || slide.link === "refer") {
+        badgeHtml = `
+          <span class="inline-flex items-center gap-1.5 text-[8px] sm:text-[8.5px] uppercase font-mono font-black tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/50 px-2.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(168,85,247,0.35)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse"></span> 👑 VIP REFERRAL BONUS
+          </span>
+        `;
+        tagHtml = `
+          <span class="text-[7.5px] sm:text-[8px] font-mono text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            ১০% আজীবন কমিশন
+          </span>
+        `;
+        actionText = "Invite Friends / ইনভাইট করুন";
+        iconMarkup = `
+          <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-purple-500/25 via-pink-500/10 to-purple-900/40 border border-purple-400/40 flex items-center justify-center shadow-lg relative group">
+            <div class="absolute inset-0 bg-purple-500/10 rounded-2xl blur-md"></div>
+            <i class="fa-solid fa-gift text-2xl sm:text-3xl text-transparent bg-clip-text bg-gradient-to-t from-pink-400 via-purple-200 to-white relative z-10 drop-shadow"></i>
+          </div>
+        `;
+        bgBackdrop = "bg-gradient-to-r from-[#0d1024] via-[#101530]/95 to-[#241338]/90";
+        fallbackImg = "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=800&auto=format&fit=crop";
+      } else if (textToScan.includes("payout") || textToScan.includes("fast") || textToScan.includes("bkash") || textToScan.includes("cashout") || slide.link === "wallet") {
+        badgeHtml = `
+          <span class="inline-flex items-center gap-1.5 text-[8px] sm:text-[8.5px] uppercase font-mono font-black tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(245,158,11,0.35)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> ⚡ INSTANT CASHOUT
+          </span>
+        `;
+        tagHtml = `
+          <span class="text-[7.5px] sm:text-[8px] font-mono text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            ০% ফি • ৫ মিনিটে বিকাশ
+          </span>
+        `;
+        actionText = "Cashout Now / টাকা তুলুন";
+        iconMarkup = `
+          <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-500/25 via-yellow-500/10 to-amber-900/40 border border-amber-400/40 flex items-center justify-center shadow-lg relative group">
+            <div class="absolute inset-0 bg-amber-500/10 rounded-2xl blur-md"></div>
+            <i class="fa-solid fa-bolt text-2xl sm:text-3xl text-transparent bg-clip-text bg-gradient-to-t from-amber-400 via-yellow-200 to-white relative z-10 drop-shadow"></i>
+          </div>
+        `;
+        bgBackdrop = "bg-gradient-to-r from-[#121626] via-[#101428]/95 to-[#241a12]/90";
+        fallbackImg = "https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=800&auto=format&fit=crop";
+      } else {
+        badgeHtml = `
+          <span class="inline-flex items-center gap-1.5 text-[8px] sm:text-[8.5px] uppercase font-mono font-black tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-500/50 px-2.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(6,182,212,0.35)]">
+            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> 🎯 SPECIAL PROMOTION
+          </span>
+        `;
+        tagHtml = `
+          <span class="text-[7.5px] sm:text-[8px] font-mono text-emerald-400 font-bold bg-emerald-950/70 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            Active Now
+          </span>
+        `;
+        actionText = "Explore Now / অফার দেখুন";
+        iconMarkup = `
+          <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-cyan-500/25 to-blue-900/40 border border-cyan-400/40 flex items-center justify-center shadow-lg relative group">
+            <div class="absolute inset-0 bg-cyan-500/10 rounded-2xl blur-md"></div>
+            <i class="fa-solid fa-star text-2xl sm:text-3xl text-transparent bg-clip-text bg-gradient-to-t from-cyan-300 to-white relative z-10 drop-shadow"></i>
+          </div>
+        `;
+        fallbackImg = "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=800&auto=format&fit=crop";
+      }
+
+      // If user had the old cramped office stock photos, use high quality luxury lottery images
+      let imgUrl = slide.imageUrl || fallbackImg;
+      if (imgUrl.includes("photo-1556742049") || imgUrl.includes("photo-1559526324")) {
+        imgUrl = fallbackImg;
+      }
+
       // Create slide element
       const slideDiv = document.createElement("div");
-      slideDiv.className = "w-full shrink-0 h-full relative cursor-pointer select-none overflow-hidden rounded-3xl";
+      slideDiv.className = "w-full shrink-0 h-full relative cursor-pointer select-none overflow-hidden";
       slideDiv.style.width = "100%";
       slideDiv.style.minWidth = "100%";
       slideDiv.style.flexShrink = "0";
       slideDiv.innerHTML = `
-        <img src="${slide.imageUrl || 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop'}" alt="${slide.title}" class="w-full h-full object-cover select-none pointer-events-none">
-        <div class="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/70 to-transparent flex flex-col justify-center px-6 md:px-8 space-y-1.5">
-          <span class="inline-block self-start text-[7px] md:text-[8px] uppercase font-black text-white bg-red-600 border border-red-500/30 px-2 py-0.5 rounded-full tracking-widest font-mono shadow-md">${slide.subtitle || 'SPECIAL PROMOTION'}</span>
-          <h3 class="text-xs md:text-sm font-black text-white font-display leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] max-w-[280px] tracking-wide">${slide.title}</h3>
-          <span class="text-[8px] text-cyan-400 font-mono font-bold flex items-center gap-1.5 bg-slate-950/40 border border-cyan-500/20 px-2 py-0.5 rounded-md self-start">
-            <i class="fa-solid fa-circle-arrow-right text-[9px] animate-bounce"></i> Tap to visit now
-          </span>
+        <img src="${imgUrl}" alt="${slide.title}" class="w-full h-full object-cover select-none pointer-events-none opacity-30 scale-105 transition-transform duration-700">
+        <div class="absolute inset-0 ${bgBackdrop} flex items-center justify-between px-5 sm:px-7 py-3">
+          <div class="space-y-1.5 z-10 flex-1 min-w-0 pr-2">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              ${badgeHtml}
+              ${tagHtml}
+            </div>
+            <h3 class="text-xs sm:text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-white to-amber-300 drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] tracking-tight line-clamp-1">
+              ${slide.title}
+            </h3>
+            <p class="text-[9.5px] sm:text-[10.5px] text-slate-300/90 font-sans line-clamp-1 leading-tight">
+              ${slide.subtitle || 'Exclusive rewards & daily bonuses waiting for you!'}
+            </p>
+            <div class="pt-0.5">
+              <span class="inline-flex items-center gap-1.5 text-[8.5px] sm:text-[9.5px] font-mono font-black ${actionBtnClass} px-3.5 py-1.5 rounded-full shadow-md border border-yellow-200/50 hover:scale-105 active:scale-95 transition-transform duration-200">
+                <span>${actionText}</span>
+                <i class="fa-solid fa-arrow-right text-[8px]"></i>
+              </span>
+            </div>
+          </div>
+          <div class="shrink-0 z-10 hidden xs:flex sm:flex items-center justify-center pl-2">
+            ${iconMarkup}
+          </div>
         </div>
       `;
 
@@ -705,7 +808,7 @@ export const UIEffectsModule = {
 
       // Create indicator dot
       const dot = document.createElement("button");
-      dot.className = `w-1.5 h-1.5 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-cyan-400 w-3' : 'bg-slate-700'}`;
+      dot.className = `transition-all duration-300 cursor-pointer ${idx === 0 ? 'w-5 h-1.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-400 shadow-[0_0_8px_rgba(245,158,11,0.8)]' : 'w-2 h-1.5 rounded-full bg-slate-700/80 hover:bg-slate-600'}`;
       dot.addEventListener("click", (e) => {
         e.stopPropagation();
         this.goToSlide(idx);
@@ -755,9 +858,9 @@ export const UIEffectsModule = {
     const dots = dotsContainer.querySelectorAll("button");
     dots.forEach((dot, dIdx) => {
       if (dIdx === idx) {
-        dot.className = "w-1.5 h-1.5 rounded-full transition-all duration-300 bg-cyan-400 w-3";
+        dot.className = "w-5 h-1.5 rounded-full transition-all duration-300 bg-gradient-to-r from-amber-400 to-yellow-400 shadow-[0_0_8px_rgba(245,158,11,0.8)] cursor-pointer";
       } else {
-        dot.className = "w-1.5 h-1.5 rounded-full transition-all duration-300 bg-slate-700";
+        dot.className = "w-2 h-1.5 rounded-full transition-all duration-300 bg-slate-700/80 hover:bg-slate-600 cursor-pointer";
       }
     });
   },

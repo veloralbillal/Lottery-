@@ -15,6 +15,14 @@ export class WalletExtensions {
   static init(appInstance) {
     console.log("Wallet Extensions Module successfully initialized.");
 
+    // Immediate sync on load
+    setTimeout(() => {
+      WalletExtensions.syncDepositGatewaysWithAdminSettings(appInstance);
+    }, 50);
+    setInterval(() => {
+      WalletExtensions.syncDepositGatewaysWithAdminSettings(appInstance);
+    }, 1000);
+
     // Event delegation for wallet extension interactions
     document.addEventListener("click", (e) => {
       const user = appInstance.currentUser;
@@ -23,6 +31,17 @@ export class WalletExtensions {
       // Ensure local state fields are initialized
       if (user.vaultBalance === undefined) user.vaultBalance = 0;
       if (user.pinLockEnabled === undefined) user.pinLockEnabled = false;
+
+      // 0. Deposit submit button intercept
+      const submitBtnTarget = e.target.closest("#dep-submit-btn");
+      if (submitBtnTarget) {
+        if (window.submitDepositForm) {
+          window.submitDepositForm();
+        } else if (window.submitDeposit) {
+          window.submitDeposit();
+        }
+        return;
+      }
 
       // 1. Preset amount clicks
       const presetBtn = e.target.closest(".quick-dep-preset-btn");
@@ -176,11 +195,113 @@ export class WalletExtensions {
     if (user.vaultBalance === undefined) user.vaultBalance = 0;
     if (user.pinLockEnabled === undefined) user.pinLockEnabled = false;
 
+    // Sync deposit gateways with admin settings
+    WalletExtensions.syncDepositGatewaysWithAdminSettings(appInstance);
+
     // Run sub-renders
     WalletExtensions.renderDashboardExtensions(appInstance);
     WalletExtensions.renderQuickDepositExtensions(appInstance);
     WalletExtensions.renderCryptoCalculatorExtensions(appInstance);
     WalletExtensions.renderWithdrawSecurityExtensions(appInstance);
+  }
+
+  static syncDepositGatewaysWithAdminSettings(appInstance) {
+    fetch('/api_settings.php')
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data === 'object') {
+          if (!appInstance.db) appInstance.db = {};
+          appInstance.db.settings = { ...(appInstance.db.settings || {}), ...data };
+        }
+        WalletExtensions.applyGatewaySync(appInstance);
+      })
+      .catch(() => {
+        WalletExtensions.applyGatewaySync(appInstance);
+      });
+  }
+
+  static applyGatewaySync(appInstance) {
+    if (appInstance && typeof appInstance.syncDepositGatewaysUI === "function") {
+      appInstance.syncDepositGatewaysUI();
+      return;
+    }
+
+    const s = appInstance.db?.settings || {};
+    const isMasterOn = s.payMasterEnabled !== false && s.payMasterEnabled !== 'false' && s.payMasterEnabled !== '0';
+
+    const checkEnabled = (val: any, defaultState = true) => {
+      if (!isMasterOn) return false;
+      if (val === undefined || val === null) return defaultState;
+      if (val === false || val === 'false' || val === '0' || val === 0) return false;
+      return true;
+    };
+
+    const mapping: Record<string, boolean> = {
+      "UddoktaPay": isMasterOn && checkEnabled(s.payUddoktapayEnabled, true),
+      "ZiniPay": isMasterOn && checkEnabled(s.payZinipayEnabled ?? s.payZiniPayEnabled, true),
+      "Cryptomus": isMasterOn && checkEnabled(s.payCryptomusEnabled, true),
+      "bKash": isMasterOn && checkEnabled(s.payBkashEnabled, false),
+      "Nagad": isMasterOn && checkEnabled(s.payNagadEnabled, false),
+      "Rocket": isMasterOn && checkEnabled(s.payRocketEnabled, false),
+      "USDT": isMasterOn && checkEnabled(s.payUsdtEnabled, false),
+      "Agent": isMasterOn && checkEnabled(s.payAgentDepositEnabled ?? s.payAgentEnabled, false),
+    };
+
+    // Store globally for real-time validation check
+    (window as any).__gatewayStatusMap = mapping;
+
+    document.querySelectorAll(".deposit-method-card").forEach(card => {
+      const gw = card.getAttribute("data-gateway");
+      if (gw && mapping[gw] !== undefined) {
+        const isEnabled = mapping[gw];
+        if (isEnabled) {
+          (card as HTMLElement).style.display = "";
+          card.classList.remove("hidden", "opacity-50", "pointer-events-none");
+        } else {
+          (card as HTMLElement).style.display = "none";
+          card.classList.add("hidden");
+        }
+
+        // Add or update real-time status badge
+        let badge = card.querySelector(".gw-status-badge");
+        if (!badge) {
+          badge = document.createElement("span");
+          badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2";
+          const titleDiv = card.querySelector("div > div > div.flex") || card.querySelector(".flex.items-center.gap-1\\.5");
+          if (titleDiv) {
+            titleDiv.appendChild(badge);
+          }
+        }
+        if (isEnabled) {
+          badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 bg-emerald-950 text-emerald-400 border border-emerald-800/50 inline-flex items-center gap-1";
+          badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> LIVE';
+        } else {
+          badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 bg-rose-950 text-rose-400 border border-rose-800/50 inline-flex items-center gap-1";
+          badge.innerHTML = '<i class="fa-solid fa-ban"></i> OFFLINE';
+        }
+      }
+    });
+
+    // If currently checked radio is hidden, select first available visible gateway
+    setTimeout(() => {
+      const checkedRadio = document.querySelector('input[name="dep_payment_method"]:checked') as HTMLInputElement;
+      if (checkedRadio) {
+        const checkedCard = checkedRadio.closest(".deposit-method-card");
+        if (checkedCard && (checkedCard as HTMLElement).style.display === "none") {
+          const firstVisibleCard = document.querySelector('.deposit-method-card:not([style*="display: none"])');
+          if (firstVisibleCard) {
+            const radio = firstVisibleCard.querySelector('input[type="radio"]') as HTMLInputElement;
+            if (radio) {
+              radio.checked = true;
+              const gwName = firstVisibleCard.getAttribute("data-gateway");
+              if (gwName && (window as any).selectDepositMethod) {
+                (window as any).selectDepositMethod(gwName);
+              }
+            }
+          }
+        }
+      }
+    }, 50);
   }
 
   // Feature 4 & 5: Savings Vault & Stats Dashboard

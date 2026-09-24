@@ -13,6 +13,42 @@ export class AffiliateAgentSystem {
     this.setupListeners(appInstance);
   }
 
+  static filterAgentsByDistrict(district: string) {
+    const select = document.getElementById("agent-page-district-select") as HTMLSelectElement | null;
+    const currentDistrict = district || (select ? select.value : "all");
+    const cards = document.querySelectorAll(".agent-desk-card");
+    cards.forEach((card: any) => {
+      const cardDist = card.getAttribute("data-district") || "";
+      if (currentDistrict === "all" || cardDist.toLowerCase() === currentDistrict.toLowerCase()) {
+        card.style.display = "";
+      } else {
+        card.style.display = "none";
+      }
+    });
+  }
+
+  static searchAgents(query: string) {
+    const q = (query || "").toLowerCase().trim();
+    const select = document.getElementById("agent-page-district-select") as HTMLSelectElement | null;
+    const currentDistrict = select ? select.value : "all";
+    const cards = document.querySelectorAll(".agent-desk-card");
+    cards.forEach((card: any) => {
+      const cardDist = (card.getAttribute("data-district") || "").toLowerCase();
+      const cardName = (card.getAttribute("data-name") || "").toLowerCase();
+      const cardPhone = (card.getAttribute("data-phone") || "").toLowerCase();
+      const cardText = card.innerText.toLowerCase();
+
+      const matchesDistrict = currentDistrict === "all" || cardDist === currentDistrict.toLowerCase();
+      const matchesQuery = !q || cardName.includes(q) || cardPhone.includes(q) || cardDist.includes(q) || cardText.includes(q);
+
+      if (matchesDistrict && matchesQuery) {
+        card.style.display = "";
+      } else {
+        card.style.display = "none";
+      }
+    });
+  }
+
   static setupListeners(appInstance) {
     // Handle toggle expand of Level 1 downline nodes
     document.addEventListener("click", (e) => {

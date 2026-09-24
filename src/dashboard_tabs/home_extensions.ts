@@ -36,20 +36,28 @@ export class HomeExtensions {
     const extContainer = document.getElementById("home-extensions-container");
     if (!extContainer) return;
 
+    if (extContainer.dataset.listenersAttached === "true") return;
+    extContainer.dataset.listenersAttached = "true";
+
     extContainer.addEventListener("click", (e) => {
-      const buyBtn = e.target.closest(".carousel-buy-btn");
+      const target = e.target;
+      if (!target || typeof target.closest !== "function") return;
+
+      const buyBtn = target.closest(".carousel-buy-btn");
       if (buyBtn) {
         e.stopPropagation();
-        const lotId = buyBtn.getAttribute("data-id");
+        const lotId = buyBtn.getAttribute("data-id") || buyBtn.getAttribute("data-lottery-id");
         if (lotId) {
           appInstance.purchaseTicket(lotId);
         }
+        return;
       }
 
-      const card = e.target.closest(".carousel-card-item");
-      if (card && !e.target.closest(".carousel-buy-btn")) {
-        const lotId = card.getAttribute("data-id");
+      const card = target.closest(".carousel-card-item, .lottery-ticket-card");
+      if (card) {
+        const lotId = card.getAttribute("data-lottery-id") || card.getAttribute("data-id");
         if (lotId) {
+          e.stopPropagation();
           appInstance.openLotteryDetailsPop(lotId);
         }
       }
@@ -90,54 +98,60 @@ export class HomeExtensions {
     let cardsHTML = "";
     hotPools.forEach((lot, index) => {
       const urgencyClass = lot.left <= 10 ? "text-red-400 font-black animate-pulse" : "text-amber-400 font-extrabold";
-      const urgencyBadge = lot.left <= 5 ? "🔥 CRITICAL" : "⚡ FAST FILLING";
+      const urgencyBadge = lot.left <= 5 ? "🔥 শেষ সুযোগ" : "⚡ দ্রুত পূর্ণ হচ্ছে";
+      const ballIcons = ["7️⃣", "🎱", "🎰", "💎"];
 
       cardsHTML += `
         <!-- Carousel Item -->
-        <div class="carousel-card-item min-w-[280px] md:min-w-[310px] bg-gradient-to-br from-slate-900 via-slate-900 to-red-950/20 border border-slate-800 hover:border-red-500/30 rounded-3xl p-4.5 relative overflow-hidden transition-all duration-300 cursor-pointer snap-start flex-shrink-0 shadow-lg" data-id="${lot.id}">
+        <div class="carousel-card-item min-w-[280px] md:min-w-[310px] lottery-ticket-card rounded-3xl p-4.5 relative overflow-hidden transition-all duration-300 cursor-pointer snap-start flex-shrink-0 shadow-xl" data-id="${lot.id}" data-lottery-id="${lot.id}">
           
           <!-- Urgent Badge -->
-          <div class="absolute top-3 right-3 flex items-center gap-1.5">
-            <span class="bg-red-950/80 border border-red-900/60 text-red-400 font-mono text-[8.5px] font-black px-2 py-0.5 rounded-full tracking-wider">
+          <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+            <span class="bg-red-950/90 border border-red-500/50 text-red-300 font-mono text-[8.5px] font-black px-2.5 py-0.5 rounded-full tracking-wider shadow">
               ${urgencyBadge}
             </span>
           </div>
 
           <div class="space-y-3">
-            <!-- Lottery Category / Title -->
-            <div class="space-y-0.5 max-w-[180px]">
-              <span class="text-[9px] uppercase font-bold text-slate-500 font-mono tracking-wider block">${lot.category || "Main Draw"}</span>
-              <h4 class="text-xs font-black text-white leading-tight truncate">${lot.name}</h4>
+            <!-- Lottery Category / Title with Lotto Ball -->
+            <div class="flex items-start gap-2.5">
+              <div class="lottery-ball-3d lottery-ball-gold !w-8 !h-8 !text-xs shrink-0 mt-0.5">
+                <span>${ballIcons[index % ballIcons.length]}</span>
+              </div>
+              <div class="space-y-0.5 max-w-[170px]">
+                <span class="text-[9px] uppercase font-bold text-amber-400/90 font-mono tracking-wider block">🎟️ ${lot.category || "Main Draw"}</span>
+                <h4 class="text-xs font-black text-white leading-tight truncate">${lot.name}</h4>
+              </div>
             </div>
 
             <!-- Urgent stats indicator -->
-            <div class="flex items-center justify-between text-[11px] font-mono">
+            <div class="flex items-center justify-between text-[11px] font-mono bg-slate-950/60 p-2 rounded-xl border border-amber-500/15">
               <div class="space-y-0.5">
-                <span class="text-[8.5px] text-slate-500 block">Remaining Slots</span>
-                <span class="${urgencyClass} text-xs">Only ${lot.left} left!</span>
+                <span class="text-[8.5px] text-slate-400 block">বাকি টিকেট</span>
+                <span class="${urgencyClass} text-xs">মাত্র ${lot.left}টি বাকি!</span>
               </div>
               <div class="text-right space-y-0.5">
-                <span class="text-[8.5px] text-slate-500 block">Ticket Rate</span>
-                <span class="text-white font-extrabold text-xs">৳${lot.ticketPrice || 10}</span>
+                <span class="text-[8.5px] text-slate-400 block">টিকেট মূল্য</span>
+                <span class="text-white font-extrabold text-xs">৳${lot.ticketPrice || lot.entryFee || 10}</span>
               </div>
             </div>
 
             <!-- Progress Bar -->
             <div class="space-y-1">
               <div class="flex justify-between text-[9px] font-mono text-slate-400 font-bold">
-                <span>Sold out velocity</span>
-                <span class="text-red-400">${lot.progress}% Filled</span>
+                <span>বিক্রি সম্পন্ন</span>
+                <span class="text-amber-300">${lot.progress}% পূর্ণ</span>
               </div>
-              <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900">
-                <div class="bg-gradient-to-r from-amber-500 via-red-500 to-rose-600 h-full rounded-full transition-all duration-1000" style="width: ${lot.progress}%"></div>
+              <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-900 p-0.5">
+                <div class="bg-gradient-to-r from-amber-500 via-red-500 to-yellow-400 h-full rounded-full transition-all duration-1000 shadow-[0_0_8px_rgba(251,191,36,0.6)]" style="width: ${lot.progress}%"></div>
               </div>
             </div>
 
             <!-- Buy Action -->
             <div class="pt-1 flex items-center justify-between gap-3">
-              <span class="text-[8.5px] text-slate-500 font-mono italic">Tap card for specs</span>
-              <button class="carousel-buy-btn bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-black text-[10px] uppercase py-1.5 px-4 rounded-xl cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95 flex items-center gap-1 shadow-lg shadow-red-600/15 border border-red-500/20" data-id="${lot.id}">
-                <i class="fa-solid fa-fire"></i> Book Slot
+              <span class="text-[8.5px] text-slate-400 font-mono italic">বিস্তারিত দেখতে ট্যাপ করুন</span>
+              <button class="carousel-buy-btn lottery-ticket-btn text-white font-black text-[10.5px] uppercase py-1.5 px-3.5 rounded-xl cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95 flex items-center gap-1.5 shadow" data-id="${lot.id}">
+                <i class="fa-solid fa-ticket"></i> টিকেট নিন
               </button>
             </div>
           </div>
@@ -162,5 +176,7 @@ export class HomeExtensions {
         ${cardsHTML}
       </div>
     `;
+
+    this.setupListeners(appInstance);
   }
 }

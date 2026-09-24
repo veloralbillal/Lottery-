@@ -1,5 +1,12 @@
 <?php
 require_once __DIR__ . '/src/config.php';
+$php_settings = [];
+try {
+    $stmt_s = $conn->query("SELECT setting_key, setting_value FROM settings");
+    while ($r = $stmt_s->fetch()) {
+        $php_settings[$r['setting_key']] = $r['setting_value'];
+    }
+} catch (Exception $e) {}
 ?>
 <!doctype html>
 <html lang="en">
@@ -7,6 +14,9 @@ require_once __DIR__ . '/src/config.php';
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <title>Lottery Winner - Premium Mobile Web Portal</title>
+    <script>
+      window.__PHP_SETTINGS = <?php echo json_encode($php_settings); ?>;
+    </script>
     <!-- Google Typography Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -83,6 +93,9 @@ require_once __DIR__ . '/src/config.php';
       <?php include_once __DIR__ . '/src/dashboard_tabs/navigation.php'; ?>
 
     </div>
+
+    <!-- ================= SCREEN 5: FIELD WORK WORKSPACE (AGENT) ================= -->
+    <?php include_once __DIR__ . '/src/dashboard_tabs/agent_workspace.php'; ?>
 
     <!-- Modals and Sub-dialogs -->
     <?php include_once __DIR__ . '/src/dashboard_tabs/modals.php'; ?>

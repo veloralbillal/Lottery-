@@ -31,6 +31,10 @@ import { DeviceFingerprint } from "./js/deviceFingerprint.js";
 import { getDefaultDB } from "./js/defaultDB.js";
 import { bundledTabs } from "./js/bundledTabs.js";
 import { TOTP } from "./js/totp.js";
+import { PaymentGateways } from "./js/payment_gateways.js";
+import { AffiliateAgentSystem } from "./dashboard_tabs/affiliate_agent_system.js";
+import { WalletExtensions } from "./dashboard_tabs/wallet_extensions.js";
+import { LiveDrawRevealEngine } from "./js/liveDrawRevealEngine.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -193,6 +197,7 @@ export class StateManager {
 
     this.loadDashboardTabs().then(() => {
       console.log("All dashboard tabs loaded successfully.");
+      HomeTab.init(this);
       VideoBountyTab.init(this);
       ProfileTab.init(this);
       SettingsTab.init(this);
@@ -200,6 +205,7 @@ export class StateManager {
       WalletTab.init(this);
       TicketsTab.init(this);
       GameHubModule.init(this);
+      LiveDrawRevealEngine.init(this);
       this.render();
     }).catch(err => {
       console.warn("Non-fatal dashboard tabs load exception caught:", err);
@@ -269,20 +275,20 @@ export class StateManager {
           actionLink: "wallet"
         };
       }
-      if (!this.db.settings.bannerSlides) {
+      if (!this.db.settings.bannerSlides || this.db.settings.bannerSlides.length === 0) {
         this.db.settings.bannerSlides = [
           {
             id: "b1",
             title: "Super Fast Payouts In 5 Minutes! ⚡",
-            subtitle: "bKash, Nagad, Rocket & Crypto USDT",
-            imageUrl: "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=600&auto=format&fit=crop",
+            subtitle: "bKash, Nagad, Rocket & Crypto USDT - 0% Fee Instant Cashout",
+            imageUrl: "https://images.unsplash.com/photo-1606167668584-78701c57f13d?q=80&w=800&auto=format&fit=crop",
             link: "wallet"
           },
           {
             id: "b2",
             title: "Earn 10% Referral Lifetime Bonus! 👥",
-            subtitle: "Invite your friends using your affiliate link",
-            imageUrl: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=600&auto=format&fit=crop",
+            subtitle: "বন্ধুদের ইনভাইট করুন এবং পান আজীবন ১০% আনলিমিটেড কমিশন!",
+            imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?q=80&w=800&auto=format&fit=crop",
             link: "refer"
           }
         ];
@@ -559,6 +565,41 @@ export class StateManager {
       if (s.cryptoInstruction === undefined) s.cryptoInstruction = "Choose correct network assets. USDT uses Tron (TRC-20) network. BTC and ETH transfers clear instantly after 3 blockchain confirmations.";
       
       // Inject payment gateway enable/disable defaults
+      if (s.payCryptomusEnabled === undefined) s.payCryptomusEnabled = true;
+      if (s.cryptomusMerchantId === undefined) s.cryptomusMerchantId = "b808ecfd-26d0-4ad7-8c81-197e937d1101";
+      if (s.cryptomusApiKey === undefined) s.cryptomusApiKey = "cr_live_sec_89df2011293c004812f";
+      if (s.cryptomusMode === undefined) s.cryptomusMode = "sandbox";
+      if (s.cryptomusRate === undefined) s.cryptomusRate = 125.0;
+      if (s.cryptomusInstruction === undefined) s.cryptomusInstruction = "Pay automatically using Cryptomus with TRC20/BEP20 USDT, BTC, ETH or TON. Auto-credited on blockchain confirmations.";
+
+      if (s.payUddoktapayEnabled === undefined) s.payUddoktapayEnabled = true;
+      if (s.uddoktapayApiKey === undefined) s.uddoktapayApiKey = "982d9290ab4211cd653b680c441865a7f9b8c0c4";
+      if (s.uddoktapayMode === undefined) s.uddoktapayMode = "sandbox";
+      if (s.uddoktapayBaseUrl === undefined) s.uddoktapayBaseUrl = "https://sandbox.uddoktapay.com/api/checkout-v2";
+      if (s.uddoktapayInstruction === undefined) s.uddoktapayInstruction = "Pay seamlessly with bKash, Nagad, Rocket, Upay or Cards. Instant balance credit without manual TrxID submission.";
+
+      if (s.payZinipayEnabled === undefined) s.payZinipayEnabled = true;
+      if (s.payZiniPayEnabled === undefined) s.payZiniPayEnabled = true;
+      if (s.zinipayApiKey === undefined) s.zinipayApiKey = "zin_live_key_9942a78e1b";
+      if (s.zinipayMode === undefined) s.zinipayMode = "live";
+      if (s.zinipayBaseUrl === undefined) s.zinipayBaseUrl = "https://api.zinipay.com/v1/payment/create";
+      if (s.zinipayInstruction === undefined) s.zinipayInstruction = "Pay seamlessly via bKash, Nagad, Rocket, Upay, or Cards with instant automated credit.";
+
+      if (s.payCryptomusEnabled === undefined) s.payCryptomusEnabled = true;
+
+      if (s.payBkashPgwEnabled === undefined) s.payBkashPgwEnabled = true;
+      if (s.bkashPgwMode === undefined) s.bkashPgwMode = "sandbox";
+
+      if (s.payNagadPgwEnabled === undefined) s.payNagadPgwEnabled = true;
+      if (s.nagadPgwMode === undefined) s.nagadPgwMode = "sandbox";
+
+      if (s.payAamarpayEnabled === undefined) s.payAamarpayEnabled = true;
+      if (s.aamarpayMode === undefined) s.aamarpayMode = "sandbox";
+
+      if (s.payBinanceEnabled === undefined) s.payBinanceEnabled = true;
+      if (s.payBinancePayEnabled === undefined) s.payBinancePayEnabled = true;
+      if (s.payMasterEnabled === undefined) s.payMasterEnabled = true;
+
       if (s.payBkashEnabled === undefined) s.payBkashEnabled = true;
       if (s.payNagadEnabled === undefined) s.payNagadEnabled = true;
       if (s.payRocketEnabled === undefined) s.payRocketEnabled = true;
@@ -753,6 +794,9 @@ export class StateManager {
       { id: "tab-events", file: "src/dashboard_tabs/events_tab.php" },
       { id: "tab-tickets", file: "src/dashboard_tabs/tickets.php" },
       { id: "tab-wallet", file: "src/dashboard_tabs/user_balance.php" },
+      { id: "tab-deposit", file: "src/dashboard_tabs/deposit.php" },
+      { id: "tab-withdraw", file: "src/dashboard_tabs/withdraw.php" },
+      { id: "tab-agent", file: "src/dashboard_tabs/agent.php" },
       { id: "tab-history", file: "src/dashboard_tabs/history.php" },
       { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
       { id: "tab-settings", file: "src/dashboard_tabs/settings.php" },
@@ -1055,12 +1099,15 @@ export class StateManager {
               shuffle.sort(() => Math.random() - 0.5);
 
               const winnersCount = Math.min(lot.multiWinnerPrizes.length, shuffle.length);
+              const multiWinnersList: any[] = [];
+
               for (let i = 0; i < winnersCount; i++) {
                 const currentPrize = lot.multiWinnerPrizes[i];
                 const winningTicket = shuffle[i];
                 winningTicket.status = "won";
                 winningTicket.prizeAmount = currentPrize;
 
+                let winnerDisplayUser: any = null;
                 if (winningTicket.isSyndicate && winningTicket.userIds) {
                   const share = Math.round((currentPrize / winningTicket.userIds.length) * 100) / 100;
                   winningTicket.userIds.forEach(uid => {
@@ -1079,6 +1126,7 @@ export class StateManager {
                         this.currentUser = StateManager.removeCircularReferences(this.currentUser);
                         localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
                       }
+                      if (!winnerDisplayUser) winnerDisplayUser = u;
                     }
                   });
                 } else {
@@ -1087,6 +1135,7 @@ export class StateManager {
                     winnerUser.balance += currentPrize;
                     winnerUser.wins += 1;
                     winnerUser.profit += currentPrize;
+                    winnerDisplayUser = winnerUser;
                     
                     if (this.currentUser && winnerUser.id === this.currentUser.id) {
                       this.currentUser.balance = winnerUser.balance;
@@ -1097,6 +1146,16 @@ export class StateManager {
                     }
                   }
                 }
+
+                multiWinnersList.push({
+                  userId: winnerDisplayUser ? winnerDisplayUser.id : winningTicket.userId,
+                  username: winnerDisplayUser ? winnerDisplayUser.username : (winningTicket.isSyndicate ? (winningTicket.syndicateName || 'Syndicate') : 'Player'),
+                  name: winnerDisplayUser ? (winnerDisplayUser.name || winnerDisplayUser.username) : (winningTicket.isSyndicate ? 'Syndicate Team' : 'Winner'),
+                  avatar: winnerDisplayUser ? (winnerDisplayUser.avatar || winnerDisplayUser.photoUrl || '') : '',
+                  ticketCode: winningTicket.code,
+                  prizeAmount: currentPrize,
+                  rank: i + 1
+                });
               }
 
               const winnerTicketIds = shuffle.slice(0, winnersCount).map(t => t.id);
@@ -1116,13 +1175,28 @@ export class StateManager {
               });
 
               lot.status = "drawn";
+              lot.drawnWinnersList = multiWinnersList;
               dbUpdated = true;
+
+              const multiDrawEvent = {
+                id: "draw_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+                lotteryId: lot.id,
+                lotteryName: lot.name,
+                category: lot.category,
+                prizeAmount: lot.prizeAmount,
+                drawTime: new Date().toISOString(),
+                winningTicketCodes: multiWinnersList.map(w => w.ticketCode),
+                winnersCount: multiWinnersList.length,
+                winners: multiWinnersList
+              };
+              LiveDrawRevealEngine.broadcastDrawEvent(multiDrawEvent);
             } else {
               const winningTicket = ticketsOfPool[Math.floor(Math.random() * ticketsOfPool.length)];
 
               winningTicket.status = "won";
               winningTicket.prizeAmount = lot.prizeAmount;
 
+              let singleWinnerUser: any = null;
               if (winningTicket.isSyndicate && winningTicket.userIds) {
                 const share = Math.round((lot.prizeAmount / winningTicket.userIds.length) * 100) / 100;
                 winningTicket.userIds.forEach(uid => {
@@ -1141,6 +1215,7 @@ export class StateManager {
                       this.currentUser = StateManager.removeCircularReferences(this.currentUser);
                       localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
                     }
+                    if (!singleWinnerUser) singleWinnerUser = u;
                   }
                 });
               } else {
@@ -1149,6 +1224,7 @@ export class StateManager {
                   winnerUser.balance += lot.prizeAmount;
                   winnerUser.wins += 1;
                   winnerUser.profit += lot.prizeAmount;
+                  singleWinnerUser = winnerUser;
                   
                   if (this.currentUser && winnerUser.id === this.currentUser.id) {
                     this.currentUser.balance = winnerUser.balance;
@@ -1175,8 +1251,32 @@ export class StateManager {
                 }
               });
 
+              const singleWinner = {
+                userId: singleWinnerUser ? singleWinnerUser.id : winningTicket.userId,
+                username: singleWinnerUser ? singleWinnerUser.username : (winningTicket.isSyndicate ? (winningTicket.syndicateName || 'Syndicate') : 'Player'),
+                name: singleWinnerUser ? (singleWinnerUser.name || singleWinnerUser.username) : (winningTicket.isSyndicate ? 'Syndicate Team' : 'Winner'),
+                avatar: singleWinnerUser ? (singleWinnerUser.avatar || singleWinnerUser.photoUrl || '') : '',
+                ticketCode: winningTicket.code,
+                prizeAmount: lot.prizeAmount,
+                rank: 1
+              };
+
               lot.status = "drawn";
+              lot.drawnWinnersList = [singleWinner];
               dbUpdated = true;
+
+              const singleDrawEvent = {
+                id: "draw_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+                lotteryId: lot.id,
+                lotteryName: lot.name,
+                category: lot.category,
+                prizeAmount: lot.prizeAmount,
+                drawTime: new Date().toISOString(),
+                winningTicketCodes: [singleWinner.ticketCode],
+                winnersCount: 1,
+                winners: [singleWinner]
+              };
+              LiveDrawRevealEngine.broadcastDrawEvent(singleDrawEvent);
             }
 
             // Spawn new Quick Draw if category is Quick Draw
@@ -1464,6 +1564,7 @@ export class StateManager {
       }
     } else if (view === "admin") {
       document.getElementById("screen-admin").classList.remove("hidden");
+      LiveDrawRevealEngine.closeWinningDrawRevealModal();
       this.renderAdmin();
     } else if (view === "agent") {
       if (agentScreen) {
@@ -1508,33 +1609,25 @@ export class StateManager {
     this.triggerFullScreenPopup();
 
     // Hide all tabs
-    document.getElementById("tab-home").classList.add("hidden");
-    const tabEvents = document.getElementById("tab-events");
-    if (tabEvents) tabEvents.classList.add("hidden");
-    document.getElementById("tab-tickets").classList.add("hidden");
-    document.getElementById("tab-wallet").classList.add("hidden");
-    document.getElementById("tab-history").classList.add("hidden");
-    document.getElementById("tab-profile").classList.add("hidden");
-    const settingsTab = document.getElementById("tab-settings");
-    if (settingsTab) settingsTab.classList.add("hidden");
-    const customizerTab = document.getElementById("tab-customizer");
-    if (customizerTab) customizerTab.classList.add("hidden");
-    const jpTab = document.getElementById("tab-jackpot");
-    if (jpTab) jpTab.classList.add("hidden");
-    const tasksTab = document.getElementById("tab-tasks");
-    if (tasksTab) tasksTab.classList.add("hidden");
-    const badgeReqTab = document.getElementById("tab-badge-request");
-    if (badgeReqTab) badgeReqTab.classList.add("hidden");
-    const referTab = document.getElementById("tab-refer");
-    if (referTab) referTab.classList.add("hidden");
-    const otpTab = document.getElementById("tab-otp");
-    if (otpTab) otpTab.classList.add("hidden");
-    const recoveryTab = document.getElementById("tab-recovery");
-    if (recoveryTab) recoveryTab.classList.add("hidden");
-    const videoBountyTab = document.getElementById("tab-video-bounty");
-    if (videoBountyTab) videoBountyTab.classList.add("hidden");
-    const gamesTab = document.getElementById("tab-games");
-    if (gamesTab) gamesTab.classList.add("hidden");
+    document.getElementById("tab-home")?.classList.add("hidden");
+    document.getElementById("tab-events")?.classList.add("hidden");
+    document.getElementById("tab-tickets")?.classList.add("hidden");
+    document.getElementById("tab-wallet")?.classList.add("hidden");
+    document.getElementById("tab-deposit")?.classList.add("hidden");
+    document.getElementById("tab-withdraw")?.classList.add("hidden");
+    document.getElementById("tab-agent")?.classList.add("hidden");
+    document.getElementById("tab-history")?.classList.add("hidden");
+    document.getElementById("tab-profile")?.classList.add("hidden");
+    document.getElementById("tab-settings")?.classList.add("hidden");
+    document.getElementById("tab-customizer")?.classList.add("hidden");
+    document.getElementById("tab-jackpot")?.classList.add("hidden");
+    document.getElementById("tab-tasks")?.classList.add("hidden");
+    document.getElementById("tab-badge-request")?.classList.add("hidden");
+    document.getElementById("tab-refer")?.classList.add("hidden");
+    document.getElementById("tab-otp")?.classList.add("hidden");
+    document.getElementById("tab-recovery")?.classList.add("hidden");
+    document.getElementById("tab-video-bounty")?.classList.add("hidden");
+    document.getElementById("tab-games")?.classList.add("hidden");
 
     // Select tab selector matching classes
     const tabSelectors = document.querySelectorAll(".tab-selector-btn");
@@ -1549,21 +1642,27 @@ export class StateManager {
 
     // Show current tab
     if (this.currentTab === "badge-request") {
+      const badgeReqTab = document.getElementById("tab-badge-request");
       if (badgeReqTab) badgeReqTab.classList.remove("hidden");
       this.renderBadgeRequestTab();
     } else if (this.currentTab === "video-bounty") {
+      const videoBountyTab = document.getElementById("tab-video-bounty");
       if (videoBountyTab) videoBountyTab.classList.remove("hidden");
       this.renderVideoBountyTab();
     } else if (this.currentTab === "refer") {
+      const referTab = document.getElementById("tab-refer");
       if (referTab) referTab.classList.remove("hidden");
       this.renderReferTab();
     } else if (this.currentTab === "otp") {
+      const otpTab = document.getElementById("tab-otp");
       if (otpTab) otpTab.classList.remove("hidden");
       this.renderOtpTab();
     } else if (this.currentTab === "recovery") {
+      const recoveryTab = document.getElementById("tab-recovery");
       if (recoveryTab) recoveryTab.classList.remove("hidden");
       this.renderRecoveryTab();
     } else if (this.currentTab === "customizer") {
+      const customizerTab = document.getElementById("tab-customizer");
       if (customizerTab) customizerTab.classList.remove("hidden");
       this.renderCustomizerTab();
     } else {
@@ -1579,6 +1678,8 @@ export class StateManager {
       this.renderTicketsTab();
     } else if (this.currentTab === "wallet") {
       this.renderWalletTab();
+    } else if (this.currentTab === "deposit") {
+      this.renderDepositTab();
     } else if (this.currentTab === "history") {
       this.renderHistoryTab();
     } else if (this.currentTab === "profile") {
@@ -1595,6 +1696,29 @@ export class StateManager {
       this.renderTasksTab();
     } else if (this.currentTab === "games") {
       this.renderGamesTab();
+    }
+  }
+
+  renderDepositTab() {
+    const amtInput = document.getElementById("deposit-amount") as HTMLInputElement | null;
+    const currentAmt = amtInput ? parseFloat(amtInput.value) || 1000 : 1000;
+    if ((window as any).updateDepositSummary) {
+      (window as any).updateDepositSummary(currentAmt);
+    }
+
+    // Update balance labels
+    const balanceEls = document.querySelectorAll(".curr-balance");
+    balanceEls.forEach(el => {
+      (el as HTMLElement).innerText = this.currentUser ? this.currentUser.balance.toFixed(2) : "0.00";
+    });
+
+    // Synchronize visibility of all deposit gateway cards with Admin Settings
+    this.syncDepositGatewaysUI();
+
+    const checked = document.querySelector('input[name="dep_payment_method"]:checked') as HTMLInputElement | null;
+    const method = checked ? checked.value : "UddoktaPay";
+    if ((window as any).selectDepositMethod) {
+      (window as any).selectDepositMethod(method);
     }
   }
 
@@ -1615,6 +1739,7 @@ export class StateManager {
   renderHomeTab() {
     HomeTab.render(this);
     this.renderHomeBannerSliders();
+    this.startLiveActivityTicker();
   }
 
   renderEventsTab() {
@@ -1886,22 +2011,29 @@ export class StateManager {
   }
 
   rebuildDepositGatewaySelect() {
-    const s = this.db.settings;
-    const selectEl = document.getElementById("dep-gateway");
+    const s = this.db.settings || {};
+    const selectEl = document.getElementById("dep-gateway") as HTMLSelectElement | null;
     if (!selectEl) return;
 
     const currentVal = selectEl.value;
+    const isMasterOn = s.payMasterEnabled !== false;
 
     const options = [
-      { value: "bKash", text: "bKash", enabled: s.payBkashEnabled !== false },
-      { value: "Nagad", text: "Nagad", enabled: s.payNagadEnabled !== false },
-      { value: "Rocket", text: "Rocket", enabled: s.payRocketEnabled !== false },
-      { value: "Upay", text: "Upay", enabled: s.payUpayEnabled !== false },
-      { value: "DBBL", text: "Dutch Bangla", enabled: s.payDbblEnabled !== false },
-      { value: "Crypto USDT", text: "TRC20 USDT", enabled: s.payUsdtEnabled !== false },
-      { value: "Crypto BTC", text: "Bitcoin BTC", enabled: s.payBtcEnabled !== false },
-      { value: "Crypto ETH", text: "Ethereum ETH", enabled: s.payEthEnabled !== false },
-      { value: "Agent Deposit", text: "Agent Deposit (Verified Local Desk)", enabled: s.payAgentDepositEnabled !== false },
+      { value: "Cryptomus", text: "Cryptomus (Automated Crypto ⚡)", enabled: isMasterOn && s.payCryptomusEnabled !== false },
+      { value: "UddoktaPay", text: "UddoktaPay (Automated Online ⚡)", enabled: isMasterOn && s.payUddoktapayEnabled !== false },
+      { value: "bKash PGW", text: "bKash PGW (Direct Merchant API)", enabled: isMasterOn && (s.payBkashPgwEnabled !== false && s.payBkashPgwEnabled !== undefined) },
+      { value: "Nagad PGW", text: "Nagad PGW (Direct Merchant API)", enabled: isMasterOn && (s.payNagadPgwEnabled !== false && s.payNagadPgwEnabled !== undefined) },
+      { value: "Aamarpay", text: "Aamarpay Online PGW", enabled: isMasterOn && (s.payAamarpayEnabled !== false && s.payAamarpayEnabled !== undefined) },
+      { value: "Binance Pay", text: "Binance Pay (C2B / App)", enabled: isMasterOn && (s.payBinanceEnabled !== false && s.payBinancePayEnabled !== false) },
+      { value: "bKash", text: "bKash (Send Money / Agent)", enabled: isMasterOn && s.payBkashEnabled !== false },
+      { value: "Nagad", text: "Nagad (Send Money / Agent)", enabled: isMasterOn && s.payNagadEnabled !== false },
+      { value: "Rocket", text: "Rocket (Send Money / Agent)", enabled: isMasterOn && s.payRocketEnabled !== false },
+      { value: "Upay", text: "Upay (Send Money / Agent)", enabled: isMasterOn && s.payUpayEnabled !== false },
+      { value: "DBBL", text: "Dutch Bangla DBBL Bank", enabled: isMasterOn && s.payDbblEnabled !== false },
+      { value: "Crypto USDT", text: "TRC20 USDT (Crypto)", enabled: isMasterOn && s.payUsdtEnabled !== false },
+      { value: "Crypto BTC", text: "Bitcoin BTC (Crypto)", enabled: isMasterOn && (s.payBtcEnabled !== false && s.payBtcEnabled !== undefined) },
+      { value: "Crypto ETH", text: "Ethereum ETH (Crypto)", enabled: isMasterOn && (s.payEthEnabled !== false && s.payEthEnabled !== undefined) },
+      { value: "Agent Deposit", text: "Agent Deposit (Verified Local Desk)", enabled: isMasterOn && s.payAgentDepositEnabled !== false },
     ];
 
     selectEl.innerHTML = "";
@@ -1910,7 +2042,7 @@ export class StateManager {
     if (activeOptions.length === 0) {
       const opt = document.createElement("option");
       opt.value = "";
-      opt.text = "No gateways active (Contact support)";
+      opt.text = "⛔ All deposit payment channels are temporarily disabled by Admin";
       selectEl.appendChild(opt);
     } else {
       activeOptions.forEach(opt => {
@@ -1926,39 +2058,161 @@ export class StateManager {
         selectEl.value = activeOptions[0].value;
       }
     }
+
+    this.updateSelectedDepositGatewayInstructions();
+  }
+
+  syncDepositGatewaysUI() {
+    const s = (this.db && this.db.settings) ? this.db.settings : {};
+    const isMasterOn = s.payMasterEnabled !== false && s.payMasterEnabled !== 'false' && s.payMasterEnabled !== '0' && s.payMasterEnabled !== 0;
+
+    const isEnabled = (val: any, defaultState = true) => {
+      if (!isMasterOn) return false;
+      if (val === undefined || val === null) return defaultState;
+      if (val === false || val === 'false' || val === '0' || val === 0) return false;
+      return true;
+    };
+
+    const statusMap: Record<string, boolean> = {
+      "UddoktaPay": isEnabled(s.payUddoktapayEnabled, true),
+      "ZiniPay": isEnabled(s.payZinipayEnabled ?? s.payZiniPayEnabled, true),
+      "Cryptomus": isEnabled(s.payCryptomusEnabled, true),
+      "bKash": isEnabled(s.payBkashEnabled, false),
+      "Nagad": isEnabled(s.payNagadEnabled, false),
+      "Rocket": isEnabled(s.payRocketEnabled, false),
+      "USDT": isEnabled(s.payUsdtEnabled, false),
+      "Agent": isEnabled(s.payAgentDepositEnabled ?? s.payAgentEnabled, false),
+      "bKash PGW": isEnabled(s.payBkashPgwEnabled, false),
+      "Nagad PGW": isEnabled(s.payNagadPgwEnabled, false),
+      "Aamarpay": isEnabled(s.payAamarpayEnabled, false),
+      "Binance Pay": isEnabled(s.payBinanceEnabled ?? s.payBinancePayEnabled, false)
+    };
+
+    (window as any).__gatewayStatusMap = statusMap;
+
+    // Synchronize every deposit method card in User Panel
+    const cards = document.querySelectorAll(".deposit-method-card");
+    let hasAnyVisible = false;
+
+    cards.forEach(card => {
+      const gw = card.getAttribute("data-gateway");
+      if (!gw) return;
+
+      const active = statusMap[gw] === true;
+
+      // Real-time status badge
+      let badge = card.querySelector(".gw-status-badge") as HTMLElement | null;
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 inline-flex items-center gap-1";
+        const titleDiv = card.querySelector("div > div > div.flex") || card.querySelector(".flex.items-center.gap-1\\.5") || card.querySelector(".flex.items-center.gap-2\\.5 > div > div");
+        if (titleDiv) {
+          titleDiv.appendChild(badge);
+        }
+      }
+
+      if (active) {
+        (card as HTMLElement).style.display = "";
+        card.classList.remove("hidden", "opacity-40", "pointer-events-none");
+        if (badge) {
+          badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 border border-emerald-800/40";
+          badge.innerHTML = '<i class="fa-solid fa-circle-check text-[7px]"></i> ACTIVE';
+        }
+        hasAnyVisible = true;
+      } else {
+        (card as HTMLElement).style.display = "none";
+        card.classList.add("hidden");
+        if (badge) {
+          badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 inline-flex items-center gap-1 bg-rose-950/80 text-rose-400 border border-rose-800/40";
+          badge.innerHTML = '<i class="fa-solid fa-ban text-[7px]"></i> DISABLED';
+        }
+      }
+    });
+
+    // Check currently checked radio - if disabled, pick the first visible active card
+    const checkedRadio = document.querySelector('input[name="dep_payment_method"]:checked') as HTMLInputElement | null;
+    const currentGw = checkedRadio ? checkedRadio.value : "";
+    if (!currentGw || !statusMap[currentGw]) {
+      const firstActiveCard = Array.from(cards).find(c => {
+        const gw = c.getAttribute("data-gateway");
+        return gw && statusMap[gw] === true;
+      });
+      if (firstActiveCard) {
+        const gw = firstActiveCard.getAttribute("data-gateway");
+        const radio = firstActiveCard.querySelector('input[type="radio"]') as HTMLInputElement | null;
+        if (radio && gw) {
+          radio.checked = true;
+          if ((window as any).selectDepositMethod) {
+            (window as any).selectDepositMethod(gw);
+          }
+        }
+      }
+    }
+
+    // Offline notice container
+    let offlineNotice = document.getElementById("dep-all-offline-notice");
+    const listContainer = document.getElementById("deposit-methods-list");
+    if (!hasAnyVisible) {
+      if (!offlineNotice && listContainer) {
+        offlineNotice = document.createElement("div");
+        offlineNotice.id = "dep-all-offline-notice";
+        offlineNotice.className = "col-span-full p-4 rounded-2xl bg-rose-950/60 border border-rose-800/60 text-center space-y-2 my-2";
+        offlineNotice.innerHTML = `
+          <div class="text-rose-400 text-base font-black flex items-center justify-center gap-2">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>All Payment Gateways Offline</span>
+          </div>
+          <p class="text-[11px] text-slate-300">Deposit channels are temporarily paused by system administration. Please check back shortly or contact support.</p>
+        `;
+        listContainer.appendChild(offlineNotice);
+      }
+    } else if (offlineNotice) {
+      offlineNotice.remove();
+    }
   }
 
   rebuildWithdrawGatewaySelect() {
-    const s = this.db.settings;
-    const selectEl = document.getElementById("wd-gateway");
+    const s = this.db.settings || {};
+    const selectEl = document.getElementById("wd-gateway") as HTMLSelectElement | null;
     if (!selectEl) return;
 
     const currentVal = selectEl.value;
+    const isMasterOn = s.payMasterEnabled !== false;
 
     const options = [
-      { value: "bKash", text: "bKash (SendMoney)", enabled: true },
-      { value: "Nagad", text: "Nagad (SendMoney)", enabled: true },
-      { value: "Rocket", text: "Rocket (Personal)", enabled: true },
-      { value: "Upay", text: "Upay (Personal)", enabled: true },
-      { value: "DBBL", text: "Dutch Bangla DBBL", enabled: true },
-      { value: "Crypto USDT", text: "TRC20 USDT", enabled: true },
-      { value: "Agent Withdraw", text: "Agent Withdraw (Verified Local Desk)", enabled: s.payAgentWithdrawEnabled !== false },
+      { value: "bKash", text: "bKash (SendMoney)", enabled: isMasterOn && s.payBkashEnabled !== false },
+      { value: "Nagad", text: "Nagad (SendMoney)", enabled: isMasterOn && s.payNagadEnabled !== false },
+      { value: "Rocket", text: "Rocket (Personal)", enabled: isMasterOn && s.payRocketEnabled !== false },
+      { value: "Upay", text: "Upay (Personal)", enabled: isMasterOn && s.payUpayEnabled !== false },
+      { value: "DBBL", text: "Dutch Bangla DBBL", enabled: isMasterOn && s.payDbblEnabled !== false },
+      { value: "Crypto USDT", text: "TRC20 USDT", enabled: isMasterOn && s.payUsdtEnabled !== false },
+      { value: "Crypto BTC", text: "Bitcoin BTC", enabled: isMasterOn && (s.payBtcEnabled !== false && s.payBtcEnabled !== undefined) },
+      { value: "Crypto ETH", text: "Ethereum ETH", enabled: isMasterOn && (s.payEthEnabled !== false && s.payEthEnabled !== undefined) },
+      { value: "Binance Pay", text: "Binance Pay (Pay ID / Email)", enabled: isMasterOn && (s.payBinanceEnabled !== false && s.payBinancePayEnabled !== false) },
+      { value: "Agent Withdraw", text: "Agent Withdraw (Verified Local Desk)", enabled: isMasterOn && s.payAgentWithdrawEnabled !== false },
     ];
 
     selectEl.innerHTML = "";
     
     const activeOptions = options.filter(opt => opt.enabled);
-    activeOptions.forEach(opt => {
-      const o = document.createElement("option");
-      o.value = opt.value;
-      o.text = opt.text;
-      selectEl.appendChild(o);
-    });
-    
-    if (activeOptions.some(opt => opt.value === currentVal)) {
-      selectEl.value = currentVal;
+    if (activeOptions.length === 0) {
+      const opt = document.createElement("option");
+      opt.value = "";
+      opt.text = "⛔ All withdrawal payout channels are temporarily disabled";
+      selectEl.appendChild(opt);
     } else {
-      selectEl.value = activeOptions[0].value;
+      activeOptions.forEach(opt => {
+        const o = document.createElement("option");
+        o.value = opt.value;
+        o.text = opt.text;
+        selectEl.appendChild(o);
+      });
+      
+      if (activeOptions.some(opt => opt.value === currentVal)) {
+        selectEl.value = currentVal;
+      } else {
+        selectEl.value = activeOptions[0].value;
+      }
     }
 
     // Trigger row hidden toggle based on selected option
@@ -1977,154 +2231,248 @@ export class StateManager {
   }
 
   updateSelectedDepositGatewayInstructions() {
-    const s = this.db.settings;
-    const gatewaySelect = document.getElementById("dep-gateway");
+    const s = this.db.settings || {};
+    const gatewaySelect = document.getElementById("dep-gateway") as HTMLSelectElement | null;
     const gateway = gatewaySelect ? gatewaySelect.value : "";
 
     const titleEl = document.getElementById("user-dep-title");
     const instructionEl = document.getElementById("user-dep-instruction");
     const badgeEl = document.getElementById("user-dep-type-badge");
     const qrBlock = document.getElementById("user-dep-qr-block");
-    const qrImg = document.getElementById("user-dep-qr-img");
+    const qrImg = document.getElementById("user-dep-qr-img") as HTMLImageElement | null;
 
     const rowPersonal = document.getElementById("user-dep-row-personal");
     const rowAgent = document.getElementById("user-dep-row-agent");
     const rowSingle = document.getElementById("user-dep-row-single");
     const rowDistrictAgents = document.getElementById("user-dep-row-district-agents");
 
+    const rowCryptomus = document.getElementById("user-dep-row-cryptomus");
+    const rowUddoktapay = document.getElementById("user-dep-row-uddoktapay");
+    const rowZinipay = document.getElementById("user-dep-row-zinipay");
+    const rowAutomated = document.getElementById("user-dep-row-automated");
+
+    const autoTitle = document.getElementById("user-dep-automated-title");
+    const autoSubtitle = document.getElementById("user-dep-automated-subtitle");
+    const autoDesc = document.getElementById("user-dep-automated-desc");
+
     const personalAccEl = document.getElementById("user-dep-account-personal");
     const agentAccEl = document.getElementById("user-dep-account-agent");
     const singleAccEl = document.getElementById("user-dep-account-single");
     const singleLabelEl = document.getElementById("user-dep-single-label");
 
-    if (!titleEl || !instructionEl || !badgeEl || !qrBlock || !qrImg || !rowPersonal || !rowAgent || !rowSingle || !personalAccEl || !agentAccEl || !singleAccEl) return;
+    if (!titleEl || !instructionEl || !badgeEl) return;
 
-    if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
+    // Helper to hide all specialized rows first
+    const hideAllRows = () => {
+      rowPersonal?.classList.add("hidden");
+      rowAgent?.classList.add("hidden");
+      rowSingle?.classList.add("hidden");
+      rowDistrictAgents?.classList.add("hidden");
+      rowCryptomus?.classList.add("hidden");
+      rowUddoktapay?.classList.add("hidden");
+      rowZinipay?.classList.add("hidden");
+      rowAutomated?.classList.add("hidden");
+      qrBlock?.classList.add("hidden");
+    };
+
+    hideAllRows();
+
+    const manualFieldsGroup = document.getElementById("manual-deposit-fields-group");
+    const submitBtn = document.getElementById("deposit-submit-btn");
+    const isAutomated = ["Cryptomus", "ZiniPay", "UddoktaPay", "bKash PGW", "Nagad PGW", "Aamarpay", "Binance Pay"].includes(gateway);
+
+    if (manualFieldsGroup) {
+      if (isAutomated) {
+        manualFieldsGroup.classList.add("hidden");
+        const trxInput = document.getElementById("dep-trxid") as HTMLInputElement;
+        if (trxInput) trxInput.removeAttribute("required");
+      } else {
+        manualFieldsGroup.classList.remove("hidden");
+        const trxInput = document.getElementById("dep-trxid") as HTMLInputElement;
+        if (trxInput) trxInput.setAttribute("required", "required");
+      }
+    }
+
+    if (submitBtn) {
+      if (isAutomated) {
+        submitBtn.innerText = `Proceed to ${gateway} Checkout ⚡`;
+      } else {
+        submitBtn.innerText = "File Deposit Request";
+      }
+    }
 
     if (!gateway) {
       titleEl.innerText = "No payment gateways active";
       instructionEl.innerText = "All automatic deposit streams are currently undergoing system updates. Please contact customer management.";
       badgeEl.innerText = "Disabled";
       badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-red-950/40 text-red-400 border border-red-900/20 px-2.5 py-0.5 rounded-full";
-      badgeEl.parentElement.classList.remove("hidden");
+      badgeEl.parentElement?.classList.remove("hidden");
       
-      rowPersonal.classList.add("hidden");
-      rowAgent.classList.add("hidden");
-      rowSingle.classList.remove("hidden");
-      singleAccEl.innerText = "N/A";
-      qrBlock.classList.add("hidden");
+      rowSingle?.classList.remove("hidden");
+      if (singleAccEl) singleAccEl.innerText = "N/A";
       return;
     }
 
-    let titleText = "";
-    let instructionText = "";
-    let isCrypto = false;
-    let fallbackQRData = "";
-    let customQRUrl = "";
+    if (gateway === "Cryptomus") {
+      rowCryptomus?.classList.remove("hidden");
+      titleEl.innerText = "Cryptomus Automated Crypto Gateway";
+      instructionEl.innerText = "Automated checkout with dynamic blockchain QR invoice. Supports USDT (TRC-20 / BEP-20), BTC, ETH, TON, SOL, TRX with instant auto-credit.";
+      badgeEl.innerText = "API Auto-Credit ⚡";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-purple-950/60 text-purple-300 border border-purple-800/40 px-2.5 py-0.5 rounded-full animate-pulse";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
+
+    if (gateway === "ZiniPay") {
+      rowZinipay?.classList.remove("hidden");
+      titleEl.innerText = "ZiniPay Instant Multi-Gateway (জিনি পে)";
+      instructionEl.innerText = s.zinipayInstruction || "Pay securely via bKash, Nagad, Rocket, Upay, or Cards with zero fees and instant automated balance credit.";
+      badgeEl.innerText = "Instant Multi-Gateway ⚡";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-cyan-950/60 text-cyan-300 border border-cyan-800/40 px-2.5 py-0.5 rounded-full animate-pulse";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
+
+    if (gateway === "UddoktaPay") {
+      rowUddoktapay?.classList.remove("hidden");
+      titleEl.innerText = "UddoktaPay Instant Multi-Gateway (উদ্যোক্তা পে)";
+      instructionEl.innerText = s.uddoktapayInstruction || s.payUddoktapayInstruction || "Pay securely via bKash, Nagad, Rocket, Upay, or Cards with zero fees and instant automatic balance credit.";
+      badgeEl.innerText = "Instant Multi-Gateway ⚡";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-emerald-950/60 text-emerald-300 border border-emerald-800/40 px-2.5 py-0.5 rounded-full animate-pulse";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
+
+    if (["bKash PGW", "Nagad PGW", "Aamarpay", "Binance Pay"].includes(gateway)) {
+      rowAutomated?.classList.remove("hidden");
+      if (gateway === "bKash PGW") {
+        titleEl.innerText = "bKash Direct Merchant PGW";
+        instructionEl.innerText = "Official Tokenized API Gateway. Click below to launch direct bKash secure merchant payment window.";
+        if (autoTitle) autoTitle.innerText = "bKash Direct Merchant PGW";
+        if (autoSubtitle) autoSubtitle.innerText = "Official Tokenized API Gateway (Sandbox/Live)";
+        if (autoDesc) autoDesc.innerText = "Click below to open direct bKash checkout. Zero transaction fees with instant automated verification.";
+      } else if (gateway === "Nagad PGW") {
+        titleEl.innerText = "Nagad Direct PGW";
+        instructionEl.innerText = "Official Nagad Merchant API Gateway. Click below to launch official Nagad online checkout.";
+        if (autoTitle) autoTitle.innerText = "Nagad Direct PGW";
+        if (autoSubtitle) autoSubtitle.innerText = "Official Nagad Merchant API Gateway";
+        if (autoDesc) autoDesc.innerText = "Click below to proceed to official Nagad online checkout with instant automated credit.";
+      } else if (gateway === "Aamarpay") {
+        titleEl.innerText = "Aamarpay Online PGW";
+        instructionEl.innerText = "Unified multi-gateway for Cards, Netbanking & Mobile Wallets with instant auto-approval.";
+        if (autoTitle) autoTitle.innerText = "Aamarpay Online PGW";
+        if (autoSubtitle) autoSubtitle.innerText = "Cards, Netbanking & Mobile Wallets";
+        if (autoDesc) autoDesc.innerText = "Click below to launch Aamarpay unified checkout gateway for fast account deposit.";
+      } else if (gateway === "Binance Pay") {
+        titleEl.innerText = "Binance Pay Direct (C2B)";
+        instructionEl.innerText = "Official Binance App QR & Pay ID invoice with zero gas fees and instant credit.";
+        if (autoTitle) autoTitle.innerText = "Binance Pay Direct (C2B)";
+        if (autoSubtitle) autoSubtitle.innerText = "Official Binance App QR & Pay ID";
+        if (autoDesc) autoDesc.innerText = "Click below to launch Binance Pay QR code & app checkout with zero network gas fees.";
+      }
+      badgeEl.innerText = "API Checkout ⚡";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-sky-950/60 text-sky-300 border border-sky-800/40 px-2.5 py-0.5 rounded-full animate-pulse";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
 
     const isMobileWallet = ["bKash", "Nagad", "Rocket", "Upay"].includes(gateway);
-
     if (isMobileWallet) {
-      rowPersonal.classList.remove("hidden");
-      rowAgent.classList.remove("hidden");
-      rowSingle.classList.add("hidden");
-      if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
+      rowPersonal?.classList.remove("hidden");
+      rowAgent?.classList.remove("hidden");
 
       if (gateway === "bKash") {
-        titleText = "bKash Mobile Banking";
-        instructionText = s.mobileInstructionBkash || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
-        personalAccEl.innerText = s.mobilePersonalBkash || s.mobileAgentBkash || "None";
-        agentAccEl.innerText = s.mobileAgentBkash || "None";
+        titleEl.innerText = "bKash Mobile Banking";
+        instructionEl.innerText = s.mobileInstructionBkash || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
+        if (personalAccEl) personalAccEl.innerText = s.mobilePersonalBkash || s.mobileAgentBkash || "None";
+        if (agentAccEl) agentAccEl.innerText = s.mobileAgentBkash || "None";
       } else if (gateway === "Nagad") {
-        titleText = "Nagad Mobile Banking";
-        instructionText = s.mobileInstructionNagad || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
-        personalAccEl.innerText = s.mobilePersonalNagad || s.mobileAgentNagad || "None";
-        agentAccEl.innerText = s.mobileAgentNagad || "None";
+        titleEl.innerText = "Nagad Mobile Banking";
+        instructionEl.innerText = s.mobileInstructionNagad || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
+        if (personalAccEl) personalAccEl.innerText = s.mobilePersonalNagad || s.mobileAgentNagad || "None";
+        if (agentAccEl) agentAccEl.innerText = s.mobileAgentNagad || "None";
       } else if (gateway === "Rocket") {
-        titleText = "Rocket Mobile Banking";
-        instructionText = s.mobileInstructionRocket || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
-        personalAccEl.innerText = s.mobilePersonalRocket || s.mobileAgentRocket || "None";
-        agentAccEl.innerText = s.mobileAgentRocket || "None";
+        titleEl.innerText = "Rocket Mobile Banking";
+        instructionEl.innerText = s.mobileInstructionRocket || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
+        if (personalAccEl) personalAccEl.innerText = s.mobilePersonalRocket || s.mobileAgentRocket || "None";
+        if (agentAccEl) agentAccEl.innerText = s.mobileAgentRocket || "None";
       } else if (gateway === "Upay") {
-        titleText = "Upay Mobile Banking";
-        instructionText = s.mobileInstructionUpay || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
-        personalAccEl.innerText = s.mobilePersonalUpay || s.mobileAgentUpay || "None";
-        agentAccEl.innerText = s.mobileAgentUpay || "None";
+        titleEl.innerText = "Upay Mobile Banking";
+        instructionEl.innerText = s.mobileInstructionUpay || "Send Money (Personal) or Cash Out (Agent) to the numbers below and submit transaction ID.";
+        if (personalAccEl) personalAccEl.innerText = s.mobilePersonalUpay || s.mobileAgentUpay || "None";
+        if (agentAccEl) agentAccEl.innerText = s.mobileAgentUpay || "None";
       }
 
       badgeEl.innerText = "Personal & Agent Active";
       badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/20 px-2.5 py-0.5 rounded-full animate-pulse";
-      badgeEl.parentElement.classList.remove("hidden");
-    } else if (gateway === "Agent Deposit") {
-      rowPersonal.classList.add("hidden");
-      rowAgent.classList.add("hidden");
-      rowSingle.classList.add("hidden");
-      if (rowDistrictAgents) rowDistrictAgents.classList.remove("hidden");
-
-      titleText = "Partner Agent Network Desk";
-      instructionText = s.mobileInstructionAgentDeposit || "Hand over physical cash or transfer funds directly to any verified agent found below.";
-      
-      badgeEl.innerText = "Verified Agent Partner";
-      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-400 border border-indigo-900/30 px-2.5 py-0.5 rounded-full";
-      badgeEl.parentElement.classList.remove("hidden");
-    } else {
-      // Non-mobile (DBBL / Crypto)
-      rowPersonal.classList.add("hidden");
-      rowAgent.classList.add("hidden");
-      rowSingle.classList.remove("hidden");
-      if (rowDistrictAgents) rowDistrictAgents.classList.add("hidden");
-
-      if (gateway === "DBBL") {
-        titleText = "Dutch Bangla DBBL Bank";
-        instructionText = s.dbblInstruction || "Transfer to bank directly using the following account information.";
-        singleAccEl.innerText = s.dbblDetails || "None";
-        if (singleLabelEl) singleLabelEl.innerText = "DBBL TARGET BANK DETAILS";
-        
-        badgeEl.innerText = "Direct Bank";
-        badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/20 px-2.5 py-0.5 rounded-full";
-        badgeEl.parentElement.classList.remove("hidden");
-      } else {
-        isCrypto = true;
-        if (gateway === "Crypto USDT") {
-          titleText = "Cryptocurrency USDT (TRC-20)";
-          instructionText = s.cryptoInstruction || "Deposit USDT to the secure address below.";
-          singleAccEl.innerText = s.cryptoAddressUSDT || "None";
-          fallbackQRData = s.cryptoAddressUSDT || "None";
-          customQRUrl = s.cryptoQRUrlUSDT;
-        } else if (gateway === "Crypto BTC") {
-          titleText = "Cryptocurrency Bitcoin (BTC)";
-          instructionText = s.cryptoInstruction || "Deposit BTC to the secure address below.";
-          singleAccEl.innerText = s.cryptoAddressBTC || "None";
-          fallbackQRData = s.cryptoAddressBTC || "None";
-          customQRUrl = s.cryptoQRUrlBTC;
-        } else if (gateway === "Crypto ETH") {
-          titleText = "Cryptocurrency Ethereum (ETH)";
-          instructionText = s.cryptoInstruction || "Deposit ETH to the secure address below.";
-          singleAccEl.innerText = s.cryptoAddressETH || "None";
-          fallbackQRData = s.cryptoAddressETH || "None";
-          customQRUrl = s.cryptoQRUrlETH;
-        }
-        if (singleLabelEl) singleLabelEl.innerText = `${gateway.toUpperCase()} TARGET COIN ADDRESS`;
-
-        badgeEl.innerText = "USDT / BTC / ETH Coin";
-        badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-amber-950/40 text-amber-400 border border-amber-900/20 px-2.5 py-0.5 rounded-full";
-        badgeEl.parentElement.classList.remove("hidden");
-      }
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
     }
 
-    titleEl.innerText = titleText;
-    instructionEl.innerText = instructionText;
+    if (gateway === "Agent Deposit") {
+      rowDistrictAgents?.classList.remove("hidden");
+      titleEl.innerText = "Partner Agent Network Desk";
+      instructionEl.innerText = s.mobileInstructionAgentDeposit || "Hand over physical cash or transfer funds directly to any verified agent found below.";
+      badgeEl.innerText = "Verified Agent Partner";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-indigo-950 text-indigo-400 border border-indigo-900/30 px-2.5 py-0.5 rounded-full";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
 
-    if (isCrypto && singleAccEl.innerText !== "None") {
+    if (gateway === "DBBL") {
+      rowSingle?.classList.remove("hidden");
+      titleEl.innerText = "Dutch Bangla DBBL Bank";
+      instructionEl.innerText = s.dbblInstruction || "Transfer to bank directly using the following account information.";
+      if (singleAccEl) singleAccEl.innerText = s.dbblDetails || "None";
+      if (singleLabelEl) singleLabelEl.innerText = "DBBL TARGET BANK DETAILS";
+      badgeEl.innerText = "Direct Bank";
+      badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/20 px-2.5 py-0.5 rounded-full";
+      badgeEl.parentElement?.classList.remove("hidden");
+      return;
+    }
+
+    // Crypto Gateways (Crypto USDT, Crypto BTC, Crypto ETH)
+    rowSingle?.classList.remove("hidden");
+    let fallbackQRData = "";
+    let customQRUrl = "";
+
+    if (gateway === "Crypto USDT") {
+      titleEl.innerText = "Cryptocurrency USDT (TRC-20)";
+      instructionEl.innerText = s.cryptoInstruction || "Deposit USDT to the secure address below.";
+      if (singleAccEl) singleAccEl.innerText = s.cryptoAddressUSDT || "None";
+      fallbackQRData = s.cryptoAddressUSDT || "None";
+      customQRUrl = s.cryptoQRUrlUSDT;
+    } else if (gateway === "Crypto BTC") {
+      titleEl.innerText = "Cryptocurrency Bitcoin (BTC)";
+      instructionEl.innerText = s.cryptoInstruction || "Deposit BTC to the secure address below.";
+      if (singleAccEl) singleAccEl.innerText = s.cryptoAddressBTC || "None";
+      fallbackQRData = s.cryptoAddressBTC || "None";
+      customQRUrl = s.cryptoQRUrlBTC;
+    } else if (gateway === "Crypto ETH") {
+      titleEl.innerText = "Cryptocurrency Ethereum (ETH)";
+      instructionEl.innerText = s.cryptoInstruction || "Deposit ETH to the secure address below.";
+      if (singleAccEl) singleAccEl.innerText = s.cryptoAddressETH || "None";
+      fallbackQRData = s.cryptoAddressETH || "None";
+      customQRUrl = s.cryptoQRUrlETH;
+    }
+
+    if (singleLabelEl) singleLabelEl.innerText = `${gateway.toUpperCase()} TARGET COIN ADDRESS`;
+    badgeEl.innerText = "USDT / BTC / ETH Coin";
+    badgeEl.className = "text-[8px] font-bold uppercase tracking-wider bg-amber-950/40 text-amber-400 border border-amber-900/20 px-2.5 py-0.5 rounded-full";
+    badgeEl.parentElement?.classList.remove("hidden");
+
+    if (singleAccEl && singleAccEl.innerText !== "None" && qrBlock) {
       qrBlock.classList.remove("hidden");
-      if (s.cryptoQRType === "custom" && customQRUrl) {
-        qrImg.src = customQRUrl;
-      } else {
-        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(fallbackQRData)}`;
+      if (qrImg) {
+        if (s.cryptoQRType === "custom" && customQRUrl) {
+          qrImg.src = customQRUrl;
+        } else {
+          qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(fallbackQRData)}`;
+        }
       }
     } else {
-      qrBlock.classList.add("hidden");
-      qrImg.src = "";
+      qrBlock?.classList.add("hidden");
+      if (qrImg) qrImg.src = "";
     }
   }
 
@@ -3073,52 +3421,103 @@ export class StateManager {
     this.showToast(`New ${category} lottery created dynamically!`, "success");
   }
 
+  // Seamless User Profile Navigation
+  openUserProfile(username: string) {
+    if ((window as any).chatProfileHelper && typeof (window as any).chatProfileHelper.openUserProfile === "function") {
+      (window as any).chatProfileHelper.openUserProfile(username);
+    } else {
+      console.warn("chatProfileHelper not yet initialized");
+    }
+  }
+
+  // Show Live Draw Winner Celebration & Engaging Reveal Modal
+  showWinningDrawRevealModal(drawEvent: any) {
+    if (this.isAdminMode || this.getAppView() === "admin") {
+      LiveDrawRevealEngine.closeWinningDrawRevealModal();
+      return;
+    }
+    LiveDrawRevealEngine.showWinningDrawRevealModal(drawEvent);
+  }
+
   // Open Lottery Details Popup Modal
   openLotteryDetailsPop(lotteryId) {
     const lot = this.db.lotteries.find(l => l.id === lotteryId);
-    if (!lot) return;
+    if (!lot) {
+      console.warn("Lottery pool not found for ID:", lotteryId);
+      return;
+    }
 
-    document.getElementById("detail-lot-category").innerText = lot.category;
-    document.getElementById("detail-lot-name").innerText = lot.name;
-    document.getElementById("detail-lot-desc").innerText = lot.details || "Experience live high-payout draws.";
-    document.getElementById("detail-lot-fee").innerText = `৳${lot.entryFee}`;
-    document.getElementById("detail-lot-prize").innerText = `৳${lot.prizeAmount || lot.prizePool || 0}`;
-    document.getElementById("detail-lot-sales").innerText = `${lot.soldTickets} / ${lot.totalTickets}`;
+    const modal = document.getElementById("lottery-details-modal");
+    if (!modal) {
+      console.error("lottery-details-modal element not found in DOM!");
+      return;
+    }
+
+    // Force display modal and raise z-index
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+
+    const setTxt = (id: string, text: string) => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = text;
+    };
+
+    setTxt("detail-lot-category", lot.category || "Lottery Pool");
+    setTxt("detail-lot-name", lot.name || "Draw Pool");
+    setTxt("detail-lot-desc", lot.details || "Experience live high-payout draws.");
+    setTxt("detail-lot-fee", `৳${lot.entryFee || 0}`);
+    setTxt("detail-lot-prize", `৳${(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}`);
+    setTxt("detail-lot-sales", `${lot.soldTickets || 0} / ${lot.totalTickets || 100}`);
     
-    const lotDrawTime = new Date(lot.drawTime).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true
-    });
-    document.getElementById("detail-lot-target-time").innerText = lotDrawTime;
+    let lotDrawTime = "Draw in progress";
+    if (lot.drawTime) {
+      try {
+        lotDrawTime = new Date(lot.drawTime).toLocaleString("en-US", {
+          month: "short",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true
+        });
+      } catch (e) {
+        lotDrawTime = String(lot.drawTime);
+      }
+    }
+    setTxt("detail-lot-target-time", lotDrawTime);
     
-    const progress = Math.min(100, Math.round((lot.soldTickets / lot.totalTickets) * 100));
-    document.getElementById("detail-lot-progress-bar").style.width = `${progress}%`;
+    const total = lot.totalTickets || 100;
+    const sold = lot.soldTickets || 0;
+    const progress = Math.min(100, Math.round((sold / total) * 100));
+    const progressBar = document.getElementById("detail-lot-progress-bar");
+    if (progressBar) {
+      progressBar.style.width = `${progress}%`;
+    }
 
     // Manage purchase button callback inside details modal
     const buyBtn = document.getElementById("detail-lot-buy-btn");
-    // Remove old listeners by cloning
-    const newBuyBtn = buyBtn.cloneNode(true);
-    buyBtn.parentNode.replaceChild(newBuyBtn, buyBtn);
-    
-    newBuyBtn.addEventListener("click", () => {
-      this.purchaseTicket(lot.id);
-      document.getElementById("lottery-details-modal").classList.add("hidden");
-    });
+    if (buyBtn) {
+      buyBtn.onclick = (e) => {
+        e.stopPropagation();
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
+        this.purchaseTicket(lot.id);
+      };
+    }
 
     // Handle Countdown Timer
     if (this.countdownInterval) clearInterval(this.countdownInterval);
     
     const updateCountdown = () => {
+      const cdEl = document.getElementById("detail-lot-countdown");
+      if (!cdEl) return;
       const now = new Date().getTime();
       const draw = new Date(lot.drawTime).getTime();
       const diff = draw - now;
 
-      if (diff <= 0) {
-        document.getElementById("detail-lot-countdown").innerText = "DRAWING NOW";
-        clearInterval(this.countdownInterval);
+      if (isNaN(diff) || diff <= 0) {
+        cdEl.innerText = "DRAWING NOW";
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
         return;
       }
 
@@ -3126,15 +3525,12 @@ export class StateManager {
       const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const secs = Math.floor((diff % (1000 * 60)) / 1000);
 
-      document.getElementById("detail-lot-countdown").innerText = 
+      cdEl.innerText = 
         `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     updateCountdown();
     this.countdownInterval = setInterval(updateCountdown, 1000);
-
-    // Show Modal element
-    document.getElementById("lottery-details-modal").classList.remove("hidden");
 
     // Record selection for Cart Abandonment Strategy
     if (this.currentUser) {
@@ -3237,7 +3633,285 @@ function initApplicationLoader() {
   if (window.appInstance) return; // Prevent double initialization
   const app = new StateManager();
   window.appInstance = app; // expose global handler helper
+  (window as any).app = app;
   window.chatProfileHelper = new ChatProfileSystem(app);
+  (window as any).AffiliateAgentSystem = AffiliateAgentSystem;
+  (window as any).WalletExtensions = WalletExtensions;
+  AffiliateAgentSystem.init(app);
+  WalletExtensions.init(app);
+  PaymentGateways.init(app);
+
+  // Global deposit handlers
+  (window as any).setDepositAmount = (window as any).setAmount = function(val: number) {
+    const input = document.getElementById("deposit-amount") as HTMLInputElement | null;
+    if (input) {
+      input.value = String(val);
+      if ((window as any).updateDepositSummary) {
+        (window as any).updateDepositSummary(val);
+      }
+    }
+    const buttons = document.querySelectorAll(".dep-preset-btn");
+    buttons.forEach(btn => {
+      const bVal = btn.getAttribute("data-val");
+      if (bVal && parseInt(bVal, 10) === val) {
+        btn.className = "dep-preset-btn ring-2 ring-emerald-400 bg-emerald-500/20 text-emerald-300 py-2 px-1 rounded-xl text-xs font-mono font-bold transition-all text-center cursor-pointer border border-emerald-500/60 shadow";
+      } else {
+        btn.className = "dep-preset-btn bg-slate-950 hover:bg-slate-850 text-slate-200 py-2 px-1 rounded-xl text-xs font-mono font-bold transition-all text-center cursor-pointer border border-slate-800";
+      }
+    });
+  };
+
+  (window as any).updateDepositSummary = (window as any).updateSummary = function(val: any) {
+    const num = parseFloat(val) || 0;
+    const formatted = "৳" + num.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const bonus = num >= 500 ? num * 0.10 : 0;
+    const bonusFormatted = bonus > 0 ? `+৳${bonus.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (10% Extra)` : "৳0.00";
+    const total = num + bonus;
+    const totalFormatted = "৳" + total.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const amtEl = document.getElementById("summary-amount");
+    const bonusEl = document.getElementById("summary-bonus");
+    const totEl = document.getElementById("summary-total");
+
+    if (amtEl) amtEl.textContent = formatted;
+    if (bonusEl) bonusEl.textContent = bonusFormatted;
+    if (totEl) totEl.textContent = totalFormatted;
+  };
+
+  (window as any).selectDepositMethod = function(method: string) {
+    const radio = document.querySelector(`input[name="dep_payment_method"][value="${method}"]`) as HTMLInputElement | null;
+    if (radio) radio.checked = true;
+
+    // Update cards visual state
+    document.querySelectorAll(".deposit-method-card").forEach(card => {
+      const cardRadio = card.querySelector('input[name="dep_payment_method"]') as HTMLInputElement | null;
+      if (cardRadio && cardRadio.value === method) {
+        card.className = "deposit-method-card relative flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-slate-900 to-[#0b1622] cursor-pointer hover:border-emerald-500/80 transition-all border border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30";
+      } else {
+        card.className = "deposit-method-card relative flex items-center justify-between p-3 rounded-2xl bg-slate-900/90 cursor-pointer hover:border-slate-700 transition-all border border-slate-800 shadow-sm";
+      }
+    });
+
+    const s = app.db?.settings || {};
+    const titleEl = document.getElementById("dep-instruction-title");
+    const badgeEl = document.getElementById("dep-method-badge");
+    const numBox = document.getElementById("dep-account-number-box");
+    const numEl = document.getElementById("dep-receiver-number");
+    const autoBanner = document.getElementById("dep-automated-banner");
+    const manualFields = document.getElementById("dep-manual-form-fields");
+    const submitBtn = document.getElementById("dep-submit-btn");
+
+    if (method === "ZiniPay") {
+      if (titleEl) titleEl.textContent = "⚡ Instant ZiniPay Automated Direct PGW";
+      if (badgeEl) badgeEl.textContent = "ZiniPay Direct";
+      if (numBox) numBox.classList.add("hidden");
+      if (autoBanner) {
+        autoBanner.classList.remove("hidden");
+        autoBanner.innerHTML = `
+          <div class="flex items-center gap-2 text-cyan-300 text-xs font-bold">
+            <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+            <span>Instant ZiniPay Gateway Redirect</span>
+          </div>
+          <p class="text-[10px] text-slate-300 leading-relaxed font-sans">
+            Proceed to ZiniPay-এ ক্লিক করলে সরাসরি ZiniPay চেকআউট পেজে নিয়ে যাওয়া হবে। সেখানে bKash, Nagad, Rocket বা কার্ড দিয়ে পেমেন্ট করলে তাৎক্ষণিক আপনার ব্যালেন্সে টাকা যোগ হবে।
+          </p>
+        `;
+      }
+      if (manualFields) manualFields.classList.add("hidden");
+      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-bolt-lightning text-amber-400"></i><span>Proceed to ZiniPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+    } else if (method === "UddoktaPay") {
+      if (titleEl) titleEl.textContent = "⚡ Instant UddoktaPay Automated Checkout";
+      if (badgeEl) badgeEl.textContent = "Auto Gateway";
+      if (numBox) numBox.classList.add("hidden");
+      if (autoBanner) {
+        autoBanner.classList.remove("hidden");
+        autoBanner.innerHTML = `
+          <div class="flex items-center gap-2 text-emerald-300 text-xs font-bold">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <span>Instant UddoktaPay Gateway Redirect</span>
+          </div>
+          <p class="text-[10px] text-slate-300 leading-relaxed font-sans">
+            Confirm Deposit-এ ক্লিক করলে সরাসরি UddoktaPay চেকআউট পেজে নিয়ে যাওয়া হবে। সেখানে bKash, Nagad বা কার্ড দিয়ে পেমেন্ট করলে তাৎক্ষণিক আপনার ব্যালেন্সে টাকা যোগ হবে।
+          </p>
+        `;
+      }
+      if (manualFields) manualFields.classList.add("hidden");
+      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-bolt text-amber-400"></i><span>Proceed to UddoktaPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+    } else {
+      if (autoBanner) autoBanner.classList.add("hidden");
+      if (numBox) numBox.classList.remove("hidden");
+      if (manualFields) manualFields.classList.remove("hidden");
+      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-circle-check text-base"></i><span>Confirm Deposit / জমা নিশ্চিত করুন</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+
+      let number = "01700000000";
+      if (method === "bKash") {
+        if (titleEl) titleEl.textContent = "🌸 bKash Personal Send Money";
+        if (badgeEl) badgeEl.textContent = "bKash Personal";
+        number = s.mobilePersonalBkash || s.mobileAgentBkash || "01789456123";
+      } else if (method === "Nagad") {
+        if (titleEl) titleEl.textContent = "🔶 Nagad Personal Send Money";
+        if (badgeEl) badgeEl.textContent = "Nagad Personal";
+        number = s.mobilePersonalNagad || s.mobileAgentNagad || "01889456123";
+      } else if (method === "Rocket") {
+        if (titleEl) titleEl.textContent = "🚀 Rocket Mobile Banking";
+        if (badgeEl) badgeEl.textContent = "Rocket Mobile";
+        number = s.mobilePersonalRocket || s.mobileAgentRocket || "01989456123";
+      } else if (method === "USDT") {
+        if (titleEl) titleEl.textContent = "🪙 Binance / TRON TRC-20 Crypto";
+        if (badgeEl) badgeEl.textContent = "USDT (TRC-20)";
+        number = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
+      } else if (method === "Agent") {
+        if (titleEl) titleEl.textContent = "🏢 Verified Agent Desk Cash Load";
+        if (badgeEl) badgeEl.textContent = "Local Agent";
+        number = "Visit any verified agent desk with your username";
+      }
+
+      if (numEl) numEl.textContent = number;
+    }
+  };
+
+  (window as any).copyDepositNumber = function() {
+    const numEl = document.getElementById("dep-receiver-number");
+    const num = numEl ? numEl.textContent.trim() : "";
+    if (num) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(num).catch(() => {});
+      }
+      const copyText = document.getElementById("dep-copy-text");
+      if (copyText) {
+        copyText.textContent = "Copied!";
+        setTimeout(() => { copyText.textContent = "Copy"; }, 2000);
+      }
+      app.showToast("Number copied to clipboard: " + num, "success");
+    }
+  };
+
+  (window as any).pasteDepositTrxId = async function() {
+    try {
+      if (navigator.clipboard) {
+        const text = await navigator.clipboard.readText();
+        const input = document.getElementById("dep-trx-id") as HTMLInputElement | null;
+        if (input && text) {
+          input.value = text.trim();
+          app.showToast("TrxID pasted!", "success");
+        }
+      }
+    } catch (e) {
+      app.showToast("Please paste your TrxID manually into the box.", "info");
+    }
+  };
+
+  (window as any).submitDepositForm = (window as any).submitDeposit = function() {
+    console.log("[submitDepositForm] triggered");
+    if (!app || !app.currentUser) {
+      app.showToast("Please sign in first to make a deposit.", "error");
+      return;
+    }
+
+    const amtInput = document.getElementById("deposit-amount") as HTMLInputElement | null;
+    const amount = amtInput ? parseFloat(amtInput.value) : 1000;
+
+    if (!amount || isNaN(amount) || amount < 50) {
+      app.showToast("Minimum deposit amount is ৳50.00", "error");
+      return;
+    }
+
+    const checked = document.querySelector('input[name="dep_payment_method"]:checked') as HTMLInputElement | null;
+    let method = checked ? checked.value : "ZiniPay";
+
+    const submitBtn = document.getElementById("dep-submit-btn");
+    const btnText = submitBtn ? submitBtn.textContent || "" : "";
+    if (btnText.includes("ZiniPay") || btnText.includes("জিনি পে") || btnText.includes("Proceed to ZiniPay")) {
+      method = "ZiniPay";
+    } else if (btnText.includes("UddoktaPay") || btnText.includes("Confirm Deposit")) {
+      if (!checked) method = "ZiniPay"; // default to ZiniPay if no radio checked
+    }
+
+    console.log("[submitDepositForm] detected method:", method, "amount:", amount);
+
+    // Real-time admin settings validation check
+    const statusMap = (window as any).__gatewayStatusMap;
+    if (statusMap && statusMap[method] === false) {
+      app.showToast(`⚠️ Payment gateway (${method}) is currently disabled by Admin! Please choose another option.`, "error");
+      return;
+    }
+
+    if (method === "ZiniPay") {
+      PaymentGateways.openZiniPayModal(amount);
+      return;
+    }
+
+    if (method === "Cryptomus") {
+      PaymentGateways.openCryptomusModal(amount);
+      return;
+    }
+
+    if (method === "UddoktaPay") {
+      PaymentGateways.openUddoktaPayModal(amount);
+      return;
+    }
+
+    const senderPhoneEl = document.getElementById("dep-sender-phone") as HTMLInputElement | null;
+    const trxIdEl = document.getElementById("dep-trx-id") as HTMLInputElement | null;
+
+    const senderPhone = senderPhoneEl ? senderPhoneEl.value.trim() : "";
+    const trxId = trxIdEl ? trxIdEl.value.trim() : "";
+
+    if (!senderPhone && method !== "USDT" && method !== "Agent") {
+      app.showToast("Please enter your sender mobile number.", "error");
+      senderPhoneEl?.focus();
+      return;
+    }
+
+    if (!trxId && method !== "Agent") {
+      app.showToast("Please enter the Transaction ID (TrxID).", "error");
+      trxIdEl?.focus();
+      return;
+    }
+
+    const bonus = amount >= 500 ? amount * 0.10 : 0;
+    const newDeposit = {
+      id: "dep_" + Date.now(),
+      userId: app.currentUser.id,
+      username: app.currentUser.username,
+      amount: amount,
+      bonusAmount: bonus,
+      method: method,
+      senderNumber: senderPhone,
+      trxId: trxId || "AGENT-DESK",
+      date: new Date().toISOString(),
+      status: "pending"
+    };
+
+    if (!app.db.deposits) app.db.deposits = [];
+    app.db.deposits.push(newDeposit);
+
+    if (!app.db.transactions) app.db.transactions = [];
+    app.db.transactions.push({
+      id: "tx_dep_" + Date.now(),
+      userId: app.currentUser.id,
+      username: app.currentUser.username,
+      type: "credit",
+      amount: amount,
+      bonusAmount: bonus,
+      method: method,
+      walletNumber: senderPhone || method,
+      trxId: trxId || "PENDING",
+      date: new Date().toISOString(),
+      status: "pending"
+    });
+
+    app.saveDB();
+    app.showToast(`✅ Deposit request for ৳${amount} via ${method} submitted! Processing verification.`, "success");
+
+    // Clear form
+    if (senderPhoneEl) senderPhoneEl.value = "";
+    if (trxIdEl) trxIdEl.value = "";
+
+    // Switch to wallet or history tab
+    app.currentTab = "wallet";
+    app.render();
+  };
 
   // Setup security/blocking features as standard for high-security container app
   document.addEventListener("contextmenu", e => e.preventDefault());
@@ -3260,7 +3934,51 @@ function initApplicationLoader() {
   // Handle auto-referral URL query params
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get("ref");
-  if (refCode && !app.currentUser && !app.isAdminMode) {
+  const isAgentApply = urlParams.get("role") === "agent";
+
+  if (isAgentApply && refCode && !app.currentUser && !app.isAdminMode) {
+    const signupBox = document.getElementById("auth-signup-box");
+    const loginBox = document.getElementById("auth-login-box");
+    const referralInput = document.getElementById("reg-refer-by");
+    const agentApplyInput = document.getElementById("reg-is-agent-apply") as HTMLInputElement | null;
+    const agentCommInput = document.getElementById("reg-agent-comm-rate") as HTMLInputElement | null;
+    const bannerEl = document.getElementById("reg-agent-apply-banner");
+    const leaderNameEl = document.getElementById("reg-agent-leader-name");
+    const defaultFields = document.getElementById("reg-default-email-phone-block");
+    const agentFields = document.getElementById("reg-agent-fields-block");
+    const oneClickBox = document.querySelector(".one-click-box") as HTMLElement | null;
+    const regButton = document.querySelector("#registerForm .btn-submit") as HTMLElement | null;
+
+    if (signupBox && loginBox && referralInput && bannerEl && leaderNameEl && defaultFields && agentFields) {
+      loginBox.classList.add("hidden");
+      signupBox.classList.remove("hidden");
+      const registerTab = document.getElementById("registerTab");
+      const signInTab = document.getElementById("signInTab");
+      const formContainer = document.getElementById("formContainer");
+      formContainer?.classList.add("show-register");
+      registerTab?.classList.add("active");
+      signInTab?.classList.remove("active");
+
+      referralInput.value = refCode;
+      if (agentApplyInput) agentApplyInput.value = "true";
+      if (agentCommInput) agentCommInput.value = urlParams.get("comm") || "5.0";
+
+      bannerEl.classList.remove("hidden");
+      leaderNameEl.textContent = `@${refCode}`;
+      defaultFields.classList.add("hidden");
+      agentFields.classList.remove("hidden");
+
+      if (oneClickBox) oneClickBox.classList.add("hidden");
+      if (regButton) regButton.textContent = "SUBMIT AGENT APPLICATION";
+
+      const regEmail = document.getElementById("reg-agent-email") as HTMLInputElement | null;
+      const regPhone = document.getElementById("reg-agent-phone") as HTMLInputElement | null;
+      if (regEmail) regEmail.required = true;
+      if (regPhone) regPhone.required = true;
+
+      app.showToast(`Official sub-agent recruitment form loaded under leader @${refCode}!`, "info");
+    }
+  } else if (refCode && !app.currentUser && !app.isAdminMode) {
     const signupBox = document.getElementById("auth-signup-box");
     const loginBox = document.getElementById("auth-login-box");
     const referralInput = document.getElementById("reg-refer-by");
@@ -3642,8 +4360,108 @@ function initApplicationLoader() {
 
     (window as any).lastOneClickUser = newUser;
 
+    // Reset button states
+    const copyUserTxt = document.getElementById("copy-user-btn-text");
+    const copyPassTxt = document.getElementById("copy-pass-btn-text");
+    const copyAllTxt = document.getElementById("copy-all-btn-text");
+    if (copyUserTxt) copyUserTxt.innerText = "Copy";
+    if (copyPassTxt) copyPassTxt.innerText = "Copy";
+    if (copyAllTxt) copyAllTxt.innerText = "Copy Both";
+
     const modal = document.getElementById("credModal");
     if (modal) modal.style.display = "flex";
+  };
+
+  // Copy individual or all credentials helper
+  (window as any).copyCredItem = (type: 'username' | 'password' | 'all') => {
+    const userObj = (window as any).lastOneClickUser;
+    const username = document.getElementById("genUser")?.innerText.trim() || userObj?.username || "";
+    const password = document.getElementById("genPass")?.innerText.trim() || userObj?.password || "";
+
+    if (type === 'username') {
+      if (!username) return;
+      navigator.clipboard.writeText(username).then(() => {
+        app.showToast(`✅ Username copied: ${username}`, "success");
+        const btnText = document.getElementById("copy-user-btn-text");
+        if (btnText) {
+          btnText.innerText = "Copied! ✓";
+          setTimeout(() => { if (btnText) btnText.innerText = "Copy"; }, 2000);
+        }
+      }).catch(() => {
+        app.showToast(`Username: ${username}`, "info");
+      });
+    } else if (type === 'password') {
+      if (!password) return;
+      navigator.clipboard.writeText(password).then(() => {
+        app.showToast(`✅ Password copied!`, "success");
+        const btnText = document.getElementById("copy-pass-btn-text");
+        if (btnText) {
+          btnText.innerText = "Copied! ✓";
+          setTimeout(() => { if (btnText) btnText.innerText = "Copy"; }, 2000);
+        }
+      }).catch(() => {
+        app.showToast(`Password: ${password}`, "info");
+      });
+    } else if (type === 'all') {
+      const textToCopy = `Username: ${username}\nPassword: ${password}`;
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        app.showToast(`✅ Username & Password copied to clipboard!`, "success");
+        const btnText = document.getElementById("copy-all-btn-text");
+        if (btnText) {
+          btnText.innerText = "Copied! ✓";
+          setTimeout(() => { if (btnText) btnText.innerText = "Copy Both"; }, 2000);
+        }
+      }).catch(() => {
+        app.showToast(`Credentials: ${username} / ${password}`, "info");
+      });
+    }
+  };
+
+  // Download credentials as formatted .txt file
+  (window as any).downloadCredentialsTxt = () => {
+    const userObj = (window as any).lastOneClickUser;
+    const username = document.getElementById("genUser")?.innerText.trim() || userObj?.username || "user";
+    const password = document.getElementById("genPass")?.innerText.trim() || userObj?.password || "";
+    const bonus = userObj?.balance || 50;
+    const now = new Date();
+    const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+    const portalUrl = window.location.origin + window.location.pathname;
+
+    const fileContent = [
+      "================================================================",
+      "             🎰 LOTTERY WINNER - ACCOUNT CREDENTIALS            ",
+      "================================================================",
+      `📅 Generated Date  : ${formattedDate}`,
+      `🎁 Welcome Bonus   : $${bonus} USD (Added to Wallet Balance)`,
+      "----------------------------------------------------------------",
+      `👤 Username        : ${username}`,
+      `🔑 Password        : ${password}`,
+      "----------------------------------------------------------------",
+      `🌐 Login Portal    : ${portalUrl}`,
+      "================================================================",
+      "⚠️ SECURITY NOTICE:",
+      "• Please keep this file in a safe location.",
+      "• Do not share your username and password with anyone.",
+      "• For customer support & verification, visit the official portal.",
+      "================================================================"
+    ].join("\r\n");
+
+    try {
+      const blob = new Blob([fileContent], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `LotteryWinner_${username}_credentials.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      app.showToast(`📄 File "LotteryWinner_${username}_credentials.txt" downloaded!`, "success");
+    } catch (err) {
+      console.error("Failed to download credentials TXT:", err);
+      app.showToast("Could not download file. Please use the Copy option instead.", "error");
+    }
   };
 
   (window as any).closeModal = () => {
@@ -3771,12 +4589,18 @@ function initApplicationLoader() {
         const passVal = passEl.value;
 
         // Check for direct admin login credentials
-        if (userVal.toLowerCase() === "admin" && (passVal === "Admin123" || (app.db.settings && passVal === app.db.settings.adminPass))) {
-          app.isAdminMode = true;
-          localStorage.setItem(app.adminSessionKey, "true");
-          app.showToast("Admin access granted. Control room unlocked.", "success");
-          app.render();
-          return;
+        if (userVal.toLowerCase() === "admin") {
+          if (passVal === "Admin123" || (app.db.settings && passVal === app.db.settings.adminPass)) {
+            app.isAdminMode = true;
+            localStorage.setItem(app.adminSessionKey, "true");
+            app.showToast("Admin access granted. Control room unlocked.", "success");
+            app.render();
+            return;
+          } else {
+            app.showToast("Incorrect admin password! Default admin credentials: username: Admin, password: Admin123", "error");
+            generateMathCaptcha();
+            return;
+          }
         }
 
         const isLocalOrPreview = window.location.hostname === "localhost" || 
@@ -3836,6 +4660,11 @@ function initApplicationLoader() {
           }
         }
 
+        if (matched.status === "pending_approval") {
+          app.showToast("আবেদন মুলতুবি আছে! Your agent application is pending admin approval. You will gain access once approved.", "warning");
+          return;
+        }
+
         if (matched.status === "permanently_banned") {
           app.showToast("This account has been permanently barred by operations manager.", "error");
           return;
@@ -3888,14 +4717,28 @@ function initApplicationLoader() {
           return;
         }
 
-        const userVal = userEl.value.trim();
+         const userVal = userEl.value.trim();
         const passVal = passEl.value;
         const nameVal = nameEl ? nameEl.value.trim() : userVal;
-        const emailVal = emailEl && emailEl.value ? emailEl.value.trim() : `${userVal.toLowerCase()}@lottery.local`;
-        const phoneVal = phoneEl && phoneEl.value ? phoneEl.value.trim() : "017" + Math.floor(10000000 + Math.random() * 90000000);
         const dobVal = dobEl && dobEl.value ? dobEl.value : "2000-01-01";
-        const regionVal = regionEl && regionEl.value ? regionEl.value : "Dhaka";
         const referByVal = referByEl ? referByEl.value.trim() : "";
+
+        const isAgentApplyEl = document.getElementById("reg-is-agent-apply") as HTMLInputElement | null;
+        const isAgentApplyMode = isAgentApplyEl && isAgentApplyEl.value === "true";
+
+        let emailVal = emailEl && emailEl.value ? emailEl.value.trim() : `${userVal.toLowerCase()}@lottery.local`;
+        let phoneVal = phoneEl && phoneEl.value ? phoneEl.value.trim() : "017" + Math.floor(10000000 + Math.random() * 90000000);
+        let regionVal = regionEl && regionEl.value ? regionEl.value : "Dhaka";
+
+        if (isAgentApplyMode) {
+          const agentEmailEl = document.getElementById("reg-agent-email") as HTMLInputElement | null;
+          const agentPhoneEl = document.getElementById("reg-agent-phone") as HTMLInputElement | null;
+          const agentRegionEl = document.getElementById("reg-agent-region") as HTMLSelectElement | null;
+          
+          if (agentEmailEl && agentEmailEl.value) emailVal = agentEmailEl.value.trim();
+          if (agentPhoneEl && agentPhoneEl.value) phoneVal = agentPhoneEl.value.trim();
+          if (agentRegionEl) regionVal = agentRegionEl.value;
+        }
 
         // Validation
         if (userVal.length < 3) {
@@ -4101,6 +4944,37 @@ function initApplicationLoader() {
               }
             });
           }
+        }
+
+        if (isAgentApplyMode) {
+          newUser.role = "agent";
+          newUser.status = "pending_approval";
+          newUser.balance = 0;
+          
+          const commVal = parseFloat((document.getElementById("reg-agent-comm-rate") as HTMLInputElement)?.value || "5.0");
+          (newUser as any).commissionRate = commVal;
+          (newUser as any).district = regionVal;
+          
+          app.db.users.push(newUser);
+          app.saveDB();
+
+          // Show confirmation
+          app.showToast("আবেদন সফল হয়েছে! Your sub-agent application has been submitted to the admin panel. Please wait for approval.", "success");
+          
+          // Reset fields & reset view to sign-in
+          registerForm.reset();
+          document.getElementById("reg-agent-apply-banner")?.classList.add("hidden");
+          document.getElementById("reg-default-email-phone-block")?.classList.remove("hidden");
+          document.getElementById("reg-agent-fields-block")?.classList.add("hidden");
+          
+          const oneClickBox = document.querySelector(".one-click-box") as HTMLElement | null;
+          if (oneClickBox) oneClickBox.classList.remove("hidden");
+          
+          const regButton = document.querySelector("#registerForm .btn-submit") as HTMLElement | null;
+          if (regButton) regButton.textContent = "CLAIM $50 & REGISTER";
+          
+          switchTab("signin");
+          return;
         }
 
         app.db.users.push(newUser);
@@ -4374,15 +5248,30 @@ function initApplicationLoader() {
   if (depositForm) {
     depositForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const amountVal = parseFloat(document.getElementById("dep-amount").value);
-      const gateway = document.getElementById("dep-gateway").value;
-      const trxIdVal = document.getElementById("dep-trxid").value.trim();
+      const amountVal = parseFloat((document.getElementById("dep-amount") as HTMLInputElement).value);
+      const gateway = (document.getElementById("dep-gateway") as HTMLSelectElement).value;
 
-      if (amountVal < 20) {
+      if (!gateway || app.db.settings.payMasterEnabled === false) {
+        app.showToast("All deposit payment channels are currently paused or disabled by the administrator.", "error");
+        return;
+      }
+
+      if (isNaN(amountVal) || amountVal < 20) {
         app.showToast("Minimum deposit is ৳20.", "error");
         return;
       }
 
+      const isAutomated = ["Cryptomus", "UddoktaPay", "bKash PGW", "Nagad PGW", "Aamarpay", "Binance Pay"].includes(gateway);
+      if (isAutomated) {
+        if (gateway === "Cryptomus" || gateway === "Binance Pay") {
+          PaymentGateways.openCryptomusModal(amountVal);
+        } else {
+          PaymentGateways.openUddoktaPayModal(amountVal);
+        }
+        return;
+      }
+
+      const trxIdVal = (document.getElementById("dep-trxid") as HTMLInputElement).value.trim();
       if (trxIdVal.length < 5) {
         app.showToast("Please enter a valid bKash/Nagad Tracer Transaction ID.", "error");
         return;
@@ -4429,6 +5318,11 @@ function initApplicationLoader() {
       const amountVal = parseFloat(document.getElementById("wd-amount").value);
       const gateway = document.getElementById("wd-gateway").value;
       const targetVal = document.getElementById("wd-account").value.trim();
+
+      if (!gateway || app.db.settings.payMasterEnabled === false) {
+        app.showToast("All payout withdrawal channels are currently paused or disabled by the administrator.", "error");
+        return;
+      }
 
       if (amountVal < 100) {
         app.showToast("Minimum withdrawal is ৳100.", "error");
@@ -5235,15 +6129,53 @@ function initApplicationLoader() {
 
     const s = app.db.settings;
 
+    // Helper for checkbox values
+    const getChk = (id: string, fallback: boolean) => {
+      const el = document.getElementById(id) as HTMLInputElement | null;
+      return el ? el.checked : fallback;
+    };
+
+    // Master & Auto Gateways
+    s.payMasterEnabled = getChk("sys-pay-master-enabled", s.payMasterEnabled !== false);
+    s.payUddoktapayEnabled = getChk("sys-pay-uddoktapay-enabled", s.payUddoktapayEnabled !== false);
+    s.payZinipayEnabled = getChk("sys-pay-zinipay-enabled", s.payZinipayEnabled !== false && s.payZiniPayEnabled !== false);
+    s.payZiniPayEnabled = s.payZinipayEnabled;
+    s.payBkashPgwEnabled = getChk("sys-pay-bkash-pgw-enabled", s.payBkashPgwEnabled !== false && s.payBkashPgwEnabled !== undefined);
+    s.payNagadPgwEnabled = getChk("sys-pay-nagad-pgw-enabled", s.payNagadPgwEnabled !== false && s.payNagadPgwEnabled !== undefined);
+    s.payAamarpayEnabled = getChk("sys-pay-aamarpay-enabled", s.payAamarpayEnabled !== false && s.payAamarpayEnabled !== undefined);
+    s.payBinanceEnabled = getChk("sys-pay-binance-enabled", s.payBinanceEnabled !== false && s.payBinancePayEnabled !== false);
+    s.payBinancePayEnabled = s.payBinanceEnabled;
+    s.payCryptomusEnabled = getChk("sys-pay-cryptomus-enabled", s.payCryptomusEnabled !== false);
+
+    // ZiniPay settings
+    const ziniKeyEl = document.getElementById("sys-pay-zinipay-apikey") as HTMLInputElement | null;
+    if (ziniKeyEl) s.zinipayApiKey = ziniKeyEl.value.trim();
+    const ziniModeEl = document.getElementById("sys-pay-zinipay-mode") as HTMLSelectElement | null;
+    if (ziniModeEl) s.zinipayMode = ziniModeEl.value;
+    const ziniUrlEl = document.getElementById("sys-pay-zinipay-url") as HTMLInputElement | null;
+    if (ziniUrlEl) s.zinipayBaseUrl = ziniUrlEl.value.trim();
+    const ziniInstEl = document.getElementById("sys-pay-zinipay-instruction") as HTMLInputElement | null;
+    if (ziniInstEl) s.zinipayInstruction = ziniInstEl.value.trim();
+
+    // UddoktaPay settings
+    const uddoktaKeyEl = document.getElementById("sys-pay-uddoktapay-apikey") as HTMLInputElement | null;
+    if (uddoktaKeyEl) s.uddoktapayApiKey = uddoktaKeyEl.value.trim();
+    const uddoktaModeEl = document.getElementById("sys-pay-uddoktapay-mode") as HTMLSelectElement | null;
+    if (uddoktaModeEl) s.uddoktapayMode = uddoktaModeEl.value;
+    const uddoktaUrlEl = document.getElementById("sys-pay-uddoktapay-url") as HTMLInputElement | null;
+    if (uddoktaUrlEl) s.uddoktapayBaseUrl = uddoktaUrlEl.value.trim();
+    const uddoktaInstEl = document.getElementById("sys-pay-uddoktapay-instruction") as HTMLInputElement | null;
+    if (uddoktaInstEl) s.uddoktapayInstruction = uddoktaInstEl.value.trim();
+
     // Capture Enable / Disable Checked Toggles
-    s.payBkashEnabled = document.getElementById("sys-pay-bkash-enabled").checked;
-    s.payNagadEnabled = document.getElementById("sys-pay-nagad-enabled").checked;
-    s.payRocketEnabled = document.getElementById("sys-pay-rocket-enabled").checked;
-    s.payUpayEnabled = document.getElementById("sys-pay-upay-enabled").checked;
-    s.payDbblEnabled = document.getElementById("sys-pay-dbbl-enabled").checked;
-    s.payUsdtEnabled = document.getElementById("sys-pay-usdt-enabled").checked;
-    s.payBtcEnabled = document.getElementById("sys-pay-btc-enabled").checked;
-    s.payEthEnabled = document.getElementById("sys-pay-eth-enabled").checked;
+    s.payBkashEnabled = getChk("sys-pay-bkash-enabled", s.payBkashEnabled !== false);
+    s.payNagadEnabled = getChk("sys-pay-nagad-enabled", s.payNagadEnabled !== false);
+    s.payRocketEnabled = getChk("sys-pay-rocket-enabled", s.payRocketEnabled !== false);
+    s.payUpayEnabled = getChk("sys-pay-upay-enabled", s.payUpayEnabled !== false);
+    s.payDbblEnabled = getChk("sys-pay-dbbl-enabled", s.payDbblEnabled !== false);
+    s.payUsdtEnabled = getChk("sys-pay-usdt-enabled", s.payUsdtEnabled !== false);
+    s.payBtcEnabled = getChk("sys-pay-btc-enabled", s.payBtcEnabled !== false && s.payBtcEnabled !== undefined);
+    s.payEthEnabled = getChk("sys-pay-eth-enabled", s.payEthEnabled !== false && s.payEthEnabled !== undefined);
 
     s.mobilePersonalBkash = document.getElementById("sys-pay-bkash-personal").value.trim();
     s.mobileAgentBkash = document.getElementById("sys-pay-bkash-agent").value.trim();
@@ -5274,8 +6206,8 @@ function initApplicationLoader() {
     s.cryptoQRUrlETH = document.getElementById("sys-pay-crypto-qr-eth").value.trim();
     s.cryptoInstruction = document.getElementById("sys-pay-crypto-instruction").value.trim();
 
-    s.payAgentDepositEnabled = document.getElementById("sys-pay-agent-deposit-enabled").checked;
-    s.payAgentWithdrawEnabled = document.getElementById("sys-pay-agent-withdraw-enabled").checked;
+    s.payAgentDepositEnabled = getChk("sys-pay-agent-deposit-enabled", true);
+    s.payAgentWithdrawEnabled = getChk("sys-pay-agent-withdraw-enabled", true);
     s.mobileInstructionAgentDeposit = document.getElementById("sys-pay-agent-deposit-instruction").value.trim();
     s.mobileInstructionAgentWithdraw = document.getElementById("sys-pay-agent-withdraw-instruction").value.trim();
 
@@ -5283,8 +6215,31 @@ function initApplicationLoader() {
     s.cryptoAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
 
     app.saveDB();
+    app.rebuildDepositGatewaySelect();
+    app.rebuildWithdrawGatewaySelect();
+    if ((window as any).admin && typeof (window as any).admin.updatePaymentGatewaysStatusUI === "function") {
+      (window as any).admin.updatePaymentGatewaysStatusUI();
+    }
     app.showToast("Live payment gateways and dynamic routes synchronized.", "success");
     app.render();
+    });
+  }
+
+  // 1-Click Payment Gateways Controls
+  const btn1ClickEnableAll = document.getElementById("btn-1click-enable-all-payments");
+  if (btn1ClickEnableAll) {
+    btn1ClickEnableAll.addEventListener("click", () => {
+      if ((window as any).admin && typeof (window as any).admin.setAllPaymentGatewaysState === "function") {
+        (window as any).admin.setAllPaymentGatewaysState(true, true);
+      }
+    });
+  }
+  const btn1ClickDisableAll = document.getElementById("btn-1click-disable-all-payments");
+  if (btn1ClickDisableAll) {
+    btn1ClickDisableAll.addEventListener("click", () => {
+      if ((window as any).admin && typeof (window as any).admin.setAllPaymentGatewaysState === "function") {
+        (window as any).admin.setAllPaymentGatewaysState(false, true);
+      }
     });
   }
 
@@ -5610,15 +6565,42 @@ function initApplicationLoader() {
 
   // Close details and ticket popup modals (delegated)
   document.addEventListener("click", (e) => {
-    const closeLotteryBtn = e.target.closest("#close-lottery-details-btn");
+    const target = e.target as HTMLElement;
+    if (!target || typeof target.closest !== "function") return;
+
+    const closeLotteryBtn = target.closest("#close-lottery-details-btn");
     if (closeLotteryBtn) {
-      document.getElementById("lottery-details-modal").classList.add("hidden");
+      const modal = document.getElementById("lottery-details-modal");
+      if (modal) {
+        modal.classList.add("hidden");
+        modal.style.display = "none";
+      }
       return;
     }
 
-    const closeTicketBtn = e.target.closest("#close-ticket-info-btn");
+    // Backdrop click to close lottery details modal
+    if (target.id === "lottery-details-modal") {
+      target.classList.add("hidden");
+      target.style.display = "none";
+      return;
+    }
+
+    // Delegated click handler to ensure ANY lottery card or carousel card opens details popup
+    if (!target.closest(".buy-pool-btn") && !target.closest(".carousel-buy-btn") && !target.closest("#detail-lot-buy-btn") && !target.closest("#close-lottery-details-btn")) {
+      const lotCard = target.closest(".lottery-ticket-card, .carousel-card-item, [data-lottery-id]");
+      if (lotCard && !lotCard.closest("#lottery-details-modal")) {
+        const lotId = lotCard.getAttribute("data-lottery-id") || lotCard.getAttribute("data-id");
+        if (lotId && app.db && app.db.lotteries && app.db.lotteries.some(l => l.id === lotId)) {
+          e.stopPropagation();
+          app.openLotteryDetailsPop(lotId);
+          return;
+        }
+      }
+    }
+
+    const closeTicketBtn = target.closest("#close-ticket-info-btn");
     if (closeTicketBtn) {
-      document.getElementById("ticket-info-modal").classList.add("hidden");
+      document.getElementById("ticket-info-modal")?.classList.add("hidden");
       return;
     }
 
@@ -6511,10 +7493,51 @@ function initApplicationLoader() {
 
   // Automatically register specialized Staff & Agent workspace listeners
   if (app) {
-    app.setupStaffAndAgentListeners();
-    app.setupDistrictAgentsLookup();
-    FloatingToastNotification.start(app);
-    NotificationEngine.init(app);
+    try {
+      if (typeof (app as any).setupStaffAndAgentListeners === "function") {
+        (app as any).setupStaffAndAgentListeners();
+      }
+    } catch (e) {
+      console.warn("setupStaffAndAgentListeners", e);
+    }
+    try {
+      if (typeof (app as any).setupDistrictAgentsLookup === "function") {
+        (app as any).setupDistrictAgentsLookup();
+      }
+    } catch (e) {
+      console.warn("setupDistrictAgentsLookup", e);
+    }
+    try {
+      FloatingToastNotification.start(app);
+    } catch (e) {}
+    try {
+      NotificationEngine.init(app);
+    } catch (e) {}
+    try {
+      PaymentGateways.init(app);
+    } catch (e) {}
+
+    (window as any).app = app;
+    (window as any).openLotteryDetailsPop = (id: string) => app.openLotteryDetailsPop(id);
+    (window as any).openLotteryDetails = (id: string) => app.openLotteryDetailsPop(id);
+    (window as any).openUserProfile = (username: string) => app.openUserProfile(username);
+    (window as any).LiveDrawRevealEngine = LiveDrawRevealEngine;
+    (window as any).showWinningDrawRevealModal = (drawEvent: any) => LiveDrawRevealEngine.showWinningDrawRevealModal(drawEvent);
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const modal = document.getElementById("lottery-details-modal");
+        if (modal && !modal.classList.contains("hidden")) {
+          modal.classList.add("hidden");
+          modal.style.display = "none";
+        }
+        const winnerModal = document.getElementById("lottery-draw-winner-modal");
+        if (winnerModal && !winnerModal.classList.contains("hidden")) {
+          winnerModal.classList.add("hidden");
+          winnerModal.style.display = "none";
+        }
+      }
+    });
   }
 }
 

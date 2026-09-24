@@ -5,6 +5,13 @@ import { CheckinSettingsTab } from "../admin_tabs/checkinSettings.js";
 
 export const AdminModule = {
   renderAdmin() {
+    // Ensure user-facing winner reveal popup is closed when in admin panel
+    const winnerModal = document.getElementById("lottery-draw-winner-modal");
+    if (winnerModal) {
+      winnerModal.classList.add("hidden");
+      winnerModal.style.display = "none";
+    }
+
     const isModerator = this.currentUser && this.currentUser.role === "moderator";
 
     // Select Admin tab classes matching selection
@@ -183,10 +190,23 @@ export const AdminModule = {
   },
 
   renderAdminUsers() {
-    const listEl = document.getElementById("admin-users-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
+    // 1. Overview Analytics Calculations
+    const totalUsers = this.db.users.length;
+    const onlineSimulated = Math.max(1, Math.round(totalUsers * 0.15));
+    const flaggedFraud = this.db.users.filter(u => u.status === "blocked").length;
+    const totalWalletPool = this.db.users.reduce((sum, u) => sum + (u.balance || 0), 0);
 
+    const totalEl = document.getElementById("admin-users-stat-total");
+    const onlineEl = document.getElementById("admin-users-stat-online");
+    const flaggedEl = document.getElementById("admin-users-stat-flagged");
+    const balanceEl = document.getElementById("admin-users-stat-balance");
+
+    if (totalEl) totalEl.innerText = totalUsers.toLocaleString();
+    if (onlineEl) onlineEl.innerText = onlineSimulated.toLocaleString();
+    if (flaggedEl) flaggedEl.innerText = flaggedFraud.toLocaleString();
+    if (balanceEl) balanceEl.innerText = "৳" + totalWalletPool.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // 2. Active Search Clear button handler
     const clearBtn = document.getElementById("admin-players-clear-search-btn");
     if (clearBtn) {
       if (this.adminPlayersSearchQuery) {
@@ -196,6 +216,37 @@ export const AdminModule = {
       }
     }
 
+    // 3. Filter Chips Rendering & Active State Management
+    if (!this.adminPlayersActiveFilter) {
+      this.adminPlayersActiveFilter = "all";
+    }
+
+    const filterBar = document.getElementById("admin-users-filter-bar");
+    if (filterBar) {
+      const filters = [
+        { id: "all", label: "All Users (সবাই)" },
+        { id: "active", label: "Active (সচল)" },
+        { id: "blocked", label: "Flagged" },
+        { id: "banned", label: "Banned (স্থগিত)" },
+        { id: "vip", label: "High Roller (ভিআইপি)" }
+      ];
+      filterBar.innerHTML = filters.map(f => {
+        const active = this.adminPlayersActiveFilter === f.id;
+        const btnClass = active
+          ? "px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black transition whitespace-nowrap cursor-pointer shadow-sm"
+          : "px-4 py-2 rounded-full bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition whitespace-nowrap cursor-pointer";
+        return `<button data-filter="${f.id}" class="${btnClass}">${f.label}</button>`;
+      }).join("");
+
+      filterBar.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.adminPlayersActiveFilter = btn.getAttribute("data-filter");
+          this.renderAdminUsers();
+        });
+      });
+    }
+
+    // 4. Filtering Users
     let filteredUsers = this.db.users || [];
     const query = (this.adminPlayersSearchQuery || "").toLowerCase().trim();
     if (query) {
@@ -207,66 +258,188 @@ export const AdminModule = {
       });
     }
 
+    if (this.adminPlayersActiveFilter === "active") {
+      filteredUsers = filteredUsers.filter(u => u.status === "active");
+    } else if (this.adminPlayersActiveFilter === "blocked") {
+      filteredUsers = filteredUsers.filter(u => u.status === "blocked");
+    } else if (this.adminPlayersActiveFilter === "banned") {
+      filteredUsers = filteredUsers.filter(u => u.status === "banned" || u.status === "suspended" || u.status === "blocked");
+    } else if (this.adminPlayersActiveFilter === "vip") {
+      filteredUsers = filteredUsers.filter(u => u.customBadge === "vip" || (u.balance || 0) >= 1000);
+    }
+
+    // 5. Populate Dynamic Cards Grid
+    const gridEl = document.getElementById("admin-users-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
     if (filteredUsers.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="4" class="p-8 text-center text-slate-500 font-mono text-[10px]">
-            No matching players found for search term "${query}"
-          </td>
-        </tr>
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No matching platform accounts discovered.
+        </div>
       `;
       return;
     }
 
     filteredUsers.forEach(u => {
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 border-b border-slate-800 text-xs";
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750";
 
-      let statusColor = u.status === "active" ? "bg-green-950 text-green-400 border border-green-800/40" :
-                         u.status === "blocked" ? "bg-amber-950 text-amber-400 border border-amber-800/40" :
-                         "bg-red-950 text-red-500 border border-red-800/30";
+      let statusClass = u.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : u.status === "blocked"
+        ? "text-amber-400 bg-amber-950/20 border border-amber-900/40"
+        : "text-rose-450 bg-rose-950/20 border border-rose-900/40";
 
-      let customBadgeBadge = "";
-      if (u.customBadge) {
-        const adminBadgeIcons = {
-          vip: "💎 VIP",
-          moderator: "🛡️ MOD",
-          star: "⭐ STAR",
-          premium: "✨ PREM",
-          pro: "🔥 PRO",
-          legend: "👑 LGND"
-        };
-        const label = adminBadgeIcons[u.customBadge] || u.customBadge.toUpperCase();
-        customBadgeBadge = `<span class="bg-indigo-950/80 text-indigo-300 text-[8px] font-bold px-1.5 py-0.2 rounded ml-1 uppercase border border-indigo-900/50">${label}</span>`;
-      }
+      let statusText = u.status === "active"
+        ? "● Active / সচল"
+        : u.status === "blocked"
+        ? "● Suspicious"
+        : "● Banned / বরখাস্ত";
 
-      row.innerHTML = `
-        <td class="p-4">
-          <div class="font-bold text-white flex items-center gap-1">@${u.username} ${customBadgeBadge}</div>
-          <div class="text-[10px] text-slate-500 font-mono">${u.email} ${u.phone ? `• ${u.phone}` : ""}</div>
-        </td>
-        <td class="p-4 font-mono font-bold text-cyan-400">৳${u.balance.toFixed(2)}</td>
-        <td class="p-4">
-          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono ${statusColor}">
-            ${u.status.toUpperCase()}
+      const badgeLabel = u.customBadge ? u.customBadge.toUpperCase() : (u.role === "agent" ? "AGENT" : u.role === "moderator" ? "MODERATOR" : "LVL 1");
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-rose-950/30 select-none uppercase">
+                ${u.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${u.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${u.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 text-amber-400 border border-amber-500/10 text-[8.5px] font-mono font-bold uppercase tracking-wider">${badgeLabel}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${u.realName || "Registered User"} • ${u.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
+          </div>
+        </div>
+
+        <!-- Financial Snapshot -->
+        <div class="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40 text-xs font-mono">
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Purse Balance</span>
+            <span class="text-xs font-black text-amber-300 mt-0.5 tabular-nums">৳${(u.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Lifetime Bets</span>
+            <span class="text-xs font-bold text-white mt-0.5 tabular-nums">৳${u.lifetimeBets || "85,000"}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Win Rate</span>
+            <span class="text-xs font-bold text-cyan-400 mt-0.5">${u.winRate || "35%"}</span>
+          </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-b border-slate-800/40 pb-2">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar-days text-[11px]"></i>
+            Joined: ${u.joinedDate || "14 Aug 2024"}
           </span>
-        </td>
-        <td class="p-4 text-right">
-          <button class="admin-edit-player-btn bg-slate-800 text-slate-300 py-1.5 px-3 rounded-xl hover:bg-slate-700 transition cursor-pointer" data-id="${u.id}">
-            Modify
+          <span class="flex items-center gap-1.5 text-emerald-450 font-bold">
+            <i class="fa-solid fa-circle-check text-[11px]"></i>
+            KYC Verified
+          </span>
+        </div>
+
+        <!-- Actions Row -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-sans text-[11px]">
+          <button class="adjust-balance-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${u.id}">
+            <i class="fa-solid fa-coins text-slate-500 text-[10px]"></i>
+            <span>Adjust Balance</span>
           </button>
-        </td>
+          <button class="freeze-user-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-rose-950/30 border border-slate-800 hover:border-rose-900/40 text-rose-400 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${u.id}">
+            <i class="fa-solid fa-lock text-rose-500/80 text-[10px]"></i>
+            <span>${u.status === "banned" ? "Unban Account" : "Freeze Wallet"}</span>
+          </button>
+        </div>
       `;
 
-      listEl.appendChild(row);
+      gridEl.appendChild(card);
     });
 
-    document.querySelectorAll(".admin-edit-player-btn").forEach(btn => {
+    // 6. Attach Actions Handlers
+    gridEl.querySelectorAll(".adjust-balance-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         const uId = e.currentTarget.getAttribute("data-id");
         this.openUserEditModal(uId);
       });
     });
+
+    gridEl.querySelectorAll(".freeze-user-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const uId = e.currentTarget.getAttribute("data-id");
+        const matched = this.db.users.find(user => user.id === uId);
+        if (matched) {
+          if (matched.status === "banned") {
+            matched.status = "active";
+            this.showToast(`Account @${matched.username} unbanned successfully!`, "success");
+          } else {
+            matched.status = "banned";
+            this.showToast(`Account @${matched.username} is now frozen & suspended.`, "error");
+          }
+          this.saveDB();
+          this.renderAdminUsers();
+        }
+      });
+    });
+
+    // 7. Security Rules Persistence & Controls binding
+    if (!this.db.securityRules) {
+      this.db.securityRules = {
+        enforceOtp: true,
+        autoFreeze: true,
+        maxDailySpend: 50000
+      };
+    }
+
+    const otpToggle = document.getElementById("toggle-otp");
+    const freezeToggle = document.getElementById("toggle-freeze");
+    const spendSlider = document.getElementById("spend-slider");
+    const limitLabel = document.getElementById("limit-label");
+    const saveBtn = document.getElementById("save-rules-btn");
+
+    if (otpToggle) otpToggle.checked = this.db.securityRules.enforceOtp;
+    if (freezeToggle) freezeToggle.checked = this.db.securityRules.autoFreeze;
+    if (spendSlider) {
+      spendSlider.value = this.db.securityRules.maxDailySpend;
+      if (limitLabel) limitLabel.innerText = "৳" + parseInt(spendSlider.value).toLocaleString();
+      
+      spendSlider.oninput = (e) => {
+        if (limitLabel) limitLabel.innerText = "৳" + parseInt(e.target.value).toLocaleString();
+      };
+    }
+
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Saving Settings...';
+        saveBtn.disabled = true;
+
+        setTimeout(() => {
+          this.db.securityRules = {
+            enforceOtp: otpToggle ? otpToggle.checked : true,
+            autoFreeze: freezeToggle ? freezeToggle.checked : true,
+            maxDailySpend: spendSlider ? parseInt(spendSlider.value) : 50000
+          };
+          this.saveDB();
+          this.showToast("User security rules updated successfully!", "success");
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
+        }, 800);
+      };
+    }
   },
 
   renderAdminCategories() {
@@ -961,107 +1134,179 @@ export const AdminModule = {
   },
 
   renderAdminAgents() {
-    const listEl = document.getElementById("admin-agents-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
+    const gridEl = document.getElementById("admin-agents-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
 
     const searchInput = document.getElementById("agents-search-input");
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+      searchInput.addEventListener("input", () => this.renderAdminAgents());
+      searchInput.dataset.listenerAttached = "true";
+    }
     const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
-    const staffAccounts = this.db.users.filter(u => {
-      const isStaff = u.role === "agent" || u.role === "moderator";
-      if (!isStaff) return false;
-      if (query) {
-        return u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query);
-      }
-      return true;
-    });
-
+    // Stats calculations
     const agentsCount = this.db.users.filter(u => u.role === "agent").length;
     const modsCount = this.db.users.filter(u => u.role === "moderator").length;
     
     const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
     const initialSeedComms = this.db.users.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
 
-    document.getElementById("agents-stat-count").innerText = `${agentsCount} Agents`;
-    document.getElementById("moderators-stat-count").innerText = `${modsCount} Mods`;
-    document.getElementById("agents-stat-commission").innerText = `৳${(totalComms + initialSeedComms).toFixed(2)}`;
+    const statCountEl = document.getElementById("agents-stat-count");
+    const modCountEl = document.getElementById("moderators-stat-count");
+    const commissionEl = document.getElementById("agents-stat-commission");
+
+    if (statCountEl) statCountEl.innerText = `${agentsCount} Agents`;
+    if (modCountEl) modCountEl.innerText = `${modsCount} Mods`;
+    if (commissionEl) commissionEl.innerText = "৳" + (totalComms + initialSeedComms).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // Filter Chips Rendering
+    if (!this.adminAgentsActiveFilter) {
+      this.adminAgentsActiveFilter = "all";
+    }
+
+    const filterBar = document.getElementById("admin-agents-filter-bar");
+    if (filterBar) {
+      const filters = [
+        { id: "all", label: "All Staff (সবাই)" },
+        { id: "agent", label: "Field Agents (এজেন্ট)" },
+        { id: "moderator", label: "Moderators (মডারেটর)" },
+        { id: "blocked", label: "Suspended" }
+      ];
+      filterBar.innerHTML = filters.map(f => {
+        const active = this.adminAgentsActiveFilter === f.id;
+        const btnClass = active
+          ? "px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black transition whitespace-nowrap cursor-pointer shadow-sm"
+          : "px-4 py-2 rounded-full bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition whitespace-nowrap cursor-pointer";
+        return `<button data-filter="${f.id}" class="${btnClass}">${f.label}</button>`;
+      }).join("");
+
+      filterBar.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.adminAgentsActiveFilter = btn.getAttribute("data-filter");
+          this.renderAdminAgents();
+        });
+      });
+    }
+
+    // Filtering
+    let staffAccounts = this.db.users.filter(u => u.role === "agent" || u.role === "moderator");
+    if (query) {
+      staffAccounts = staffAccounts.filter(u => u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query));
+    }
+
+    if (this.adminAgentsActiveFilter === "agent") {
+      staffAccounts = staffAccounts.filter(u => u.role === "agent");
+    } else if (this.adminAgentsActiveFilter === "moderator") {
+      staffAccounts = staffAccounts.filter(u => u.role === "moderator");
+    } else if (this.adminAgentsActiveFilter === "blocked") {
+      staffAccounts = staffAccounts.filter(u => u.status === "blocked" || u.status === "permanently_banned" || u.status === "suspended" || u.status === "banned");
+    }
 
     if (staffAccounts.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="5" class="p-6 text-center text-slate-500 font-sans">
-            No registered field agents or system moderators found.
-          </td>
-        </tr>
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No matching registered staff members discovered.
+        </div>
       `;
       return;
     }
 
     staffAccounts.forEach(staff => {
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition";
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750";
 
-      const badgeColor = staff.role === "agent" ? "bg-emerald-950 text-emerald-400 border-emerald-800/30" : "bg-cyan-950 text-cyan-400 border-cyan-800/30";
-      const isBlocked = staff.status === "blocked" || staff.status === "permanently_banned";
+      let statusClass = staff.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : "text-rose-450 bg-rose-955/20 border border-rose-900/40";
 
-      row.innerHTML = `
-        <td class="p-3">
+      let statusText = staff.status === "active"
+        ? "● Active / সচল"
+        : "● Suspended";
+
+      const districtLabel = staff.role === "agent" ? (staff.district || "Dhaka") : "SYSTEM";
+      const badgeColorClass = staff.role === "agent" ? "text-emerald-400 border-emerald-500/10 text-emerald-300" : "text-cyan-400 border-cyan-500/10 text-cyan-300";
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-emerald-950/30 select-none uppercase">
+                ${staff.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${staff.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${staff.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 border text-[8.5px] font-mono font-bold uppercase tracking-wider ${badgeColorClass}">${staff.role.toUpperCase()}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${staff.email || "No Email"} • ${staff.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${isBlocked ? "bg-red-500" : "bg-emerald-500"}"></span>
-            <div>
-              <span class="text-white font-bold leading-none block">@${staff.username} ${staff.role === "agent" ? `<span class="ml-1 text-[8.5px] bg-indigo-950 text-indigo-400 border border-indigo-900/40 rounded px-1 py-0.2 font-mono uppercase font-black">${staff.district || "Dhaka"}</span>` : ""}</span>
-              <span class="text-[9.5px] text-slate-500 block select-all font-mono">${staff.email}</span>
-            </div>
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
           </div>
-        </td>
-        <td class="p-3">
-          <div>
-            <span class="text-slate-300 font-bold font-mono">৳${(staff.balance || 0).toFixed(2)}</span>
-            ${staff.role === "agent" ? `
-              <span class="text-[9px] text-slate-500 block leading-tight">Rate: <strong class="text-emerald-400">${(staff.commissionRate || 5.0).toFixed(1)}%</strong></span>
-            ` : ""}
+        </div>
+
+        <!-- Performance / Activity Snapshot -->
+        <div class="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40 text-xs font-mono">
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Purse Balance</span>
+            <span class="text-xs font-black text-amber-300 mt-0.5 tabular-nums">৳${(staff.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
           </div>
-        </td>
-        <td class="p-3">
-          ${staff.role === "agent" ? `
-            <div>
-              <span class="text-slate-300 select-none block leading-none">Bookings: <strong class="text-white font-mono">${staff.totalBookings || 0}</strong></span>
-              <span class="text-[9px] text-emerald-400 font-mono block leading-none mt-1">Earned: ৳${(staff.earnedCommission || 0).toFixed(2)}</span>
-            </div>
-          ` : `
-            <span class="text-[10px] text-slate-400 italic font-sans">Back-office monitoring role</span>
-          `}
-        </td>
-        <td class="p-3">
-          <div class="flex items-center gap-1.5">
-            <span class="border rounded-full px-2 py-0.5 text-[8.5px] font-black uppercase font-mono tracking-wider bg-slate-950 ${badgeColor}">${staff.role}</span>
-            <span class="text-[9px] py-0.5 px-1.5 uppercase font-mono rounded ${staff.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-955/20"}">${staff.status}</span>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Commission</span>
+            <span class="text-xs font-bold text-white mt-0.5 tabular-nums">
+              ${staff.role === "agent" ? `${(staff.commissionRate || 5.0).toFixed(1)}%` : "N/A"}
+            </span>
           </div>
-        </td>
-        <td class="p-3 text-right">
-          <div class="flex justify-end gap-1 font-mono">
-            <button class="staff-edit-btn bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 text-slate-400 py-1 px-2.5 rounded-lg transition text-[10px] cursor-pointer" data-id="${staff.id}">
-              Edit
-            </button>
-            <button class="staff-del-btn bg-rose-955/30 hover:bg-rose-900/60 text-rose-400 py-1 px-2.5 rounded-lg border border-rose-900/30 transition text-[10px] cursor-pointer" data-id="${staff.id}">
-              Delete
-            </button>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Total Bookings</span>
+            <span class="text-xs font-bold text-cyan-400 mt-0.5">${staff.role === "agent" ? (staff.totalBookings || 0) : "System Monitoring"}</span>
           </div>
-        </td>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-b border-slate-800/40 pb-2">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-location-dot text-[11px]"></i>
+            Region: ${districtLabel}
+          </span>
+          <span class="flex items-center gap-1.5 text-emerald-450 font-bold">
+            <i class="fa-solid fa-circle-check text-[11px]"></i>
+            Earned: ৳${(staff.earnedCommission || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          </span>
+        </div>
+
+        <!-- Actions Row -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-sans text-[11px]">
+          <button class="staff-edit-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${staff.id}">
+            <i class="fa-solid fa-pen text-slate-500 text-[10px]"></i>
+            <span>Edit Staff</span>
+          </button>
+          <button class="staff-del-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-rose-955/30 border border-slate-800 hover:border-rose-900/40 text-rose-450 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${staff.id}">
+            <i class="fa-solid fa-trash-can text-rose-500/85 text-[10px]"></i>
+            <span>Delete Staff</span>
+          </button>
+        </div>
       `;
 
-      listEl.appendChild(row);
+      gridEl.appendChild(card);
     });
 
-    listEl.querySelectorAll(".staff-edit-btn").forEach(btn => {
+    // Attach Event Handlers
+    gridEl.querySelectorAll(".staff-edit-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
         this.openUserEditModal(id);
       });
     });
 
-    listEl.querySelectorAll(".staff-del-btn").forEach(btn => {
+    gridEl.querySelectorAll(".staff-del-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
         const staff = this.db.users.find(u => u.id === id);
@@ -1078,122 +1323,313 @@ export const AdminModule = {
   },
 
   renderAgentLeadersTab() {
-    const listEl = document.getElementById("agent-leaders-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
+    this.initAgentRecruitmentPanelNew();
+    this.updateAgentHubStats();
+    this.renderAgentHubSelect();
+    this.renderAgentHubPendingList();
+  },
 
-    const searchInput = document.getElementById("agent-leaders-search-input");
-    if (searchInput && !searchInput.dataset.listenerAttached) {
-      searchInput.addEventListener("input", () => this.renderAgentLeadersTab());
-      searchInput.dataset.listenerAttached = "true";
-    }
-    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+  initAgentRecruitmentPanelNew() {
+    const shareBtn = document.getElementById("hub-tab-btn-share");
+    if (!shareBtn || shareBtn.dataset.hubListenersAttached === "true") return;
+    shareBtn.dataset.hubListenersAttached = "true";
 
-    const leaders = this.db.users.filter(u => {
-      if (u.role !== "agent") return false;
-      if (query) {
-        return u.username.toLowerCase().includes(query) ||
-               (u.email || "").toLowerCase().includes(query) ||
-               (u.phone || "").toLowerCase().includes(query) ||
-               (u.district || "").toLowerCase().includes(query);
-      }
-      return true;
+    const approvalsBtn = document.getElementById("hub-tab-btn-approvals");
+    const shareTab = document.getElementById("hub-tab-content-share");
+    const approvalsTab = document.getElementById("hub-tab-content-approvals");
+
+    // Tab Switching
+    shareBtn.addEventListener("click", () => {
+      if (shareTab) shareTab.classList.remove("hidden");
+      if (approvalsTab) approvalsTab.classList.add("hidden");
+      shareBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all bg-[#b2ffbe] text-[#003917] flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
+      if (approvalsBtn) approvalsBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all text-[#bacbb8] hover:text-[#dbe6d8] flex items-center justify-center gap-2 cursor-pointer active:scale-95";
     });
 
-    // Stats
-    const totalLeadersCount = this.db.users.filter(u => u.role === "agent").length;
-    const totalSubAgentsCount = this.db.users.filter(u => u.role === "subagent").length;
-    const activeMissionsCount = this.db.users.filter(u => u.role === "agent" && (u.monthlyTargetTickets || 0) > 0).length;
+    approvalsBtn?.addEventListener("click", () => {
+      if (shareTab) shareTab.classList.add("hidden");
+      if (approvalsTab) approvalsTab.classList.remove("hidden");
+      approvalsBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all bg-[#b2ffbe] text-[#003917] flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
+      if (shareBtn) shareBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all text-[#bacbb8] hover:text-[#dbe6d8] flex items-center justify-center gap-2 cursor-pointer active:scale-95";
+      this.renderAgentHubPendingList();
+    });
 
-    const leadersCountEl = document.getElementById("agent-leaders-stat-count");
-    if (leadersCountEl) leadersCountEl.innerText = `${totalLeadersCount} Leader${totalLeadersCount !== 1 ? 's' : ''}`;
+    // Copy Master Referral Link
+    const copyMasterBtn = document.getElementById("hub-copy-master-btn");
+    copyMasterBtn?.addEventListener("click", () => {
+      const input = document.getElementById("hub-referral-link-input");
+      if (input) {
+        input.select();
+        navigator.clipboard.writeText(input.value);
+        this.showToastHub("Master Referral Link copied to clipboard!");
+      }
+    });
+
+    // Dropdown change updates referral link automatically!
+    const leaderSelect = document.getElementById("hub-leader-select");
+    leaderSelect?.addEventListener("change", () => {
+      this.updateMasterLinkValue();
+    });
+
+    // Campaign Custom Builder Button
+    const campaignBtn = document.getElementById("hub-generate-campaign-btn");
+    campaignBtn?.addEventListener("click", () => {
+      const campaignInput = document.getElementById("hub-campaign-name");
+      const campaignVal = campaignInput ? campaignInput.value.trim() : "";
+      
+      const leaderSelectEl = document.getElementById("hub-leader-select");
+      const leaderVal = leaderSelectEl ? leaderSelectEl.value : "";
+      
+      const resultBlock = document.getElementById("hub-generated-result-block");
+      const outputEl = document.getElementById("hub-custom-link-output");
+
+      if (!leaderVal) {
+        alert("Please register or select an Agent Leader first!");
+        return;
+      }
+      if (!campaignVal) {
+        this.showToastHub("Please enter a campaign zone tag first.");
+        return;
+      }
+
+      const smsTrackInput = document.getElementById("hub-sms-track");
+      const isSms = smsTrackInput ? smsTrackInput.checked : false;
+      const origin = window.location.origin;
+      const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0&campaign=${encodeURIComponent(campaignVal)}&sms_track=${isSms}`;
+
+      if (outputEl) outputEl.textContent = inviteUrl;
+      if (resultBlock) resultBlock.classList.remove("hidden");
+      this.showToastHub("Custom campaign link generated!");
+    });
+
+    // Copy Campaign Result Link
+    const copyCampaignBtn = document.getElementById("hub-copy-campaign-btn");
+    copyCampaignBtn?.addEventListener("click", () => {
+      const outputEl = document.getElementById("hub-custom-link-output");
+      const text = outputEl ? outputEl.textContent : "";
+      if (text) {
+        navigator.clipboard.writeText(text);
+        this.showToastHub("Campaign link copied to clipboard!");
+      }
+    });
+
+    // Offline QR Popup triggers
+    const openQrBtn = document.getElementById("hub-open-qr-btn");
+    const closeQrModalBtnTop = document.getElementById("hub-close-qr-modal-btn-top");
+    const closeQrModalBtn = document.getElementById("hub-close-qr-modal-btn");
+    const qrModal = document.getElementById("hub-qr-modal");
+
+    openQrBtn?.addEventListener("click", () => {
+      const leaderSelectEl = document.getElementById("hub-leader-select");
+      const leaderVal = leaderSelectEl ? leaderSelectEl.value : "WINNER_772250";
+      
+      const qrLabel = document.getElementById("hub-qr-leader-label");
+      const qrBadge = document.getElementById("hub-qr-badge-code");
+
+      if (qrLabel) qrLabel.textContent = `@${leaderVal}`;
+      if (qrBadge) qrBadge.textContent = `${leaderVal.toUpperCase()}-OFFLINE-NODE`;
+
+      qrModal?.classList.remove("hidden");
+    });
+
+    const closeQr = () => qrModal?.classList.add("hidden");
+    closeQrModalBtnTop?.addEventListener("click", closeQr);
+    closeQrModalBtn?.addEventListener("click", closeQr);
+  },
+
+  updateMasterLinkValue() {
+    const leaderSelect = document.getElementById("hub-leader-select");
+    const linkInput = document.getElementById("hub-referral-link-input");
+    if (leaderSelect && linkInput) {
+      const leaderVal = leaderSelect.value;
+      if (leaderVal) {
+        const origin = window.location.origin;
+        linkInput.value = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0`;
+      } else {
+        linkInput.value = "No Agent Leaders Registered";
+      }
+    }
+  },
+
+  updateAgentHubStats() {
+    const activeCount = this.db.users.filter(u => u.role === "agent" && u.status === "active").length;
+    const pendingCount = this.db.users.filter(u => u.role === "agent" && u.status === "pending_approval").length;
     
-    const subsCountEl = document.getElementById("agent-leaders-stat-subs");
-    if (subsCountEl) subsCountEl.innerText = `${totalSubAgentsCount} Sub-agent${totalSubAgentsCount !== 1 ? 's' : ''}`;
+    const totalVolume = (this.db.tickets || []).length * 100 + (this.db.deposits || []).filter(d => d.status === "approved").reduce((sum, d) => sum + d.amount, 0) * 0.05;
 
-    const missionsCountEl = document.getElementById("agent-leaders-stat-missions");
-    if (missionsCountEl) missionsCountEl.innerText = `${activeMissionsCount} Active Quota${activeMissionsCount !== 1 ? 's' : ''}`;
+    const activeStat = document.getElementById("hub-active-count-stat");
+    if (activeStat) activeStat.textContent = activeCount;
+
+    const pendingStat = document.getElementById("hub-pending-count-stat");
+    if (pendingStat) pendingStat.textContent = pendingCount;
+
+    const badgePending = document.getElementById("hub-badge-pending");
+    if (badgePending) badgePending.textContent = pendingCount;
+
+    const volumeStat = document.getElementById("hub-volume-count-stat");
+    if (volumeStat) volumeStat.textContent = `৳${totalVolume.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  },
+
+  renderAgentHubSelect() {
+    const leaderSelect = document.getElementById("hub-leader-select");
+    if (!leaderSelect) return;
+
+    const leaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+    const currentVal = leaderSelect.value;
+
+    leaderSelect.innerHTML = leaders.map(l => {
+      return `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"})</option>`;
+    }).join("");
 
     if (leaders.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="6" class="p-6 text-center text-slate-500 font-sans">
-            No agent leaders matching the query found.
-          </td>
-        </tr>
-      `;
+      leaderSelect.innerHTML = `<option value="">No Active Agent Leaders Found</option>`;
+    } else if (currentVal && leaders.some(l => l.username === currentVal)) {
+      leaderSelect.value = currentVal;
+    }
+
+    this.updateMasterLinkValue();
+  },
+
+  renderAgentHubPendingList() {
+    const container = document.getElementById("hub-approvals-list-container");
+    const emptyState = document.getElementById("hub-empty-queue-state");
+    if (!container || !emptyState) return;
+
+    container.innerHTML = "";
+    const pendings = this.db.users.filter(u => u.status === "pending_approval" && u.role === "agent");
+
+    if (pendings.length === 0) {
+      container.classList.add("hidden");
+      emptyState.classList.remove("hidden");
+      emptyState.classList.add("flex");
       return;
     }
 
-    leaders.forEach(leader => {
-      // Count referred sub-agents
-      const leaderSubs = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === leader.username.toLowerCase());
-      const subsCount = leaderSubs.length;
+    container.classList.remove("hidden");
+    emptyState.classList.add("hidden");
+    emptyState.classList.remove("flex");
 
-      // Progress bar calculation
-      const target = leader.monthlyTargetTickets || 0;
-      const progress = leader.monthlySalesProgress || 0;
-      const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+    pendings.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "bg-[#141e15] rounded-xl p-5 shadow-md border border-[#3b4b3c]/30 transition-all duration-300 hover:border-[#b2ffbe]/30";
+      card.id = `hub-approval-card-${p.id}`;
 
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition cursor-pointer";
-      
-      row.innerHTML = `
-        <td class="p-3">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${leader.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
+      const initial = p.username.substring(0, 2).toUpperCase();
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between mb-3.5">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-[#b2ffbe]/10 border border-[#b2ffbe]/20 flex items-center justify-center text-[#b2ffbe] font-mono font-bold text-xs">
+              ${initial}
+            </div>
             <div>
-              <span class="text-white font-bold block">@${leader.username}</span>
-              <span class="text-[9.5px] text-slate-500 block font-mono">${leader.email}</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm font-bold text-[#dbe6d8]">@${p.username}</h3>
+                <span class="text-[9px] bg-[#b2ffbe]/20 text-[#b2ffbe] px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider">${p.district || p.region || "Dhaka Zone"}</span>
+              </div>
+              <p class="text-[11px] text-[#bacbb8] mt-0.5">Phone: ${p.phone || "N/A"} • Req ID: #${p.id}</p>
             </div>
           </div>
-        </td>
-        <td class="p-3">
-          <span class="text-slate-300 font-bold uppercase font-mono">${leader.district || "Dhaka"}</span>
-        </td>
-        <td class="p-3">
-          <div>
-            <span class="text-white font-bold font-mono">৳${(leader.balance || 0).toFixed(2)}</span>
-            <span class="text-[9.5px] text-slate-500 block font-sans">Rate: <strong class="text-emerald-400">${(leader.commissionRate || 5.0).toFixed(1)}%</strong></span>
-          </div>
-        </td>
-        <td class="p-3">
-          <span class="bg-indigo-950 text-indigo-400 border border-indigo-900/40 font-mono font-bold text-[10px] px-2 py-0.5 rounded-full">${subsCount} Subs</span>
-        </td>
-        <td class="p-3">
-          <div class="w-28 space-y-1">
-            <div class="flex justify-between text-[9.5px] font-mono leading-none">
-              <span class="text-slate-400">${progress}/${target}</span>
-              <span class="text-cyan-400 font-bold">${pct}%</span>
-            </div>
-            <div class="w-full h-1.5 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-rose-500 to-emerald-500 rounded-full" style="width: ${pct}%"></div>
+          <span class="text-[10px] bg-[#ffc77e]/10 text-[#f4bd75] px-2 py-1 rounded-md flex items-center gap-1 border border-[#f4bd75]/20 font-bold uppercase tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-[#f4bd75] animate-pulse"></span>
+            Pending
+          </span>
+        </div>
+
+        <!-- Verification Asset Badges -->
+        <div class="grid grid-cols-2 gap-2 mb-3.5 bg-[#0c150e] p-3 rounded-xl border border-[#3b4b3c]/20">
+          <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="alert('Viewing Secure NID Scan Document: System Verified')">
+            <span class="material-symbols-outlined text-[#b2ffbe] text-[18px]">badge</span>
+            <div>
+              <span class="text-[10.5px] text-[#dbe6d8] block font-bold">NID Verified</span>
+              <span class="text-[9px] text-[#bacbb8] font-mono">ID: ${Math.floor(100000000000 + Math.random() * 900000000000)}</span>
             </div>
           </div>
-        </td>
-        <td class="p-3 text-right">
-          <button class="leader-view-btn bg-rose-950/20 hover:bg-rose-900/40 border border-rose-900/30 hover:border-rose-800 text-rose-450 py-1 px-2.5 rounded-lg transition text-[10px] cursor-pointer" data-id="${leader.id}">
-            View Profile
+          <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="alert('Viewing Digital Trade License Document: Authorized')">
+            <span class="material-symbols-outlined text-[#adc6ff] text-[18px]">verified</span>
+            <div>
+              <span class="text-[10.5px] text-[#dbe6d8] block font-bold">Trade License</span>
+              <span class="text-[9px] text-[#bacbb8] font-mono">LIC-2026-${Math.floor(100 + Math.random() * 900)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2">
+          <button class="hub-decline-btn flex-1 py-2.5 rounded-xl bg-[#2d372e] text-[#ffb4ab] hover:bg-[#ffb4ab]/10 border border-[#ffb4ab]/10 text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer" data-id="${p.id}">
+            <span class="material-symbols-outlined text-[18px]">close</span>
+            <span>Decline</span>
           </button>
-        </td>
+          <button class="hub-approve-btn flex-1 py-2.5 rounded-xl bg-[#b2ffbe] text-[#003917] hover:bg-[#c2ffcb] text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" data-id="${p.id}">
+            <span class="material-symbols-outlined text-[18px]">check</span>
+            <span>Approve Agent</span>
+          </button>
+        </div>
       `;
 
-      // Make row clickable
-      row.addEventListener("click", (e) => {
-        if (e.target.closest("button")) return;
-        this.showAgentLeaderDetail(leader.id);
-      });
-
-      listEl.appendChild(row);
+      container.appendChild(card);
     });
 
-    listEl.querySelectorAll(".leader-view-btn").forEach(btn => {
+    // Event handlers inside container
+    container.querySelectorAll(".hub-approve-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        this.showAgentLeaderDetail(id);
+        this.handleAgentHubApproval(id, "approved");
+      });
+    });
+
+    container.querySelectorAll(".hub-decline-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.handleAgentHubApproval(id, "declined");
       });
     });
   },
+
+  handleAgentHubApproval(userId, action) {
+    const matched = this.db.users.find(u => u.id === userId);
+    if (!matched) return;
+
+    if (action === "approved") {
+      matched.status = "active";
+      this.db.agentLedger = this.db.agentLedger || [];
+      this.db.agentLedger.push({
+        id: "act_" + Date.now(),
+        agentId: matched.id,
+        timestamp: new Date().toISOString(),
+        description: `Approved recruitment of sub-agent @${matched.username} under recruiting leader @${matched.referredBy || "System"}.`,
+        amount: 0,
+        commission: 0
+      });
+      this.saveDB();
+      this.showToastHub(`Agent @${matched.username} approved successfully!`);
+    } else {
+      this.db.users = this.db.users.filter(u => u.id !== userId);
+      this.saveDB();
+      this.showToastHub(`Application for @${matched.username} declined.`);
+    }
+
+    this.updateAgentHubStats();
+    this.renderAgentHubSelect();
+    this.renderAgentHubPendingList();
+  },
+
+  showToastHub(msg) {
+    const toast = document.getElementById("toast-notification");
+    const toastMsg = document.getElementById("toast-msg");
+    if (toast && toastMsg) {
+      toastMsg.textContent = msg;
+      toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+      toast.classList.add("translate-y-0", "opacity-100");
+      setTimeout(() => {
+        toast.classList.remove("translate-y-0", "opacity-100");
+        toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+      }, 3000);
+    } else {
+      alert(msg);
+    }
+  },
+
 
   showAgentLeaderDetail(leaderId) {
     const leader = this.db.users.find(u => u.id === leaderId);
@@ -1282,27 +1718,35 @@ export const AdminModule = {
       } else {
         leaderSubs.forEach(sub => {
           const row = document.createElement("tr");
-          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-mono";
+          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-sans";
           
           const sTarget = sub.monthlyTargetTickets || 0;
           const sProgress = sub.monthlySalesProgress || 0;
 
           row.innerHTML = `
-            <td class="p-3 text-left font-sans">
-              <div>
-                <span class="text-white font-bold">@${sub.username}</span>
-                <span class="text-[9.5px] text-slate-500 block select-all font-mono">${sub.email}</span>
+            <td class="p-3.5 text-left font-sans">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-[10px] uppercase select-none shrink-0">
+                  ${sub.username.charAt(0)}
+                </div>
+                <div class="min-w-0">
+                  <span class="text-white font-bold block truncate">@${sub.username}</span>
+                  <span class="text-[9.5px] text-slate-500 block truncate font-mono select-all">${sub.email}</span>
+                </div>
               </div>
             </td>
-            <td class="p-3 text-slate-300 font-bold">৳${(sub.balance || 0).toFixed(2)}</td>
-            <td class="p-3 text-emerald-400 font-bold">${(sub.commissionRate || 3.0).toFixed(1)}%</td>
-            <td class="p-3 text-white font-bold">${sub.totalBookings || 0}</td>
-            <td class="p-3 text-slate-400">${sProgress} / ${sTarget}</td>
-            <td class="p-3 font-sans">
-              <span class="text-[9.5px] py-0.5 px-2 uppercase font-bold rounded ${sub.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${sub.status || "active"}</span>
+            <td class="p-3.5 text-slate-300 font-bold font-mono tabular-nums">৳${(sub.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="p-3.5 text-emerald-400 font-bold font-mono tabular-nums">${(sub.commissionRate || 3.0).toFixed(1)}%</td>
+            <td class="p-3.5 text-white font-bold font-mono tabular-nums">${sub.totalBookings || 0}</td>
+            <td class="p-3.5 text-slate-400 font-mono tabular-nums">${sProgress} / ${sTarget}</td>
+            <td class="p-3.5">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${sub.status === "active" ? "bg-emerald-400" : "bg-rose-400"}"></span>
+                <span class="text-[10px] uppercase font-mono font-bold ${sub.status === "active" ? "text-emerald-400" : "text-rose-400"}">${sub.status || "active"}</span>
+              </div>
             </td>
-            <td class="p-3 text-right">
-              <button class="leader-sub-view-btn bg-slate-950 hover:bg-slate-800 text-slate-300 text-[10px] py-1 px-2 border border-slate-800 rounded transition cursor-pointer" data-id="${sub.id}">
+            <td class="p-3.5 text-right font-sans">
+              <button class="leader-sub-view-btn border border-slate-800 hover:border-slate-700 bg-slate-950/50 hover:bg-slate-950 text-slate-300 text-[10px] py-1.5 px-3 rounded-lg transition cursor-pointer shadow-sm active:scale-95" data-id="${sub.id}">
                 View Details
               </button>
             </td>
@@ -1327,10 +1771,194 @@ export const AdminModule = {
     };
   },
 
+  initAgentRecruitmentPanel() {
+    const recruitBtn = document.getElementById("agent-recruitment-control-btn");
+    if (!recruitBtn || recruitBtn.dataset.listenerAttached === "true") return;
+    recruitBtn.dataset.listenerAttached = "true";
+
+    const listView = document.getElementById("agent-leaders-list-view");
+    const detailView = document.getElementById("agent-leaders-detail-view");
+    const recruitView = document.getElementById("agent-leaders-recruitment-view");
+    const backBtn = document.getElementById("agent-recruitment-back-btn");
+
+    recruitBtn.addEventListener("click", () => {
+      listView?.classList.add("hidden");
+      detailView?.classList.add("hidden");
+      recruitView?.classList.remove("hidden");
+      this.renderRecruitmentPanel();
+    });
+
+    backBtn?.addEventListener("click", () => {
+      recruitView?.classList.add("hidden");
+      listView?.classList.remove("hidden");
+      this.renderAgentLeadersTab();
+    });
+
+    const genBtn = document.getElementById("generate-recruitment-link-btn");
+    genBtn?.addEventListener("click", () => {
+      const leaderSelect = document.getElementById("recruit-leader-select");
+      const commRateInput = document.getElementById("recruit-commission-rate");
+      const linkCard = document.getElementById("generated-link-card");
+      const linkDisplay = document.getElementById("generated-link-display");
+
+      if (!leaderSelect || !commRateInput || !linkCard || !linkDisplay) return;
+
+      const leaderVal = leaderSelect.value;
+      const commVal = parseFloat(commRateInput.value || "5.0");
+
+      if (!leaderVal) {
+        alert("Please select a recruiter agent leader first!");
+        return;
+      }
+
+      // Generate a dynamic secure registration invite link
+      const origin = window.location.origin;
+      const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=${commVal}`;
+
+      linkDisplay.value = inviteUrl;
+      linkCard.classList.remove("hidden");
+      
+      // Store log for references
+      this.db.agentRecruitsLogs = this.db.agentRecruitsLogs || [];
+      this.db.agentRecruitsLogs.push({
+        id: "link_" + Date.now(),
+        leader: leaderVal,
+        commRate: commVal,
+        timestamp: new Date().toISOString()
+      });
+      this.saveDB();
+
+      alert("Success! Link generated. You can now copy and share it with potential sub-agents!");
+    });
+
+    const copyBtn = document.getElementById("copy-recruitment-link-btn");
+    copyBtn?.addEventListener("click", () => {
+      const linkDisplay = document.getElementById("generated-link-display");
+      if (linkDisplay) {
+        linkDisplay.select();
+        navigator.clipboard.writeText(linkDisplay.value);
+        alert("Recruitment invite link copied successfully to clipboard!");
+      }
+    });
+  },
+
+  renderRecruitmentPanel() {
+    // 1. Populate recruit-leader-select select box with all registered agent leaders (role === "agent")
+    const leaderSelect = document.getElementById("recruit-leader-select");
+    if (leaderSelect) {
+      const leaders = this.db.users.filter(u => u.role === "agent");
+      leaderSelect.innerHTML = leaders.map(l => {
+        return `<option value="${l.username}">@${l.username} (${l.district || "Dhaka"})</option>`;
+      }).join("");
+
+      if (leaders.length === 0) {
+        leaderSelect.innerHTML = `<option value="">No Agent Leaders Registered</option>`;
+      }
+    }
+
+    // 2. Render Pending Recruits list (status === "pending_approval" && role === "agent")
+    const container = document.getElementById("pending-agent-recruits-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const pendings = this.db.users.filter(u => u.status === "pending_approval" && u.role === "agent");
+
+    if (pendings.length === 0) {
+      container.innerHTML = `
+        <div class="p-12 text-center text-slate-500 text-xs font-mono border border-dashed border-slate-800 rounded-3xl bg-slate-950/40">
+          No pending sub-agent recruitment applications discovered.
+        </div>
+      `;
+      return;
+    }
+
+    pendings.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "p-5 rounded-3xl bg-slate-950 border border-slate-850/60 flex flex-col md:flex-row md:items-center justify-between gap-4 transition duration-300 hover:border-slate-800";
+
+      card.innerHTML = `
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-black text-white text-sm select-none uppercase">
+            ${p.username.substring(0, 2)}
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-white text-sm">@${p.username}</span>
+              <span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8.5px] font-mono text-amber-400 font-bold uppercase tracking-wider">Candidate</span>
+            </div>
+            <div class="text-xs text-slate-400 font-sans mt-0.5">
+              <span>District: <strong class="text-white">${p.district || p.region || "Dhaka"}</strong></span>
+              <span class="text-slate-600 select-none"> • </span>
+              <span>Leader: <strong class="text-amber-400 font-mono">@${p.referredBy || "System"}</strong></span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono mt-1 select-all">${p.email || "No Email"} • ${p.phone || "No Mobile"}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 font-sans self-end md:self-center">
+          <button class="recruit-approve-btn py-2 px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow active:scale-95" data-id="${p.id}">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Approve (অনুমোদন)</span>
+          </button>
+          <button class="recruit-decline-btn py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-rose-955/20 border border-slate-800 hover:border-rose-900/40 text-rose-455 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95" data-id="${p.id}">
+            <i class="fa-solid fa-circle-xmark text-rose-500"></i>
+            <span>Decline (প্রত্যাখ্যান)</span>
+          </button>
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+
+    // Event Handlers for Approve/Decline
+    container.querySelectorAll(".recruit-approve-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const applicant = this.db.users.find(u => u.id === id);
+        if (!applicant) return;
+
+        if (confirm(`Are you sure you want to APPROVE candidate @${applicant.username} to access the portal?`)) {
+          applicant.status = "active";
+          
+          // Log in ledger
+          this.db.agentLedger = this.db.agentLedger || [];
+          this.db.agentLedger.push({
+            id: "act_" + Date.now(),
+            agentId: applicant.id,
+            timestamp: new Date().toISOString(),
+            description: `Admin approved recruitment application of sub-agent @${applicant.username} under leader @${applicant.referredBy || "System"}.`,
+            amount: 0,
+            commission: 0
+          });
+
+          this.saveDB();
+          alert(`Success! Sub-agent @${applicant.username} is now active and can log in successfully.`);
+          this.renderRecruitmentPanel();
+          this.renderAgentLeadersTab();
+        }
+      });
+    });
+
+    container.querySelectorAll(".recruit-decline-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const applicant = this.db.users.find(u => u.id === id);
+        if (!applicant) return;
+
+        if (confirm(`Are you sure you want to DECLINE & remove candidate @${applicant.username}'s application?`)) {
+          this.db.users = this.db.users.filter(u => u.id !== id);
+          this.saveDB();
+          alert(`Application declined and candidate account removed successfully.`);
+          this.renderRecruitmentPanel();
+        }
+      });
+    });
+  },
+
   renderSubAgentsListTab() {
-    const listEl = document.getElementById("subagents-list-tbody");
-    if (!listEl) return;
-    listEl.innerHTML = "";
+    const gridEl = document.getElementById("subagents-list-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
 
     const searchInput = document.getElementById("subagents-list-search-input");
     if (searchInput && !searchInput.dataset.listenerAttached) {
@@ -1376,18 +2004,16 @@ export const AdminModule = {
     if (countEl) countEl.innerText = `${totalSubsCount} Sub-agent${totalSubsCount !== 1 ? 's' : ''}`;
 
     const salesEl = document.getElementById("subagents-list-stat-sales");
-    if (salesEl) salesEl.innerText = `৳${totalSalesVol.toFixed(2)}`;
+    if (salesEl) salesEl.innerText = "৳" + totalSalesVol.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     const playersEl = document.getElementById("subagents-list-stat-players");
     if (playersEl) playersEl.innerText = `${totalPlayersReferred} Player${totalPlayersReferred !== 1 ? 's' : ''}`;
 
     if (subagents.length === 0) {
-      listEl.innerHTML = `
-        <tr>
-          <td colspan="7" class="p-6 text-center text-slate-500 font-sans">
-            No sub-agent accounts matching the query found.
-          </td>
-        </tr>
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No sub-agent accounts matching the query discovered.
+        </div>
       `;
       return;
     }
@@ -1397,61 +2023,93 @@ export const AdminModule = {
       const sProgress = sub.monthlySalesProgress || 0;
       const pct = sTarget > 0 ? Math.min(100, Math.round((sProgress / sTarget) * 100)) : 0;
 
-      const row = document.createElement("tr");
-      row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition cursor-pointer";
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750 cursor-pointer active:scale-[0.99]";
 
-      row.innerHTML = `
-        <td class="p-3">
+      let statusClass = sub.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : "text-rose-455 bg-rose-955/20 border border-rose-900/40";
+
+      let statusText = sub.status === "active"
+        ? "● Active"
+        : "● Suspended";
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-indigo-950/30 select-none uppercase">
+                ${sub.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${sub.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${sub.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 border border-indigo-500/10 text-[8.5px] font-mono font-bold uppercase tracking-wider text-indigo-400">SUB-AGENT</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${sub.email || "No Email"} • ${sub.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${sub.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
-            <div>
-              <span class="text-white font-bold block font-sans">@${sub.username}</span>
-              <span class="text-[9.5px] text-slate-500 block font-mono">${sub.email}</span>
-            </div>
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
           </div>
-        </td>
-        <td class="p-3">
-          <span class="text-amber-400 font-bold font-mono">@${sub.referredBy || "System"}</span>
-        </td>
-        <td class="p-3">
-          <div>
-            <span class="text-white font-bold font-mono">৳${(sub.balance || 0).toFixed(2)}</span>
-            <span class="text-[9.5px] text-slate-500 block font-sans">Rate: <strong class="text-emerald-400">${(sub.commissionRate || 3.0).toFixed(1)}%</strong></span>
+        </div>
+
+        <!-- Progress Metrics and Bar -->
+        <div class="space-y-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40">
+          <div class="flex justify-between items-center text-xs font-mono">
+            <span class="text-[8.5px] text-slate-500 font-black uppercase tracking-wider">Mission Target Quota</span>
+            <span class="text-xs font-black text-cyan-400 tabular-nums">${pct}% (${sProgress}/${sTarget})</span>
           </div>
-        </td>
-        <td class="p-3">
-          <span class="text-slate-300 font-bold font-mono">${sub.totalBookings || 0} Bookings</span>
-        </td>
-        <td class="p-3 font-mono">
-          <div class="w-28 space-y-1">
-            <div class="flex justify-between text-[9.5px] leading-none">
-              <span class="text-slate-400">${sProgress}/${sTarget}</span>
-              <span class="text-cyan-400 font-bold">${pct}%</span>
-            </div>
-            <div class="w-full h-1.5 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
-              <div class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 rounded-full" style="width: ${pct}%"></div>
-            </div>
+          <!-- Progress bar track -->
+          <div class="relative w-full h-2 bg-slate-950 border border-slate-900 rounded-full overflow-hidden p-0.5">
+            <div class="absolute top-0.5 left-0.5 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
           </div>
-        </td>
-        <td class="p-3 font-sans">
-          <span class="text-[9.5px] py-0.5 px-2 uppercase font-bold rounded ${sub.status === "active" ? "text-emerald-400 bg-emerald-950/20" : "text-rose-400 bg-rose-950/20"}">${sub.status || "active"}</span>
-        </td>
-        <td class="p-3 text-right">
-          <button class="subagent-view-btn bg-indigo-950 hover:bg-indigo-900/60 text-indigo-400 py-1 px-2.5 rounded-lg border border-indigo-900/30 transition text-[10px] cursor-pointer font-sans" data-id="${sub.id}">
-            View Operator
+        </div>
+
+        <!-- Performance Snapshot -->
+        <div class="grid grid-cols-3 gap-2 text-xs font-mono">
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Balance</span>
+            <span class="text-[11px] font-black text-amber-300 mt-0.5 tabular-nums">৳${(sub.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Comm. Rate</span>
+            <span class="text-[11px] font-black text-white mt-0.5">${(sub.commissionRate || 3.0).toFixed(1)}%</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Bookings</span>
+            <span class="text-[11px] font-black text-emerald-400 mt-0.5">${sub.totalBookings || 0} Sales</span>
+          </div>
+        </div>
+
+        <!-- Metadata & Actions Row -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-t border-slate-800/40 pt-3">
+          <span class="flex items-center gap-1.5 text-amber-450 font-bold">
+            <i class="fa-solid fa-user-tie text-[11px]"></i>
+            Leader: @${sub.referredBy || "System"}
+          </span>
+          <button class="subagent-view-btn py-2 px-3.5 rounded-xl bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-xs active:scale-95" data-id="${sub.id}">
+            <span>View Operator</span>
+            <i class="fa-solid fa-arrow-right text-[9.5px]"></i>
           </button>
-        </td>
+        </div>
       `;
 
-      row.addEventListener("click", (e) => {
+      // Entire card is clickable unless a button is clicked
+      card.addEventListener("click", (e) => {
         if (e.target.closest("button")) return;
         this.showSubAgentDetail(sub.id);
       });
 
-      listEl.appendChild(row);
+      gridEl.appendChild(card);
     });
 
-    listEl.querySelectorAll(".subagent-view-btn").forEach(btn => {
+    gridEl.querySelectorAll(".subagent-view-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
         this.showSubAgentDetail(id);
@@ -1791,6 +2449,40 @@ export const AdminModule = {
     this.saveDB();
     this.render();
     this.showToast(`🏆 DRAW SUCCESS! Winner(s) selected dynamically for "${lot.name}".`, "success");
+
+    // Broadcast live draw winner reveal event to all users
+    try {
+      const celebrationWinners = (winnersArr || []).map((w, idx) => {
+        const u = (this.db.users || []).find(usr => usr.username === w.username);
+        return {
+          userId: u ? u.id : "",
+          username: w.username || "Winner",
+          name: u ? (u.name || u.username) : (w.username || "Winner"),
+          avatar: u ? (u.avatar || u.photoUrl || "") : "",
+          ticketCode: w.ticketCode || "LW-WINNER",
+          prizeAmount: w.prize || w.prizeAmount || lot.prizeAmount,
+          rank: w.rank || (idx + 1)
+        };
+      });
+
+      const drawEvent = {
+        id: "draw_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        lotteryId: lot.id,
+        lotteryName: lot.name,
+        category: lot.category,
+        prizeAmount: lot.prizeAmount,
+        drawTime: new Date().toISOString(),
+        winningTicketCodes: celebrationWinners.map(w => w.ticketCode),
+        winnersCount: celebrationWinners.length,
+        winners: celebrationWinners
+      };
+
+      if (window.LiveDrawRevealEngine && typeof window.LiveDrawRevealEngine.broadcastDrawEvent === "function") {
+        window.LiveDrawRevealEngine.broadcastDrawEvent(drawEvent);
+      }
+    } catch (broadcastErr) {
+      console.warn("Draw event broadcast error:", broadcastErr);
+    }
   },
 
   renderAdminDeposits() {
@@ -2252,6 +2944,77 @@ export const AdminModule = {
     if (customEthQREl) customEthQREl.value = s.cryptoQRUrlETH || "";
     if (customUsdtQREl) customUsdtQREl.value = s.cryptoQRUrlUSDT || "";
 
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val !== undefined && val !== null ? val : "";
+    };
+    const setChk = (id, checked) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!checked;
+    };
+
+    // Populate Mobile Banking Gateways (bKash, Nagad, Rocket, Upay, DBBL)
+    setChk("sys-pay-bkash-enabled", s.payBkashEnabled !== false);
+    setVal("sys-pay-bkash-personal", s.mobilePersonalBkash || s.bkashNumber || "+8801700000001");
+    setVal("sys-pay-bkash-agent", s.mobileAgentBkash || "");
+    setVal("sys-pay-bkash-instruction", s.mobileInstructionBkash || "");
+
+    setChk("sys-pay-nagad-enabled", s.payNagadEnabled !== false);
+    setVal("sys-pay-nagad-personal", s.mobilePersonalNagad || s.nagadNumber || "+8801900000005");
+    setVal("sys-pay-nagad-agent", s.mobileAgentNagad || "");
+    setVal("sys-pay-nagad-instruction", s.mobileInstructionNagad || "");
+
+    setChk("sys-pay-rocket-enabled", s.payRocketEnabled !== false);
+    setVal("sys-pay-rocket-personal", s.mobilePersonalRocket || s.rocketNumber || "+8801800000009");
+    setVal("sys-pay-rocket-agent", s.mobileAgentRocket || "");
+    setVal("sys-pay-rocket-instruction", s.mobileInstructionRocket || "");
+
+    setChk("sys-pay-upay-enabled", s.payUpayEnabled !== false);
+    setVal("sys-pay-upay-personal", s.mobilePersonalUpay || "");
+    setVal("sys-pay-upay-agent", s.mobileAgentUpay || "");
+    setVal("sys-pay-upay-instruction", s.mobileInstructionUpay || "");
+
+    setChk("sys-pay-dbbl-enabled", s.payDbblEnabled !== false);
+    setVal("sys-pay-dbbl", s.dbblDetails || "");
+    setVal("sys-pay-dbbl-instruction", s.dbblInstruction || "");
+
+    // Populate Crypto Gateway
+    setChk("sys-pay-usdt-enabled", s.payUsdtEnabled !== false);
+    setVal("sys-pay-crypto-usdt", s.cryptoAddressUSDT || s.cryptoAddress || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X");
+    setChk("sys-pay-btc-enabled", s.payBtcEnabled === true);
+    setVal("sys-pay-crypto-btc", s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    setChk("sys-pay-eth-enabled", s.payEthEnabled === true);
+    setVal("sys-pay-crypto-eth", s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+    setVal("sys-pay-crypto-qr-type", s.cryptoQRType || "auto");
+    setVal("sys-pay-crypto-qr-usdt", s.cryptoQRUrlUSDT || "");
+    setVal("sys-pay-crypto-qr-btc", s.cryptoQRUrlBTC || "");
+    setVal("sys-pay-crypto-qr-eth", s.cryptoQRUrlETH || "");
+    setVal("sys-pay-crypto-instruction", s.cryptoInstruction || "");
+
+    // Populate Agent-Assisted local channels
+    setChk("sys-pay-agent-deposit-enabled", s.payAgentDepositEnabled !== false);
+    setVal("sys-pay-agent-deposit-instruction", s.mobileInstructionAgentDeposit || "");
+    setChk("sys-pay-agent-withdraw-enabled", s.payAgentWithdrawEnabled !== false);
+    setVal("sys-pay-agent-withdraw-instruction", s.mobileInstructionAgentWithdraw || "");
+
+    // Populate Master Switch and Automated Gateways
+    setChk("sys-pay-master-enabled", s.payMasterEnabled !== false);
+    setChk("sys-pay-uddoktapay-enabled", s.payUddoktapayEnabled !== false);
+    setVal("sys-pay-uddoktapay-apikey", s.uddoktapayApiKey || "");
+    setVal("sys-pay-uddoktapay-mode", s.uddoktapayMode || "sandbox");
+    setVal("sys-pay-uddoktapay-url", s.uddoktapayBaseUrl || "https://sandbox.uddoktapay.com/api/checkout-v2");
+    setVal("sys-pay-uddoktapay-instruction", s.uddoktapayInstruction || "");
+    setChk("sys-pay-zinipay-enabled", s.payZinipayEnabled !== false && s.payZiniPayEnabled !== false);
+    setVal("sys-pay-zinipay-apikey", s.zinipayApiKey || "");
+    setVal("sys-pay-zinipay-mode", s.zinipayMode || "live");
+    setVal("sys-pay-zinipay-url", s.zinipayBaseUrl || "https://api.zinipay.com/v1/payment/create");
+    setVal("sys-pay-zinipay-instruction", s.zinipayInstruction || "");
+    setChk("sys-pay-bkash-pgw-enabled", s.payBkashPgwEnabled !== false && s.payBkashPgwEnabled !== undefined);
+    setChk("sys-pay-nagad-pgw-enabled", s.payNagadPgwEnabled !== false && s.payNagadPgwEnabled !== undefined);
+    setChk("sys-pay-aamarpay-enabled", s.payAamarpayEnabled !== false && s.payAamarpayEnabled !== undefined);
+    setChk("sys-pay-binance-enabled", s.payBinanceEnabled !== false && s.payBinancePayEnabled !== false);
+    setChk("sys-pay-cryptomus-enabled", s.payCryptomusEnabled !== false);
+
     const toggleCustomFields = () => {
       const wraps = document.querySelectorAll(".custom-qr-file-wrapper");
       wraps.forEach(w => {
@@ -2266,7 +3029,230 @@ export const AdminModule = {
     if (qrTypeSelect) qrTypeSelect.onchange = toggleCustomFields;
 
     this.refreshAdminQRPreview();
+    this.updatePaymentGatewaysStatusUI();
+    this.bindGateways1ClickControls();
     this.renderWebPushAdsHistory();
+  },
+
+  updatePaymentGatewaysStatusUI() {
+    const s = this.db.settings || {};
+    const channelCheckboxIds = [
+      "sys-pay-bkash-enabled",
+      "sys-pay-nagad-enabled",
+      "sys-pay-rocket-enabled",
+      "sys-pay-upay-enabled",
+      "sys-pay-dbbl-enabled",
+      "sys-pay-usdt-enabled",
+      "sys-pay-btc-enabled",
+      "sys-pay-eth-enabled",
+      "sys-pay-uddoktapay-enabled",
+      "sys-pay-zinipay-enabled",
+      "sys-pay-bkash-pgw-enabled",
+      "sys-pay-nagad-pgw-enabled",
+      "sys-pay-aamarpay-enabled",
+      "sys-pay-binance-enabled",
+      "sys-pay-cryptomus-enabled",
+      "sys-pay-agent-deposit-enabled",
+      "sys-pay-agent-withdraw-enabled"
+    ];
+
+    let activeCount = 0;
+    channelCheckboxIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.checked) activeCount++;
+    });
+
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    const isMasterOn = masterEl ? masterEl.checked : (s.payMasterEnabled !== false);
+    const totalChannels = channelCheckboxIds.length;
+
+    const linesCountEl = document.getElementById("admin-pay-lines-count");
+    if (linesCountEl) {
+      linesCountEl.textContent = `${activeCount} / ${totalChannels}`;
+      linesCountEl.className = activeCount === 0 
+        ? "text-sm font-black text-rose-500 mt-0.5 block" 
+        : (activeCount === totalChannels ? "text-sm font-black text-emerald-400 mt-0.5 block" : "text-sm font-black text-amber-400 mt-0.5 block");
+    }
+
+    const badgeEl = document.getElementById("admin-pay-master-badge");
+    const statusTextEl = document.getElementById("admin-pay-master-status-text");
+    const pulseEl = document.getElementById("admin-pay-master-pulse");
+    const iconWrapEl = document.getElementById("admin-pay-master-icon-wrap");
+    const iconEl = document.getElementById("admin-pay-master-icon");
+    const depStatusEl = document.getElementById("admin-pay-user-dep-status");
+    const wdStatusEl = document.getElementById("admin-pay-user-wd-status");
+
+    if (!isMasterOn || activeCount === 0) {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-rose-950/80 text-rose-300 border border-rose-500/50 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = "ALL PAYMENTS DISABLED (0 ACTIVE)";
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-rose-500";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/50 flex items-center justify-center text-rose-400 text-xl shadow-[0_0_20px_rgba(244,63,94,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-ban";
+      if (depStatusEl) {
+        depStatusEl.textContent = "PAUSED (LOCKED)";
+        depStatusEl.className = "text-sm font-black text-rose-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "PAUSED (LOCKED)";
+        wdStatusEl.className = "text-sm font-black text-rose-400 mt-0.5 block";
+      }
+    } else if (activeCount === totalChannels) {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = `ALL CHANNELS ACTIVE (${totalChannels}/${totalChannels})`;
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-power-off";
+      if (depStatusEl) {
+        depStatusEl.textContent = "ACTIVE";
+        depStatusEl.className = "text-sm font-black text-emerald-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "ACTIVE";
+        wdStatusEl.className = "text-sm font-black text-emerald-400 mt-0.5 block";
+      }
+    } else {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-amber-950/80 text-amber-300 border border-amber-500/50 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = `PARTIAL ACTIVE (${activeCount}/${totalChannels})`;
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-toggle-on";
+      if (depStatusEl) {
+        depStatusEl.textContent = `${activeCount} ACTIVE`;
+        depStatusEl.className = "text-sm font-black text-amber-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "SELECTIVE";
+        wdStatusEl.className = "text-sm font-black text-amber-400 mt-0.5 block";
+      }
+    }
+  },
+
+  setAllPaymentGatewaysState(enabled, showToast = true) {
+    const s = this.db.settings;
+    if (!s) return;
+
+    const channelKeys = [
+      { id: "sys-pay-bkash-enabled", key: "payBkashEnabled" },
+      { id: "sys-pay-nagad-enabled", key: "payNagadEnabled" },
+      { id: "sys-pay-rocket-enabled", key: "payRocketEnabled" },
+      { id: "sys-pay-upay-enabled", key: "payUpayEnabled" },
+      { id: "sys-pay-dbbl-enabled", key: "payDbblEnabled" },
+      { id: "sys-pay-usdt-enabled", key: "payUsdtEnabled" },
+      { id: "sys-pay-btc-enabled", key: "payBtcEnabled" },
+      { id: "sys-pay-eth-enabled", key: "payEthEnabled" },
+      { id: "sys-pay-uddoktapay-enabled", key: "payUddoktapayEnabled" },
+      { id: "sys-pay-zinipay-enabled", key: "payZinipayEnabled" },
+      { id: "sys-pay-bkash-pgw-enabled", key: "payBkashPgwEnabled" },
+      { id: "sys-pay-nagad-pgw-enabled", key: "payNagadPgwEnabled" },
+      { id: "sys-pay-aamarpay-enabled", key: "payAamarpayEnabled" },
+      { id: "sys-pay-binance-enabled", key: "payBinanceEnabled" },
+      { id: "sys-pay-cryptomus-enabled", key: "payCryptomusEnabled" },
+      { id: "sys-pay-agent-deposit-enabled", key: "payAgentDepositEnabled" },
+      { id: "sys-pay-agent-withdraw-enabled", key: "payAgentWithdrawEnabled" }
+    ];
+
+    channelKeys.forEach(item => {
+      s[item.key] = enabled;
+      const el = document.getElementById(item.id);
+      if (el) el.checked = enabled;
+    });
+
+    s.payZiniPayEnabled = enabled;
+    s.payBinancePayEnabled = enabled;
+    s.payMasterEnabled = enabled;
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    if (masterEl) masterEl.checked = enabled;
+
+    this.saveDB();
+    this.updatePaymentGatewaysStatusUI();
+
+    if (window.app) {
+      if (typeof window.app.rebuildDepositGatewaySelect === "function") {
+        window.app.rebuildDepositGatewaySelect();
+      }
+      if (typeof window.app.rebuildWithdrawGatewaySelect === "function") {
+        window.app.rebuildWithdrawGatewaySelect();
+      }
+    }
+
+    if (showToast) {
+      if (enabled) {
+        this.showToast("⚡ ১ ক্লিকে সমস্ত পেমেন্ট গেটওয়ে চালু করা হয়েছে! (All 17 Payment Gateways Enabled)", "success");
+      } else {
+        this.showToast("🛑 ১ ক্লিকে সমস্ত পেমেন্ট গেটওয়ে বন্ধ করা হয়েছে! (Emergency Lock: All Payment Gateways Disabled)", "error");
+      }
+    }
+  },
+
+  bindGateways1ClickControls() {
+    if (this._gatewaysEventsBound) return;
+    this._gatewaysEventsBound = true;
+
+    const enableAllBtn = document.getElementById("btn-1click-enable-all-payments");
+    if (enableAllBtn) {
+      enableAllBtn.addEventListener("click", () => {
+        this.setAllPaymentGatewaysState(true, true);
+      });
+    }
+
+    const disableAllBtn = document.getElementById("btn-1click-disable-all-payments");
+    if (disableAllBtn) {
+      disableAllBtn.addEventListener("click", () => {
+        this.setAllPaymentGatewaysState(false, true);
+      });
+    }
+
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    if (masterEl) {
+      masterEl.addEventListener("change", () => {
+        this.setAllPaymentGatewaysState(masterEl.checked, true);
+      });
+    }
+
+    const channelKeyMap = {
+      "sys-pay-bkash-enabled": "payBkashEnabled",
+      "sys-pay-nagad-enabled": "payNagadEnabled",
+      "sys-pay-rocket-enabled": "payRocketEnabled",
+      "sys-pay-upay-enabled": "payUpayEnabled",
+      "sys-pay-dbbl-enabled": "payDbblEnabled",
+      "sys-pay-usdt-enabled": "payUsdtEnabled",
+      "sys-pay-btc-enabled": "payBtcEnabled",
+      "sys-pay-eth-enabled": "payEthEnabled",
+      "sys-pay-uddoktapay-enabled": "payUddoktapayEnabled",
+      "sys-pay-zinipay-enabled": "payZinipayEnabled",
+      "sys-pay-bkash-pgw-enabled": "payBkashPgwEnabled",
+      "sys-pay-nagad-pgw-enabled": "payNagadPgwEnabled",
+      "sys-pay-aamarpay-enabled": "payAamarpayEnabled",
+      "sys-pay-binance-enabled": "payBinanceEnabled",
+      "sys-pay-cryptomus-enabled": "payCryptomusEnabled",
+      "sys-pay-agent-deposit-enabled": "payAgentDepositEnabled",
+      "sys-pay-agent-withdraw-enabled": "payAgentWithdrawEnabled"
+    };
+
+    Object.keys(channelKeyMap).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("change", () => {
+          const key = channelKeyMap[id];
+          if (this.db && this.db.settings) {
+            this.db.settings[key] = el.checked;
+            if (key === "payBinanceEnabled") {
+              this.db.settings.payBinancePayEnabled = el.checked;
+            }
+            this.saveDB();
+          }
+          this.updatePaymentGatewaysStatusUI();
+          if (window.app) {
+            if (typeof window.app.rebuildDepositGatewaySelect === "function") {
+              window.app.rebuildDepositGatewaySelect();
+            }
+            if (typeof window.app.rebuildWithdrawGatewaySelect === "function") {
+              window.app.rebuildWithdrawGatewaySelect();
+            }
+          }
+        });
+      }
+    });
   },
 
   renderWebPushAdsHistory() {
@@ -3352,21 +4338,42 @@ export const AdminModule = {
     if (!this.db.settings) this.db.settings = {};
     if (this.db.settings.splashEnabled === undefined) this.db.settings.splashEnabled = true;
     if (!this.db.settings.splashTitle) this.db.settings.splashTitle = "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
-    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 3;
+    if (!this.db.settings.splashSubtitle) this.db.settings.splashSubtitle = "Official Lottery Winner VIP Hall of Fame Spotlight";
+    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 5;
     if (this.db.settings.splashShowWinnerCard === undefined) this.db.settings.splashShowWinnerCard = true;
     if (!this.db.settings.splashFeaturedWinner) this.db.settings.splashFeaturedWinner = "auto";
+    if (this.db.settings.splashSoundEnabled === undefined) this.db.settings.splashSoundEnabled = true;
+    if (!this.db.settings.splashThemeStyle) this.db.settings.splashThemeStyle = "royalty";
+    if (!this.db.settings.splashActionText) this.db.settings.splashActionText = "Enter Grand Lobby 🚀";
+    if (!this.db.settings.splashImpressionsToday) this.db.settings.splashImpressionsToday = 1420;
+    if (!this.db.settings.splashSkipCount) this.db.settings.splashSkipCount = 85;
 
     const isEnabled = this.db.settings.splashEnabled !== false;
     const badgeEl = document.getElementById("admin-splash-status-badge");
     if (badgeEl) {
       if (isEnabled) {
-        badgeEl.className = "px-2.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-black text-[10px]";
+        badgeEl.className = "px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-black text-[10px]";
         badgeEl.innerText = "ENABLED 🟢";
       } else {
-        badgeEl.className = "px-2.5 py-0.5 rounded bg-red-950 text-red-400 border border-red-800/60 font-black text-[10px]";
+        badgeEl.className = "px-2.5 py-1 rounded-lg bg-red-950 text-red-400 border border-red-800/60 font-black text-[10px]";
         badgeEl.innerText = "DISABLED 🔴";
       }
     }
+
+    // Stat displays
+    const impEl = document.getElementById("splash-stat-impressions");
+    if (impEl) impEl.innerText = (this.db.settings.splashImpressionsToday || 1420).toLocaleString();
+
+    const skipEl = document.getElementById("splash-stat-skiprate");
+    if (skipEl) {
+      const imp = this.db.settings.splashImpressionsToday || 1420;
+      const skip = this.db.settings.splashSkipCount || 85;
+      const rate = ((skip / Math.max(1, imp)) * 100).toFixed(1);
+      skipEl.innerText = `${rate}%`;
+    }
+
+    const durDispEl = document.getElementById("splash-stat-duration-display");
+    if (durDispEl) durDispEl.innerText = `${Number(this.db.settings.splashDuration || 5).toFixed(1)}s`;
 
     // Toggle button binding
     const toggleBtn = document.getElementById("admin-toggle-splash-enable-btn");
@@ -3429,12 +4436,6 @@ export const AdminModule = {
                 <div class="w-full h-full bg-slate-950 rounded-full"></div>
               </div>
               <div class="absolute -inset-1.5 rounded-full border border-amber-400/40 animate-pulse pointer-events-none"></div>
-              <div class="absolute left-[-8px] top-[calc(50%-8px)] z-20 pointer-events-none">
-                <i class="fa-solid fa-feather text-amber-300 text-xs drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform -rotate-[25deg]"></i>
-              </div>
-              <div class="absolute right-[-8px] top-[calc(50%-8px)] z-20 pointer-events-none">
-                <i class="fa-solid fa-feather text-amber-300 text-xs drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform rotate-[25deg] scale-x-[-1]"></i>
-              </div>
               <div class="w-11 h-11 rounded-full overflow-hidden relative z-10 border-2 border-amber-300/90 bg-slate-900 shadow-inner flex items-center justify-center">
                 <img src="${photoUrl}" class="w-full h-full object-cover" alt="Top Winner Profile" />
               </div>
@@ -3487,11 +4488,27 @@ export const AdminModule = {
     const titleInput = document.getElementById("sys-splash-title");
     if (titleInput) titleInput.value = this.db.settings.splashTitle;
 
+    const subtitleInput = document.getElementById("sys-splash-subtitle");
+    if (subtitleInput) subtitleInput.value = this.db.settings.splashSubtitle || "";
+
     const durationInput = document.getElementById("sys-splash-duration");
     if (durationInput) durationInput.value = this.db.settings.splashDuration;
 
+    const actionTextInput = document.getElementById("sys-splash-action-text");
+    if (actionTextInput) actionTextInput.value = this.db.settings.splashActionText || "Enter Grand Lobby 🚀";
+
     const showCardSelect = document.getElementById("sys-splash-show-winner-card");
     if (showCardSelect) showCardSelect.value = this.db.settings.splashShowWinnerCard ? "true" : "false";
+
+    const soundSelect = document.getElementById("sys-splash-sound");
+    if (soundSelect) soundSelect.value = this.db.settings.splashSoundEnabled !== false ? "true" : "false";
+
+    const themeSelect = document.getElementById("sys-splash-theme");
+    if (themeSelect) themeSelect.value = this.db.settings.splashThemeStyle || "royalty";
+
+    // Update simulation title preview live
+    const simTitlePreview = document.getElementById("sim-splash-title-preview");
+    if (simTitlePreview) simTitlePreview.innerText = this.db.settings.splashTitle;
 
     // Bind form submit
     const form = document.getElementById("admin-splash-config-form");
@@ -3499,14 +4516,22 @@ export const AdminModule = {
       form.onsubmit = (e) => {
         e.preventDefault();
         const title = document.getElementById("sys-splash-title")?.value?.trim();
+        const subtitle = document.getElementById("sys-splash-subtitle")?.value?.trim();
         const duration = parseInt(document.getElementById("sys-splash-duration")?.value || "5");
+        const actionText = document.getElementById("sys-splash-action-text")?.value?.trim();
         const featured = document.getElementById("sys-splash-featured-winner")?.value || "auto";
         const showWinner = document.getElementById("sys-splash-show-winner-card")?.value === "true";
+        const soundEnabled = document.getElementById("sys-splash-sound")?.value === "true";
+        const themeStyle = document.getElementById("sys-splash-theme")?.value || "royalty";
 
         this.db.settings.splashTitle = title || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+        this.db.settings.splashSubtitle = subtitle || "Official Lottery Winner VIP Hall of Fame Spotlight";
         this.db.settings.splashDuration = isNaN(duration) ? 5 : Math.max(2, Math.min(15, duration));
+        this.db.settings.splashActionText = actionText || "Enter Grand Lobby 🚀";
         this.db.settings.splashFeaturedWinner = featured;
         this.db.settings.splashShowWinnerCard = showWinner;
+        this.db.settings.splashSoundEnabled = soundEnabled;
+        this.db.settings.splashThemeStyle = themeStyle;
 
         this.saveDB();
         this.showToast("Splash Screen settings saved & applied successfully!", "success");

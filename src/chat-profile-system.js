@@ -882,16 +882,13 @@ export class ChatProfileSystem {
       return;
     }
 
-    const currentLoggedInUser = this.app.currentUser;
-    if (!currentLoggedInUser) {
-      this.app.showToast("Please sign in to view player profiles.", "error");
-      return;
-    }
+    const currentLoggedInUser = this.app.currentUser || { id: "guest", username: "guest" };
 
     const modal = document.getElementById("profile-details-modal");
     if (!modal) return;
 
     modal.setAttribute("data-target-user", u.username);
+    modal.style.zIndex = "105000";
 
     const initialSpan = document.getElementById("profile-detail-initials");
     if (initialSpan) {
@@ -983,7 +980,7 @@ export class ChatProfileSystem {
     const addFriendBtn = document.getElementById("profile-detail-add-friend-btn");
     const sendMsgBtn = document.getElementById("profile-detail-message-btn");
     
-    if (u.username.toLowerCase() === currentLoggedInUser.username.toLowerCase() || u.id === currentLoggedInUser.id) {
+    if (currentLoggedInUser.id === "guest" || (currentLoggedInUser.username && u.username.toLowerCase() === currentLoggedInUser.username.toLowerCase()) || u.id === currentLoggedInUser.id) {
       if (addFriendBtn) addFriendBtn.classList.add("hidden");
       if (sendMsgBtn) sendMsgBtn.classList.add("hidden");
     } else {
