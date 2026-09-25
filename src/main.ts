@@ -1163,10 +1163,36 @@ export class StateManager {
           const ticketsOfPool = this.db.tickets.filter(t => t.lotteryId === lot.id && t.status === "pending");
 
           if (ticketsOfPool.length > 0) {
-            if (lot.category === "Quick Draw") {
-              const actualSales = ticketsOfPool.length * lot.entryFee;
-              lot.prizeAmount = Math.round(actualSales * 0.98 * 100) / 100; // 2% platform commission, distributing 98%
-            }
+            if (lot.category !== "Quick Draw" && ticketsOfPool.length < lot.totalTickets) {
+              // REFUND ALL TICKETS AS TARGET HAS NOT BEEN MET
+              ticketsOfPool.forEach(t => {
+                t.status = "refunded";
+                const u = this.db.users.find(usr => usr.id === t.userId);
+                if (u) {
+                  u.balance += lot.entryFee;
+                  u.profit += lot.entryFee;
+                  u.loss -= lot.entryFee;
+
+                  this.addInboxNotice(u.id, "🎟️ লটারি বাতিল ও রিফান্ড নোটিশ! (Refund Alert)", 
+                    `দুঃখিত, '${lot.name}' লটারির মোট ${lot.totalTickets}টি টিকেটের সব বিক্রি না হওয়ায় ড্র সম্পন্ন করা যায়নি। আপনার ক্রয়কৃত টিকেটের মূল্য ৳${lot.entryFee} আপনার ওয়ালেটে রিফান্ড করা হয়েছে। সাময়িক এই অসুবিধার জন্য ক্ষমা সুন্দর দৃষ্টিতে দেখবেন।`
+                  );
+
+                  if (this.currentUser && u.id === this.currentUser.id) {
+                    this.currentUser.balance = u.balance;
+                    this.currentUser.profit = u.profit;
+                    this.currentUser.loss = u.loss;
+                    this.currentUser = StateManager.removeCircularReferences(this.currentUser);
+                    localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+                  }
+                }
+              });
+              lot.status = "refunded";
+              dbUpdated = true;
+            } else {
+              if (lot.category === "Quick Draw") {
+                const actualSales = ticketsOfPool.length * lot.entryFee;
+                lot.prizeAmount = Math.round(actualSales * 0.98 * 100) / 100; // 2% platform commission, distributing 98%
+              }
             if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
               const shuffle = [...ticketsOfPool];
               shuffle.sort(() => Math.random() - 0.5);
@@ -1351,6 +1377,7 @@ export class StateManager {
               };
               LiveDrawRevealEngine.broadcastDrawEvent(singleDrawEvent);
             }
+            } // Close of the else block we added for refund check
 
             // Spawn new Quick Draw if category is Quick Draw
             if (lot.category === "Quick Draw") {
@@ -1410,7 +1437,50 @@ export class StateManager {
     }
   }
 
+  checkNewRefundPopups() {
+    if (!this.currentUser) return;
+    
+    // Find any tickets of the current user for lotteries that have been refunded
+    const userRefundedTickets = this.db.tickets.filter(t => t.userId === this.currentUser.id && t.status === "refunded");
+    if (userRefundedTickets.length === 0) return;
+
+    let notifiedRefundsRaw = localStorage.getItem("lw_notified_refunds");
+    let notifiedRefunds = notifiedRefundsRaw ? JSON.parse(notifiedRefundsRaw) : [];
+    
+    // Check if there's any refunded ticket whose lottery refund popup hasn't been shown yet
+    for (const t of userRefundedTickets) {
+      if (!notifiedRefunds.includes(t.id)) {
+        const lot = this.db.lotteries.find(l => l.id === t.lotteryId);
+        const lotName = lot ? lot.name : "Exclusive Draw";
+        const lotTarget = lot ? lot.totalTickets : 20;
+
+        // Populate Modal Fields
+        const modal = document.getElementById("lottery-refund-apology-modal");
+        const modalLotteryName = document.getElementById("refund-modal-lottery-name");
+        const modalTargetCount = document.getElementById("refund-modal-target-count");
+        const modalAmount = document.getElementById("refund-modal-amount");
+        const modalMessageBody = document.getElementById("refund-apology-message-body");
+
+        if (modal && modalLotteryName && modalTargetCount && modalAmount) {
+          modalLotteryName.innerText = lotName;
+          modalTargetCount.innerText = lotTarget.toString();
+          modalAmount.innerText = lot ? lot.entryFee.toString() : "10";
+          if (modalMessageBody) {
+            modalMessageBody.innerHTML = `দুঃখিত, <strong>'${lotName}'</strong> লটারির মোট <strong>${lotTarget}টি</strong> টিকেট বিক্রি না হওয়ায় ড্র সম্পন্ন করা সম্ভব হয়নি। <br><br> আপনাদের কষ্টের <strong>৳${lot ? lot.entryFee : 10} টাকা</strong> স্বয়ংক্রিয়ভাবে ওয়ালেটে রিফান্ড করে দেওয়া হয়েছে। সাময়িক এই অসুবিধার জন্য ক্ষমা সুন্দর দৃষ্টিতে দেখবেন এবং আন্তরিকভাবে আমাদের ক্ষমা করবেন।`;
+          }
+          modal.classList.remove("hidden");
+          
+          // Mark as shown
+          notifiedRefunds.push(t.id);
+          localStorage.setItem("lw_notified_refunds", StateManager.safeStringify(notifiedRefunds));
+          break; // Show one modal at a time
+        }
+      }
+    }
+  }
+
   checkLiveNotifications() {
+    this.checkNewRefundPopups();
     if (!this.currentUser) return;
 
     let notifiedRaw = localStorage.getItem("lw_notified_systems");
@@ -5559,6 +5629,14 @@ function initApplicationLoader() {
   if (closeCheckinBtn) {
     closeCheckinBtn.addEventListener("click", () => {
       const m = document.getElementById("daily-checkin-modal");
+      if (m) m.classList.add("hidden");
+    });
+  }
+
+  const closeRefundApologyBtn = document.getElementById("close-refund-apology-modal-btn");
+  if (closeRefundApologyBtn) {
+    closeRefundApologyBtn.addEventListener("click", () => {
+      const m = document.getElementById("lottery-refund-apology-modal");
       if (m) m.classList.add("hidden");
     });
   }
