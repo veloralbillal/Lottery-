@@ -7597,22 +7597,22 @@
         }
       });
 
-      // 🚨 EMERGENCY LOAD TIMEOUT: If app doesn't start in 8s, show rescue message
+      // 🚨 EMERGENCY BLACK-SCREEN RESCUE: Auto-dismiss splash and show Auth screen if script hangs
       setTimeout(() => {
         const splash = document.getElementById('splash-screen');
+        const auth = document.getElementById('screen-auth');
+        const dash = document.getElementById('screen-dashboard');
+        
+        // If still on splash screen or nothing is visible, reveal the login/registration screen
         if (splash && !splash.classList.contains('hidden')) {
-          console.warn("App load timeout detected. Offering rescue...");
-          const bypass = document.getElementById('emergency-bypass');
-          if (bypass) {
-            bypass.classList.remove('hidden');
-            bypass.innerHTML += `
-              <div class="mt-2 p-2 bg-red-900/80 text-white text-[8px] rounded border border-red-500 max-w-[200px]">
-                App taking too long to start. If screen is black, try "Skip Splash" or check your internet.
-              </div>
-            `;
-          }
+          splash.style.opacity = '0';
+          splash.style.pointerEvents = 'none';
+          setTimeout(() => splash.classList.add('hidden'), 400);
         }
-      }, 8000);
+        if (auth && dash && auth.classList.contains('hidden') && dash.classList.contains('hidden')) {
+          auth.classList.remove('hidden');
+        }
+      }, 2500);
     </script>
 
     <!-- Application script bundle -->
