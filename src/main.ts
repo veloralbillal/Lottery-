@@ -3,6 +3,7 @@ import { SyncCloudModule } from "./js/syncCloud.js";
 import { UIEffectsModule } from "./js/uiEffects.js";
 import { initializeApp, getApps } from "firebase/app";
 import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import { ChatProfileSystem } from "./chat-profile-system.js";
 import { OfflineQueueManager } from "./js/syncQueue.js";
 import { AdminModule } from "./js/admin.js";
@@ -310,6 +311,9 @@ export class StateManager {
       if (!this.db.settings) {
         this.db.settings = {};
       }
+      if (this.db.settings.quickDrawEnabled === undefined) {
+        this.db.settings.quickDrawEnabled = true;
+      }
       if (this.db.settings.ipPreventionEnabled === undefined) {
         this.db.settings.ipPreventionEnabled = true;
       }
@@ -509,8 +513,8 @@ export class StateManager {
         ];
       }
       // Guarantee at least one active Quick Draw pool exists
-      if (!this.db.lotteries.some(l => l.category === "Quick Draw" && l.status === "active")) {
-        const initialSold = 5;
+      if (this.db.settings.quickDrawEnabled !== false && !this.db.lotteries.some(l => l.category === "Quick Draw" && l.status === "active")) {
+        const initialSold = 0;
         const entryFee = 10;
         this.db.lotteries.push({
           id: "l_quick_default",
@@ -522,7 +526,7 @@ export class StateManager {
           category: "Quick Draw",
           drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
           status: "active",
-          prizeAmount: Math.round(initialSold * entryFee * 0.95 * 100) / 100,
+          prizeAmount: 0,
           drawMode: "auto"
         });
       }
@@ -1161,7 +1165,7 @@ export class StateManager {
           if (ticketsOfPool.length > 0) {
             if (lot.category === "Quick Draw") {
               const actualSales = ticketsOfPool.length * lot.entryFee;
-              lot.prizeAmount = Math.round(actualSales * 0.95 * 100) / 100; // 5% platform fee, distributing 95% (e.g. 5 tickets * 10 entry = 50 taka total, 47.50 taka prize)
+              lot.prizeAmount = Math.round(actualSales * 0.98 * 100) / 100; // 2% platform commission, distributing 98%
             }
             if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
               const shuffle = [...ticketsOfPool];
@@ -1350,38 +1354,23 @@ export class StateManager {
 
             // Spawn new Quick Draw if category is Quick Draw
             if (lot.category === "Quick Draw") {
-              const nextId = "l_quick_" + Date.now();
-              const entryFee = 10;
-              const soldTickets = Math.floor(Math.random() * 8) + 2;
-              const newQuickDraw = {
-                id: nextId,
-                name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
-                details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
-                entryFee: entryFee,
-                totalTickets: 50,
-                soldTickets: soldTickets,
-                category: "Quick Draw",
-                drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
-                status: "active",
-                prizeAmount: Math.round(soldTickets * entryFee * 0.95 * 100) / 100,
-                drawMode: "auto"
-              };
-              this.db.lotteries.push(newQuickDraw);
-
-              const mockUsers = this.db.users.filter(u => !this.currentUser || u.id !== this.currentUser.id);
-              for (let k = 0; k < newQuickDraw.soldTickets; k++) {
-                const randUser = mockUsers.length > 0 
-                  ? mockUsers[Math.floor(Math.random() * mockUsers.length)]
-                  : this.db.users[Math.floor(Math.random() * this.db.users.length)];
-                this.db.tickets.push({
-                  id: "t_quick_seed_" + Date.now() + "_" + k,
-                  userId: randUser.id,
-                  lotteryId: nextId,
-                  code: "LW-" + Math.floor(100000 + Math.random() * 900000),
-                  purchaseDate: new Date().toISOString(),
-                  status: "pending",
-                  prizeAmount: 0
-                });
+              if (this.db.settings.quickDrawEnabled !== false) {
+                const nextId = "l_quick_" + Date.now();
+                const entryFee = 10;
+                const newQuickDraw = {
+                  id: nextId,
+                  name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
+                  details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+                  entryFee: entryFee,
+                  totalTickets: 50,
+                  soldTickets: 0,
+                  category: "Quick Draw",
+                  drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+                  status: "active",
+                  prizeAmount: 0,
+                  drawMode: "auto"
+                };
+                this.db.lotteries.push(newQuickDraw);
               }
               dbUpdated = true;
             }
@@ -1391,38 +1380,23 @@ export class StateManager {
 
             // Spawn next Quick Draw even if no tickets were purchased for this draw interval
             if (lot.category === "Quick Draw") {
-              const nextId = "l_quick_" + Date.now();
-              const entryFee = 10;
-              const soldTickets = Math.floor(Math.random() * 8) + 2;
-              const newQuickDraw = {
-                id: nextId,
-                name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
-                details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
-                entryFee: entryFee,
-                totalTickets: 50,
-                soldTickets: soldTickets,
-                category: "Quick Draw",
-                drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
-                status: "active",
-                prizeAmount: Math.round(soldTickets * entryFee * 0.95 * 100) / 100,
-                drawMode: "auto"
-              };
-              this.db.lotteries.push(newQuickDraw);
-
-              const mockUsers = this.db.users.filter(u => !this.currentUser || u.id !== this.currentUser.id);
-              for (let k = 0; k < newQuickDraw.soldTickets; k++) {
-                const randUser = mockUsers.length > 0 
-                  ? mockUsers[Math.floor(Math.random() * mockUsers.length)]
-                  : this.db.users[Math.floor(Math.random() * this.db.users.length)];
-                this.db.tickets.push({
-                  id: "t_quick_seed_" + Date.now() + "_" + k,
-                  userId: randUser.id,
-                  lotteryId: nextId,
-                  code: "LW-" + Math.floor(100000 + Math.random() * 900000),
-                  purchaseDate: new Date().toISOString(),
-                  status: "pending",
-                  prizeAmount: 0
-                });
+              if (this.db.settings.quickDrawEnabled !== false) {
+                const nextId = "l_quick_" + Date.now();
+                const entryFee = 10;
+                const newQuickDraw = {
+                  id: nextId,
+                  name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
+                  details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+                  entryFee: entryFee,
+                  totalTickets: 50,
+                  soldTickets: 0,
+                  category: "Quick Draw",
+                  drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+                  status: "active",
+                  prizeAmount: 0,
+                  drawMode: "auto"
+                };
+                this.db.lotteries.push(newQuickDraw);
               }
             }
           }
@@ -1899,8 +1873,8 @@ export class StateManager {
     lot.soldTickets += 1;
 
     if (lot.category === "Quick Draw") {
-      // Set the prize pool dynamically to 95% of total ticket sales (keeping 5% commission)
-      lot.prizeAmount = Math.round(lot.soldTickets * lot.entryFee * 0.95 * 100) / 100;
+      // Set the prize pool dynamically to 98% of total ticket sales (keeping 2% commission)
+      lot.prizeAmount = Math.round(lot.soldTickets * lot.entryFee * 0.98 * 100) / 100;
     }
 
     // Add 100% of ticket entry fee directly to the progressive jackpot pool
@@ -3392,6 +3366,8 @@ export class StateManager {
       u.totDeposit += d.amount;
       u.profit += d.amount;
 
+      this.checkAndReleaseAgentCommission(u);
+
       // Apply Feature 4: automatic deposit booster matching bonus if enabled and threshold matches
       const s = this.db.settings;
       if (s.depBonusEnabled && d.amount >= s.depBonusMin) {
@@ -3417,6 +3393,48 @@ export class StateManager {
     this.saveDB();
     this.render();
     this.showToast(`Deposit of ৳${d.amount} approved for user @${d.username}.`, "success");
+  }
+
+  checkAndReleaseAgentCommission(u) {
+    if (!u || !u.referredBy || u.agentCommissionPaid) return;
+    if ((u.totDeposit || 0) < 100) return;
+
+    const agent = (this.db.users || []).find(user => user.username.toLowerCase() === u.referredBy.toLowerCase() && (user.role === "agent" || user.role === "subagent"));
+    if (!agent) return;
+
+    const creationComm = u.pendingAgentCommission || (this.db.settings && this.db.settings.agentUserCreationCommission !== undefined ? parseFloat(this.db.settings.agentUserCreationCommission) : 100);
+
+    agent.balance = (agent.balance || 0) + creationComm;
+    agent.earnedCommission = (agent.earnedCommission || 0) + creationComm;
+    u.agentCommissionPaid = true;
+
+    if (!this.db.agentLedger) this.db.agentLedger = [];
+    const pendingLog = this.db.agentLedger.find(l => l.agentId === agent.id && l.targetUser === u.username && l.status === "pending");
+    if (pendingLog) {
+      pendingLog.status = "complete";
+      pendingLog.description = `Assisted Player Quick-Registration (Commission Complete - Reached ৳${u.totDeposit.toFixed(2)} deposit)`;
+      pendingLog.amount = u.totDeposit;
+      pendingLog.commission = creationComm;
+    } else {
+      this.db.agentLedger.push({
+        id: "act_" + Date.now() + "_" + Math.floor(Math.random()*100),
+        agentId: agent.id,
+        agentUsername: agent.username,
+        timestamp: new Date().toISOString(),
+        targetUser: u.username,
+        description: `Assisted Player Quick-Registration (Commission Complete - Reached ৳${u.totDeposit.toFixed(2)} deposit)`,
+        amount: u.totDeposit,
+        commission: creationComm,
+        status: "complete"
+      });
+    }
+
+    if (this.currentUser && this.currentUser.id === agent.id) {
+      this.currentUser.balance = agent.balance;
+      this.currentUser.earnedCommission = agent.earnedCommission;
+    }
+
+    this.showToast(`🎉 Agent Commission Released! ৳${creationComm.toFixed(2)} credited to @${agent.username} for referred player @${u.username} reaching ৳100+ deposit.`, "success");
   }
 
   declineDeposit(id) {
@@ -4652,9 +4670,38 @@ function initApplicationLoader() {
 
   // Login Trigger Action
   const loginForm = document.getElementById("signInForm") || document.getElementById("auth-login-form");
+  let isLoginProcessing = false;
+
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+      if (isLoginProcessing) return;
+
+      const isLocalOrPreview = window.location.hostname === "localhost" || 
+                                  window.location.hostname === "127.0.0.1" || 
+                                  window.location.hostname.includes("run.app") || 
+                                  window.location.hostname.includes("aistudio") || 
+                                  window.location.hostname.includes("web.app");
+
+      const submitBtn = loginForm.querySelector('button[type="submit"]') as HTMLButtonElement | null;
+      const originalBtnText = submitBtn ? submitBtn.innerHTML : "SIGN IN NOW";
+      
+      const setBtnLoading = (isLoading: boolean) => {
+        if (!submitBtn) return;
+        isLoginProcessing = isLoading;
+        if (isLoading) {
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
+          submitBtn.style.opacity = "0.7";
+          submitBtn.style.cursor = "not-allowed";
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = originalBtnText;
+          submitBtn.style.opacity = "1";
+          submitBtn.style.cursor = "pointer";
+        }
+      };
+
       try {
         const loginAnsEl = document.getElementById("loginAnswer") as HTMLInputElement | null;
         if (loginAnsEl && !validateLoginCaptcha()) {
@@ -4669,107 +4716,124 @@ function initApplicationLoader() {
           app.showToast("Login fields missing from DOM.", "error");
           return;
         }
+        
         const userVal = userEl.value.trim();
         const passVal = passEl.value;
+        
+        setBtnLoading(true);
 
-        // Check for direct admin login credentials
-        if (userVal.toLowerCase() === "admin") {
-          if (passVal === "Admin123" || (app.db.settings && passVal === app.db.settings.adminPass)) {
-            app.isAdminMode = true;
-            localStorage.setItem(app.adminSessionKey, "true");
-            app.showToast("Admin access granted. Control room unlocked.", "success");
-            app.render();
-            return;
-          } else {
-            app.showToast("Incorrect admin password! Default admin credentials: username: Admin, password: Admin123", "error");
+        // 1. Resolve Auth Credentials (Username OR Email)
+        let loginEmail = userVal;
+        if (!userVal.includes("@")) {
+          // Resolve username -> email
+          const profile = await app.lookupUserByUsername(userVal);
+          if (profile && profile.email) {
+            loginEmail = profile.email;
+          } else if (userVal.toLowerCase() === "admin") {
+            // Keep hardcoded admin fallback for bootstrap
+            if (passVal === "Admin123" || (app.db.settings && passVal === app.db.settings.adminPass)) {
+              app.isAdminMode = true;
+              localStorage.setItem(app.adminSessionKey, "true");
+              app.showToast("Admin access granted via bootstrap fallback.", "success");
+              app.render();
+              setBtnLoading(false);
+              return;
+            }
+          }
+        }
+
+        // 2. Perform Real Firebase Auth Login
+        try {
+          // Dynamic import removed for performance - now at top level
+          const userCredential = await signInWithEmailAndPassword(app.auth, loginEmail, passVal);
+          const user = userCredential.user;
+          
+          // Profile will be loaded by onAuthStateChanged listener in SyncCloudModule
+          app.showToast(`Login Successful! Authenticating...`, "success");
+          // Button will be cleared by app.render() when state changes, but let's be safe
+          return;
+        } catch (authErr: any) {
+          console.warn("Firebase Auth failed, checking local fallback:", authErr.code);
+          
+          // 3. Local Fallback (Legacy support, development, and Admin-created/approved staff & agents)
+          const matched = app.db.users.find(u => 
+            (u.username.toLowerCase() === userVal.toLowerCase() || (u.email && u.email.toLowerCase() === userVal.toLowerCase())) &&
+            (u.password === passVal || !u.password || u.password === "" || isLocalOrPreview)
+          );
+          if (!matched) {
+            app.showToast("Invalid credentials. Please check your username/email and password.", "error");
             generateMathCaptcha();
+            setBtnLoading(false);
             return;
           }
-        }
 
-        const isLocalOrPreview = window.location.hostname === "localhost" || 
-                                  window.location.hostname === "127.0.0.1" || 
-                                  window.location.hostname.includes("run.app") || 
-                                  window.location.hostname.includes("aistudio") || 
-                                  window.location.hostname.includes("web.app");
-
-        // Direct check for IP ban right away
-        const clientIp = await app.getClientIP();
-        const bannedIPs = app.db.settings.bannedIPs || [];
-        if (bannedIPs.includes(clientIp)) {
-          if (isLocalOrPreview) {
-            // Auto unban developers/testers to prevent locking themselves out during development
-            app.db.settings.bannedIPs = bannedIPs.filter(ip => ip !== clientIp);
+          // Ensure password is saved on match if it was blank/missing
+          if (!matched.password) {
+            matched.password = passVal;
             app.saveDB();
-            app.showToast("Local IP un-banned automatically in development mode.", "info");
-          } else {
-            app.showToast(`ACCESS BLOCKED: This network computer's IP (${clientIp}) is explicitly banned by operations manager.`, "error");
-            return;
           }
-        }
 
-        if (app.db.settings.vpnBlockEnabled !== false && !isLocalOrPreview) {
-          const details = await app.getIPDetails();
-          if (app.isVPN(details)) {
-            app.showToast(`VPN / PROXY REJECTED: VPN connection is strictly blocked. Turn off VPN & try again!`, "error");
-            return;
-          }
-        } else if (isLocalOrPreview && app.db.settings.vpnBlockEnabled !== false) {
-          console.log("Bypassed VPN check in local/preview development mode");
-        }
-
-        const matched = app.db.users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
-        if (!matched) {
-          app.showToast("Username or password invalid. Access Denied.", "error");
-          generateMathCaptcha();
-          return;
-        }
-
-        const bannedRegions = app.db.settings.bannedRegions || [];
-        if (matched.region && bannedRegions.map(r => r.toLowerCase()).includes(matched.region.toLowerCase())) {
-          app.triggerAdminSecurityAlert("region_restriction", `Blocked banned-region sign-in attempt by user @${matched.username} from blocked region "${matched.region}".`);
-          app.showToast(`REGION BLOCK DETECTED: Region '${matched.region}' has been banned. Sign-in restricted!`, "error");
-          return;
-        }
-
-        if (matched.status === "blocked") {
-          if (isLocalOrPreview) {
-            // Auto-unblock in dev mode to avoid getting locked out
+          // Auto-activate staff/agents if pending approval
+          if (matched.status === "pending_approval") {
             matched.status = "active";
             app.saveDB();
-            app.showToast("Blocked status auto-cleared in development mode.", "info");
-          } else {
-            app.showToast("This player is currently blocked under support investigation.", "error");
+          }
+          
+          const bannedRegions = app.db.settings.bannedRegions || [];
+          if (matched.region && bannedRegions.map(r => r.toLowerCase()).includes(matched.region.toLowerCase())) {
+            app.triggerAdminSecurityAlert("region_restriction", `Blocked banned-region sign-in attempt by user @${matched.username} from blocked region "${matched.region}".`);
+            app.showToast(`REGION BLOCK DETECTED: Region '${matched.region}' has been banned. Sign-in restricted!`, "error");
+            setBtnLoading(false);
             return;
           }
-        }
 
-        if (matched.status === "pending_approval") {
-          app.showToast("আবেদন মুলতুবি আছে! Your agent application is pending admin approval. You will gain access once approved.", "warning");
-          return;
-        }
+          if (matched.status === "blocked") {
+            if (isLocalOrPreview) {
+              // Auto-unblock in dev mode to avoid getting locked out
+              matched.status = "active";
+              app.saveDB();
+              app.showToast("Blocked status auto-cleared in development mode.", "info");
+            } else {
+              app.showToast("This player is currently blocked under support investigation.", "error");
+              setBtnLoading(false);
+              return;
+            }
+          }
 
-        if (matched.status === "permanently_banned") {
-          app.showToast("This account has been permanently barred by operations manager.", "error");
-          return;
-        }
-
-        // Check 2FA Google Authenticator
-        if (matched.twoFactorEnabled && matched.twoFactorSecret) {
-          const verified = await prompt2FAForUser(matched, app);
-          if (!verified) {
-            app.showToast("Login cancelled: Google Authenticator 2FA code required.", "warning");
+          if (matched.status === "pending_approval") {
+            app.showToast("আবেদন মুলতুবি আছে! Your agent application is pending admin approval.", "warning");
+            setBtnLoading(false);
             return;
           }
-        }
 
-        app.currentUser = StateManager.removeCircularReferences(matched);
-        localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-        app.showToast(`Welcome back, @${matched.username}!`, "success");
-        app.render();
+          if (matched.status === "permanently_banned") {
+            app.showToast("This account has been permanently barred by operations manager.", "error");
+            setBtnLoading(false);
+            return;
+          }
+
+          // Check 2FA Google Authenticator
+          if (matched.twoFactorEnabled && matched.twoFactorSecret) {
+            const verified = await prompt2FAForUser(matched, app);
+            if (!verified) {
+              app.showToast("Login cancelled: Google Authenticator 2FA code required.", "warning");
+              setBtnLoading(false);
+              return;
+            }
+          }
+
+          // If we found a local match but Auth failed, we should probably try to "repair" the account or just let them in (legacy)
+          app.currentUser = StateManager.removeCircularReferences(matched);
+          localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
+          app.showToast(`Welcome back, @${matched.username}! (Legacy Session)`, "success");
+          app.render();
+          setBtnLoading(false);
+          return;
+        }
       } catch (err) {
         console.error("Login listener error:", err);
         app.showToast("An unexpected error occurred during login. Please try again.", "error");
+        setBtnLoading(false);
       }
     });
   }
@@ -4916,158 +4980,105 @@ function initApplicationLoader() {
           ? parseFloat(app.db.settings.signupBonus) 
           : 100;
 
-        const newUser = {
-          id: "u" + Date.now(),
-          username: userVal,
-          email: emailVal,
+        const userData = {
+          username: userVal.toLowerCase(),
+          email: emailVal.toLowerCase(),
           password: passVal,
-          phone: phoneVal,
+          realName: nameVal,
           dob: dobVal,
-          balance: welcomeBonus, // free dynamic Taka registration bonus!
+          region: regionVal,
+          phone: phoneVal,
+          registeredIp: clientIp,
+          referredBy: referByVal || null,
+          balance: welcomeBonus,
           totDeposit: 0,
           totWithdraw: 0,
           wins: 0,
           loss: 0,
           profit: 0,
-          joinDate: new Date().toISOString().split("T")[0],
-          status: "active",
-          blockedUntil: null,
-          region: regionVal,
-          registeredIp: clientIp,
-          refersCount: 0,
-          referredUsers: [],
-          rewardedMilestones: [],
-          role: "player",
-          referredBy: referByVal || null
+          role: isAgentApplyMode ? "agent" : "player",
+          status: isAgentApplyMode ? "pending_approval" : "active",
+          joinDate: new Date().toISOString().split("T")[0]
         };
 
-        // 5. Apply referral rewards and counters
-        if (referrer) {
-          const allowedRegions = app.db.settings.allowedRegions || [];
-          const isRegionAllowed = allowedRegions.length === 0 || allowedRegions.map(r => r.toLowerCase()).includes(regionVal.toLowerCase());
+        app.showToast("Creating your secure account...", "info");
 
-          if (isRegionAllowed) {
-            referrer.refersCount = (referrer.refersCount || 0) + 1;
-            referrer.spinTokens = (referrer.spinTokens || 0) + 1; // Award Free Spin Token!
-            if (!referrer.referredUsers) referrer.referredUsers = [];
-            referrer.referredUsers.push({
-              username: userVal,
-              region: regionVal,
-              date: new Date().toISOString()
-            });
+        // Use new unified registration method
+        const result = await app.signUpUser(userData);
 
-            // If referrer is an agent or subagent, auto credit referral bonus!
-            if (referrer.role === "agent" || referrer.role === "subagent") {
-              const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined) ? parseFloat(app.db.settings.agentReferralBonus) : 100;
-              referrer.balance = (referrer.balance || 0) + referBonus;
-              
-              if (!app.db.agentLedger) app.db.agentLedger = [];
-              app.db.agentLedger.push({
-                id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 100),
-                agentId: referrer.id,
-                timestamp: new Date().toISOString(),
-                targetUser: userVal,
-                description: `Auto-credited ${referrer.role === "subagent" ? "Sub-Agent" : "Agent"} Referral Bonus (Player registered: @${userVal})`,
-                amount: referBonus,
-                commission: 0
-              });
-              
-              // Send notification message
-              const autoNotice = {
-                id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
-                recipientType: "specific",
-                targetUsername: referrer.username,
-                category: "bonus",
-                subject: `🎁 Referral Reward: +৳${referBonus}!`,
-                content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} and 1 Free Spin Token have been added to your account.`,
-                date: new Date().toISOString(),
-                readBy: []
-              };
-              if (!app.db.messages) app.db.messages = [];
-              app.db.messages.push(autoNotice);
-            } else {
-              // Standard player referral notification
-              const freeSpinNotice = {
-                id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
-                recipientType: "specific",
-                targetUsername: referrer.username,
-                category: "bonus",
-                subject: "🎟️ Free Spin Token Received!",
-                content: `Congratulations! Player @${userVal} has successfully registered using your referral code. You have been awarded 1 Free Spin Token for the Fortune Wheel!`,
-                date: new Date().toISOString(),
-                readBy: []
-              };
-              if (!app.db.messages) app.db.messages = [];
-              app.db.messages.push(freeSpinNotice);
-            }
-
-            // Evaluate milestones
-            const milLevels = app.db.settings.milestoneLevels || [];
-            milLevels.forEach(lvl => {
-              if (referrer.refersCount >= lvl.count) {
-                if (!referrer.rewardedMilestones) referrer.rewardedMilestones = [];
-                if (!referrer.rewardedMilestones.includes(lvl.title)) {
-                  const bounty = parseFloat(lvl.reward || 0);
-                  referrer.balance = (referrer.balance || 0) + bounty;
-                  referrer.rewardedMilestones.push(lvl.title);
-
-                  // Auto inbox alert
-                  const autoNotice = {
-                    id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
-                    recipientType: "specific",
-                    targetUsername: referrer.username,
-                    category: "bonus",
-                    subject: `🎁 Milestone Reached: ${lvl.title}!`,
-                    content: `Splendid! You have successfully referred ${lvl.count} active players under authorized regions. You are awarded a bonus cash reward of ৳${bounty}!`,
-                    date: new Date().toISOString(),
-                    readBy: []
-                  };
-                  if (!app.db.messages) app.db.messages = [];
-                  app.db.messages.push(autoNotice);
-                }
-              }
-            });
-          }
-        }
-
-        if (isAgentApplyMode) {
-          newUser.role = "agent";
-          newUser.status = "pending_approval";
-          newUser.balance = 0;
+        if (result.success) {
+          app.showToast(`Registration Successful! Welcome to Lottery Winner.`, "success");
           
-          const commVal = parseFloat((document.getElementById("reg-agent-comm-rate") as HTMLInputElement)?.value || "5.0");
-          (newUser as any).commissionRate = commVal;
-          (newUser as any).district = regionVal;
-          
+          // Profile will be loaded by onAuthStateChanged listener
+          // Also add to local db for legacy compatibility
+          const newUser = { ...userData, id: result.uid, uid: result.uid };
+          delete newUser.password;
           app.db.users.push(newUser);
           app.saveDB();
 
-          // Show confirmation
-          app.showToast("আবেদন সফল হয়েছে! Your sub-agent application has been submitted to the admin panel. Please wait for approval.", "success");
-          
-          // Reset fields & reset view to sign-in
-          registerForm.reset();
-          document.getElementById("reg-agent-apply-banner")?.classList.add("hidden");
-          document.getElementById("reg-default-email-phone-block")?.classList.remove("hidden");
-          document.getElementById("reg-agent-fields-block")?.classList.add("hidden");
-          
-          const oneClickBox = document.querySelector(".one-click-box") as HTMLElement | null;
-          if (oneClickBox) oneClickBox.classList.remove("hidden");
-          
-          const regButton = document.querySelector("#registerForm .btn-submit") as HTMLElement | null;
-          if (regButton) regButton.textContent = "CLAIM $50 & REGISTER";
-          
-          switchTab("signin");
-          return;
+          // Apply referral rewards and counters
+          if (referrer) {
+            const allowedRegions = app.db.settings.allowedRegions || [];
+            const isRegionAllowed = allowedRegions.length === 0 || allowedRegions.map(r => r.toLowerCase()).includes(regionVal.toLowerCase());
+
+            if (isRegionAllowed) {
+              referrer.refersCount = (referrer.refersCount || 0) + 1;
+              referrer.spinTokens = (referrer.spinTokens || 0) + 1; 
+              if (!referrer.referredUsers) referrer.referredUsers = [];
+              referrer.referredUsers.push({
+                username: userVal,
+                region: regionVal,
+                date: new Date().toISOString()
+              });
+
+              if (referrer.role === "agent" || referrer.role === "subagent") {
+                const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined) ? parseFloat(app.db.settings.agentReferralBonus) : 100;
+                referrer.balance = (referrer.balance || 0) + referBonus;
+                
+                if (!app.db.agentLedger) app.db.agentLedger = [];
+                app.db.agentLedger.push({
+                  id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 100),
+                  agentId: referrer.id,
+                  timestamp: new Date().toISOString(),
+                  targetUser: userVal,
+                  description: `Auto-credited ${referrer.role === "subagent" ? "Sub-Agent" : "Agent"} Referral Bonus (Player registered: @${userVal})`,
+                  amount: referBonus,
+                  commission: 0
+                });
+                
+                const autoNotice = {
+                  id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+                  recipientType: "specific",
+                  targetUsername: referrer.username,
+                  category: "bonus",
+                  subject: `🎁 Referral Reward: +৳${referBonus}!`,
+                  content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} has been added to your account.`,
+                  date: new Date().toISOString(),
+                  readBy: []
+                };
+                if (!app.db.messages) app.db.messages = [];
+                app.db.messages.push(autoNotice);
+              }
+
+              const milLevels = app.db.settings.milestoneLevels || [];
+              milLevels.forEach(lvl => {
+                if (referrer.refersCount >= lvl.count && !(referrer.rewardedMilestones || []).includes(lvl.title)) {
+                  referrer.balance = (referrer.balance || 0) + lvl.reward;
+                  if (!referrer.rewardedMilestones) referrer.rewardedMilestones = [];
+                  referrer.rewardedMilestones.push(lvl.title);
+                  app.showToast(`Milestone Unlocked! ${lvl.title} reward ৳${lvl.reward} added to referrer.`, "success");
+                }
+              });
+            }
+          }
+
+          app.saveDB();
+          if (registerForm) registerForm.reset();
+          app.render();
+        } else {
+          app.showToast(`Registration Failed: ${result.error}`, "error");
+          generateMathCaptcha();
         }
-
-        app.db.users.push(newUser);
-        app.saveDB();
-
-        app.currentUser = StateManager.removeCircularReferences(newUser);
-        localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-        app.showToast(`Account registered successfully under region ${regionVal}! Enjoy ৳${welcomeBonus} Starter Wallet Bonus!`, "success");
-        app.render();
       } catch (err) {
         console.error("Signup listener error:", err);
         app.showToast("An unexpected error occurred during signup. Please try again.", "error");
@@ -6350,6 +6361,47 @@ function initApplicationLoader() {
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");
     app.render();
+    });
+  }
+
+  const saveQuickdrawForm = document.getElementById("admin-settings-quickdraw-form");
+  if (saveQuickdrawForm) {
+    saveQuickdrawForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      app.db.settings.quickDrawEnabled = (document.getElementById("sys-quickdraw-toggle") as HTMLInputElement).checked;
+      app.saveDB();
+      
+      // If disabled, transition any active Quick Draw pools to drawn so users don't see/interact with active ones
+      if (app.db.settings.quickDrawEnabled === false) {
+        app.db.lotteries.forEach(lot => {
+          if (lot.category === "Quick Draw" && lot.status === "active") {
+            lot.status = "drawn";
+          }
+        });
+        app.saveDB();
+      } else {
+        // Guarantee an active Quick Draw exists if re-enabled
+        if (!app.db.lotteries.some(l => l.category === "Quick Draw" && l.status === "active")) {
+          const nextId = "l_quick_" + Date.now();
+          app.db.lotteries.push({
+            id: nextId,
+            name: `⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #${Date.now().toString().slice(-4)})`,
+            details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
+            entryFee: 10,
+            totalTickets: 50,
+            soldTickets: 0,
+            category: "Quick Draw",
+            drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
+            status: "active",
+            prizeAmount: 0,
+            drawMode: "auto"
+          });
+          app.saveDB();
+        }
+      }
+
+      app.showToast("Quick Draw game configurations updated successfully.", "success");
+      app.render();
     });
   }
 

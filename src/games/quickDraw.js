@@ -65,21 +65,20 @@ export const QuickDrawGame = {
 
     if (!activeQuick) {
       // Auto-generate if missing
-      const initialSold = 5;
+      const initialSold = 0;
       const initialFee = 10;
       activeQuick = {
         id: "draw-qd-" + Date.now(),
-        name: "⚡ 60-Sec Quick Draw #" + Math.floor(1000 + Math.random() * 9000),
-        title: "⚡ 60-Sec Quick Draw #" + Math.floor(1000 + Math.random() * 9000),
+        name: "⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (Draw #" + Date.now().toString().slice(-4) + ")",
         category: "Quick Draw",
         entryFee: initialFee,
         ticketPrice: initialFee,
-        prizeAmount: Math.round(initialSold * initialFee * 0.95 * 100) / 100,
-        prizePool: Math.round(initialSold * initialFee * 0.95 * 100) / 100,
+        prizeAmount: 0,
         drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
         totalTickets: 50,
         soldTickets: initialSold,
-        status: "active"
+        status: "active",
+        drawMode: "auto"
       };
       app.db.lotteries.unshift(activeQuick);
       app.saveDB();
@@ -87,7 +86,7 @@ export const QuickDrawGame = {
 
     // Ensure fallback properties for legacy DB items
     if (!activeQuick.entryFee) activeQuick.entryFee = activeQuick.ticketPrice || 10;
-    if (!activeQuick.prizeAmount) activeQuick.prizeAmount = activeQuick.prizePool || 50;
+    if (activeQuick.soldTickets === undefined) activeQuick.soldTickets = 0;
     if (!activeQuick.name && activeQuick.title) activeQuick.name = activeQuick.title;
 
     const myTickets = app.currentUser ? (app.db.tickets || []).filter(t => t.lotteryId === activeQuick.id && t.userId === app.currentUser.id) : [];
@@ -106,20 +105,19 @@ export const QuickDrawGame = {
       }
 
       if (diff <= 0) {
-        // Auto-resolve draw
+        // Auto-resolve draw via the real state-authoritative function
         if (this.state.timerInterval) {
           clearInterval(this.state.timerInterval);
           this.state.timerInterval = null;
         }
 
-        activeQuick.status = "drawn";
-        const winnerIndex = Math.floor(Math.random() * (activeQuick.soldTickets || 1));
-        activeQuick.winningTicket = "TK-" + (1000 + winnerIndex);
-        app.saveDB();
+        const timerElVal = document.getElementById("quickdraw-timer-countdown");
+        if (timerElVal) timerElVal.innerText = "DRAWING... ⏳";
 
         setTimeout(() => {
+          app.checkAndExecuteAutoDraws();
           this.renderView(app);
-        }, 1500);
+        }, 600);
       }
     };
 
@@ -127,9 +125,10 @@ export const QuickDrawGame = {
     this.state.timerInterval = setInterval(updateTimer, 1000);
     updateTimer();
 
-    const displayTitle = activeQuick.name || activeQuick.title || "⚡ 1-Min Quick Cash Draw";
+    const displayTitle = activeQuick.name || "⚡ 1-Min Quick Cash Draw";
     const displayPrice = activeQuick.entryFee || 10;
-    const displayPrize = activeQuick.prizeAmount || 50;
+    // Prize pool accumulated is 10 Taka per ticket sold (N * displayPrice)
+    const displayPrizePool = (activeQuick.soldTickets || 0) * displayPrice;
 
     container.innerHTML = `
       <div class="bg-gradient-to-b from-rose-950/30 via-slate-900 to-slate-950 border border-rose-500/30 p-5 rounded-3xl relative overflow-hidden shadow-2xl">
@@ -138,12 +137,12 @@ export const QuickDrawGame = {
         <div class="space-y-4">
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div>
-              <span class="text-[7.5px] uppercase font-bold text-rose-400 tracking-widest block font-mono">LIVE DRAWING POOL</span>
+              <span class="text-[7.5px] uppercase font-bold text-rose-400 tracking-widest block font-mono">LIVE DRAWING POOL / রানিং ড্র</span>
               <h3 class="text-xs font-black text-white font-mono">${displayTitle}</h3>
             </div>
             <div class="text-right">
-              <span class="text-[7.5px] uppercase font-bold text-slate-500 block font-mono">EST. PRIZE POOL</span>
-              <span class="text-sm font-black text-emerald-400 font-mono">৳${displayPrize}</span>
+              <span class="text-[7.5px] uppercase font-bold text-slate-500 block font-mono">CURRENT PRIZE POOL / প্রাইজ পুল</span>
+              <span class="text-sm font-black text-emerald-400 font-mono">৳${displayPrizePool}</span>
             </div>
           </div>
 

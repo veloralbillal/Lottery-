@@ -1,16 +1,19 @@
-import { initializeApp, getApps } from "firebase/app";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot } from "firebase/firestore";
+import { initializeApp, getApps, deleteApp } from "firebase/app";
+import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs, limit } from "firebase/firestore";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
 export const SyncCloudModule = {
   async initFirebaseSync() {
     try {
+      console.log("SyncCloudModule: Initializing...");
       let firebaseConfig = null;
       try {
         const configRes = await fetch("firebase-applet-config.json");
         if (configRes.ok) {
           firebaseConfig = await configRes.json();
+          console.log("Firebase config loaded from JSON.");
         } else {
           throw new Error(`HTTP status ${configRes.status}`);
         }
@@ -19,17 +22,21 @@ export const SyncCloudModule = {
         firebaseConfig = fallbackFirebaseConfig;
       }
 
-      if (!firebaseConfig) {
-        console.warn("Firebase config not found, accessible, or bundled.");
+      if (!firebaseConfig || !firebaseConfig.apiKey) {
+        console.warn("Firebase config is missing or invalid. Cloud sync will be disabled.");
+        this.setSyncState("offline");
         return;
       }
+      this.firebaseConfig = firebaseConfig;
       
       let app;
       const apps = getApps();
       if (apps.length > 0) {
         app = apps[0];
+        console.log("Using existing Firebase app instance.");
       } else {
         app = initializeApp(firebaseConfig);
+        console.log("Initialized new Firebase app instance.");
       }
 
       const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
@@ -38,20 +45,167 @@ export const SyncCloudModule = {
       } catch (logErr) {
         console.warn("Could not set Firestore log level:", logErr);
       }
+      
       this.firestore = initializeFirestore(app, {
         experimentalForceLongPolling: true,
         useFetchStreams: false
       }, dbId);
+      this.auth = getAuth(app);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
+      
       console.log("Firebase sync engine initialized successfully.");
       
       // Start subscribing to live Firestore updates
       this.listenToCloud();
+      this.initAuthListener();
     } catch (e) {
-      console.warn("Failed to initialize Firebase Sync:", e.message || e);
+      console.error("Failed to initialize Firebase Sync:", e.message || e);
+      this.setSyncState("error");
     }
   },
 
+  initAuthListener() {
+    onAuthStateChanged(this.auth, async (user) => {
+      if (user) {
+        console.log("Firebase Auth: User logged in:", user.email);
+        await this.loadUserProfile(user.uid);
+      } else {
+        console.log("Firebase Auth: No user logged in.");
+      }
+    });
+  },
+
+  async loadUserProfile(uid) {
+    try {
+      const userDoc = await getDoc(doc(this.firestore, "users", uid));
+      if (userDoc.exists()) {
+        const profile = userDoc.data();
+        this.currentUser = this.constructor.removeCircularReferences(profile);
+        localStorage.setItem(this.sessionKey, this.constructor.safeStringify(this.currentUser));
+        console.log("User profile loaded from Firestore:", profile.username);
+        this.render();
+      }
+    } catch (err) {
+      console.error("Failed to load user profile:", err);
+    }
+  },
+
+  async syncUserProfile() {
+    if (!this.currentUser || !this.currentUser.id) return;
+    try {
+      const uid = this.currentUser.id;
+      const profileDoc = doc(this.firestore, "users", uid);
+      const cleanedProfile = this.constructor.removeCircularReferences(this.currentUser);
+      await setDoc(profileDoc, {
+        ...cleanedProfile,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+      console.log("User profile synced to Firestore.");
+    } catch (err) {
+      console.error("Failed to sync user profile:", err);
+    }
+  },
+
+  async lookupUserByUsername(username) {
+    try {
+      // 1. Primary: Use dedicated public mapping collection
+      const usernameDoc = await getDoc(doc(this.firestore, "usernames", username.toLowerCase()));
+      if (usernameDoc.exists()) {
+        return usernameDoc.data(); // Returns { email: "...", uid: "...", username: "..." }
+      }
+    } catch (err) {
+      console.warn("Firestore username lookup failed (Permissions/Network). Falling back to monolithic DB:", err);
+    }
+    
+    // 2. Secondary Fallback: Search monolithic database (which is publically readable)
+    if (this.db && this.db.users) {
+      const user = this.db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+      if (user) {
+        return {
+          uid: user.id || user.uid,
+          email: user.email,
+          username: user.username
+        };
+      }
+    }
+    return null;
+  },
+
+  async createStaffAccount(staffData) {
+    // Standard pattern for Admin creating users without logging out: Use a secondary app instance
+    let secondaryApp;
+    try {
+      secondaryApp = initializeApp(this.firebaseConfig, "Secondary_" + Date.now());
+      const secondaryAuth = getAuth(secondaryApp);
+      
+      // 1. Create Firebase Auth Account
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, staffData.email, staffData.password);
+      const uid = userCredential.user.uid;
+      
+      // 2. Create Firestore Profile
+      const profile = {
+        ...staffData,
+        id: uid,
+        uid: uid,
+        createdAt: new Date().toISOString(),
+        status: "active"
+      };
+      delete profile.password; // Never store plaintext passwords in Firestore
+      
+      await setDoc(doc(this.firestore, "users", uid), profile);
+      
+      // 3. Create Public Username Mapping
+      await setDoc(doc(this.firestore, "usernames", staffData.username.toLowerCase()), {
+        uid: uid,
+        email: staffData.email.toLowerCase(),
+        username: staffData.username.toLowerCase()
+      });
+      
+      // 4. Cleanup
+      await signOut(secondaryAuth);
+      await deleteApp(secondaryApp);
+      
+      console.log("Staff account created successfully in Firebase Auth and Firestore.");
+      return { success: true, uid };
+    } catch (err) {
+      console.error("Failed to create staff account:", err);
+      if (secondaryApp) await deleteApp(secondaryApp);
+      return { success: false, error: err.message };
+    }
+  },
+
+  async signUpUser(userData) {
+    try {
+      // 1. Create Firebase Auth Account
+      const userCredential = await createUserWithEmailAndPassword(this.auth, userData.email, userData.password);
+      const uid = userCredential.user.uid;
+      
+      // 2. Create Firestore Profile
+      const profile = {
+        ...userData,
+        id: uid,
+        uid: uid,
+        createdAt: new Date().toISOString(),
+        status: "active"
+      };
+      delete profile.password;
+      
+      await setDoc(doc(this.firestore, "users", uid), profile);
+
+      // 3. Create Public Username Mapping
+      await setDoc(doc(this.firestore, "usernames", userData.username.toLowerCase()), {
+        uid: uid,
+        email: userData.email.toLowerCase(),
+        username: userData.username.toLowerCase()
+      });
+      
+      console.log("User registered successfully in Firebase Auth and Firestore.");
+      return { success: true, uid };
+    } catch (err) {
+      console.error("Failed to register user:", err);
+      return { success: false, error: err.message };
+    }
+  },
   listenToCloud() {
     if (!this.firestoreDocRef) return;
     

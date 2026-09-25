@@ -44,7 +44,7 @@ service cloud.firestore {
         && data.email is string && data.email.size() <= 150
         && (data.phone == null || (data.phone is string && data.phone.size() <= 30))
         && data.balance is number && data.balance >= 0.0
-        && (data.status == 'active' || data.status == 'blocked');
+        && (data.status == 'active' || data.status == 'blocked' || data.status == 'pending_approval');
     }
 
     function isValidLottery(data) {
@@ -94,7 +94,7 @@ service cloud.firestore {
     // USERS COLLECTION
     match /users/{userId} {
       allow read: if isSignedIn() && (isOwner(userId) || isAdmin());
-      allow create: if isSignedIn() && isOwner(userId) && isValidUser(incoming());
+      allow create: if isSignedIn() && (isOwner(userId) || isAdmin()) && isValidUser(incoming());
       allow update: if isSignedIn() && isValidUser(incoming()) && (
         isAdmin() ||
         (isOwner(userId) && incoming().balance == existing().balance && incoming().status == existing().status) ||
@@ -144,6 +144,13 @@ service cloud.firestore {
     // APP DATA SYNC
     match /app_data/{docId} {
       allow read, write: if true;
+    }
+
+    // USERNAMES MAPPING (Public read-only for login resolution)
+    match /usernames/{username} {
+      allow get: if true; // Allow anyone to resolve a username to an email for login
+      allow list: if isAdmin();
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == request.resource.data.uid);
     }
 
     // ADMINS COLLECTION

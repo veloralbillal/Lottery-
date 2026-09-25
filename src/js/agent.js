@@ -380,12 +380,20 @@ export const AgentModule = {
           const dateObj = new Date(act.timestamp);
           const timeString = dateObj.toLocaleDateString() + " " + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+          const isPending = act.status === "pending";
+          const statusBadge = isPending 
+            ? `<span class="bg-amber-950 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold">Pending ৳100 Deposit</span>`
+            : `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold">Complete</span>`;
+
           row.innerHTML = `
             <td class="p-3 select-none text-slate-500">${timeString}</td>
             <td class="p-3 text-white font-bold">@${act.targetUser}</td>
-            <td class="p-3 text-slate-400 font-sans">${act.description}</td>
-            <td class="p-3 text-slate-200">৳${act.amount.toFixed(2)}</td>
-            <td class="p-3 ${act.commission > 0 ? "text-emerald-400 font-bold" : "text-slate-550"}">${act.commission > 0 ? `+৳${act.commission.toFixed(2)}` : "-"}</td>
+            <td class="p-3 text-slate-400 font-sans flex flex-col gap-1">
+              <span>${act.description || "Agent Activity"}</span>
+              <div>${statusBadge}</div>
+            </td>
+            <td class="p-3 text-slate-200">৳${(act.amount || 0).toFixed(2)}</td>
+            <td class="p-3 ${act.commission > 0 && !isPending ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}">${act.commission > 0 ? `${isPending ? "(Pending) " : ""}+৳${act.commission.toFixed(2)}` : "-"}</td>
           `;
           tbody.appendChild(row);
         });
@@ -551,7 +559,7 @@ export const AgentModule = {
 
     if (createStaffForm && !createStaffForm.dataset.listenerAttached) {
       createStaffForm.dataset.listenerAttached = "true";
-      createStaffForm.addEventListener("submit", (e) => {
+      createStaffForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const usernameVal = document.getElementById("staff-username").value.trim();
         const emailVal = document.getElementById("staff-email").value.trim();
@@ -561,19 +569,19 @@ export const AgentModule = {
         const commVal = parseFloat(document.getElementById("staff-commission").value || "5.0");
         const districtVal = document.getElementById("staff-district").value;
 
+        // Check local duplicates first
         if (app.db.users.some(u => u.username.toLowerCase() === usernameVal.toLowerCase())) {
-          app.showToast(`Username @${usernameVal} already exists in database!`, "error");
+          app.showToast(`Username @${usernameVal} already exists in local database!`, "error");
           return;
         }
 
-        const newStaff = {
-          id: "u_staff_" + Date.now(),
-          username: usernameVal,
-          email: emailVal,
+        const staffData = {
+          username: usernameVal.toLowerCase(),
+          email: emailVal.toLowerCase(),
           phone: phoneVal,
           password: passVal,
           dob: "1995-01-01",
-          balance: roleVal === "agent" ? 1000 : 0, // Starter funds for agents to facilitate field deposits
+          balance: roleVal === "agent" ? 1000 : 0, 
           totDeposit: roleVal === "agent" ? 1000 : 0,
           totWithdraw: 0,
           wins: 0,
@@ -581,21 +589,32 @@ export const AgentModule = {
           profit: 0,
           joinDate: new Date().toISOString().split("T")[0],
           status: "active",
-          blockedUntil: null,
           role: roleVal,
           commissionRate: roleVal === "agent" ? commVal : undefined,
-          earnedCommission: roleVal === "agent" ? 0 : undefined,
-          totalBookings: roleVal === "agent" ? 0 : undefined,
           district: roleVal === "agent" ? districtVal : undefined
         };
 
-        app.db.users.push(newStaff);
-        app.saveDB();
-        app.showToast(`Staff account @${usernameVal} (${roleVal}) successfully created!`, "success");
-        createStaffForm.reset();
-        staffWrapper.classList.add("hidden");
-        if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
-        app.renderAdminAgents();
+        app.showToast("Creating secure staff account...", "info");
+
+        // Use new unified creation method (Firebase Auth + Firestore)
+        const result = await app.createStaffAccount(staffData);
+        
+        if (result.success) {
+          app.showToast(`Success! Account @${usernameVal} created and immediately usable.`, "success");
+          
+          // Also add to local db for immediate UI update (SyncCloudModule will handle the rest)
+          const newStaff = { ...staffData, id: result.uid, uid: result.uid };
+          delete newStaff.password;
+          app.db.users.push(newStaff);
+          app.saveDB();
+
+          createStaffForm.reset();
+          staffWrapper.classList.add("hidden");
+          if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
+          app.renderAdminAgents();
+        } else {
+          app.showToast(`Failed to create account: ${result.error}`, "error");
+        }
       });
     }
 
@@ -684,7 +703,11 @@ export const AgentModule = {
           ? parseFloat(app.db.settings.agentReferralBonus)
           : 100;
 
-        // Create player user object
+        const creationComm = (app.db && app.db.settings && app.db.settings.agentUserCreationCommission !== undefined)
+          ? parseFloat(app.db.settings.agentUserCreationCommission)
+          : referBonus;
+
+        // Create player user object (Commission is conditional: released only after min ৳100 deposit)
         const newUser = {
           id: "u" + Date.now(),
           username: usernameVal,
@@ -703,17 +726,15 @@ export const AgentModule = {
           refersCount: 0,
           referredUsers: [],
           rewardedMilestones: [],
-          role: "user", // "user" role is filtered as a regular player in agent tab
-          referredBy: app.currentUser.username
+          role: "user",
+          referredBy: app.currentUser.username,
+          agentCommissionPaid: false,
+          pendingAgentCommission: creationComm
         };
 
-        // Award referral bonus to the Agent!
-        app.currentUser.balance = (app.currentUser.balance || 0) + referBonus;
-        
-        // Also keep DB user record matching current active agent session
+        // Update agent referral counts (Commission pending until min ৳100 deposit)
         const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
         if (dbAgent) {
-          dbAgent.balance = app.currentUser.balance;
           dbAgent.refersCount = (dbAgent.refersCount || 0) + 1;
           if (!dbAgent.referredUsers) dbAgent.referredUsers = [];
           dbAgent.referredUsers.push({
@@ -723,23 +744,25 @@ export const AgentModule = {
           });
         }
 
-        // Log agent activity ledger
+        // Log agent activity ledger (Pending)
         if (!app.db.agentLedger) app.db.agentLedger = [];
         app.db.agentLedger.push({
           id: "act_" + Date.now(),
           agentId: app.currentUser.id,
+          agentUsername: app.currentUser.username,
           timestamp: new Date().toISOString(),
           targetUser: usernameVal,
-          description: `Assisted Player Quick-Registration (Referral Bonus)`,
-          amount: referBonus,
-          commission: 0
+          description: `Assisted Player Quick-Registration (Pending min ৳100 Deposit)`,
+          amount: 0,
+          commission: creationComm,
+          status: "pending"
         });
 
         // Add player to system DB
         app.db.users.push(newUser);
         
         app.saveDB();
-        app.showToast(`Player @${usernameVal} registered successfully! Added ৳${referBonus} referral bonus to your agent wallet.`, "success");
+        app.showToast(`Player @${usernameVal} registered successfully! Creation commission of ৳${creationComm.toFixed(2)} is pending until player deposits min ৳100.`, "info");
         agentRegForm.reset();
         app.renderAgentWorkspace();
       });
@@ -1121,13 +1144,27 @@ export const AgentModule = {
           return;
         }
 
-        // Perform balance shift
+        const loadCommRate = (app.db && app.db.settings && app.db.settings.agentBalanceLoadCommission !== undefined)
+          ? parseFloat(app.db.settings.agentBalanceLoadCommission)
+          : 2.0;
+        const loadCommission = (amount * loadCommRate) / 100;
+
+        // Perform balance shift & add commission
         app.currentUser.balance -= amount;
+        app.currentUser.balance += loadCommission;
+        app.currentUser.earnedCommission = (app.currentUser.earnedCommission || 0) + loadCommission;
         targetUser.balance = (targetUser.balance || 0) + amount;
-        // Keep DB user record matching current active agent session
+        targetUser.totDeposit = (targetUser.totDeposit || 0) + amount;
+
+        // Check if agent commission should be released now that deposit reached threshold
+        if (typeof app.checkAndReleaseAgentCommission === "function") {
+          app.checkAndReleaseAgentCommission(targetUser);
+        }
+
         const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
         if (dbAgent) {
           dbAgent.balance = app.currentUser.balance;
+          dbAgent.earnedCommission = app.currentUser.earnedCommission;
         }
 
         // Record a deposit ledger transaction as automatically approved
@@ -1148,15 +1185,16 @@ export const AgentModule = {
         app.db.agentLedger.push({
           id: "act_" + Date.now(),
           agentId: app.currentUser.id,
+          agentUsername: app.currentUser.username,
           timestamp: new Date().toISOString(),
           targetUser: targetUser.username,
-          description: "Wallet Cash Deposit (Load assisted)",
+          description: `Wallet Cash Deposit Load Commission (${loadCommRate}%)`,
           amount: amount,
-          commission: 0
+          commission: loadCommission
         });
 
         app.saveDB();
-        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Agent Limit deducted.`, "success");
+        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Earned ৳${loadCommission.toFixed(2)} balance load commission!`, "success");
         agentCashDepositForm.reset();
         app.renderAgentWorkspace();
       });

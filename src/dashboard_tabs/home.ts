@@ -43,6 +43,9 @@ export class HomeTab {
 
       // Category buttons dynamically mapped
       appInstance.db.categories.forEach(cat => {
+        if (cat.name === "Quick Draw" && appInstance.db.settings.quickDrawEnabled === false) {
+          return;
+        }
         const btn = document.createElement("button");
         btn.setAttribute("data-category", cat.name);
         
@@ -382,6 +385,18 @@ export class HomeTab {
 
     // ================= VIEW SWITCHES: QUICK DRAW =================
     if (appInstance.currentHomeCategory === "Quick Draw") {
+      if (appInstance.db.settings.quickDrawEnabled === false) {
+        listEl.innerHTML = `
+          <div class="bg-slate-900/50 border border-slate-800/80 p-12 rounded-3xl text-center space-y-4">
+            <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mx-auto mb-2">
+              <i class="fa-solid fa-ban text-lg"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">Quick Draw Game Disabled</h4>
+            <p class="text-xs text-slate-500 font-sans">This game mode is currently undergoing scheduled maintenance by the Admin.</p>
+          </div>
+        `;
+        return;
+      }
       const activeQuick = appInstance.db.lotteries.find(l => l.category === "Quick Draw" && l.status === "active");
       
       if (!activeQuick) {
@@ -429,10 +444,14 @@ export class HomeTab {
             </div>
 
             <!-- Key metrics row -->
-            <div class="max-w-xs mx-auto text-center">
-              <div class="bg-slate-950/50 py-3 px-5 rounded-2xl border border-slate-900/80 inline-block">
-                <span class="text-[10px] text-slate-500 font-mono block mb-1">Ticket Cost</span>
+            <div class="max-w-md mx-auto grid grid-cols-2 gap-3 text-center">
+              <div class="bg-slate-950/50 py-3 px-4 rounded-2xl border border-slate-900/80">
+                <span class="text-[10px] text-slate-500 font-mono block mb-1">Ticket Cost / টিকিট মূল্য</span>
                 <strong class="text-sm text-red-400 font-mono">৳${activeQuick.entryFee} Taka</strong>
+              </div>
+              <div class="bg-slate-950/50 py-3 px-4 rounded-2xl border border-slate-900/80">
+                <span class="text-[10px] text-slate-500 font-mono block mb-1">Prize Pool / বর্তমান প্রাইজ পুল</span>
+                <strong class="text-sm text-emerald-400 font-mono">৳${(activeQuick.soldTickets || 0) * activeQuick.entryFee} Taka</strong>
               </div>
             </div>
 

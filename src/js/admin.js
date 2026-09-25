@@ -72,6 +72,7 @@ export const AdminModule = {
     hideViewport("admin-tab-subagents-list");
     hideViewport("admin-tab-events");
     hideViewport("admin-tab-splash");
+    hideViewport("admin-tab-commission");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -153,6 +154,8 @@ export const AdminModule = {
         this.renderAgentLeadersTab();
       } else if (this.currentAdminTab === "subagents-list") {
         this.renderSubAgentsListTab();
+      } else if (this.currentAdminTab === "commission") {
+        this.renderAdminCommission();
       }
     } catch (err) {
       console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
@@ -1326,92 +1329,125 @@ export const AdminModule = {
     this.initAgentRecruitmentPanelNew();
     this.updateAgentHubStats();
     this.renderAgentHubSelect();
+    this.renderAgentLeadersDirectory();
     this.renderAgentHubPendingList();
+    this.renderRecentAgentCashLoads();
+    this.initAgentLeadersCashLoad();
+    this.updateLeaderCashPreview();
   },
 
   initAgentRecruitmentPanelNew() {
+    const leadersBtn = document.getElementById("hub-tab-btn-leaders");
     const shareBtn = document.getElementById("hub-tab-btn-share");
-    if (!shareBtn || shareBtn.dataset.hubListenersAttached === "true") return;
-    shareBtn.dataset.hubListenersAttached = "true";
-
     const approvalsBtn = document.getElementById("hub-tab-btn-approvals");
+    
+    const leadersTab = document.getElementById("hub-tab-content-leaders");
     const shareTab = document.getElementById("hub-tab-content-share");
     const approvalsTab = document.getElementById("hub-tab-content-approvals");
 
-    // Tab Switching
-    shareBtn.addEventListener("click", () => {
-      if (shareTab) shareTab.classList.remove("hidden");
-      if (approvalsTab) approvalsTab.classList.add("hidden");
-      shareBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all bg-[#b2ffbe] text-[#003917] flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
-      if (approvalsBtn) approvalsBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all text-[#bacbb8] hover:text-[#dbe6d8] flex items-center justify-center gap-2 cursor-pointer active:scale-95";
-    });
+    if (leadersBtn && !leadersBtn.dataset.hubListenersAttached) {
+      leadersBtn.dataset.hubListenersAttached = "true";
 
-    approvalsBtn?.addEventListener("click", () => {
-      if (shareTab) shareTab.classList.add("hidden");
-      if (approvalsTab) approvalsTab.classList.remove("hidden");
-      approvalsBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all bg-[#b2ffbe] text-[#003917] flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
-      if (shareBtn) shareBtn.className = "flex-1 py-3 px-4 rounded-lg text-xs font-bold transition-all text-[#bacbb8] hover:text-[#dbe6d8] flex items-center justify-center gap-2 cursor-pointer active:scale-95";
-      this.renderAgentHubPendingList();
-    });
+      const setTab = (activeTab) => {
+        if (leadersTab) leadersTab.classList.toggle("hidden", activeTab !== "leaders");
+        if (shareTab) shareTab.classList.toggle("hidden", activeTab !== "share");
+        if (approvalsTab) approvalsTab.classList.toggle("hidden", activeTab !== "approvals");
+
+        const activeClass = "flex-1 min-w-[150px] py-2.5 px-3 rounded-xl transition-all bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
+        const inactiveClass = "flex-1 min-w-[150px] py-2.5 px-3 rounded-xl transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2 cursor-pointer active:scale-95";
+
+        if (leadersBtn) leadersBtn.className = activeTab === "leaders" ? activeClass : inactiveClass;
+        if (shareBtn) shareBtn.className = activeTab === "share" ? activeClass : inactiveClass;
+        if (approvalsBtn) approvalsBtn.className = activeTab === "approvals" ? activeClass : inactiveClass;
+
+        if (activeTab === "leaders") this.renderAgentLeadersDirectory();
+        if (activeTab === "approvals") this.renderAgentHubPendingList();
+        if (activeTab === "share") this.renderAgentHubSelect();
+      };
+
+      leadersBtn.addEventListener("click", () => setTab("leaders"));
+      shareBtn?.addEventListener("click", () => setTab("share"));
+      approvalsBtn?.addEventListener("click", () => setTab("approvals"));
+    }
+
+    // Refresh button
+    const refreshBtn = document.getElementById("leader-refresh-hub-btn");
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = "true";
+      refreshBtn.addEventListener("click", () => {
+        this.renderAgentLeadersTab();
+        this.showToastHub("Agent leaders hub refreshed successfully.");
+      });
+    }
 
     // Copy Master Referral Link
     const copyMasterBtn = document.getElementById("hub-copy-master-btn");
-    copyMasterBtn?.addEventListener("click", () => {
-      const input = document.getElementById("hub-referral-link-input");
-      if (input) {
-        input.select();
-        navigator.clipboard.writeText(input.value);
-        this.showToastHub("Master Referral Link copied to clipboard!");
-      }
-    });
+    if (copyMasterBtn && !copyMasterBtn.dataset.bound) {
+      copyMasterBtn.dataset.bound = "true";
+      copyMasterBtn.addEventListener("click", () => {
+        const input = document.getElementById("hub-referral-link-input");
+        if (input) {
+          input.select();
+          navigator.clipboard.writeText(input.value);
+          this.showToastHub("Master Referral Link copied to clipboard!");
+        }
+      });
+    }
 
-    // Dropdown change updates referral link automatically!
+    // Dropdown change updates referral link automatically
     const leaderSelect = document.getElementById("hub-leader-select");
-    leaderSelect?.addEventListener("change", () => {
-      this.updateMasterLinkValue();
-    });
+    if (leaderSelect && !leaderSelect.dataset.bound) {
+      leaderSelect.dataset.bound = "true";
+      leaderSelect.addEventListener("change", () => {
+        this.updateMasterLinkValue();
+      });
+    }
 
     // Campaign Custom Builder Button
     const campaignBtn = document.getElementById("hub-generate-campaign-btn");
-    campaignBtn?.addEventListener("click", () => {
-      const campaignInput = document.getElementById("hub-campaign-name");
-      const campaignVal = campaignInput ? campaignInput.value.trim() : "";
-      
-      const leaderSelectEl = document.getElementById("hub-leader-select");
-      const leaderVal = leaderSelectEl ? leaderSelectEl.value : "";
-      
-      const resultBlock = document.getElementById("hub-generated-result-block");
-      const outputEl = document.getElementById("hub-custom-link-output");
+    if (campaignBtn && !campaignBtn.dataset.bound) {
+      campaignBtn.dataset.bound = "true";
+      campaignBtn.addEventListener("click", () => {
+        const campaignInput = document.getElementById("hub-campaign-name");
+        const campaignVal = campaignInput ? campaignInput.value.trim() : "";
+        const leaderSelectEl = document.getElementById("hub-leader-select");
+        const leaderVal = leaderSelectEl ? leaderSelectEl.value : "";
+        const resultBlock = document.getElementById("hub-generated-result-block");
+        const outputEl = document.getElementById("hub-custom-link-output");
 
-      if (!leaderVal) {
-        alert("Please register or select an Agent Leader first!");
-        return;
-      }
-      if (!campaignVal) {
-        this.showToastHub("Please enter a campaign zone tag first.");
-        return;
-      }
+        if (!leaderVal) {
+          this.showToastHub("Please register or select an Agent Leader first!");
+          return;
+        }
+        if (!campaignVal) {
+          this.showToastHub("Please enter a campaign zone tag first.");
+          return;
+        }
 
-      const smsTrackInput = document.getElementById("hub-sms-track");
-      const isSms = smsTrackInput ? smsTrackInput.checked : false;
-      const origin = window.location.origin;
-      const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0&campaign=${encodeURIComponent(campaignVal)}&sms_track=${isSms}`;
+        const smsTrackInput = document.getElementById("hub-sms-track");
+        const isSms = smsTrackInput ? smsTrackInput.checked : false;
+        const origin = window.location.origin;
+        const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0&campaign=${encodeURIComponent(campaignVal)}&sms_track=${isSms}`;
 
-      if (outputEl) outputEl.textContent = inviteUrl;
-      if (resultBlock) resultBlock.classList.remove("hidden");
-      this.showToastHub("Custom campaign link generated!");
-    });
+        if (outputEl) outputEl.textContent = inviteUrl;
+        if (resultBlock) resultBlock.classList.remove("hidden");
+        this.showToastHub("Custom campaign link generated!");
+      });
+    }
 
     // Copy Campaign Result Link
     const copyCampaignBtn = document.getElementById("hub-copy-campaign-btn");
-    copyCampaignBtn?.addEventListener("click", () => {
-      const outputEl = document.getElementById("hub-custom-link-output");
-      const text = outputEl ? outputEl.textContent : "";
-      if (text) {
-        navigator.clipboard.writeText(text);
-        this.showToastHub("Campaign link copied to clipboard!");
-      }
-    });
+    if (copyCampaignBtn && !copyCampaignBtn.dataset.bound) {
+      copyCampaignBtn.dataset.bound = "true";
+      copyCampaignBtn.addEventListener("click", () => {
+        const outputEl = document.getElementById("hub-custom-link-output");
+        const text = outputEl ? outputEl.textContent : "";
+        if (text) {
+          navigator.clipboard.writeText(text);
+          this.showToastHub("Campaign link copied to clipboard!");
+        }
+      });
+    }
 
     // Offline QR Popup triggers
     const openQrBtn = document.getElementById("hub-open-qr-btn");
@@ -1419,22 +1455,55 @@ export const AdminModule = {
     const closeQrModalBtn = document.getElementById("hub-close-qr-modal-btn");
     const qrModal = document.getElementById("hub-qr-modal");
 
-    openQrBtn?.addEventListener("click", () => {
-      const leaderSelectEl = document.getElementById("hub-leader-select");
-      const leaderVal = leaderSelectEl ? leaderSelectEl.value : "WINNER_772250";
-      
-      const qrLabel = document.getElementById("hub-qr-leader-label");
-      const qrBadge = document.getElementById("hub-qr-badge-code");
+    if (openQrBtn && !openQrBtn.dataset.bound) {
+      openQrBtn.dataset.bound = "true";
+      openQrBtn.addEventListener("click", () => {
+        const leaderSelectEl = document.getElementById("hub-leader-select");
+        const leaderVal = leaderSelectEl && leaderSelectEl.value ? leaderSelectEl.value : "agent_dhaka";
+        const qrLabel = document.getElementById("hub-qr-leader-label");
+        const qrBadge = document.getElementById("hub-qr-badge-code");
 
-      if (qrLabel) qrLabel.textContent = `@${leaderVal}`;
-      if (qrBadge) qrBadge.textContent = `${leaderVal.toUpperCase()}-OFFLINE-NODE`;
+        if (qrLabel) qrLabel.textContent = `@${leaderVal}`;
+        if (qrBadge) qrBadge.textContent = `${leaderVal.toUpperCase()}-OFFLINE-NODE`;
 
-      qrModal?.classList.remove("hidden");
-    });
+        qrModal?.classList.remove("hidden");
+      });
 
-    const closeQr = () => qrModal?.classList.add("hidden");
-    closeQrModalBtnTop?.addEventListener("click", closeQr);
-    closeQrModalBtn?.addEventListener("click", closeQr);
+      const closeQr = () => qrModal?.classList.add("hidden");
+      closeQrModalBtnTop?.addEventListener("click", closeQr);
+      closeQrModalBtn?.addEventListener("click", closeQr);
+    }
+
+    // Social Quick Share Shortcuts
+    const getShareUrl = () => {
+      const input = document.getElementById("hub-referral-link-input");
+      return input ? input.value : `${window.location.origin}/?role=agent`;
+    };
+
+    const waBtn = document.getElementById("hub-share-whatsapp-btn");
+    waBtn && !waBtn.dataset.bound && (waBtn.dataset.bound = "true", waBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent("Join our official Agent network here: ")}${url}`, "_blank");
+    }));
+
+    const tgBtn = document.getElementById("hub-share-telegram-btn");
+    tgBtn && !tgBtn.dataset.bound && (tgBtn.dataset.bound = "true", tgBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      window.open(`https://t.me/share/url?url=${url}&text=${encodeURIComponent("Official Agent Leader Registration Link")}`, "_blank");
+    }));
+
+    const msgBtn = document.getElementById("hub-share-messenger-btn");
+    msgBtn && !msgBtn.dataset.bound && (msgBtn.dataset.bound = "true", msgBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      navigator.clipboard.writeText(decodeURIComponent(url));
+      this.showToastHub("Registration URL copied! Open Messenger to paste.");
+    }));
+
+    const smsBtn = document.getElementById("hub-share-sms-btn");
+    smsBtn && !smsBtn.dataset.bound && (smsBtn.dataset.bound = "true", smsBtn.addEventListener("click", () => {
+      const url = getShareUrl();
+      window.location.href = `sms:?body=${encodeURIComponent("Register as an agent: " + url)}`;
+    }));
   },
 
   updateMasterLinkValue() {
@@ -1452,42 +1521,597 @@ export const AdminModule = {
   },
 
   updateAgentHubStats() {
-    const activeCount = this.db.users.filter(u => u.role === "agent" && u.status === "active").length;
+    const activeLeaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+    const activeCount = activeLeaders.length;
+    const subagentsCount = this.db.users.filter(u => u.role === "subagent").length;
     const pendingCount = this.db.users.filter(u => u.role === "agent" && u.status === "pending_approval").length;
-    
-    const totalVolume = (this.db.tickets || []).length * 100 + (this.db.deposits || []).filter(d => d.status === "approved").reduce((sum, d) => sum + d.amount, 0) * 0.05;
+    const totalLeadersBalance = activeLeaders.reduce((sum, u) => sum + (u.balance || 0), 0);
 
     const activeStat = document.getElementById("hub-active-count-stat");
     if (activeStat) activeStat.textContent = activeCount;
+
+    const subagentsStat = document.getElementById("hub-subagents-count-stat");
+    if (subagentsStat) subagentsStat.textContent = subagentsCount;
+
+    const leadersBalStat = document.getElementById("hub-leaders-balance-stat");
+    if (leadersBalStat) leadersBalStat.textContent = `৳${totalLeadersBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const pendingStat = document.getElementById("hub-pending-count-stat");
     if (pendingStat) pendingStat.textContent = pendingCount;
 
     const badgePending = document.getElementById("hub-badge-pending");
     if (badgePending) badgePending.textContent = pendingCount;
-
-    const volumeStat = document.getElementById("hub-volume-count-stat");
-    if (volumeStat) volumeStat.textContent = `৳${totalVolume.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   },
 
   renderAgentHubSelect() {
     const leaderSelect = document.getElementById("hub-leader-select");
-    if (!leaderSelect) return;
-
+    const quickCashSelect = document.getElementById("leader-cash-select-user");
     const leaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
-    const currentVal = leaderSelect.value;
 
-    leaderSelect.innerHTML = leaders.map(l => {
-      return `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"})</option>`;
-    }).join("");
+    const optionsHtml = leaders.length === 0
+      ? `<option value="">No Active Agent Leaders Found</option>`
+      : leaders.map(l => `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"} - Bal: ৳${(l.balance || 0).toFixed(2)})</option>`).join("");
 
-    if (leaders.length === 0) {
-      leaderSelect.innerHTML = `<option value="">No Active Agent Leaders Found</option>`;
-    } else if (currentVal && leaders.some(l => l.username === currentVal)) {
-      leaderSelect.value = currentVal;
+    if (leaderSelect) {
+      const currentVal = leaderSelect.value;
+      leaderSelect.innerHTML = optionsHtml;
+      if (currentVal && leaders.some(l => l.username === currentVal)) leaderSelect.value = currentVal;
+      this.updateMasterLinkValue();
     }
 
-    this.updateMasterLinkValue();
+    if (quickCashSelect) {
+      const currentVal = quickCashSelect.value;
+      quickCashSelect.innerHTML = optionsHtml;
+      if (currentVal && leaders.some(l => l.username === currentVal)) quickCashSelect.value = currentVal;
+
+      if (!quickCashSelect.dataset.bound) {
+        quickCashSelect.dataset.bound = "true";
+        quickCashSelect.addEventListener("change", () => {
+          this.updateLeaderCashPreview();
+        });
+      }
+    }
+
+    this.updateLeaderCashPreview();
+  },
+
+  updateLeaderCashPreview() {
+    const select = document.getElementById("leader-cash-select-user");
+    const username = select ? select.value : "";
+    const leader = this.db.users.find(u => u.username === username);
+
+    const initialEl = document.getElementById("leader-cash-preview-initial");
+    const nameEl = document.getElementById("leader-cash-preview-username");
+    const distEl = document.getElementById("leader-cash-preview-district");
+    const phoneEl = document.getElementById("leader-cash-preview-phone");
+    const curBalEl = document.getElementById("leader-cash-current-balance-preview");
+    const projBalEl = document.getElementById("leader-cash-projected-balance-preview");
+    const amtInput = document.getElementById("leader-cash-amount-input");
+    const enteredAmt = parseFloat(amtInput ? amtInput.value || "0" : "0");
+
+    if (leader) {
+      if (initialEl) initialEl.textContent = (leader.username || "A").substring(0, 2).toUpperCase();
+      if (nameEl) nameEl.textContent = `@${leader.username}`;
+      if (distEl) distEl.textContent = leader.district || leader.region || "Dhaka Zone";
+      if (phoneEl) phoneEl.textContent = `Phone: ${leader.phone || "N/A"}`;
+      const curBal = leader.balance || 0;
+      if (curBalEl) curBalEl.textContent = `৳${curBal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      const proj = curBal + (isNaN(enteredAmt) ? 0 : Math.max(0, enteredAmt));
+      if (projBalEl) projBalEl.textContent = `৳${proj.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    } else {
+      if (nameEl) nameEl.textContent = "No agent selected";
+      if (curBalEl) curBalEl.textContent = "৳0.00";
+      if (projBalEl) projBalEl.textContent = "৳0.00";
+    }
+  },
+
+  renderAgentLeadersDirectory() {
+    const container = document.getElementById("hub-leaders-cards-container");
+    const emptyState = document.getElementById("hub-leaders-empty-state");
+    const searchInput = document.getElementById("hub-leaders-search-input");
+    if (!container) return;
+
+    if (searchInput && !searchInput.dataset.bound) {
+      searchInput.dataset.bound = "true";
+      searchInput.addEventListener("input", () => this.renderAgentLeadersDirectory());
+    }
+
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    let leaders = this.db.users.filter(u => u.role === "agent");
+
+    if (query) {
+      leaders = leaders.filter(l => 
+        l.username.toLowerCase().includes(query) || 
+        (l.district && l.district.toLowerCase().includes(query)) ||
+        (l.phone && l.phone.includes(query)) ||
+        (l.email && l.email.toLowerCase().includes(query))
+      );
+    }
+
+    if (leaders.length === 0) {
+      container.innerHTML = "";
+      if (emptyState) {
+        emptyState.classList.remove("hidden");
+        emptyState.classList.add("flex");
+      }
+      return;
+    }
+
+    if (emptyState) {
+      emptyState.classList.add("hidden");
+      emptyState.classList.remove("flex");
+    }
+
+    container.innerHTML = leaders.map(l => {
+      const initial = (l.username || "A").substring(0, 2).toUpperCase();
+      const subCount = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === l.username.toLowerCase()).length;
+      const statusClass = l.status === "active" 
+        ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/40" 
+        : "bg-rose-950/80 text-rose-400 border border-rose-800/40";
+
+      return `
+        <div class="bg-slate-950/90 p-5 rounded-3xl border border-slate-850 hover:border-emerald-500/40 transition shadow-xl space-y-4 font-sans">
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 font-black text-sm shadow-md shrink-0 font-mono relative">
+                ${initial}
+                <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900 border border-amber-500/40 text-amber-400 flex items-center justify-center text-[9px]">
+                  <i class="fa-solid fa-crown text-[8px]"></i>
+                </span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="text-sm font-black text-white font-mono">@${l.username}</h4>
+                  <span class="text-[9.5px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded font-mono uppercase font-bold">${l.district || l.region || "Dhaka Zone"}</span>
+                </div>
+                <p class="text-[11px] text-slate-400 font-mono mt-0.5">Phone: ${l.phone || "N/A"}</p>
+              </div>
+            </div>
+            <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase ${statusClass}">
+              ${l.status || 'active'}
+            </span>
+          </div>
+
+          <!-- Key Metrics Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/70 p-3.5 rounded-2xl border border-slate-850 font-mono text-center">
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Purse Balance</span>
+              <span class="text-sm font-black text-amber-400 block tabular-nums">৳${(l.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Sub-Agents</span>
+              <span class="text-sm font-black text-indigo-400 block">${subCount}</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Commission</span>
+              <span class="text-sm font-black text-emerald-400 block">${(l.commissionRate || 5.0).toFixed(1)}%</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Total Earned</span>
+              <span class="text-sm font-black text-slate-200 block tabular-nums">৳${(l.earnedCommission || 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <!-- Card Actions (Direct Cash Load prominent) -->
+          <div class="flex items-center gap-2 pt-1 font-mono text-xs">
+            <button class="leader-card-cash-load-btn flex-1 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10" data-username="${l.username}" data-balance="${l.balance || 0}" data-district="${l.district || 'Dhaka'}">
+              <i class="fa-solid fa-wallet text-sm"></i>
+              <span>Cash In (টাকা লোড)</span>
+            </button>
+            <button class="leader-card-copy-ref-btn bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 py-2.5 px-3 rounded-xl font-bold transition active:scale-95 cursor-pointer flex items-center justify-center gap-1" data-username="${l.username}" title="Copy Referral Registration Link">
+              <i class="fa-solid fa-link text-xs"></i>
+              <span class="hidden sm:inline">Ref Link</span>
+            </button>
+            <button class="leader-card-edit-btn bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 py-2.5 px-3 rounded-xl font-bold transition active:scale-95 cursor-pointer flex items-center justify-center gap-1" data-id="${l.id}" title="Edit Leader Account Settings">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Bind card action buttons
+    container.querySelectorAll(".leader-card-cash-load-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const username = btn.getAttribute("data-username");
+        const balance = parseFloat(btn.getAttribute("data-balance") || "0");
+        const district = btn.getAttribute("data-district") || "Dhaka";
+        this.openAgentCashLoadModal(username, balance, district);
+      });
+    });
+
+    container.querySelectorAll(".leader-card-copy-ref-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const username = btn.getAttribute("data-username");
+        const origin = window.location.origin;
+        const link = `${origin}/?role=agent&ref=${encodeURIComponent(username)}&comm=5.0`;
+        navigator.clipboard.writeText(link);
+        this.showToastHub(`Copied referral link for @${username}!`);
+      });
+    });
+
+    container.querySelectorAll(".leader-card-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.openUserEditModal(id);
+      });
+    });
+  },
+
+  openAgentCashLoadModal(username, currentBalance, district) {
+    const modal = document.getElementById("leader-cash-modal");
+    if (!modal) return;
+
+    const targetUserEl = document.getElementById("modal-cash-target-username");
+    const nameEl = document.getElementById("modal-cash-agent-name");
+    const distEl = document.getElementById("modal-cash-agent-district");
+    const balEl = document.getElementById("modal-cash-agent-balance");
+    const subEl = document.getElementById("modal-leader-subtitle");
+    const amtEl = document.getElementById("modal-cash-amount");
+
+    if (targetUserEl) targetUserEl.value = username;
+    if (nameEl) nameEl.innerText = `@${username}`;
+    if (distEl) distEl.innerText = district || "Dhaka";
+    if (balEl) balEl.innerText = `৳${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (subEl) subEl.innerText = `Refilling wallet purse for @${username}`;
+    if (amtEl) amtEl.value = "";
+
+    modal.classList.remove("hidden");
+  },
+
+  initAgentLeadersCashLoad() {
+    // Top Quick Cash Load Button triggers opening the modal or selects first agent
+    const topLoadBtn = document.getElementById("leader-quick-cash-load-top-btn");
+    if (topLoadBtn && !topLoadBtn.dataset.bound) {
+      topLoadBtn.dataset.bound = "true";
+      topLoadBtn.addEventListener("click", () => {
+        const select = document.getElementById("leader-cash-select-user");
+        const username = select ? select.value : "";
+        if (username) {
+          const leader = this.db.users.find(u => u.username === username);
+          this.openAgentCashLoadModal(username, leader ? (leader.balance || 0) : 0, leader ? (leader.district || "Dhaka") : "Dhaka");
+        } else {
+          this.showToastHub("No active agent leaders available to load cash!");
+        }
+      });
+    }
+
+    // Amount input in direct cash terminal updates projected balance live
+    const topAmtInput = document.getElementById("leader-cash-amount-input");
+    if (topAmtInput && !topAmtInput.dataset.bound) {
+      topAmtInput.dataset.bound = "true";
+      topAmtInput.addEventListener("input", () => {
+        this.updateLeaderCashPreview();
+      });
+    }
+
+    // Preset pills in top quick cash form
+    document.querySelectorAll(".leader-preset-pill").forEach(pill => {
+      if (!pill.dataset.bound) {
+        pill.dataset.bound = "true";
+        pill.addEventListener("click", () => {
+          const val = pill.getAttribute("data-val");
+          const input = document.getElementById("leader-cash-amount-input");
+          if (input) {
+            input.value = val;
+            this.updateLeaderCashPreview();
+          }
+        });
+      }
+    });
+
+    // Preset pills in modal
+    document.querySelectorAll(".modal-preset-btn").forEach(btn => {
+      if (!btn.dataset.bound) {
+        btn.dataset.bound = "true";
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-val");
+          const input = document.getElementById("modal-cash-amount");
+          if (input) input.value = val;
+        });
+      }
+    });
+
+    // Close modal buttons
+    const closeBtn = document.getElementById("leader-close-cash-modal-btn");
+    const cancelBtn = document.getElementById("modal-cash-cancel-btn");
+    const modal = document.getElementById("leader-cash-modal");
+
+    const closeModal = () => modal?.classList.add("hidden");
+    closeBtn && !closeBtn.dataset.bound && (closeBtn.dataset.bound = "true", closeBtn.addEventListener("click", closeModal));
+    cancelBtn && !cancelBtn.dataset.bound && (cancelBtn.dataset.bound = "true", cancelBtn.addEventListener("click", closeModal));
+
+    // Submit top quick cash load form
+    const topCashForm = document.getElementById("leader-quick-cash-form");
+    if (topCashForm && !topCashForm.dataset.bound) {
+      topCashForm.dataset.bound = "true";
+      topCashForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document.getElementById("leader-cash-select-user").value;
+        const amount = parseFloat(document.getElementById("leader-cash-amount-input").value || "0");
+
+        if (!username || amount <= 0) {
+          this.showToastHub("Please select an agent leader and enter a valid positive amount!");
+          return;
+        }
+
+        this.executeAgentCashLoad(username, amount, "Admin Quick Cash Load");
+        topCashForm.reset();
+        this.updateLeaderCashPreview();
+      });
+    }
+
+    // Submit modal cash load form
+    const modalCashForm = document.getElementById("modal-agent-cash-form");
+    if (modalCashForm && !modalCashForm.dataset.bound) {
+      modalCashForm.dataset.bound = "true";
+      modalCashForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document.getElementById("modal-cash-target-username").value;
+        const amount = parseFloat(document.getElementById("modal-cash-amount").value || "0");
+        const note = document.getElementById("modal-cash-note").value.trim() || "Admin Direct Fund Refill";
+
+        if (!username || amount <= 0) {
+          this.showToastHub("Please enter a valid positive amount!");
+          return;
+        }
+
+        this.executeAgentCashLoad(username, amount, note);
+        closeModal();
+      });
+    }
+
+    // Onboard new leader modal handlers
+    const addNewBtn = document.getElementById("leader-add-new-btn");
+    const addModal = document.getElementById("leader-add-modal");
+    const closeAddModalBtn = document.getElementById("leader-close-add-modal-btn");
+    const cancelAddModalBtn = document.getElementById("modal-add-cancel-btn");
+    const addLeaderForm = document.getElementById("modal-add-leader-form");
+
+    if (addNewBtn && !addNewBtn.dataset.bound) {
+      addNewBtn.dataset.bound = "true";
+      addNewBtn.addEventListener("click", () => {
+        if (addModal) addModal.classList.remove("hidden");
+      });
+    }
+
+    const closeAddModal = () => addModal?.classList.add("hidden");
+    if (closeAddModalBtn && !closeAddModalBtn.dataset.bound) {
+      closeAddModalBtn.dataset.bound = "true";
+      closeAddModalBtn.addEventListener("click", closeAddModal);
+    }
+    if (cancelAddModalBtn && !cancelAddModalBtn.dataset.bound) {
+      cancelAddModalBtn.dataset.bound = "true";
+      cancelAddModalBtn.addEventListener("click", closeAddModal);
+    }
+
+    if (addLeaderForm && !addLeaderForm.dataset.bound) {
+      addLeaderForm.dataset.bound = "true";
+      addLeaderForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("add-leader-username").value.trim().toLowerCase().replace(/\s+/g, "");
+        const phone = document.getElementById("add-leader-phone").value.trim();
+        const email = document.getElementById("add-leader-email").value.trim();
+        const district = document.getElementById("add-leader-district").value;
+        const commissionRate = parseFloat(document.getElementById("add-leader-commission").value || "5.0");
+        const initialBalance = parseFloat(document.getElementById("add-leader-balance").value || "5000");
+        const password = document.getElementById("add-leader-password").value;
+
+        if (!username || !phone || !email || !password) {
+          this.showToastHub("Please fill in all required fields!");
+          return;
+        }
+
+        // Check if username already exists in database
+        const exists = this.db.users.some(u => u.username.toLowerCase() === username);
+        if (exists) {
+          this.showToastHub(`Username @${username} is already taken!`);
+          return;
+        }
+
+        // Display loader state
+        const confirmBtn = document.getElementById("modal-add-confirm-btn");
+        const origBtnText = confirmBtn ? confirmBtn.innerHTML : "Register Leader";
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-sm"></i> Registering...`;
+        }
+
+        try {
+          // Since our app syncs to Firestore, let's register the user using the SyncCloudModule or directly add to our synced db
+          // Let's create an auth account via createStaffAccount if SyncCloudModule is alive
+          let uid = "agent_" + Date.now();
+          if (typeof this.createStaffAccount === "function") {
+            const res = await this.createStaffAccount({
+              username,
+              email,
+              phone,
+              district,
+              role: "agent",
+              commissionRate,
+              balance: initialBalance,
+              password,
+              status: "active",
+              earnedCommission: 0,
+              totalBookings: 0
+            });
+            if (res && res.success) {
+              uid = res.uid;
+            } else {
+              throw new Error(res.error || "Firebase account creation failed.");
+            }
+          }
+
+          // Directly push into our local database array which snapshot syncing will replicate up
+          const newAgentObj = {
+            id: uid,
+            uid: uid,
+            username: username,
+            email: email,
+            phone: phone,
+            district: district,
+            region: district,
+            role: "agent",
+            commissionRate: commissionRate,
+            balance: initialBalance,
+            earnedCommission: 0,
+            totalBookings: 0,
+            password: password,
+            status: "active",
+            createdAt: new Date().toISOString()
+          };
+
+          this.db.users.push(newAgentObj);
+
+          // Add a deposit transaction if initial balance is > 0
+          if (initialBalance > 0) {
+            if (!this.db.transactions) this.db.transactions = [];
+            this.db.transactions.push({
+              id: "tx_" + Date.now(),
+              userId: uid,
+              userName: username,
+              username: username,
+              paymentMethod: "Admin Agent Cash Load",
+              phone: phone,
+              amount: initialBalance,
+              transactionType: "Deposit",
+              status: "complete",
+              bonusAmount: 0,
+              notes: "Initial Onboarding Balance Refill",
+              date: new Date().toLocaleString("en-US", {hour12: true})
+            });
+
+            if (!this.db.agentLedger) this.db.agentLedger = [];
+            this.db.agentLedger.push({
+              id: "act_" + Date.now(),
+              agentId: uid,
+              agentUsername: username,
+              timestamp: new Date().toISOString(),
+              targetUser: username,
+              description: `Initial Onboarding Purse Balance`,
+              amount: initialBalance,
+              commission: 0,
+              status: "complete"
+            });
+          }
+
+          this.saveDB();
+          this.showToastHub(`Successfully onboarded @${username} with ৳${initialBalance} initial balance!`);
+          addLeaderForm.reset();
+          closeAddModal();
+
+          // Refresh state & views
+          this.updateAgentHubStats();
+          this.renderAgentLeadersDirectory();
+          this.renderAgentHubSelect();
+          this.renderRecentAgentCashLoads();
+          this.updateLeaderCashPreview();
+        } catch (err) {
+          this.showToastHub(`Error onboarding agent: ${err.message || err}`);
+        } finally {
+          if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = origBtnText;
+          }
+        }
+      });
+    }
+  },
+
+  executeAgentCashLoad(username, amount, note) {
+    const leader = this.db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!leader) {
+      this.showToastHub("Agent account not found!");
+      return;
+    }
+
+    leader.balance = (leader.balance || 0) + amount;
+
+    if (!this.db.transactions) this.db.transactions = [];
+    this.db.transactions.push({
+      id: "tx_" + Date.now(),
+      userId: leader.id,
+      userName: leader.username,
+      username: leader.username,
+      paymentMethod: "Admin Agent Cash Load",
+      phone: leader.phone || "Internal Desk",
+      amount: amount,
+      transactionType: "Deposit",
+      status: "complete",
+      bonusAmount: 0,
+      notes: note || "Admin Agent Cash Load",
+      date: new Date().toLocaleString("en-US", {hour12: true})
+    });
+
+    if (!this.db.agentLedger) this.db.agentLedger = [];
+    this.db.agentLedger.push({
+      id: "act_" + Date.now(),
+      agentId: leader.id,
+      agentUsername: leader.username,
+      timestamp: new Date().toISOString(),
+      targetUser: leader.username,
+      description: `Admin Cash Load Refill: ${note}`,
+      amount: amount,
+      commission: 0,
+      status: "complete"
+    });
+
+    this.saveDB();
+    this.showToastHub(`Successfully loaded ৳${amount.toLocaleString()} into @${leader.username}'s wallet!`);
+    
+    // Refresh all displays
+    this.updateAgentHubStats();
+    this.renderAgentLeadersDirectory();
+    this.renderAgentHubSelect();
+    this.renderRecentAgentCashLoads();
+    this.updateLeaderCashPreview();
+  },
+
+  renderRecentAgentCashLoads() {
+    const tbody = document.getElementById("hub-recent-cashloads-tbody");
+    if (!tbody) return;
+
+    const txs = (this.db.transactions || [])
+      .filter(tx => tx.paymentMethod === "Admin Agent Cash Load" || (tx.notes && tx.notes.includes("Admin Cash Load Refill")))
+      .slice()
+      .reverse()
+      .slice(0, 15);
+
+    if (txs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="p-6 text-center text-slate-500 font-sans italic">
+            No agent cash refills recorded yet. Use the terminal above to load funds into an agent's wallet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = txs.map(tx => {
+      const dateStr = tx.date || (tx.timestamp ? new Date(tx.timestamp).toLocaleString("en-US", {hour12: true}) : "Recent");
+      const agentUser = tx.userName || tx.username || "agent";
+      const u = this.db.users.find(user => user.username === agentUser);
+      const district = u ? (u.district || u.region || "Dhaka Zone") : "Zone";
+
+      return `
+        <tr class="hover:bg-slate-950/60 transition">
+          <td class="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">${dateStr}</td>
+          <td class="p-3">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white font-mono">@${agentUser}</span>
+              <span class="text-[9px] bg-slate-950 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-sans">${district}</span>
+            </div>
+          </td>
+          <td class="p-3 font-bold text-emerald-400 font-mono tabular-nums">+৳${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td class="p-3 text-slate-300 font-sans text-xs max-w-xs truncate">${tx.notes || "Admin Direct Fund Refill"}</td>
+          <td class="p-3 text-right">
+            <span class="text-[9.5px] font-bold uppercase font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40">COMPLETED</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
   },
 
   renderAgentHubPendingList() {
@@ -1511,57 +2135,57 @@ export const AdminModule = {
 
     pendings.forEach(p => {
       const card = document.createElement("div");
-      card.className = "bg-[#141e15] rounded-xl p-5 shadow-md border border-[#3b4b3c]/30 transition-all duration-300 hover:border-[#b2ffbe]/30";
+      card.className = "bg-slate-950/80 rounded-2xl p-5 shadow-lg border border-slate-850 hover:border-emerald-500/30 transition-all space-y-3.5";
       card.id = `hub-approval-card-${p.id}`;
 
-      const initial = p.username.substring(0, 2).toUpperCase();
+      const initial = (p.username || "A").substring(0, 2).toUpperCase();
 
       card.innerHTML = `
-        <div class="flex items-start justify-between mb-3.5">
+        <div class="flex items-start justify-between gap-3">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-[#b2ffbe]/10 border border-[#b2ffbe]/20 flex items-center justify-center text-[#b2ffbe] font-mono font-bold text-xs">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-mono font-bold text-xs shrink-0">
               ${initial}
             </div>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
-                <h3 class="text-sm font-bold text-[#dbe6d8]">@${p.username}</h3>
-                <span class="text-[9px] bg-[#b2ffbe]/20 text-[#b2ffbe] px-1.5 py-0.5 rounded font-mono font-bold uppercase tracking-wider">${p.district || p.region || "Dhaka Zone"}</span>
+                <h3 class="text-sm font-bold text-white font-mono">@${p.username}</h3>
+                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">${p.district || p.region || "Dhaka Zone"}</span>
               </div>
-              <p class="text-[11px] text-[#bacbb8] mt-0.5">Phone: ${p.phone || "N/A"} • Req ID: #${p.id}</p>
+              <p class="text-[11px] text-slate-400 font-mono mt-0.5">Phone: ${p.phone || "N/A"} • ID: #${p.id}</p>
             </div>
           </div>
-          <span class="text-[10px] bg-[#ffc77e]/10 text-[#f4bd75] px-2 py-1 rounded-md flex items-center gap-1 border border-[#f4bd75]/20 font-bold uppercase tracking-wider">
-            <span class="w-1.5 h-1.5 rounded-full bg-[#f4bd75] animate-pulse"></span>
+          <span class="text-[9px] bg-amber-950/80 text-amber-400 px-2.5 py-1 rounded-full flex items-center gap-1 border border-amber-800/40 font-mono font-bold uppercase tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
             Pending
           </span>
         </div>
 
-        <!-- Verification Asset Badges -->
-        <div class="grid grid-cols-2 gap-2 mb-3.5 bg-[#0c150e] p-3 rounded-xl border border-[#3b4b3c]/20">
-          <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="alert('Viewing Secure NID Scan Document: System Verified')">
-            <span class="material-symbols-outlined text-[#b2ffbe] text-[18px]">badge</span>
+        <!-- Verification Badges -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-850 font-mono text-xs">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-id-card text-emerald-400 text-sm"></i>
             <div>
-              <span class="text-[10.5px] text-[#dbe6d8] block font-bold">NID Verified</span>
-              <span class="text-[9px] text-[#bacbb8] font-mono">ID: ${Math.floor(100000000000 + Math.random() * 900000000000)}</span>
+              <span class="text-[10px] text-white block font-bold">NID Verified</span>
+              <span class="text-[9px] text-slate-400 block">System Verified</span>
             </div>
           </div>
-          <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="alert('Viewing Digital Trade License Document: Authorized')">
-            <span class="material-symbols-outlined text-[#adc6ff] text-[18px]">verified</span>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-certificate text-sky-400 text-sm"></i>
             <div>
-              <span class="text-[10.5px] text-[#dbe6d8] block font-bold">Trade License</span>
-              <span class="text-[9px] text-[#bacbb8] font-mono">LIC-2026-${Math.floor(100 + Math.random() * 900)}</span>
+              <span class="text-[10px] text-white block font-bold">Trade License</span>
+              <span class="text-[9px] text-slate-400 block">Authorized</span>
             </div>
           </div>
         </div>
 
         <!-- Action Buttons -->
-        <div class="flex items-center gap-2">
-          <button class="hub-decline-btn flex-1 py-2.5 rounded-xl bg-[#2d372e] text-[#ffb4ab] hover:bg-[#ffb4ab]/10 border border-[#ffb4ab]/10 text-xs font-bold flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer" data-id="${p.id}">
-            <span class="material-symbols-outlined text-[18px]">close</span>
+        <div class="flex items-center gap-2 pt-1 font-mono text-xs">
+          <button class="hub-decline-btn flex-1 py-2.5 rounded-xl bg-slate-900 text-rose-400 hover:bg-rose-950/50 border border-slate-800 hover:border-rose-800/40 font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer" data-id="${p.id}">
+            <i class="fa-solid fa-xmark"></i>
             <span>Decline</span>
           </button>
-          <button class="hub-approve-btn flex-1 py-2.5 rounded-xl bg-[#b2ffbe] text-[#003917] hover:bg-[#c2ffcb] text-xs font-bold flex items-center justify-center gap-1 shadow-sm active:scale-95 transition-all cursor-pointer" data-id="${p.id}">
-            <span class="material-symbols-outlined text-[18px]">check</span>
+          <button class="hub-approve-btn flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer" data-id="${p.id}">
+            <i class="fa-solid fa-check"></i>
             <span>Approve Agent</span>
           </button>
         </div>
@@ -1570,7 +2194,6 @@ export const AdminModule = {
       container.appendChild(card);
     });
 
-    // Event handlers inside container
     container.querySelectorAll(".hub-approve-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
@@ -2896,6 +3519,9 @@ export const AdminModule = {
     // Populate App Maintenance & Config Fields
     const maintenanceToggle = document.getElementById("sys-maintenance-toggle");
     if (maintenanceToggle) maintenanceToggle.checked = !!s.maintenanceMode;
+
+    const quickdrawToggle = document.getElementById("sys-quickdraw-toggle");
+    if (quickdrawToggle) quickdrawToggle.checked = s.quickDrawEnabled !== false;
 
     const maintenanceMsg = document.getElementById("sys-maintenance-msg");
     if (maintenanceMsg) maintenanceMsg.value = s.maintenanceMessage || "";
@@ -4537,6 +5163,143 @@ export const AdminModule = {
         this.showToast("Splash Screen settings saved & applied successfully!", "success");
         this.renderAdminSplashConfig();
       };
+    }
+  },
+
+  renderAdminCommission() {
+    const settings = this.db.settings || {};
+    const ucInput = document.getElementById("admin-setting-user-creation-comm");
+    const blInput = document.getElementById("admin-setting-balance-load-comm");
+    if (ucInput) ucInput.value = settings.agentUserCreationCommission !== undefined ? settings.agentUserCreationCommission : (settings.agentReferralBonus || 100);
+    if (blInput) blInput.value = settings.agentBalanceLoadCommission !== undefined ? settings.agentBalanceLoadCommission : 2.0;
+
+    const ledger = this.db.agentLedger || [];
+    let totalComm = 0;
+    let creationsCount = 0;
+    let totalLoadsAmount = 0;
+
+    ledger.forEach(item => {
+      totalComm += (item.commission || 0);
+      if (item.description && item.description.includes("Registration")) {
+        creationsCount += 1;
+      }
+      if (item.description && item.description.includes("Deposit")) {
+        totalLoadsAmount += (item.amount || 0);
+      }
+    });
+
+    const totEarnedEl = document.getElementById("admin-comm-total-earned");
+    const totCreationsEl = document.getElementById("admin-comm-total-creations");
+    const totLoadsEl = document.getElementById("admin-comm-total-loads");
+    const countEl = document.getElementById("admin-comm-logs-count");
+
+    if (totEarnedEl) totEarnedEl.innerText = `৳${totalComm.toFixed(2)}`;
+    if (totCreationsEl) totCreationsEl.innerText = creationsCount;
+    if (totLoadsEl) totLoadsEl.innerText = `৳${totalLoadsAmount.toFixed(2)}`;
+    if (countEl) countEl.innerText = `${ledger.length} Records`;
+
+    const tbody = document.getElementById("admin-commission-ledger-tbody");
+    if (tbody) {
+      if (ledger.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500 font-mono">No commission or activity records found yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = ledger.slice(-50).reverse().map(item => `
+          <tr class="hover:bg-slate-850/40 transition">
+            <td class="p-3 font-mono text-[11px] text-slate-400">${new Date(item.timestamp).toLocaleString()}</td>
+            <td class="p-3 font-mono text-cyan-400 font-bold">@${item.agentUsername || item.agentId}</td>
+            <td class="p-3 font-mono text-white">@${item.targetUser || "N/A"}</td>
+            <td class="p-3 font-sans text-slate-300">${item.description || "Agent Action"}</td>
+            <td class="p-3 font-mono font-bold text-amber-400">৳${(item.amount || 0).toFixed(2)}</td>
+            <td class="p-3 font-mono font-bold text-right text-emerald-400">+৳${(item.commission || 0).toFixed(2)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    const commForm = document.getElementById("admin-commission-settings-form");
+    if (commForm && !commForm.dataset.bound) {
+      commForm.dataset.bound = "true";
+      commForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const ucVal = parseFloat(document.getElementById("admin-setting-user-creation-comm").value) || 100;
+        const blVal = parseFloat(document.getElementById("admin-setting-balance-load-comm").value) || 2.0;
+
+        if (!this.db.settings) this.db.settings = {};
+        this.db.settings.agentUserCreationCommission = ucVal;
+        this.db.settings.agentReferralBonus = ucVal;
+        this.db.settings.agentBalanceLoadCommission = blVal;
+        this.saveDB();
+
+        this.showToast("Agent commission rules saved successfully!", "success");
+        this.renderAdminCommission();
+      });
+    }
+
+    const agentSelect = document.getElementById("admin-load-agent-username");
+    if (agentSelect) {
+      const agents = this.db.users.filter(u => u.role === "agent" || u.role === "subagent");
+      if (agents.length === 0) {
+        agentSelect.innerHTML = `<option value="">No agents found</option>`;
+      } else {
+        agentSelect.innerHTML = agents.map(ag => `<option value="${ag.username}">@${ag.username} (${ag.district || "Dhaka"} - Bal: ৳${(ag.balance || 0).toFixed(2)})</option>`).join("");
+      }
+    }
+
+    const loadForm = document.getElementById("admin-agent-balance-load-form");
+    if (loadForm && !loadForm.dataset.bound) {
+      loadForm.dataset.bound = "true";
+      loadForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const agentUsername = document.getElementById("admin-load-agent-username").value;
+        const loadAmount = parseFloat(document.getElementById("admin-load-agent-amount").value || "0");
+
+        if (!agentUsername || loadAmount <= 0) {
+          this.showToast("Please select a valid agent and enter a positive load amount!", "error");
+          return;
+        }
+
+        const targetAgent = this.db.users.find(u => u.username.toLowerCase() === agentUsername.toLowerCase());
+        if (!targetAgent) {
+          this.showToast("Agent account not found!", "error");
+          return;
+        }
+
+        targetAgent.balance = (targetAgent.balance || 0) + loadAmount;
+
+        if (!this.db.transactions) this.db.transactions = [];
+        this.db.transactions.push({
+          id: "tx_" + Date.now(),
+          userId: targetAgent.id,
+          userName: targetAgent.username,
+          username: targetAgent.username,
+          paymentMethod: "Admin Fund Refill",
+          phone: "Admin Direct",
+          amount: loadAmount,
+          transactionType: "Deposit",
+          status: "complete",
+          bonusAmount: 0,
+          notes: "Direct Balance Load from Admin Panel",
+          date: new Date().toLocaleString("en-US", {hour12: true})
+        });
+
+        if (!this.db.agentLedger) this.db.agentLedger = [];
+        this.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: targetAgent.id,
+          agentUsername: targetAgent.username,
+          timestamp: new Date().toISOString(),
+          targetUser: targetAgent.username,
+          description: `Admin Direct Balance Load / Purse Refill`,
+          amount: loadAmount,
+          commission: 0,
+          status: "complete"
+        });
+
+        this.saveDB();
+        this.showToast(`Successfully loaded ৳${loadAmount.toFixed(2)} into agent @${targetAgent.username}'s wallet!`, "success");
+        loadForm.reset();
+        this.renderAdminCommission();
+      });
     }
   }
 };

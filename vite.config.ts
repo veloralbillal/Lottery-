@@ -329,7 +329,7 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
 
 export default defineConfig(({ mode }) => {
   return {
-    base: mode === 'production' ? '/Lottery-/' : './',
+    base: './',
     plugins: [
       tailwindcss(),
       serveAndCopyAssetsPlugin()

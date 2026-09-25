@@ -309,26 +309,18 @@ export const UIEffectsModule = {
             }
           } catch (e) {
             console.error("Render failed during splash dismissal:", e);
-            const debugMsg = document.getElementById("debug-error-msg");
-            const debugBox = document.getElementById("debug-error-box");
-            if (debugMsg && debugBox) {
-              debugMsg.innerText = `Splash Render Fail: ${e.message}`;
-              debugBox.classList.remove("hidden");
-            }
           }
         };
 
         splashScreen.style.opacity = "0";
-        splashScreen.style.pointerEvents = "none"; // Immediately allow clicks through
+        splashScreen.style.pointerEvents = "none";
+        splashScreen.classList.add("hidden"); // Force hidden immediately
         
         safeRender();
         
-        setTimeout(() => {
-          splashScreen.classList.add("hidden");
-          safeRender();
-          // Final safety check 
-          setTimeout(safeRender, 100);
-        }, 400);
+        // Final safety check 
+        setTimeout(safeRender, 100);
+        setTimeout(safeRender, 500);
       };
 
       if (skipBtn) skipBtn.onclick = (e) => { e.stopPropagation(); dismissSplash(); };
