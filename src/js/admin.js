@@ -73,6 +73,7 @@ export const AdminModule = {
     hideViewport("admin-tab-events");
     hideViewport("admin-tab-splash");
     hideViewport("admin-tab-commission");
+    hideViewport("admin-tab-legal");
 
     // Dynamic pending reports counter
     const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
@@ -156,6 +157,10 @@ export const AdminModule = {
         this.renderSubAgentsListTab();
       } else if (this.currentAdminTab === "commission") {
         this.renderAdminCommission();
+      } else if (this.currentAdminTab === "legal") {
+        if (window.LegalPoliciesManager) {
+          window.LegalPoliciesManager.renderAdminSection(this);
+        }
       }
     } catch (err) {
       console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);

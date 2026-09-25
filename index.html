@@ -18,15 +18,22 @@
     <script>
       // Emergency Error Logger for Production
       window.addEventListener('error', function(e) {
+        const msgStr = (e && e.message) ? String(e.message).toLowerCase() : "";
+        if (e && (msgStr.includes("script error") || msgStr.includes("scripterror") || !e.filename || e.filename.indexOf('http') !== 0)) {
+          return;
+        }
         console.error('CRITICAL APP ERROR:', e.error);
         const debugBox = document.getElementById('debug-error-box');
         if (debugBox) {
           debugBox.classList.remove('hidden');
-          debugBox.innerText += "\n" + (e.error?.message || e.message || "Unknown error");
+          const errMsg = document.getElementById('debug-error-msg');
+          if (errMsg) {
+            errMsg.innerText = (e.message || "Unknown error") + " at " + (e.filename || "unknown") + ":" + (e.lineno || "0");
+          }
         }
       });
       (function() {
-        const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable"];
+        const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable", "script error", "scripterror"];
         const shouldFilter = (args) => {
           for (let i = 0; i < args.length; i++) {
             const arg = args[i];
@@ -109,7 +116,7 @@
     <!-- FontAwesome Vector Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <!-- Chart.js for data visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
     
     <!-- Styled CSS stylesheet compiled by Vite and Tailwind CSS v4 -->
     <!-- (CSS is imported via main.ts for Vite bundling) -->
@@ -779,17 +786,6 @@
           🎁 REGISTER NOW &amp; GET $50 FREE BONUS
         </div>
 
-        <!-- Header -->
-        <div class="portal-header header">
-          <div class="logo-icon secret-doorway-backdoor cursor-pointer" onclick="window.openBypass()" title="Lottery Winner">🍀</div>
-          <h1 class="brand-site-name">Lottery Winner</h1>
-          <p class="brand-site-info">PREMIUM MOBILE PLAY PORTAL</p>
-          <div class="status-bar">
-            <span class="pill pill-green cloud-sync-debug-trigger cursor-pointer" title="Database Status">● Database: <span class="cloud-sync-text">SYNCED</span></span>
-            <span class="pill">SSL 256</span>
-          </div>
-        </div>
-
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
           <button class="tab-btn active" id="signInTab" onclick="switchTab('signin')">Sign In</button>
@@ -908,6 +904,16 @@
                   </div>
                 </div>
 
+                <div class="input-group !mb-4">
+                  <label class="flex items-start gap-2.5 cursor-pointer text-[11px] text-slate-300 font-sans select-none">
+                    <input type="checkbox" id="reg-terms-checkbox" class="mt-0.5 rounded border-slate-700 bg-slate-950 text-rose-600 focus:ring-rose-500 w-4 h-4 shrink-0 cursor-pointer" required />
+                    <span class="leading-snug">
+                      I agree to the <a href="#terms" onclick="event.preventDefault(); window.LegalPoliciesManager?.renderPublicPolicy(window.appInstance || window.app, 'terms')" class="text-rose-400 hover:text-rose-300 underline font-semibold cursor-pointer">Terms & Conditions</a> and <a href="#privacy" onclick="event.preventDefault(); window.LegalPoliciesManager?.renderPublicPolicy(window.appInstance || window.app, 'privacy')" class="text-rose-400 hover:text-rose-300 underline font-semibold cursor-pointer">Privacy Policy</a>.
+                    </span>
+                  </label>
+                  <p id="reg-terms-error" class="text-[10px] text-rose-500 font-mono mt-1 hidden">You must agree to the Terms & Conditions and Privacy Policy to create an account.</p>
+                </div>
+
                 <button type="submit" class="btn-submit">CLAIM $50 &amp; REGISTER</button>
               </form>
             </div>
@@ -974,11 +980,6 @@
         </div>
       </div>
 
-      <!-- Footer system lock disclaimer -->
-      <footer class="z-10 text-center text-[10px] text-slate-600 font-mono leading-relaxed mt-4">
-        <p id="sys-auth-footer-brand">© 2026 Lottery Winner Mobile Ltd.</p>
-        <p id="sys-auth-footer-sub" class="text-slate-700 text-[9px]">Right-click, text select, and page zoom restricted for secure transaction processes.</p>
-      </footer>
     </div>
 
 
@@ -1035,7 +1036,10 @@
         <div id="tab-recovery" class="hidden space-y-6"></div>
         <div id="tab-video-bounty" class="hidden space-y-6"></div>
         <div id="tab-games" class="hidden space-y-6"></div>
+        <div id="tab-payment-success" class="hidden space-y-6"></div>
+        <div id="tab-payment-cancel" class="hidden space-y-6"></div>
       </main>
+
       <!-- Bottom System Navigation tab bar -->
       <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="home">
@@ -1138,6 +1142,10 @@
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="website">
               <span><i class="fa-solid fa-globe mr-2"></i> Website Settings</span>
+              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+            </button>
+            <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="legal">
+              <span><i class="fa-solid fa-scale-balanced text-rose-500 mr-2"></i> Legal & Policies</span>
               <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="reports">
@@ -1289,6 +1297,10 @@
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="website">
                 <span><i class="fa-solid fa-globe mr-2"></i> Website Settings</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="legal">
+                <span><i class="fa-solid fa-scale-balanced text-rose-500 mr-2"></i> Legal & Policies</span>
                 <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="reports">
@@ -4706,6 +4718,9 @@
         </div>
       </div>
 
+      <!-- ================= ADMIN TAB: LEGAL & POLICIES MANAGEMENT ================= -->
+      <div id="admin-tab-legal" class="hidden space-y-6"></div>
+
       <!-- ================= ADMIN TAB: WEBSITE BRANDING & UTILITIES ================= -->
       <div id="admin-tab-website" class="hidden space-y-6">
         <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-6 shadow-xl text-xs font-mono">
@@ -7528,8 +7543,8 @@
     </div>
 
     <!-- Google Platform APIs & Identity Services for Picker and Drive -->
-    <script src="https://apis.google.com/js/api.js"></script>
-    <script src="https://accounts.google.com/gsi/client"></script>
+    <script src="https://apis.google.com/js/api.js" crossorigin="anonymous"></script>
+    <script src="https://accounts.google.com/gsi/client" crossorigin="anonymous"></script>
 
     <!-- APP ERROR DEBUG CONSOLE -->
     <div id="debug-error-box" class="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] p-2 z-[999999] hidden font-mono break-all border-b-2 border-white shadow-2xl">
@@ -7548,11 +7563,18 @@
 
     <script>
       window.addEventListener('error', function(e) {
+        const msgStr = (e && e.message) ? String(e.message).toLowerCase() : "";
+        // Filter out generic "Script error." from browser extensions / 3P scripts
+        if (e && (msgStr.includes("script error") || msgStr.includes("scripterror") || !e.filename || e.filename.indexOf('http') !== 0)) {
+          console.warn("Ignored 3P Cross-Origin Script error to prevent extension false-alarms:", e && e.message);
+          return;
+        }
+        
         console.error("Global Error Caught:", e.error);
         const msg = document.getElementById('debug-error-msg');
         const box = document.getElementById('debug-error-box');
         if (msg && box) {
-          msg.innerText = e.message + " at " + e.filename + ":" + e.lineno;
+          msg.innerText = (e.message || "Unknown error") + " at " + (e.filename || "unknown") + ":" + (e.lineno || "0");
           box.classList.remove('hidden');
         }
         // If it's likely a splash screen related hang, show the emergency bypass after 3 seconds

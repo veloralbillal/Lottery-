@@ -37,6 +37,7 @@ import { PaymentGateways } from "./js/payment_gateways.js";
 import { AffiliateAgentSystem } from "./dashboard_tabs/affiliate_agent_system.js";
 import { WalletExtensions } from "./dashboard_tabs/wallet_extensions.js";
 import { LiveDrawRevealEngine } from "./js/liveDrawRevealEngine.js";
+import { LegalPoliciesManager } from "./js/legalPoliciesManager.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -961,6 +962,7 @@ export class StateManager {
     setInterval(() => {
       this.checkAndExecuteAutoDraws();
       this.checkLiveNotifications();
+      this.cleanupExpiredAndDrawnLotteries();
       this.checkFiveMinutesDrawAlerts();
       this.checkCartAbandonmentNotification();
       this.tickProgressiveJackpot();
@@ -1191,7 +1193,7 @@ export class StateManager {
             } else {
               if (lot.category === "Quick Draw") {
                 const actualSales = ticketsOfPool.length * lot.entryFee;
-                lot.prizeAmount = Math.round(actualSales * 0.98 * 100) / 100; // 2% platform commission, distributing 98%
+                lot.prizeAmount = actualSales; // 100% ticket price fund accumulation
               }
             if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
               const shuffle = [...ticketsOfPool];
@@ -1446,6 +1448,7 @@ export class StateManager {
 
     let notifiedRefundsRaw = localStorage.getItem("lw_notified_refunds");
     let notifiedRefunds = notifiedRefundsRaw ? JSON.parse(notifiedRefundsRaw) : [];
+    let dbUpdated = false;
     
     // Check if there's any refunded ticket whose lottery refund popup hasn't been shown yet
     for (const t of userRefundedTickets) {
@@ -1473,9 +1476,18 @@ export class StateManager {
           // Mark as shown
           notifiedRefunds.push(t.id);
           localStorage.setItem("lw_notified_refunds", StateManager.safeStringify(notifiedRefunds));
+          t.notified = true;
+          dbUpdated = true;
           break; // Show one modal at a time
         }
+      } else if (t.notified !== true) {
+        t.notified = true;
+        dbUpdated = true;
       }
+    }
+
+    if (dbUpdated) {
+      this.saveDB();
     }
   }
 
@@ -1501,6 +1513,10 @@ export class StateManager {
           NotificationEngine.trigger("Draw Completed 🔔", `Your ticket ${t.code} inside "${lotName}" was drawn. Better luck next time!`, "clover", "tab-history");
         }
         notifiedItems.push(t.id);
+        t.notified = true;
+        updatedNotified = true;
+      } else if ((t.status === "won" || t.status === "lost") && t.notified !== true) {
+        t.notified = true;
         updatedNotified = true;
       }
     });
@@ -1530,6 +1546,54 @@ export class StateManager {
 
     if (updatedNotified) {
       localStorage.setItem("lw_notified_systems", StateManager.safeStringify(notifiedItems));
+    }
+  }
+
+  cleanupExpiredAndDrawnLotteries() {
+    const now = Date.now();
+    let dbUpdated = false;
+
+    // Filter lotteries that are completed: drawn or refunded
+    // Note: We also consider active lotteries that have expired and had 0 tickets as completed
+    const completedLotteries = this.db.lotteries.filter(lot => {
+      if (lot.status === "drawn" || lot.status === "refunded") return true;
+      
+      // If active but expired
+      if (lot.status === "active") {
+        const drawTime = new Date(lot.drawTime).getTime();
+        if (now >= drawTime) {
+          const ticketsCount = this.db.tickets.filter(t => t.lotteryId === lot.id).length;
+          if (ticketsCount === 0) {
+            return true; // Expired with 0 tickets sold
+          }
+        }
+      }
+      return false;
+    });
+
+    completedLotteries.forEach(lot => {
+      // Find all tickets for this lottery
+      const lotTickets = this.db.tickets.filter(t => t.lotteryId === lot.id);
+      
+      // Check if all tickets have been notified, or if more than 12 hours have passed since drawTime
+      const drawTime = new Date(lot.drawTime).getTime();
+      const isTimeSafetyPassed = (now - drawTime) > 12 * 60 * 60 * 1000; // 12 hours safety net
+      
+      const allNotified = lotTickets.length === 0 || lotTickets.every(t => t.notified === true);
+
+      if (allNotified || isTimeSafetyPassed) {
+        // Delete the lottery
+        this.db.lotteries = this.db.lotteries.filter(l => l.id !== lot.id);
+        // Delete its tickets
+        this.db.tickets = this.db.tickets.filter(t => t.lotteryId !== lot.id);
+        dbUpdated = true;
+        console.log(`Automatically cleaned up completed lottery: ${lot.name} (${lot.id})`);
+      }
+    });
+
+    if (dbUpdated) {
+      this.saveDB();
+      this.render();
     }
   }
 
@@ -1824,6 +1888,10 @@ export class StateManager {
       this.renderTasksTab();
     } else if (this.currentTab === "games") {
       this.renderGamesTab();
+    } else if (this.currentTab === "payment-success") {
+      this.renderPaymentSuccessTab();
+    } else if (this.currentTab === "payment-cancel") {
+      this.renderPaymentCancelTab();
     }
   }
 
@@ -1943,8 +2011,8 @@ export class StateManager {
     lot.soldTickets += 1;
 
     if (lot.category === "Quick Draw") {
-      // Set the prize pool dynamically to 98% of total ticket sales (keeping 2% commission)
-      lot.prizeAmount = Math.round(lot.soldTickets * lot.entryFee * 0.98 * 100) / 100;
+      // Set the prize pool dynamically to 100% of total ticket sales (per ticket 10 taka hisabe)
+      lot.prizeAmount = lot.soldTickets * lot.entryFee;
     }
 
     // Add 100% of ticket entry fee directly to the progressive jackpot pool
@@ -2356,6 +2424,238 @@ export class StateManager {
 
   renderWalletTab() {
     WalletTab.render(this);
+  }
+
+  async renderPaymentSuccessTab() {
+    const container = document.getElementById("tab-payment-success");
+    if (!container) return;
+
+    const orderId = (this as any).activePaymentOrderId || "";
+    if (!orderId) {
+      container.innerHTML = `
+        <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-4 max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center text-3xl mx-auto">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h2 class="text-lg font-black text-white font-mono uppercase">Invalid Reference</h2>
+          <p class="text-xs text-slate-400 font-sans">No valid payment transaction reference was found in the URL parameter.</p>
+          <button onclick="app.currentTab='wallet'; app.render();" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            Back to Wallet
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = `
+      <div class="bg-slate-950 border border-slate-900 rounded-3xl p-10 text-center space-y-6 max-w-md mx-auto font-mono">
+        <div class="relative w-16 h-16 mx-auto flex items-center justify-center">
+          <div class="absolute inset-0 rounded-full border-4 border-cyan-500/10 border-t-cyan-500 animate-spin"></div>
+          <i class="fa-solid fa-shield-halved text-cyan-400 text-2xl animate-pulse"></i>
+        </div>
+        <div class="space-y-2">
+          <h2 class="text-sm font-black text-white uppercase tracking-wider">Verifying Invoice...</h2>
+          <p class="text-[11px] text-slate-500">Contacting ZiniPay API to verify your payment status. Please wait...</p>
+        </div>
+        <div class="bg-slate-900/40 border border-slate-850 p-3 rounded-xl text-left text-[10px] space-y-1.5">
+          <div class="flex justify-between"><span class="text-slate-500">Internal Reference:</span><span class="text-white font-bold select-all">${orderId}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Method:</span><span class="text-cyan-400 font-bold">ZiniPay PGW</span></div>
+        </div>
+      </div>
+    `;
+
+    try {
+      const response = await fetch("/api/zinipay/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ order_id: orderId })
+      });
+
+      const result = await response.json();
+      console.log("[ZiniPay Frontend Verify Result]", result);
+
+      if (response.ok && result && result.status === "COMPLETED") {
+        const inv = result.invoice;
+        
+        // Force refresh current user balance locally from DB when completed
+        if (this.currentUser && inv) {
+          const freshUser = this.db.users.find((u: any) => u.id === this.currentUser.id);
+          if (freshUser) {
+            this.currentUser.balance = freshUser.balance;
+            this.currentUser.totDeposit = freshUser.totDeposit;
+          }
+        }
+
+        container.innerHTML = `
+          <div class="max-w-md mx-auto space-y-6">
+            <div class="bg-slate-950 border border-slate-900 rounded-3xl p-6 text-center space-y-5 relative overflow-hidden">
+              <div class="absolute top-0 inset-x-0 h-1.5 bg-emerald-500"></div>
+              
+              <div class="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-2xl mx-auto shadow-lg shadow-emerald-500/5">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+
+              <div class="space-y-1">
+                <span class="text-[9px] text-emerald-400 font-bold tracking-widest uppercase font-mono bg-emerald-950/60 border border-emerald-900/30 py-1 px-3 rounded-full">Payment Successful</span>
+                <h2 class="text-xl font-black text-white font-mono">৳${inv.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h2>
+                <p class="text-[10px] text-slate-500">Wallet balance credited successfully.</p>
+              </div>
+
+              <!-- RECEIPT INVOICE BODY -->
+              <div id="receipt-invoice-print-area" class="bg-slate-900/40 border border-slate-850 p-4 rounded-2xl text-left font-mono space-y-3 relative">
+                <div class="border-b border-dashed border-slate-800 pb-3 flex justify-between items-center">
+                  <div>
+                    <h3 class="text-xs font-black text-white uppercase tracking-tight">Lottery Winner PGW</h3>
+                    <span class="text-[8px] text-slate-500">Wallet Deposit Invoice</span>
+                  </div>
+                  <i class="fa-solid fa-receipt text-slate-500 text-lg"></i>
+                </div>
+
+                <div class="text-[10px] space-y-2">
+                  <div class="flex justify-between"><span class="text-slate-500">ZiniPay Invoice:</span><span class="text-white font-bold select-all">${inv.invoice_id}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Transaction ID:</span><span class="text-slate-300 select-all">${inv.transaction_id}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Customer Name:</span><span class="text-slate-300">${inv.cus_name}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Customer Email:</span><span class="text-slate-300">${inv.cus_email}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Payment Gateway:</span><span class="text-cyan-400 font-bold">ZiniPay Hosted</span></div>
+                  <div class="flex justify-between border-t border-slate-850 pt-2"><span class="text-slate-500">Credited Balance:</span><span class="text-emerald-400 font-bold">+৳${inv.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Verification Status:</span><span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-lock text-[8px]"></i> VERIFIED SECURE</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span><span class="text-slate-400 text-[9px]">${new Date(inv.verified_at || inv.created_at).toLocaleString()}</span></div>
+                </div>
+              </div>
+
+              <!-- ACTION BUTTONS -->
+              <div class="grid grid-cols-2 gap-3 pt-2">
+                <button id="print-receipt-action-btn" class="py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-800">
+                  <i class="fa-solid fa-print"></i> Print Receipt
+                </button>
+                <button onclick="app.currentTab='wallet'; app.render();" class="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+                  Back to Wallet <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("print-receipt-action-btn")?.addEventListener("click", () => {
+          const printContent = document.getElementById("receipt-invoice-print-area")?.innerHTML || "";
+          const originalContent = document.body.innerHTML;
+          document.body.innerHTML = `
+            <div style="background-color: #020617; color: #f8fafc; padding: 40px; font-family: monospace; max-width: 500px; margin: 0 auto; border: 1px solid #1e293b; border-radius: 12px;">
+              ${printContent}
+            </div>
+          `;
+          window.print();
+          window.location.reload();
+        });
+
+      } else if (response.ok && result && result.status === "FAILED") {
+        container.innerHTML = `
+          <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-5 max-w-md mx-auto font-mono">
+            <div class="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center text-2xl mx-auto">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </div>
+            <div class="space-y-1">
+              <span class="text-[9px] text-rose-500 font-bold tracking-widest uppercase bg-rose-950/60 border border-rose-900/30 py-1 px-3 rounded-full">Payment Failed</span>
+              <h2 class="text-lg font-black text-white">Transaction Failed</h2>
+              <p class="text-xs text-slate-500">The checkout invoice has failed or was manually cancelled by the user.</p>
+            </div>
+            <div class="bg-slate-900/40 border border-slate-850 p-4 rounded-xl text-left text-[10.5px] space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">Reference:</span><span class="text-slate-300 font-bold">${orderId}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Status:</span><span class="text-rose-400 font-bold">FAILED</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">Charge Amount:</span><span class="text-slate-300">৳${result.invoice?.amount || "0.00"}</span></div>
+            </div>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+              <button onclick="app.currentTab='deposit'; app.render();" class="py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+                Retry Payment
+              </button>
+              <button onclick="app.currentTab='wallet'; app.render();" class="py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-800">
+                Back to Wallet
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        container.innerHTML = `
+          <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-5 max-w-md mx-auto font-mono">
+            <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center text-2xl mx-auto animate-pulse">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+            <div class="space-y-1">
+              <span class="text-[9px] text-amber-400 font-bold tracking-widest uppercase bg-amber-950/60 border border-amber-900/30 py-1 px-3 rounded-full">Payment Pending</span>
+              <h2 class="text-lg font-black text-white">Verification Pending</h2>
+              <p class="text-xs text-slate-500">We haven't received a confirmation from ZiniPay yet. If you have completed the checkout, try rechecking.</p>
+            </div>
+            <div class="bg-slate-900/40 border border-slate-850 p-4 rounded-xl text-left text-[10.5px] space-y-2">
+              <div class="flex justify-between"><span class="text-slate-500">Reference:</span><span class="text-slate-300 font-bold">${orderId}</span></div>
+              <div class="flex justify-between"><span class="text-slate-500">ZiniPay Status:</span><span class="text-amber-400 font-bold">PENDING</span></div>
+            </div>
+            <div class="space-y-3 pt-2">
+              <button id="recheck-status-btn" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+                <i class="fa-solid fa-arrows-rotate animate-spin"></i> Check Payment Status
+              </button>
+              <button onclick="app.currentTab='wallet'; app.render();" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-800">
+                Back to Wallet
+              </button>
+            </div>
+          </div>
+        `;
+
+        document.getElementById("recheck-status-btn")?.addEventListener("click", () => {
+          this.renderPaymentSuccessTab();
+        });
+      }
+    } catch (err: any) {
+      console.error(err);
+      container.innerHTML = `
+        <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-4 max-w-md mx-auto">
+          <div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center text-3xl mx-auto">
+            <i class="fa-solid fa-circle-xmark"></i>
+          </div>
+          <h2 class="text-lg font-black text-white font-mono uppercase">Verification Error</h2>
+          <p class="text-xs text-slate-400 font-sans">An error occurred while establishing a secure connection to the verification server. Please try again in a few moments.</p>
+          <div class="pt-2 flex gap-3">
+            <button onclick="app.renderPaymentSuccessTab();" class="flex-1 py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+              Retry Connection
+            </button>
+            <button onclick="app.currentTab='wallet'; app.render();" class="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-800">
+              Back to Wallet
+            </button>
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  renderPaymentCancelTab() {
+    const container = document.getElementById("tab-payment-cancel");
+    if (!container) return;
+
+    const orderId = (this as any).activePaymentOrderId || "";
+
+    container.innerHTML = `
+      <div class="bg-slate-950 border border-slate-900 rounded-3xl p-10 text-center space-y-5 max-w-md mx-auto font-mono">
+        <div class="w-14 h-14 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center text-2xl mx-auto shadow-lg shadow-rose-500/5">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </div>
+        <div class="space-y-1">
+          <span class="text-[9px] text-rose-400 font-bold tracking-widest uppercase bg-rose-950/60 border border-rose-900/30 py-1 px-3 rounded-full">Payment Cancelled</span>
+          <h2 class="text-lg font-black text-white font-mono">Payment Cancelled</h2>
+          <p class="text-xs text-slate-400 font-sans">You have manually cancelled the checkout process. No charges were made, and no money was credited to your wallet balance.</p>
+        </div>
+        <div class="bg-slate-900/40 border border-slate-850 p-4 rounded-xl text-left text-[10.5px] space-y-2">
+          <div class="flex justify-between"><span class="text-slate-500">Internal Reference:</span><span class="text-slate-300 font-bold">${orderId || "N/A"}</span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Method:</span><span class="text-slate-300">ZiniPay Hosted API</span></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3 pt-2">
+          <button onclick="app.currentTab='deposit'; app.render();" class="py-3 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-bold rounded-xl text-xs transition cursor-pointer">
+            Try Again
+          </button>
+          <button onclick="app.currentTab='wallet'; app.render();" class="py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-800">
+            Back to Wallet
+          </button>
+        </div>
+      </div>
+    `;
   }
 
   updateSelectedDepositGatewayInstructions() {
@@ -3812,6 +4112,24 @@ function initApplicationLoader() {
   AffiliateAgentSystem.init(app);
   WalletExtensions.init(app);
   PaymentGateways.init(app);
+  
+  // Legal & Policy Management System Initialization & Routing
+  LegalPoliciesManager.initLegalState(app);
+  (window as any).LegalPoliciesManager = LegalPoliciesManager;
+
+  const checkLegalRoute = () => {
+    const hash = window.location.hash ? window.location.hash.replace(/^#/, "").trim().toLowerCase() : "";
+    const validPolicies = ["terms", "privacy", "refund-policy", "disclaimer", "contact-support", "legal"];
+    if (validPolicies.includes(hash)) {
+      const targetKey = hash === "legal" ? "terms" : hash;
+      LegalPoliciesManager.renderPublicPolicy(app, targetKey);
+      return true;
+    }
+    return false;
+  };
+
+  window.addEventListener("hashchange", checkLegalRoute);
+  checkLegalRoute();
 
   // Global deposit handlers
   (window as any).setDepositAmount = (window as any).setAmount = function(val: number) {
@@ -4163,6 +4481,28 @@ function initApplicationLoader() {
     }
   }
 
+  // ZiniPay callback routing on boot
+  const pathname = window.location.pathname;
+  const orderIdParam = urlParams.get("order_id") || urlParams.get("invoice_id") || urlParams.get("trxId");
+  const paymentStatus = urlParams.get("payment_status");
+
+  if (pathname === "/payment/success" || paymentStatus === "success" || (urlParams.get("gateway") === "zinipay" && orderIdParam)) {
+    if (orderIdParam) {
+      app.currentTab = "payment-success";
+      (app as any).activePaymentOrderId = orderIdParam;
+      app.render();
+      // Clean up search params so refresh works cleanly without re-triggering redirect tab logic
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  } else if (pathname === "/payment/cancel" || paymentStatus === "cancelled" || paymentStatus === "failed") {
+    app.currentTab = "payment-cancel";
+    if (orderIdParam) {
+      (app as any).activePaymentOrderId = orderIdParam;
+    }
+    app.render();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+
   // Instant Search Engine inside Community Space
   const commSearchInput = document.getElementById("community-search-input");
   if (commSearchInput) {
@@ -4491,6 +4831,15 @@ function initApplicationLoader() {
 
   // 1-Click Fast Registration
   (window as any).handleOneClickReg = async () => {
+    const termsCheckbox = document.getElementById("reg-terms-checkbox") as HTMLInputElement | null;
+    const termsError = document.getElementById("reg-terms-error");
+    if (!termsCheckbox || !termsCheckbox.checked) {
+      if (termsError) termsError.classList.remove("hidden");
+      app.showToast("You must agree to the Terms & Conditions and Privacy Policy to create an account.", "error");
+      return;
+    }
+    if (termsError) termsError.classList.add("hidden");
+
     const autoUser = 'winner_' + Math.floor(100000 + Math.random() * 900000);
     const autoPass = Math.random().toString(36).slice(-8);
 
@@ -4498,6 +4847,12 @@ function initApplicationLoader() {
     const genPassEl = document.getElementById("genPass");
     if (genUserEl) genUserEl.innerText = autoUser;
     if (genPassEl) genPassEl.innerText = autoPass;
+
+    const getVer = (key: string) => {
+      const pages = app.db?.legalPages || [];
+      const p = pages.find((x: any) => x.page_key === key && x.status === "PUBLISHED");
+      return p ? String(p.version || 1) + ".0" : "1.0";
+    };
 
     const welcomeBonus = 50;
     const clientIp = await app.getClientIP();
@@ -4524,7 +4879,12 @@ function initApplicationLoader() {
       referredUsers: [],
       rewardedMilestones: [],
       role: "player",
-      referredBy: null
+      referredBy: null,
+      termsAccepted: true,
+      privacyAccepted: true,
+      termsVersion: getVer("terms"),
+      privacyVersion: getVer("privacy"),
+      acceptedAt: new Date().toISOString()
     };
 
     app.db.users.push(newUser);
@@ -4914,6 +5274,15 @@ function initApplicationLoader() {
     registerForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       try {
+        const termsCheckbox = document.getElementById("reg-terms-checkbox") as HTMLInputElement | null;
+        const termsError = document.getElementById("reg-terms-error");
+        if (!termsCheckbox || !termsCheckbox.checked) {
+          if (termsError) termsError.classList.remove("hidden");
+          app.showToast("You must agree to the Terms & Conditions and Privacy Policy to create an account.", "error");
+          return;
+        }
+        if (termsError) termsError.classList.add("hidden");
+
         const regAnsEl = document.getElementById("regAnswer") as HTMLInputElement | null;
         if (regAnsEl && !validateRegCaptcha()) {
           app.showToast("Security Math Captcha incorrect! Please check the math answer.", "error");
@@ -5068,7 +5437,20 @@ function initApplicationLoader() {
           profit: 0,
           role: isAgentApplyMode ? "agent" : "player",
           status: isAgentApplyMode ? "pending_approval" : "active",
-          joinDate: new Date().toISOString().split("T")[0]
+          joinDate: new Date().toISOString().split("T")[0],
+          termsAccepted: true,
+          privacyAccepted: true,
+          termsVersion: (() => {
+            const pages = app.db?.legalPages || [];
+            const p = pages.find((x: any) => x.page_key === "terms" && x.status === "PUBLISHED");
+            return p ? String(p.version || 1) + ".0" : "1.0";
+          })(),
+          privacyVersion: (() => {
+            const pages = app.db?.legalPages || [];
+            const p = pages.find((x: any) => x.page_key === "privacy" && x.status === "PUBLISHED");
+            return p ? String(p.version || 1) + ".0" : "1.0";
+          })(),
+          acceptedAt: new Date().toISOString()
         };
 
         app.showToast("Creating your secure account...", "info");

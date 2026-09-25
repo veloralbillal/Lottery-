@@ -211,7 +211,7 @@ export class WalletExtensions {
       .then(data => {
         if (data && typeof data === 'object') {
           if (!appInstance.db) appInstance.db = {};
-          appInstance.db.settings = { ...(appInstance.db.settings || {}), ...data };
+          appInstance.db.settings = { ...data, ...(appInstance.db.settings || {}) };
         }
         WalletExtensions.applyGatewaySync(appInstance);
       })

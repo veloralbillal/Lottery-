@@ -1001,10 +1001,14 @@ export class PaymentGateways {
       const data = await response.json().catch(() => null);
       console.log("[ZiniPay Checkout Response]", data);
 
-      const targetUrl = (data && (data.payment_url || data.fallback_url)) 
-        || `https://zinipay.com/pay/${this.activeZiniPayInvoiceId}?amount=${bdtAmount}&currency=BDT`;
+      if (!data || !data.status || !data.payment_url) {
+        const errorMsg = data?.message || "Invalid response structure or payment URL missing from ZiniPay API.";
+        throw new Error(errorMsg);
+      }
+
+      const targetUrl = data.payment_url;
       
-      if (data && data.invoice_id) {
+      if (data.invoice_id) {
         this.activeZiniPayInvoiceId = data.invoice_id;
         if (invEl) invEl.innerText = data.invoice_id;
       }
@@ -1040,21 +1044,26 @@ export class PaymentGateways {
         }
       }, 500);
 
-    } catch (err) {
+    } catch (err: any) {
       console.error("[ZiniPay Error]", err);
-      const fallbackUrl = `https://zinipay.com/pay/${this.activeZiniPayInvoiceId}?amount=${bdtAmount}&currency=BDT`;
-      if (redirectBtn) {
-        redirectBtn.href = fallbackUrl;
-        redirectBtn.target = "_blank";
+      if (statusHeading) statusHeading.innerText = "Payment Gateway Offline";
+      if (statusText) statusText.innerText = err.message || "Unable to establish secure connection with ZiniPay payment server. Please try again.";
+      if (app.showToast) {
+        app.showToast(err.message || "Failed to generate ZiniPay checkout. Please try again.", "error");
       }
+      // Ensure the redirect button doesn't point to a broken 404 URL
+      if (redirectBtn) {
+        redirectBtn.href = "#";
+        redirectBtn.target = "";
+        redirectBtn.onclick = (e) => {
+          e.preventDefault();
+          if (app.showToast) app.showToast("Cannot proceed without a valid checkout session.", "error");
+        };
+      }
+      // Still show the modal to let them close it cleanly
       if (modal) {
         modal.classList.remove("hidden");
         modal.classList.add("flex");
-      }
-      try {
-        window.open(fallbackUrl, "_blank") || (window.location.href = fallbackUrl);
-      } catch (e) {
-        window.location.href = fallbackUrl;
       }
     }
 
@@ -1104,64 +1113,69 @@ export class PaymentGateways {
     }
   }
 
-  static processZiniPay() {
+  static async processZiniPay() {
     const app = this.getApp();
-    if (!app?.currentUser || !this.activeZiniPayAmount) return;
+    if (!app?.currentUser) return;
 
-    const inputEl = document.getElementById("zinipay-account-input") as HTMLInputElement;
-    const accountVal = inputEl ? inputEl.value.trim() : "01700000000";
-
-    const btn = document.getElementById("zinipay-confirm-pay-btn");
-    const verifyBtn = document.getElementById("zinipay-verify-payment-btn");
-    if (btn) {
-      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Verifying with ZiniPay Gateway...`;
-      (btn as HTMLButtonElement).disabled = true;
+    const invoiceId = this.activeZiniPayInvoiceId;
+    if (!invoiceId) {
+      if (app.showToast) app.showToast("No active ZiniPay invoice reference found.", "error");
+      return;
     }
+
+    const verifyBtn = document.getElementById("zinipay-verify-payment-btn");
+    const confirmBtn = document.getElementById("zinipay-confirm-pay-btn");
     if (verifyBtn) {
-      verifyBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Checking ZiniPay Status...`;
+      verifyBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> Verifying Invoice...`;
       (verifyBtn as HTMLButtonElement).disabled = true;
     }
+    if (confirmBtn) {
+      (confirmBtn as HTMLButtonElement).disabled = true;
+    }
 
-    setTimeout(() => {
-      // Generate successful transaction
-      const depositAmount = this.activeZiniPayAmount;
-      const channelName = this.activeZiniPayChannel.toUpperCase();
-      const trxId = "ZP" + Math.floor(100000 + Math.random() * 900000) + "TX";
+    try {
+      const response = await fetch("/api/zinipay/verify-payment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoice_id: invoiceId })
+      });
 
-      // 1. Credit User Balance
-      app.currentUser.balance = Number(((app.currentUser.balance || 0) + depositAmount).toFixed(2));
+      const result = await response.json();
+      console.log("[ZiniPay Modal Verify Result]", result);
 
-      // 2. Add approved deposit entry
-      const newDep = {
-        id: "dep" + Date.now(),
-        userId: app.currentUser.id,
-        username: app.currentUser.username,
-        amount: depositAmount,
-        method: `ZiniPay (${channelName})`,
-        gateway: "ZiniPay",
-        trxId: trxId,
-        date: new Date().toISOString(),
-        status: "approved",
-        notes: `ZiniPay Auto-Verified instant deposit (${this.activeZiniPayInvoiceId})`
-      };
-
-      if (!app.db.deposits) app.db.deposits = [];
-      app.db.deposits.unshift(newDep);
-
-      const userInDb = app.db.users.find((u: any) => u.id === app.currentUser.id);
-      if (userInDb) {
-        userInDb.balance = app.currentUser.balance;
+      if (response.ok && result && result.status === "COMPLETED") {
+        if (app.showToast) {
+          app.showToast(`⚡ ZiniPay: ৳${result.invoice.amount} credited successfully!`, "success");
+        }
+        
+        // Refresh local user's balance and reload
+        await app.syncCloud?.loadFromCloud?.();
+        this.closeZiniPayModal();
+        app.currentTab = "wallet";
+        app.render();
+      } else {
+        if (app.showToast) {
+          app.showToast("Payment is still pending or not completed yet. Please complete it on the checkout page.", "warning");
+        }
+        if (verifyBtn) {
+          verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check text-cyan-400"></i> I Have Paid / Check Status`;
+          (verifyBtn as HTMLButtonElement).disabled = false;
+        }
+        if (confirmBtn) {
+          (confirmBtn as HTMLButtonElement).disabled = false;
+        }
       }
-
-      app.saveDB();
-      app.render();
-
-      if (app.showToast) {
-        app.showToast(`⚡ ZiniPay: ৳${depositAmount.toLocaleString()} credited successfully via ${channelName}!`, "success");
+    } catch (err: any) {
+      console.error(err);
+      if (app.showToast) app.showToast("Connection to payment server failed. Please try again.", "error");
+      if (verifyBtn) {
+        verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check text-cyan-400"></i> I Have Paid / Check Status`;
+        (verifyBtn as HTMLButtonElement).disabled = false;
       }
-
-      this.closeZiniPayModal();
-    }, 1600);
+      if (confirmBtn) {
+        (confirmBtn as HTMLButtonElement).disabled = false;
+      }
+    }
   }
 
   static closeZiniPayModal() {

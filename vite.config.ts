@@ -209,6 +209,107 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
           return;
         }
 
+        if (req.url && req.url.startsWith('/api/zinipay/create-checkout')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', async () => {
+              try {
+                const parsedBody = JSON.parse(body || '{}');
+                const expressRes = {
+                  status(code: number) {
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data: any) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                  }
+                };
+                const { handleZiniPayCheckout } = await import('./src/js/apiZiniPay.js');
+                await handleZiniPayCheckout({ 
+                  body: parsedBody, 
+                  protocol: req.headers['x-forwarded-proto'] || 'http', 
+                  get: (h: string) => req.headers[h] || 'localhost:3000' 
+                } as any, expressRes);
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ status: false, message: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
+        if (req.url && req.url.startsWith('/api/zinipay/verify-payment')) {
+          if (req.method === 'POST') {
+            let body = '';
+            req.on('data', chunk => {
+              body += chunk.toString();
+            });
+            req.on('end', async () => {
+              try {
+                const parsedBody = JSON.parse(body || '{}');
+                const expressRes = {
+                  status(code: number) {
+                    res.statusCode = code;
+                    return this;
+                  },
+                  json(data: any) {
+                    res.setHeader('Content-Type', 'application/json');
+                    res.end(JSON.stringify(data));
+                  }
+                };
+                const { handleZiniPayVerify } = await import('./src/js/apiZiniPay.js');
+                await handleZiniPayVerify({ body: parsedBody } as any, expressRes);
+              } catch (e: any) {
+                res.statusCode = 500;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ status: false, message: e.message }));
+              }
+            });
+            return;
+          }
+        }
+
+        if (req.url && req.url.startsWith('/api/zinipay/webhook')) {
+          let body = '';
+          req.on('data', chunk => {
+            body += chunk.toString();
+          });
+          req.on('end', async () => {
+            try {
+              const queryParams = new URLSearchParams(req.url?.split('?')[1] || '');
+              const queryObj: any = {};
+              queryParams.forEach((value, key) => {
+                queryObj[key] = value;
+              });
+
+              const parsedBody = JSON.parse(body || '{}');
+              const expressRes = {
+                status(code: number) {
+                  res.statusCode = code;
+                  return this;
+                },
+                json(data: any) {
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(data));
+                }
+              };
+              const { handleZiniPayWebhook } = await import('./src/js/apiZiniPay.js');
+              await handleZiniPayWebhook({ body: parsedBody, query: queryObj, method: req.method } as any, expressRes);
+            } catch (e: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ status: false, message: e.message }));
+            }
+          });
+          return;
+        }
+
         if (req.url && (req.url.startsWith('/api_settings.php') || req.url.startsWith('/api/settings'))) {
           res.setHeader('Content-Type', 'application/json');
           res.setHeader('Cache-Control', 'no-cache');

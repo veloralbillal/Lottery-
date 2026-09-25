@@ -20,272 +20,374 @@
   </div>
 
   <!-- ================= SUB-TAB 0: LOBBY (Dashboard showing all games) ================= -->
-  <div id="game-lobby-panel" class="space-y-4">
+  <div id="game-lobby-panel" class="space-y-6">
     <!-- Promotional Banner -->
-    <div class="bg-gradient-to-r from-amber-950/40 via-purple-950/30 to-slate-950 border border-amber-500/30 p-4.5 rounded-3xl relative overflow-hidden shadow-xl shadow-amber-500/5">
+    <div class="bg-gradient-to-r from-amber-500/10 via-purple-600/10 to-slate-950 border border-amber-500/20 p-5 rounded-3xl relative overflow-hidden shadow-xl shadow-amber-500/5">
       <div class="absolute -right-10 -top-10 w-32 h-32 bg-amber-500/15 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="relative z-10 flex items-center justify-between">
-        <div class="space-y-1 max-w-[240px]">
-          <span class="text-[8px] bg-amber-500/15 border border-amber-500/40 text-amber-300 font-bold px-2 py-0.5 rounded-full uppercase tracking-widest font-mono">PROVEN FAIR & INSTANT PAYOUTS</span>
-          <h2 class="text-sm font-black text-white tracking-tight">Select Game & Win Live Cash!</h2>
-          <p class="text-[9.5px] text-slate-300 leading-normal font-sans">Multiply wallet rewards up to 100x with provably fair RNG algorithms and zero latency!</p>
+      <div class="relative z-10 flex items-center justify-between gap-4">
+        <div class="space-y-1.5 max-w-md">
+          <span class="text-[8.5px] bg-amber-500/15 border border-amber-500/30 text-amber-300 font-bold px-3 py-0.5 rounded-full uppercase tracking-wider font-mono">Provably Fair & Instant Payouts</span>
+          <h2 class="text-base sm:text-lg font-black text-white tracking-tight">ভিআইপি ক্যাসিও গেমস লাউঞ্জ 🎰</h2>
+          <p class="text-[10px] text-slate-300 leading-relaxed font-sans">Multiply wallet rewards up to 100x with provably fair RNG algorithms, instant balances updates, and zero payment processing delay!</p>
         </div>
-        <div class="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 items-center justify-center text-slate-950 text-2xl shadow-lg shadow-amber-500/20">
-          <i class="fa-solid fa-trophy"></i>
+        <div class="hidden sm:flex w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 items-center justify-center text-slate-950 text-2xl shadow-lg shadow-amber-500/20 shrink-0">
+          <i class="fa-solid fa-gamepad animate-pulse"></i>
         </div>
       </div>
     </div>
 
-    <!-- Games Bento Grid -->
-    <div class="grid grid-cols-2 gap-3">
-      <!-- Coin Flip Game Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-purple-950/40 via-slate-900 to-slate-950 border border-purple-500/20 hover:border-purple-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-purple-500/10 group" data-subtab="coinflip">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-coins text-purple-300 text-sm"></i>
-            </div>
-            <span class="text-[7px] bg-purple-500/15 border border-purple-500/30 text-purple-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">2x Instant</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-purple-300 transition">Coin Flip</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">Flip coin heads or tails for instant 2.0x win payouts!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-purple-400 font-mono mt-3 flex items-center gap-1 group-hover:text-purple-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- High-Low Card Game Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-indigo-950/40 via-slate-900 to-slate-950 border border-indigo-500/20 hover:border-indigo-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-indigo-500/10 group" data-subtab="highlow">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-arrow-up-9-1 text-indigo-300 text-sm"></i>
-            </div>
-            <span class="text-[7px] bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">Multiplier</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-indigo-300 transition">High-Low Card</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">Predict if the next card drawn is higher or lower!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-indigo-400 font-mono mt-3 flex items-center gap-1 group-hover:text-indigo-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- Quick Draw Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-950 border border-rose-500/20 hover:border-rose-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-rose-500/10 group" data-subtab="quickdraw">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-bolt text-rose-300 text-sm animate-pulse"></i>
-            </div>
-            <span class="text-[7px] bg-rose-500/15 border border-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">60s Speed</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-rose-300 transition">Quick Draw</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">1-minute automatic draw pools with instant auto-payouts!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-rose-400 font-mono mt-3 flex items-center gap-1 group-hover:text-rose-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- Group Syndicate Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-950 border border-emerald-500/20 hover:border-emerald-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-emerald-500/10 group" data-subtab="syndicate">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-users text-emerald-300 text-sm"></i>
-            </div>
-            <span class="text-[7px] bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">Pool Share</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-emerald-300 transition">Group Syndicate</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">Buy syndicate shares with friends & split jackpot prize pools!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-emerald-400 font-mono mt-3 flex items-center gap-1 group-hover:text-emerald-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- Mines Game Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-950 border border-rose-500/20 hover:border-rose-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-rose-500/10 group" data-subtab="mines">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-bomb text-rose-300 text-sm"></i>
-            </div>
-            <span class="text-[7px] bg-rose-500/15 border border-rose-500/30 text-rose-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">Hot 🔥</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-rose-300 transition">Mines Sweeper</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">Pick safe gems, boost multiplier, and cash out anytime!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-rose-400 font-mono mt-3 flex items-center gap-1 group-hover:text-rose-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- Dice Roll Game Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-teal-950/40 via-slate-900 to-slate-950 border border-teal-500/20 hover:border-teal-400/50 rounded-2.5xl text-left transition duration-200 hover:scale-[1.02] active:scale-95 shadow-lg hover:shadow-teal-500/10 group" data-subtab="dice">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-8 h-8 rounded-xl bg-teal-500/15 border border-teal-500/30 flex items-center justify-center group-hover:scale-110 transition shadow-md">
-              <i class="fa-solid fa-dice text-teal-300 text-sm"></i>
-            </div>
-            <span class="text-[7px] bg-teal-500/15 border border-teal-500/30 text-teal-300 font-extrabold px-2 py-0.5 rounded-full uppercase font-mono tracking-wider">Hot 🔥</span>
-          </div>
-          <h3 class="text-xs font-black text-white font-mono mt-1 group-hover:text-teal-300 transition">Dice Roll</h3>
-          <p class="text-[8.5px] text-slate-400 leading-relaxed font-sans">Roll Under/Over custom targets for up to 95x return!</p>
-        </div>
-        <span class="text-[9px] font-extrabold text-teal-400 font-mono mt-3 flex items-center gap-1 group-hover:text-teal-200">Play Live <i class="fa-solid fa-chevron-right text-[7px] group-hover:translate-x-1 transition"></i></span>
-      </button>
-
-      <!-- Heading/Separator for Extra Premium Arcade -->
-      <div class="col-span-2 pt-3 pb-1">
-        <div class="flex items-center gap-2">
-          <div class="h-[1px] bg-gradient-to-r from-purple-500/30 to-transparent flex-1"></div>
-          <span class="text-[8px] bg-purple-500/10 border border-purple-500/20 text-purple-400 font-extrabold px-2.5 py-1 rounded-full uppercase tracking-widest font-mono">🔥 Premium Live Arcade (New 10 Games)</span>
-          <div class="h-[1px] bg-gradient-to-l from-purple-500/30 to-transparent flex-1"></div>
-        </div>
+    <!-- 1. VIP Premium Games Section -->
+    <div class="space-y-3.5">
+      <div class="flex items-center justify-between border-b border-slate-800/60 pb-2">
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span>
+          <span>🔥 VIP Premium Games (ভিআইপি প্রিমিয়াম গেমস)</span>
+        </h3>
+        <span class="text-[9px] text-slate-500 font-mono">Popular Pick</span>
       </div>
 
-      <!-- 1. Rocket Fly (Crash) Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-purple-955/20 via-slate-900 to-slate-950 border border-purple-500/10 hover:border-purple-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="crash">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-rocket text-purple-400 text-xs"></i>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        
+        <!-- Coin Flip Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#0c0f1d] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-purple-500/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="coinflip">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-purple-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-500 via-fuchsia-400 to-pink-300 text-purple-950 flex items-center justify-center shadow-lg shadow-purple-500/20 border border-purple-200/40 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-coins text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-purple-400 font-black uppercase tracking-wider block">MULTIPLIER GAME</span>
+                <h4 class="text-xs font-black text-white group-hover:text-purple-300 transition">কয়েন ফ্লিপ (Coin Flip Pro)</h4>
+              </div>
             </div>
-            <span class="text-[6.5px] bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Crash x100</span>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-purple-500/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-purple-300/80 font-mono font-bold uppercase tracking-widest block leading-none">গুণক</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">2.0x</span>
+            </div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Rocket Fly (Crash)</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Cash out your growing multiplier before the rocket explodes!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-purple-400 font-mono mt-3 flex items-center gap-1 group-hover:text-purple-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 2. Plinko Ball Drop Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-amber-955/20 via-slate-900 to-slate-950 border border-amber-500/10 hover:border-amber-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="plinko">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-circle-nodes text-amber-400 text-xs"></i>
-            </div>
-            <span class="text-[6.5px] bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Multi-Pockets</span>
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Plinko Ball Drop</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Bounce balls through pins down to giant multiplier pockets!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-amber-400 font-mono mt-3 flex items-center gap-1 group-hover:text-amber-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 3. Football Shootout Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-emerald-955/20 via-slate-900 to-slate-950 border border-emerald-500/10 hover:border-emerald-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="penalty">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-futbol text-emerald-400 text-xs"></i>
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">হেডস বা টেইলস সিলেক্ট করে আপনার ব্যালেন্স দ্বিগুণ করুন তাৎক্ষণিকভাবে।</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>Provably Fair RNG</span>
+              <span class="text-purple-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse"></span> Instant Double Up
+              </span>
             </div>
-            <span class="text-[6.5px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Vs Keeper</span>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Penalty Shootout</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Kick penalties, beat the goalie, and compile continuous wins!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-emerald-400 font-mono mt-3 flex items-center gap-1 group-hover:text-emerald-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
+        </button>
 
-      <!-- 4. Tower Climb (Legend) Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-cyan-955/20 via-slate-900 to-slate-950 border border-cyan-500/10 hover:border-cyan-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="tower">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-chess-rook text-cyan-400 text-xs"></i>
+        <!-- Mines Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#1c0f10] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-orange-500/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="mines">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-orange-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-orange-500/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-red-600 via-orange-500 to-amber-400 text-red-950 flex items-center justify-center shadow-lg shadow-red-500/20 border border-red-400/40 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-bomb text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-orange-400 font-black uppercase tracking-wider block">HIGH STAKES</span>
+                <h4 class="text-xs font-black text-white group-hover:text-orange-300 transition">মাইন্স গেম (Mines Sweeper)</h4>
+              </div>
             </div>
-            <span class="text-[6.5px] bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Safe Path</span>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-orange-500/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-orange-300/80 font-mono font-bold uppercase tracking-widest block leading-none">গুণক</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">x50+</span>
+            </div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Tower Legend</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Climb tower levels row-by-row, avoiding tiles containing hidden traps!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-cyan-400 font-mono mt-3 flex items-center gap-1 group-hover:text-cyan-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 5. Wheel of Fortune Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-rose-955/20 via-slate-900 to-slate-950 border border-rose-500/10 hover:border-rose-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="wheel">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-spinner text-rose-400 text-xs"></i>
-            </div>
-            <span class="text-[6.5px] bg-rose-500/10 border border-rose-500/20 text-rose-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Spin Wheel</span>
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Wheel of Fortune</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Select low or high risk segments, spin the neon wheel & win big!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-rose-400 font-mono mt-3 flex items-center gap-1 group-hover:text-rose-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 6. Super Match Keno Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-indigo-955/20 via-slate-900 to-slate-950 border border-indigo-500/10 hover:border-indigo-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="keno">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-table-cells-large text-indigo-400 text-xs"></i>
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">বোমা এড়িয়ে মাটির নিচ থেকে হীরার টুকরো খুঁজে বের করুন এবং প্রাইজ বাড়ান।</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>95% Win rate</span>
+              <span class="text-orange-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> Diamond Multipliers
+              </span>
             </div>
-            <span class="text-[6.5px] bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Lucky Draw</span>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Super Match Keno</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Pick lucky numbers out of a grid of ten, draw, and match to win!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-indigo-400 font-mono mt-3 flex items-center gap-1 group-hover:text-indigo-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
+        </button>
 
-      <!-- 7. Cricket Sixer Hit Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-teal-955/20 via-slate-900 to-slate-950 border border-teal-500/10 hover:border-teal-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="cricket">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-teal-500/10 border border-teal-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-baseball-bat-ball text-teal-400 text-xs"></i>
+        <!-- Crash Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#12071d] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-fuchsia-500/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="crash">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-fuchsia-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-fuchsia-500/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 via-fuchsia-500 to-pink-400 text-purple-950 flex items-center justify-center shadow-lg shadow-purple-500/20 border border-purple-400/40 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-rocket text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-fuchsia-400 font-black uppercase tracking-wider block">EXPONENTIAL</span>
+                <h4 class="text-xs font-black text-white group-hover:text-fuchsia-300 transition">ক্র্যাশ রকেট (Rocket Fly)</h4>
+              </div>
             </div>
-            <span class="text-[6.5px] bg-teal-500/10 border border-teal-500/20 text-teal-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Sixer Hit</span>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-fuchsia-500/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-fuchsia-300/80 font-mono font-bold uppercase tracking-widest block leading-none">গুণক</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">x100</span>
+            </div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Cricket Sixer Hit</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Guess the ball delivery pitch type, hit massive runs & stack profit!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-teal-400 font-mono mt-3 flex items-center gap-1 group-hover:text-teal-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 8. Aviator Jet Ride Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-red-955/20 via-slate-900 to-slate-950 border border-red-500/10 hover:border-red-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="aviator">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-red-500/10 border border-red-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-plane text-red-400 text-xs"></i>
-            </div>
-            <span class="text-[6.5px] bg-red-500/10 border border-red-500/20 text-red-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Jet Ride</span>
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Aviator Jet Ride</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Watch the jet soar & fly up. Tap cash out before the plane flies away!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-red-400 font-mono mt-3 flex items-center gap-1 group-hover:text-red-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
 
-      <!-- 9. Three Shell Cups Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-fuchsia-955/20 via-slate-900 to-slate-950 border border-fuchsia-500/10 hover:border-fuchsia-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="shell">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-fuchsia-500/10 border border-fuchsia-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-glass-water-droplet text-fuchsia-400 text-xs"></i>
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">রকেট উড়ে যাওয়ার আগেই ক্যাশ আউট করে লুফে নিন বড় পরিমাণের বোনাস টাকা।</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>Realtime Multipliers</span>
+              <span class="text-fuchsia-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-fuchsia-500 animate-pulse"></span> Fast Fly cashout
+              </span>
             </div>
-            <span class="text-[6.5px] bg-fuchsia-500/10 border border-fuchsia-500/20 text-fuchsia-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Cups Guess</span>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Three Cups Shell</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Place bets, track the shuffling cups & select the one containing gold!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-fuchsia-400 font-mono mt-3 flex items-center gap-1 group-hover:text-fuchsia-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
+        </button>
 
-      <!-- 10. Tiger vs Dragon Card -->
-      <button class="game-launch-btn flex flex-col justify-between p-4 bg-gradient-to-br from-orange-955/20 via-slate-900 to-slate-950 border border-orange-500/10 hover:border-orange-500/25 rounded-2.5xl text-left transition hover:scale-[1.01] active:scale-97 shadow-md group" data-subtab="tigerdragon">
-        <div class="space-y-2 w-full">
-          <div class="flex items-center justify-between">
-            <div class="w-7 h-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center group-hover:scale-105 transition">
-              <i class="fa-solid fa-shield-cat text-orange-400 text-xs"></i>
+        <!-- Quick Draw Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#1c140a] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-rose-500/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="quickdraw">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-rose-500/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-500 via-pink-400 to-rose-300 text-rose-950 flex items-center justify-center shadow-lg shadow-rose-500/20 border border-rose-200/60 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-bolt text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-rose-400 font-black uppercase tracking-wider block">AUTO DRAWING</span>
+                <h4 class="text-xs font-black text-white group-hover:text-rose-300 transition">কুইক ড্র (১-মিনিট ইনস্ট্যান্ট)</h4>
+              </div>
             </div>
-            <span class="text-[6.5px] bg-orange-500/10 border border-orange-500/20 text-orange-400 font-bold px-1.5 py-0.5 rounded-full uppercase font-mono">Table Clash</span>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-rose-500/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-rose-300/80 font-mono font-bold uppercase tracking-widest block leading-none">টিকেট</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">৳১০</span>
+            </div>
           </div>
-          <h3 class="text-[10.5px] font-black text-white font-mono mt-1">Tiger vs Dragon</h3>
-          <p class="text-[8.5px] text-slate-400 leading-normal font-sans">Bet on Tiger, Dragon, or Tie! The highest single card dealt wins!</p>
-        </div>
-        <span class="text-[8.5px] font-bold text-orange-400 font-mono mt-3 flex items-center gap-1 group-hover:text-orange-300">Play Now <i class="fa-solid fa-chevron-right text-[6.5px]"></i></span>
-      </button>
+
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
+          </div>
+
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">প্রতি মিনিটে লাইভ ড্র সম্পন্ন করা হয়। যত টিকিট বিক্রি হবে জ্যাকপট তত বাড়বে!</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>Automatic Draws</span>
+              <span class="text-rose-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse"></span> Dynamic Prize Pool
+              </span>
+            </div>
+          </div>
+        </button>
+
+        <!-- Group Syndicate Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#071d12] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-teal-500/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="syndicate">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-teal-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-teal-500/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 via-emerald-400 to-green-300 text-slate-950 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-200/60 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-users text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-teal-400 font-black uppercase tracking-wider block">COOPERATIVE</span>
+                <h4 class="text-xs font-black text-white group-hover:text-teal-300 transition">গ্রুপ সিন্ডিকেট (Syndicate)</h4>
+              </div>
+            </div>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-teal-500/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-teal-300/80 font-mono font-bold uppercase tracking-widest block leading-none">খরচ</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">ভাগাভাগি</span>
+            </div>
+          </div>
+
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
+          </div>
+
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">বন্ধুদের সাথে টিকেটের খরচ ভাগাভাগি করে সিন্ডিকেট দল গঠন করে প্রাইজ জিতুন।</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>Risk Splitting</span>
+              <span class="text-teal-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Multi-player Co-op
+              </span>
+            </div>
+          </div>
+        </button>
+
+        <!-- Dice Roll Premium Card -->
+        <button class="game-launch-btn text-left bg-gradient-to-br from-[#07131d] via-slate-950 to-slate-950 border border-slate-800/80 hover:border-teal-400/50 p-4.5 rounded-3xl cursor-pointer group transition-all duration-300 hover:-translate-y-1 active:scale-97 shadow-xl flex flex-col justify-between relative overflow-hidden" data-subtab="dice">
+          <div class="absolute -right-8 -bottom-8 w-24 h-24 bg-teal-400/5 rounded-full blur-xl pointer-events-none group-hover:bg-teal-400/10 transition-all duration-300"></div>
+          
+          <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-teal-500 via-cyan-400 to-sky-300 text-teal-950 flex items-center justify-center shadow-lg shadow-teal-500/20 border border-teal-200/60 group-hover:scale-110 transition duration-300 shrink-0">
+                <i class="fa-solid fa-dice text-[15px]"></i>
+              </div>
+              <div>
+                <span class="text-[8.5px] font-mono text-teal-400 font-black uppercase tracking-wider block">FAST PACE</span>
+                <h4 class="text-xs font-black text-white group-hover:text-teal-300 transition">ডাইস রোল (Dice Roll Pro)</h4>
+              </div>
+            </div>
+            
+            <div class="text-right shrink-0 bg-slate-950/40 border-l border-teal-400/20 pl-3.5 pr-1 py-1">
+              <span class="text-[8.5px] text-teal-300/80 font-mono font-bold uppercase tracking-widest block leading-none">রিটার্ন</span>
+              <span class="text-sm font-black text-white font-mono block mt-1 leading-none">x95</span>
+            </div>
+          </div>
+
+          <!-- Perforated Divider with Side Notches -->
+          <div class="relative py-1 w-full my-2">
+            <div class="lottery-ticket-notch-left" style="top: 50%; transform: translateY(-50%);"></div>
+            <div class="lottery-ticket-dashed"></div>
+            <div class="lottery-ticket-notch-right" style="top: 50%; transform: translateY(-50%);"></div>
+          </div>
+
+          <div>
+            <p class="text-[9.5px] text-slate-400 font-sans leading-relaxed">ডাইসের স্লাইডার ড্র্যাগ করে নিজের পছন্দমত উইন রেট এবং গুণক নির্ধারণ করুন।</p>
+            <div class="flex justify-between items-center text-[9px] text-slate-500 font-mono mt-3">
+              <span>Adjustable Odds</span>
+              <span class="text-teal-400 font-bold flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse"></span> Highly customizable
+              </span>
+            </div>
+          </div>
+        </button>
+
+      </div>
+    </div>
+
+    <!-- 2. Arcade Classics & Trending Mini-Games Grid -->
+    <div class="space-y-3.5">
+      <div class="flex items-center justify-between border-b border-slate-800/60 pb-2">
+        <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono flex items-center gap-1.5">
+          <i class="fa-solid fa-layer-group text-slate-400"></i>
+          <span>🎮 Arcade Classics &amp; Mini-Games (অন্যান্য ট্র্যান্ডিং গেমস)</span>
+        </h3>
+        <span class="text-[9px] text-slate-500 font-mono">10 Arcade Legends</span>
+      </div>
+
+      <div class="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+        
+        <!-- High Low Game Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-indigo-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="highlow">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 via-blue-400 to-sky-300 text-indigo-950 flex items-center justify-center mb-2 shadow-md border border-indigo-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-arrow-up-9-1 text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-indigo-300 transition w-full">High Low</span>
+          <span class="text-[7.5px] text-indigo-400 font-mono font-black mt-1 uppercase">Multiplier cards</span>
+        </button>
+
+        <!-- Plinko Game Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-amber-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="plinko">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-300 text-amber-950 flex items-center justify-center mb-2 shadow-md border border-yellow-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-circle-nodes text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-amber-300 transition w-full">Plinko</span>
+          <span class="text-[7.5px] text-amber-400 font-mono font-black mt-1 uppercase">Drop Ball</span>
+        </button>
+
+        <!-- Penalty Shootout Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-emerald-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="penalty">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 via-green-400 to-teal-300 text-emerald-950 flex items-center justify-center mb-2 shadow-md border border-emerald-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-futbol text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-emerald-300 transition w-full">Shootout</span>
+          <span class="text-[7.5px] text-emerald-400 font-mono font-black mt-1 uppercase">Penalty goal</span>
+        </button>
+
+        <!-- Tower Climb Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-cyan-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="tower">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 via-sky-400 to-teal-300 text-cyan-950 flex items-center justify-center mb-2 shadow-md border border-cyan-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-chess-rook text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-cyan-300 transition w-full">Tower Climb</span>
+          <span class="text-[7.5px] text-cyan-400 font-mono font-black mt-1 uppercase">Safe Floor</span>
+        </button>
+
+        <!-- Fortune Wheel Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-rose-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="wheel">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-500 via-pink-400 to-orange-300 text-rose-950 flex items-center justify-center mb-2 shadow-md border border-rose-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-spinner text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-rose-300 transition w-full">Fortune Wheel</span>
+          <span class="text-[7.5px] text-rose-400 font-mono font-black mt-1 uppercase">Lucky Spin</span>
+        </button>
+
+        <!-- Match Keno Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-indigo-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="keno">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-600 via-purple-500 to-violet-400 text-indigo-950 flex items-center justify-center mb-2 shadow-md border border-indigo-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-table-cells-large text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-indigo-300 transition w-full">Super Keno</span>
+          <span class="text-[7.5px] text-indigo-400 font-mono font-black mt-1 uppercase">Classic grid</span>
+        </button>
+
+        <!-- Cricket Sixer Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-teal-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="cricket">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-teal-500 via-emerald-400 to-lime-300 text-teal-950 flex items-center justify-center mb-2 shadow-md border border-teal-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-baseball-bat-ball text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-teal-300 transition w-full">Cricket</span>
+          <span class="text-[7.5px] text-teal-400 font-mono font-black mt-1 uppercase">Over Sixer</span>
+        </button>
+
+        <!-- Aviator Jet Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-red-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="aviator">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-red-500 via-rose-500 to-pink-400 text-red-950 flex items-center justify-center mb-2 shadow-md border border-red-400/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-plane text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-red-300 transition w-full">Aviator</span>
+          <span class="text-[7.5px] text-red-400 font-mono font-black mt-1 uppercase">Jet Cashout</span>
+        </button>
+
+        <!-- Shell Guess Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-fuchsia-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="shell">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-fuchsia-500 via-purple-500 to-pink-400 text-fuchsia-950 flex items-center justify-center mb-2 shadow-md border border-fuchsia-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-glass-water-droplet text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-fuchsia-300 transition w-full">Shell Cup</span>
+          <span class="text-[7.5px] text-fuchsia-400 font-mono font-black mt-1 uppercase">Cup Guess</span>
+        </button>
+
+        <!-- Tiger vs Dragon Card -->
+        <button class="game-launch-btn flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800 hover:border-orange-500/40 p-3 rounded-xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-md" data-subtab="tigerdragon">
+          <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-orange-500 via-amber-500 to-yellow-400 text-orange-950 flex items-center justify-center mb-2 shadow-md border border-orange-200/60 group-hover:scale-110 transition duration-200 shrink-0">
+            <i class="fa-solid fa-shield-cat text-[11px]"></i>
+          </div>
+          <span class="text-[10px] font-bold text-white block truncate group-hover:text-orange-300 transition w-full">Tiger Dragon</span>
+          <span class="text-[7.5px] text-orange-400 font-mono font-black mt-1 uppercase">Deck Battle</span>
+        </button>
+
+      </div>
     </div>
   </div>
 
@@ -304,7 +406,7 @@
       </button>
     </div>
 
-    <div class="bg-gradient-to-b from-amber-950/20 via-slate-950 to-slate-950 border border-amber-500/20 p-6 rounded-3xl relative overflow-hidden shadow-2xl">
+    <div class="bg-gradient-to-b from-amber-950/20 via-slate-955 to-slate-950 border border-amber-500/20 p-6 rounded-3xl relative overflow-hidden shadow-2xl">
       <div class="absolute -right-20 -top-20 w-48 h-48 bg-amber-500/10 rounded-full blur-[50px] pointer-events-none"></div>
       <div class="absolute -left-20 -bottom-20 w-48 h-48 bg-purple-500/10 rounded-full blur-[50px] pointer-events-none"></div>
 
@@ -462,7 +564,7 @@
       <div class="text-center">
         <h3 class="text-xs font-black text-white font-mono flex items-center gap-1.5"><i class="fa-solid fa-bolt text-rose-400"></i> Quick Draw</h3>
       </div>
-      <button id="quickdraw-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+      <button id="quickdraw-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-rose-955/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
         <i class="fa-solid fa-expand text-rose-400"></i> <span class="hidden sm:inline">Fullscreen</span>
       </button>
     </div>
@@ -483,7 +585,7 @@
       <div class="text-center">
         <h3 class="text-xs font-black text-white font-mono flex items-center gap-1.5"><i class="fa-solid fa-users text-emerald-400"></i> Group Syndicate</h3>
       </div>
-      <button id="syndicate-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-800/60 text-emerald-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+      <button id="syndicate-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-emerald-955/60 hover:bg-emerald-900 border border-emerald-800/60 text-emerald-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
         <i class="fa-solid fa-expand text-emerald-400"></i> <span class="hidden sm:inline">Fullscreen</span>
       </button>
     </div>
@@ -504,7 +606,7 @@
       <div class="text-center">
         <h3 class="text-xs font-black text-white font-mono flex items-center gap-1.5"><i class="fa-solid fa-bomb text-rose-400"></i> Mines Sweeper</h3>
       </div>
-      <button id="mines-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-rose-950/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+      <button id="mines-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-rose-955/60 hover:bg-rose-900 border border-rose-800/60 text-rose-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
         <i class="fa-solid fa-expand text-rose-400"></i> <span class="hidden sm:inline">Fullscreen</span>
       </button>
     </div>
@@ -575,7 +677,7 @@
       <div class="text-center">
         <h3 class="text-xs font-black text-white font-mono flex items-center gap-1.5"><i class="fa-solid fa-dice text-teal-400"></i> Dice Roll</h3>
       </div>
-      <button id="dice-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-teal-950/60 hover:bg-teal-900 border border-teal-800/60 text-teal-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
+      <button id="dice-fullscreen-toggle-btn" class="text-[9px] font-bold font-mono px-3 py-1.5 rounded-xl bg-teal-955/60 hover:bg-teal-900 border border-teal-800/60 text-teal-300 transition cursor-pointer flex items-center gap-1.5 active:scale-95">
         <i class="fa-solid fa-expand text-teal-400"></i> <span class="hidden sm:inline">Fullscreen</span>
       </button>
     </div>
