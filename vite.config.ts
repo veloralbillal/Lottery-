@@ -16,6 +16,8 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-withdraw", file: "src/dashboard_tabs/withdraw.php" },
       { id: "tab-agent", file: "src/dashboard_tabs/agent.php" },
       { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
+      { id: "tab-edit-profile", file: "src/dashboard_tabs/edit_profile.php" },
+      { id: "tab-settings", file: "src/dashboard_tabs/settings.php" },
       { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
       { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
       { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },

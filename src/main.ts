@@ -1646,8 +1646,8 @@ export class StateManager {
   }
 
   render() {
-    this.applyDynamicSEO();
     try {
+      this.applyDynamicSEO();
       this.checkLiveNotifications();
 
       // Dynamically update site settings and branding texts globally
@@ -1809,6 +1809,7 @@ export class StateManager {
     document.getElementById("tab-agent")?.classList.add("hidden");
     document.getElementById("tab-history")?.classList.add("hidden");
     document.getElementById("tab-profile")?.classList.add("hidden");
+    document.getElementById("tab-edit-profile")?.classList.add("hidden");
     document.getElementById("tab-settings")?.classList.add("hidden");
     document.getElementById("tab-customizer")?.classList.add("hidden");
     document.getElementById("tab-jackpot")?.classList.add("hidden");
@@ -1859,6 +1860,10 @@ export class StateManager {
       const customizerTab = document.getElementById("tab-customizer");
       if (customizerTab) customizerTab.classList.remove("hidden");
       this.renderCustomizerTab();
+    } else if (this.currentTab === "edit-profile") {
+      const editProfileTab = document.getElementById("tab-edit-profile");
+      if (editProfileTab) editProfileTab.classList.remove("hidden");
+      this.renderEditProfileTab();
     } else {
       const targetTab = document.getElementById(`tab-${this.currentTab}`);
       if (targetTab) targetTab.classList.remove("hidden");
@@ -1878,6 +1883,8 @@ export class StateManager {
       this.renderHistoryTab();
     } else if (this.currentTab === "profile") {
       this.renderProfileTab();
+    } else if (this.currentTab === "edit-profile") {
+      this.renderEditProfileTab();
     } else if (this.currentTab === "settings") {
       this.renderSettingsTab();
     } else if (this.currentTab === "customizer") {
@@ -3256,6 +3263,221 @@ export class StateManager {
     CustomizerStore.renderTab(this);
   }
 
+  renderEditProfileTab() {
+    const editProfileTab = document.getElementById("tab-edit-profile");
+    if (editProfileTab) {
+      editProfileTab.classList.remove("hidden");
+    }
+
+    // Bind Back & Cancel Buttons
+    const handleBack = () => {
+      this.currentTab = "profile";
+      this.renderDashboard();
+    };
+
+    const backBtn = document.getElementById("edit-profile-back-btn");
+    if (backBtn) backBtn.onclick = handleBack;
+
+    const cancelBtn = document.getElementById("edit-profile-cancel-btn");
+    if (cancelBtn) cancelBtn.onclick = handleBack;
+
+    const cancelBtnBottom = document.getElementById("edit-profile-cancel-btn-bottom");
+    if (cancelBtnBottom) cancelBtnBottom.onclick = handleBack;
+
+    const user = this.currentUser;
+    if (!user) {
+      return;
+    }
+
+    // 1. Populate Personal Information Fields safely (works for complete or partial data)
+    const usernameInput = document.getElementById("edit-profile-username") as HTMLInputElement | null;
+    const phoneInput = document.getElementById("edit-profile-phone") as HTMLInputElement | null;
+    const emailInput = document.getElementById("edit-profile-email") as HTMLInputElement | null;
+    const bioInput = document.getElementById("edit-profile-bio") as HTMLTextAreaElement | null;
+    const dobInput = document.getElementById("edit-profile-dob") as HTMLInputElement | null;
+    const addressInput = document.getElementById("edit-profile-address") as HTMLInputElement | null;
+    const glowSelect = document.getElementById("edit-profile-glow") as HTMLSelectElement | null;
+    const displayUsername = document.getElementById("edit-profile-display-username");
+    const avatarInitial = document.getElementById("edit-profile-avatar-initial");
+    const avatarPreview = document.getElementById("edit-profile-avatar-preview");
+    const vibePill = document.getElementById("edit-profile-vibe-pill");
+
+    if (usernameInput) usernameInput.value = user.username || "";
+    if (phoneInput) phoneInput.value = user.phone || "";
+    if (emailInput) emailInput.value = user.email || "";
+    if (bioInput) bioInput.value = user.bio || "";
+    if (dobInput) dobInput.value = user.dob || "";
+    if (addressInput) addressInput.value = user.address || "";
+    if (glowSelect) glowSelect.value = user.profileGlow || "none";
+    if (displayUsername) displayUsername.textContent = `@${user.username || "user"}`;
+    if (avatarInitial) avatarInitial.textContent = (user.username || "U").charAt(0).toUpperCase();
+    if (vibePill) vibePill.textContent = user.vibeStatus || "🍀 Feeling Lucky";
+
+    // 2. Avatar Photo Preview
+    if (avatarPreview) {
+      if (user.photo) {
+        avatarPreview.innerHTML = `<img src="${user.photo}" alt="Avatar" class="w-full h-full object-cover">`;
+      } else {
+        avatarPreview.innerHTML = `<span id="edit-profile-avatar-initial">${(user.username || "U").charAt(0).toUpperCase()}</span>`;
+      }
+    }
+
+    // 3. Avatar Frame Selector UI
+    const activeFrame = user.avatarFrame || "none";
+    const frameBtns = document.querySelectorAll(".edit-profile-frame-btn");
+    frameBtns.forEach(btn => {
+      const f = btn.getAttribute("data-frame") || "none";
+      if (f === activeFrame) {
+        btn.className = "edit-profile-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 border-amber-500 text-amber-300 shadow-md shadow-amber-950/40 cursor-pointer flex flex-col items-center gap-1 shrink-0 scale-105";
+      } else {
+        btn.className = "edit-profile-frame-btn border px-2.5 py-1.5 rounded-xl text-[8px] font-mono font-bold uppercase transition bg-slate-900 hover:border-slate-700/60 text-slate-400 cursor-pointer flex flex-col items-center gap-1 border-slate-850 shrink-0";
+      }
+      (btn as HTMLElement).onclick = (e) => {
+        e.preventDefault();
+        user.avatarFrame = f;
+        this.saveDB();
+        this.renderEditProfileTab();
+        this.showToast(`Selected Frame Effect: ${f.toUpperCase()}`, "success");
+      };
+    });
+
+    // 4. TikTok / Instagram Style Showcase (Posts vs Badges tab)
+    const showcaseContainer = document.getElementById("edit-profile-posts-badges-preview");
+    const postsTabBtn = document.getElementById("edit-profile-showcase-tab-posts");
+    const badgesTabBtn = document.getElementById("edit-profile-showcase-tab-badges");
+
+    let currentShowcaseTab = (this as any)._editProfileShowcaseTab || "posts";
+
+    const updateShowcaseUI = () => {
+      if (!showcaseContainer) return;
+
+      if (currentShowcaseTab === "posts") {
+        if (postsTabBtn) {
+          postsTabBtn.className = "flex-1 pb-2.5 text-center font-black border-b-2 border-rose-500 text-white cursor-pointer transition";
+        }
+        if (badgesTabBtn) {
+          badgesTabBtn.className = "flex-1 pb-2.5 text-center font-bold text-slate-500 hover:text-slate-300 border-b-2 border-transparent cursor-pointer transition";
+        }
+
+        // Render posts by this user
+        const userPosts = (this.db.communityPosts || []).filter(p => (p.userId === user.id || p.username === user.username) && p.status !== "banned");
+        if (userPosts.length === 0) {
+          showcaseContainer.innerHTML = `
+            <div class="py-6 text-center space-y-2">
+              <div class="w-12 h-12 bg-slate-950 rounded-2xl flex items-center justify-center mx-auto text-slate-600 text-lg border border-slate-800/80">
+                <i class="fa-solid fa-layer-group"></i>
+              </div>
+              <h5 class="text-xs font-bold text-white font-mono">No Community Posts Yet</h5>
+              <p class="text-[10px] text-slate-500 max-w-xs mx-auto font-sans leading-normal">
+                Share your ticket predictions, big wins, and tips with other players in the Community Space!
+              </p>
+            </div>
+          `;
+        } else {
+          showcaseContainer.innerHTML = `
+            <div class="grid grid-cols-1 gap-2.5 text-left">
+              ${userPosts.map(p => `
+                <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850/80 space-y-1.5">
+                  <div class="flex items-center justify-between text-[9px] text-slate-500 font-mono">
+                    <span class="text-cyan-400 font-bold">@${p.username || user.username}</span>
+                    <span>${new Date(p.date || Date.now()).toLocaleDateString()}</span>
+                  </div>
+                  <p class="text-xs text-slate-200 font-sans leading-relaxed">${p.text}</p>
+                  <div class="flex items-center gap-3 pt-1 text-[9px] text-slate-500 font-mono">
+                    <span><i class="fa-solid fa-heart text-rose-500 mr-1"></i>${(p.likes || []).length} Likes</span>
+                    <span><i class="fa-solid fa-comments text-cyan-500 mr-1"></i>${(this.db.communityComments || []).filter(c => c.postId === p.id).length} Replies</span>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          `;
+        }
+      } else {
+        // Badges showcase
+        if (postsTabBtn) {
+          postsTabBtn.className = "flex-1 pb-2.5 text-center font-bold text-slate-500 hover:text-slate-300 border-b-2 border-transparent cursor-pointer transition";
+        }
+        if (badgesTabBtn) {
+          badgesTabBtn.className = "flex-1 pb-2.5 text-center font-black border-b-2 border-rose-500 text-white cursor-pointer transition";
+        }
+
+        const winCounts = (this.db.tickets || []).filter(t => (t.userId === user.id || t.username === user.username) && t.status === "won").length;
+        const postsCount = (this.db.communityPosts || []).filter(p => (p.userId === user.id || p.username === user.username) && p.status !== "banned").length;
+        const commentsCount = (this.db.communityComments || []).filter(c => (c.userId === user.id || c.username === user.username) && c.status !== "banned").length;
+        const totalContribution = postsCount + commentsCount;
+
+        const badgeMap: Record<string, { label: string; style: string; icon: string }> = {
+          vip: { label: "VIP Player", style: "bg-cyan-950/70 text-cyan-400 border-cyan-800/60", icon: "fa-gem" },
+          moderator: { label: "Staff Mod", style: "bg-indigo-950/70 text-indigo-400 border-indigo-800/60", icon: "fa-shield-halved" },
+          star: { label: "Elite Star", style: "bg-purple-950/70 text-purple-400 border-purple-800/60", icon: "fa-star" },
+          premium: { label: "Premium Member", style: "bg-fuchsia-950/70 text-fuchsia-400 border-fuchsia-800/60", icon: "fa-wand-magic-sparkles" },
+          pro: { label: "Pro Active", style: "bg-orange-950/70 text-orange-400 border-orange-800/60", icon: "fa-fire" },
+          legend: { label: "Royal Legend", style: "bg-rose-950/70 text-rose-400 border-rose-800/60", icon: "fa-crown" }
+        };
+
+        const customBadgeInfo = user.customBadge ? badgeMap[user.customBadge] : null;
+
+        showcaseContainer.innerHTML = `
+          <div class="space-y-3 text-left">
+            <div class="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850 space-y-1">
+                <span class="text-[9px] text-slate-500 uppercase block font-bold">Total Wins</span>
+                <span class="text-amber-400 font-black text-sm">${winCounts} Lotteries</span>
+              </div>
+              <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850 space-y-1">
+                <span class="text-[9px] text-slate-500 uppercase block font-bold">Contribution</span>
+                <span class="text-emerald-400 font-black text-sm">${totalContribution} Engagements</span>
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+              <h6 class="text-[9px] font-bold uppercase text-slate-400 font-mono tracking-wider">Unlocked Achievements & Titles</h6>
+              <div class="flex flex-wrap gap-2">
+                ${customBadgeInfo ? `
+                  <span class="${customBadgeInfo.style} px-3 py-1.5 rounded-xl text-[10px] font-bold border flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid ${customBadgeInfo.icon}"></i> ${customBadgeInfo.label}
+                  </span>
+                ` : `
+                  <span class="bg-slate-950 text-slate-400 border border-slate-800 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-1.5">
+                    <i class="fa-solid fa-ribbon text-slate-600"></i> Standard Player
+                  </span>
+                `}
+                ${winCounts > 0 ? `
+                  <span class="bg-amber-950/70 text-amber-300 border border-amber-800/60 px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shadow-md animate-pulse">
+                    <i class="fa-solid fa-trophy text-amber-400"></i> Lucky Winner (${winCounts})
+                  </span>
+                ` : ""}
+                ${totalContribution >= 3 ? `
+                  <span class="bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-medal text-emerald-400"></i> Top Contributor
+                  </span>
+                ` : ""}
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    };
+
+    if (postsTabBtn) {
+      postsTabBtn.onclick = () => {
+        currentShowcaseTab = "posts";
+        (this as any)._editProfileShowcaseTab = "posts";
+        updateShowcaseUI();
+      };
+    }
+
+    if (badgesTabBtn) {
+      badgesTabBtn.onclick = () => {
+        currentShowcaseTab = "badges";
+        (this as any)._editProfileShowcaseTab = "badges";
+        updateShowcaseUI();
+      };
+    }
+
+    updateShowcaseUI();
+  }
+
   renderOtpTab() {
     const backBtn = document.getElementById("otp-back-btn");
     if (backBtn) {
@@ -4545,6 +4767,12 @@ function initApplicationLoader() {
   const urlParams = new URLSearchParams(window.location.search);
   const refCode = urlParams.get("ref");
   const isAgentApply = urlParams.get("role") === "agent";
+  const tabParam = urlParams.get("tab");
+
+  if (tabParam && app.currentUser && !app.isAdminMode) {
+    app.currentTab = tabParam;
+    app.renderDashboard();
+  }
 
   if (isAgentApply && refCode && !app.currentUser && !app.isAdminMode) {
     const signupBox = document.getElementById("auth-signup-box");
@@ -4709,8 +4937,15 @@ function initApplicationLoader() {
       return;
     }
 
+    // Open profile edit full-screen page
+    if (e.target.closest("#profile-open-edit-modal-btn")) {
+      app.currentTab = "edit-profile";
+      app.renderDashboard();
+      return;
+    }
+
     // 4. Back buttons
-    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn") || e.target.closest("#video-bounty-back-btn") || e.target.closest("#recovery-back-btn")) {
+    if (e.target.closest("#badge-request-back-btn") || e.target.closest("#refer-back-btn") || e.target.closest("#otp-back-btn") || e.target.closest("#video-bounty-back-btn") || e.target.closest("#recovery-back-btn") || e.target.closest("#edit-profile-back-btn") || e.target.closest("#edit-profile-cancel-btn") || e.target.closest("#edit-profile-cancel-btn-bottom")) {
       app.currentTab = "profile";
       app.renderDashboard();
       return;
@@ -7427,9 +7662,9 @@ function initApplicationLoader() {
     const editForm = e.target.closest("#profile-edit-form-spa");
     if (editForm) {
       e.preventDefault();
-      const emailVal = document.getElementById("profile-edit-email").value.trim();
-      const phoneVal = document.getElementById("profile-edit-phone").value.trim();
-      const dobVal = document.getElementById("profile-edit-dob").value.trim();
+      const emailVal = document.getElementById("profile-edit-email")?.value.trim() || "";
+      const phoneVal = document.getElementById("profile-edit-phone")?.value.trim() || "";
+      const dobVal = document.getElementById("profile-edit-dob")?.value.trim() || "";
 
       app.currentUser.email = emailVal;
       app.currentUser.phone = phoneVal;
@@ -7438,6 +7673,87 @@ function initApplicationLoader() {
       app.saveDB();
       app.showToast("Profile credentials synchronized successfully!", "success");
       app.render();
+      return;
+    }
+
+    const modalEditForm = e.target.closest("#profile-edit-modal-form");
+    if (modalEditForm) {
+      e.preventDefault();
+      const emailVal = document.getElementById("profile-edit-modal-email")?.value.trim() || "";
+      const phoneVal = document.getElementById("profile-edit-modal-phone")?.value.trim() || "";
+      const dobVal = document.getElementById("profile-edit-modal-dob")?.value.trim() || "";
+      const addressVal = document.getElementById("profile-edit-modal-address")?.value.trim() || "";
+      const glowSelect = document.getElementById("profile-edit-modal-glow") as HTMLSelectElement | null;
+
+      app.currentUser.email = emailVal;
+      app.currentUser.phone = phoneVal;
+      app.currentUser.dob = dobVal;
+      app.currentUser.address = addressVal;
+      if (glowSelect) {
+        app.currentUser.profileGlow = glowSelect.value;
+      }
+
+      app.saveDB();
+      app.showToast("Royal profile updated successfully!", "success");
+      const modal = document.getElementById("profile-edit-modal");
+      if (modal) modal.classList.add("hidden");
+      app.render();
+      return;
+    }
+
+    const editProfileMainForm = e.target.closest("#edit-profile-main-form");
+    if (editProfileMainForm) {
+      e.preventDefault();
+      if (!app.currentUser) return;
+      const usernameVal = (document.getElementById("edit-profile-username") as HTMLInputElement)?.value.trim() || "";
+      const phoneVal = (document.getElementById("edit-profile-phone") as HTMLInputElement)?.value.trim() || "";
+      const emailVal = (document.getElementById("edit-profile-email") as HTMLInputElement)?.value.trim() || "";
+      const bioVal = (document.getElementById("edit-profile-bio") as HTMLTextAreaElement)?.value.trim() || "";
+      const dobVal = (document.getElementById("edit-profile-dob") as HTMLInputElement)?.value.trim() || "";
+      const addressVal = (document.getElementById("edit-profile-address") as HTMLInputElement)?.value.trim() || "";
+      const glowSelect = document.getElementById("edit-profile-glow") as HTMLSelectElement | null;
+
+      if (usernameVal) {
+        app.currentUser.username = usernameVal;
+      }
+      app.currentUser.phone = phoneVal;
+      app.currentUser.email = emailVal;
+      app.currentUser.bio = bioVal;
+      app.currentUser.dob = dobVal;
+      app.currentUser.address = addressVal;
+      if (glowSelect) {
+        app.currentUser.profileGlow = glowSelect.value;
+      }
+
+      // Sync user object into app.db.users
+      const userIdx = (app.db.users || []).findIndex(u => u.id === app.currentUser.id);
+      if (userIdx >= 0) {
+        app.db.users[userIdx] = { ...app.db.users[userIdx], ...app.currentUser };
+      }
+      localStorage.setItem(app.sessionKey, JSON.stringify(app.currentUser));
+
+      app.saveDB();
+      app.showToast("প্রোফাইল সফলভাবে আপডেট করা হয়েছে!", "success");
+      app.currentTab = "profile";
+      app.renderDashboard();
+    }
+  });
+
+  // Avatar file change for full screen edit profile
+  document.addEventListener("change", (e) => {
+    const fileInput = e.target.closest("#edit-profile-avatar-file") as HTMLInputElement;
+    if (fileInput && fileInput.files && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+      reader.onload = (event: any) => {
+        if (app.currentUser) {
+          app.currentUser.photo = event.target.result;
+          app.saveDB();
+          app.showToast("প্রোফাইল ছবি সফলভাবে আপডেট করা হয়েছে!", "success");
+          app.renderDashboard();
+        }
+      };
+      reader.readAsDataURL(file);
     }
   });
 

@@ -176,8 +176,8 @@ export class ProfileTab {
 
       // 8. Open Profile Settings Page
       if (e.target.closest("#profile-open-edit-modal-btn")) {
-        appInstance.currentTab = "settings";
-        appInstance.render();
+        appInstance.currentTab = "edit-profile";
+        appInstance.renderDashboard();
         return;
       }
 
