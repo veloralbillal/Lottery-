@@ -404,6 +404,15 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
         console.log('Copied 404.html to dist/');
       }
 
+      // Copy .nojekyll to dist
+      const srcNoJekyll = path.resolve(process.cwd(), '.nojekyll');
+      const destNoJekyll = path.resolve(distDir, '.nojekyll');
+      if (fs.existsSync(srcNoJekyll)) {
+        fs.copyFileSync(srcNoJekyll, destNoJekyll);
+      } else {
+        fs.writeFileSync(destNoJekyll, '');
+      }
+
       // Copy other JSON config if exists
       const srcBlueprint = path.resolve(process.cwd(), 'firebase-blueprint.json');
       const destBlueprint = path.resolve(distDir, 'firebase-blueprint.json');
@@ -440,13 +449,55 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
 
       copyRecursive(srcDir, destSrcDir);
       console.log('Copied .php and other tab assets from src/ to dist/src/');
+
+      // Sync built production assets back to root ./assets so root-level hosting (GitHub Pages main branch) works seamlessly
+      const distAssetsDir = path.resolve(distDir, 'assets');
+      const rootAssetsDir = path.resolve(process.cwd(), 'assets');
+      if (fs.existsSync(distAssetsDir)) {
+        if (!fs.existsSync(rootAssetsDir)) {
+          fs.mkdirSync(rootAssetsDir, { recursive: true });
+        }
+        const assetFiles = fs.readdirSync(distAssetsDir);
+        for (const file of assetFiles) {
+          fs.copyFileSync(path.join(distAssetsDir, file), path.join(rootAssetsDir, file));
+        }
+        console.log('Synced compiled assets to root ./assets/');
+
+        // Find any generated CSS file in dist/assets and create predictable main.css aliases
+        const cssFiles = assetFiles.filter(f => f.endsWith('.css'));
+        if (cssFiles.length > 0) {
+          const primaryCss = cssFiles[0];
+          const srcCssPath = path.join(distAssetsDir, primaryCss);
+          // Ensure dist/assets/main.css exists
+          fs.copyFileSync(srcCssPath, path.join(distAssetsDir, 'main.css'));
+          // Ensure root assets/main.css exists
+          fs.copyFileSync(srcCssPath, path.join(rootAssetsDir, 'main.css'));
+          // Sync to src/tailwind-built.css
+          fs.copyFileSync(srcCssPath, path.resolve(process.cwd(), 'src/tailwind-built.css'));
+          console.log(`Synced CSS (${primaryCss}) to main.css and src/tailwind-built.css`);
+        }
+
+        // Find any generated JS file for main in dist/assets and create predictable main.js aliases
+        const jsFiles = assetFiles.filter(f => f.startsWith('main') && f.endsWith('.js'));
+        if (jsFiles.length > 0) {
+          const primaryJs = jsFiles[0];
+          const srcJsPath = path.join(distAssetsDir, primaryJs);
+          // Ensure dist/assets/main.js exists
+          fs.copyFileSync(srcJsPath, path.join(distAssetsDir, 'main.js'));
+          // Ensure root assets/main.js exists
+          fs.copyFileSync(srcJsPath, path.join(rootAssetsDir, 'main.js'));
+          // Sync to src/main.js
+          fs.copyFileSync(srcJsPath, path.resolve(process.cwd(), 'src/main.js'));
+          console.log(`Synced JS (${primaryJs}) to main.js and src/main.js`);
+        }
+      }
     }
   };
 }
 
 export default defineConfig(({ mode }) => {
   return {
-    base: './',
+    base: '/',
     plugins: [
       tailwindcss(),
       serveAndCopyAssetsPlugin()
@@ -470,6 +521,9 @@ export default defineConfig(({ mode }) => {
           main: path.resolve(__dirname, 'index.html')
         },
         output: {
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]',
           manualChunks(id) {
             if (id.includes('node_modules/firebase')) {
               return 'vendor-firebase';

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <base href="/" id="app-base-href" />
     <script>
       /**
        * Dynamic Path Resolver & Universal Domain Normalizer
@@ -12,19 +13,15 @@
         const isGitHub = l.hostname.includes('github.io');
         const segments = l.pathname.split('/').filter(Boolean);
         
-        // 1. Resolve base path
-        // On custom domains (e.g. luckylock.veloralbillal.top): base is '/'
-        // On github.io subpaths (e.g. username.github.io/repo/): base is '/repo/'
         let base = '/';
         if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
           base = '/' + segments[0] + '/';
+          const baseTag = document.getElementById('app-base-href');
+          if (baseTag) baseTag.setAttribute('href', base);
         }
         window.APP_BASE = base;
 
-        // 2. Synchronously inject <base> tag into HTML stream before any links/scripts parse
-        document.write('<base href="' + base + '">');
-
-        // 3. SPA Redirect handling (from 404.html logic)
+        // SPA Redirect handling (from 404.html logic)
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
@@ -159,8 +156,8 @@
     <!-- Chart.js for data visualization (deferred) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
     
-    <!-- Styled CSS stylesheet compiled by Vite and Tailwind CSS v4 -->
-    <!-- (CSS is imported via main.ts for Vite bundling) -->
+    <!-- Master Tailwind CSS v4 Production & Theme Stylesheet -->
+    <link rel="stylesheet" href="/src/tailwind-built.css" id="lw-main-css" />
     
     <style>
       /* Image layout safeguard for static hosting */
@@ -7787,6 +7784,6 @@
     </script>
 
     <!-- Application script bundle -->
-    <script type="module" src="src/main.ts"></script>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
