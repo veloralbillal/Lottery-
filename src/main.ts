@@ -4136,6 +4136,77 @@ export class StateManager {
     const appleEl = document.getElementById("apple-icon") as HTMLLinkElement;
     if (appleEl) appleEl.href = favUrl;
   }
+
+  awardReferralBonus(referredUser) {
+    if (!referredUser || !referredUser.referredBy || referredUser.referralBonusAwarded) return;
+
+    const referrer = this.db.users.find(u => u.username.toLowerCase() === referredUser.referredBy.toLowerCase());
+    if (!referrer) return;
+
+    // Award bonus
+    referrer.refersCount = (referrer.refersCount || 0) + 1;
+    referrer.spinTokens = (referrer.spinTokens || 0) + 1;
+    if (!referrer.referredUsers) referrer.referredUsers = [];
+    
+    referrer.referredUsers.push({
+      username: referredUser.username,
+      region: referredUser.region || "Unknown",
+      date: new Date().toISOString()
+    });
+
+    // Determine bonus amount
+    let referBonus = (this.db.settings && this.db.settings.agentReferralBonus !== undefined) ? parseFloat(this.db.settings.agentReferralBonus) : 100;
+    
+    // If referrer is a normal player, they might get a different bonus or just milestone counts.
+    if (referrer.role === "agent" || referrer.role === "subagent") {
+      referrer.balance = (referrer.balance || 0) + referBonus;
+
+      if (!this.db.agentLedger) this.db.agentLedger = [];
+      this.db.agentLedger.push({
+        id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 100),
+        agentId: referrer.id,
+        timestamp: new Date().toISOString(),
+        targetUser: referredUser.username,
+        description: `Auto-credited ${referrer.role === "subagent" ? "Sub-Agent" : "Agent"} Referral Bonus (Player @${referredUser.username} qualified with deposit)`,
+        amount: referBonus,
+        commission: 0
+      });
+    } else {
+      // For players, we check milestone levels
+      const playerBonus = (this.db.settings && this.db.settings.referralBonusReferrer !== undefined) ? parseFloat(this.db.settings.referralBonusReferrer) : 50;
+      referrer.balance = (referrer.balance || 0) + playerBonus;
+    }
+
+    // Update referral status on the referred user
+    referredUser.referralBonusAwarded = true;
+
+    // Send notification to referrer
+    const autoNotice = {
+      id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
+      recipientType: "specific",
+      targetUsername: referrer.username,
+      category: "bonus",
+      subject: `🎁 Referral Qualified: @${referredUser.username}!`,
+      content: `Congratulations! Player @${referredUser.username} has qualified your referral count by making a minimum deposit. A referral reward has been added to your account.`,
+      date: new Date().toISOString(),
+      readBy: []
+    };
+    if (!this.db.messages) this.db.messages = [];
+    this.db.messages.push(autoNotice);
+
+    // Check milestones
+    const milLevels = this.db.settings.milestoneLevels || [];
+    milLevels.forEach(lvl => {
+      if (referrer.refersCount >= lvl.count && !(referrer.rewardedMilestones || []).includes(lvl.title)) {
+        referrer.balance = (referrer.balance || 0) + lvl.reward;
+        if (!referrer.rewardedMilestones) referrer.rewardedMilestones = [];
+        referrer.rewardedMilestones.push(lvl.title);
+        this.showToast(`Milestone Unlocked! ${lvl.title} reward ৳${lvl.reward} added to referrer @${referrer.username}.`, "success");
+      }
+    });
+
+    this.saveDB();
+  }
 }
 
 Object.assign(StateManager.prototype, AdminModule);
@@ -5522,6 +5593,7 @@ function initApplicationLoader() {
           phone: phoneVal,
           registeredIp: clientIp,
           referredBy: referByVal || null,
+          referralBonusAwarded: false,
           balance: welcomeBonus,
           totDeposit: 0,
           totWithdraw: 0,
@@ -5580,55 +5652,8 @@ function initApplicationLoader() {
             const allowedRegions = app.db.settings.allowedRegions || [];
             const isRegionAllowed = allowedRegions.length === 0 || allowedRegions.map(r => r.toLowerCase()).includes(regionVal.toLowerCase());
 
-            if (isRegionAllowed) {
-              referrer.refersCount = (referrer.refersCount || 0) + 1;
-              referrer.spinTokens = (referrer.spinTokens || 0) + 1; 
-              if (!referrer.referredUsers) referrer.referredUsers = [];
-              referrer.referredUsers.push({
-                username: userVal,
-                region: regionVal,
-                date: new Date().toISOString()
-              });
-
-              if (referrer.role === "agent" || referrer.role === "subagent") {
-                const referBonus = (app.db.settings && app.db.settings.agentReferralBonus !== undefined) ? parseFloat(app.db.settings.agentReferralBonus) : 100;
-                referrer.balance = (referrer.balance || 0) + referBonus;
-                
-                if (!app.db.agentLedger) app.db.agentLedger = [];
-                app.db.agentLedger.push({
-                  id: "act_" + Date.now() + "_" + Math.floor(Math.random() * 100),
-                  agentId: referrer.id,
-                  timestamp: new Date().toISOString(),
-                  targetUser: userVal,
-                  description: `Auto-credited ${referrer.role === "subagent" ? "Sub-Agent" : "Agent"} Referral Bonus (Player registered: @${userVal})`,
-                  amount: referBonus,
-                  commission: 0
-                });
-                
-                const autoNotice = {
-                  id: "msg_auto_" + Date.now() + "_" + Math.floor(Math.random() * 99),
-                  recipientType: "specific",
-                  targetUsername: referrer.username,
-                  category: "bonus",
-                  subject: `🎁 Referral Reward: +৳${referBonus}!`,
-                  content: `Congratulations! Player @${userVal} has successfully registered using your referral code. A referral bonus of ৳${referBonus} has been added to your account.`,
-                  date: new Date().toISOString(),
-                  readBy: []
-                };
-                if (!app.db.messages) app.db.messages = [];
-                app.db.messages.push(autoNotice);
-              }
-
-              const milLevels = app.db.settings.milestoneLevels || [];
-              milLevels.forEach(lvl => {
-                if (referrer.refersCount >= lvl.count && !(referrer.rewardedMilestones || []).includes(lvl.title)) {
-                  referrer.balance = (referrer.balance || 0) + lvl.reward;
-                  if (!referrer.rewardedMilestones) referrer.rewardedMilestones = [];
-                  referrer.rewardedMilestones.push(lvl.title);
-                  app.showToast(`Milestone Unlocked! ${lvl.title} reward ৳${lvl.reward} added to referrer.`, "success");
-                }
-              });
-            }
+            // Referral bonus is now deferred until the first qualifying deposit is approved.
+            // Referrer stats will be updated then.
           }
 
           app.saveDB();
@@ -6924,6 +6949,7 @@ function initApplicationLoader() {
     // Save Agent Referral Bonus & WhatsApp Settings
     app.db.settings.agentReferralBonus = parseFloat(document.getElementById("sys-agent-referral-bonus")?.value || "100");
     app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url")?.value.trim() || "";
+    app.db.settings.minReferralDeposit = parseFloat(document.getElementById("sys-min-referral-deposit")?.value || "50");
 
     app.saveDB();
     app.showToast("Core system parameters and maintenance configs committed.", "success");

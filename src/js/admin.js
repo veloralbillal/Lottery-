@@ -3257,6 +3257,14 @@ export const AdminModule = {
         u.totDeposit += d.amount;
         this.showToast(`Deposit approved! Added ৳${d.amount} to @${u.username}'s balance.`, "success");
 
+        // Referral Qualification Check
+        const minDepRef = (this.db.settings && this.db.settings.minReferralDeposit !== undefined) ? parseFloat(this.db.settings.minReferralDeposit) : 50;
+        if (u.referredBy && !u.referralBonusAwarded && u.totDeposit >= minDepRef) {
+          if (typeof this.awardReferralBonus === "function") {
+            this.awardReferralBonus(u);
+          }
+        }
+
         if (!this.db.messages) this.db.messages = [];
         this.db.messages.push({
           id: "sys_msg_" + Date.now(),
@@ -3557,6 +3565,9 @@ export const AdminModule = {
 
     const whatsappUrl = document.getElementById("sys-whatsapp-url");
     if (whatsappUrl) whatsappUrl.value = s.whatsappUrl || "";
+
+    const minReferralDep = document.getElementById("sys-min-referral-deposit");
+    if (minReferralDep) minReferralDep.value = s.minReferralDeposit ?? 50;
 
     const limitInput = document.getElementById("admin-consecutive-block-limit");
     if (limitInput) limitInput.value = s.consecutiveDrawsLimit || 5;

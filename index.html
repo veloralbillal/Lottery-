@@ -962,7 +962,14 @@
                 </div>
 
                 <input type="hidden" id="reg-dob" value="2000-01-01">
-                <input type="hidden" id="reg-refer-by" value="">
+                <div class="input-group">
+                  <label class="flex items-center gap-1.5 text-amber-400 font-bold">
+                    <i class="fa-solid fa-user-plus text-[10px]"></i>
+                    <span>Referral Code (Optional)</span>
+                  </label>
+                  <input type="text" id="reg-refer-by" class="input-field border-amber-500/30 focus:border-amber-500" placeholder="Enter recruiter username" autocomplete="off">
+                  <span class="text-[9px] text-slate-500 mt-1 block">If you were invited by a friend, enter their username here.</span>
+                </div>
                 <input type="hidden" id="reg-is-agent-apply" value="false">
                 <input type="hidden" id="reg-agent-comm-rate" value="5.0">
 
@@ -3777,6 +3784,12 @@
                   <label class="block text-slate-500 font-bold text-cyan-400">Support WhatsApp (Number/URL)</label>
                   <input id="sys-whatsapp-url" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. 8801700000000" />
                 </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 font-bold text-amber-400">Min Deposit for Referral Count (৳)</label>
+                <input id="sys-min-referral-deposit" type="number" min="0" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500" placeholder="e.g. 50" />
+                <span class="text-[10px] text-slate-500 font-sans block">Referral bonus will only be awarded to the referrer after the new user deposits this minimum amount.</span>
               </div>
 
             <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">

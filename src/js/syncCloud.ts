@@ -205,7 +205,11 @@ export const SyncCloudModule = {
       return { success: true, uid };
     } catch (err) {
       console.error("Failed to register user:", err);
-      return { success: false, error: err.message };
+      let errorMsg = err.message;
+      if (err.code === "auth/operation-not-allowed") {
+        errorMsg = "Registration Failed: Email/Password authentication is not enabled in your Firebase Console. Please enable it under Authentication > Sign-in method.";
+      }
+      return { success: false, error: errorMsg };
     }
   },
   unsubscribeFromCloud() {
