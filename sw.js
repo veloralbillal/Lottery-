@@ -6,7 +6,7 @@
  * 3. Cache versioning
  */
 
-const CACHE_VERSION = 'v1.0.2';
+const CACHE_VERSION = 'v1.0.3';
 const DOMAIN = self.location.hostname;
 const CACHE_NAME = `lw-cache-${DOMAIN}-${CACHE_VERSION}`;
 
@@ -48,10 +48,14 @@ self.addEventListener("fetch", (e) => {
       caches.match(e.request).then((cachedResponse) => {
         const fetchPromise = fetch(e.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(e.request, responseToCache);
-            });
+            const contentType = networkResponse.headers.get('content-type') || '';
+            // Never cache HTML responses for asset requests (prevents 404 HTML fallback from poisoning css/js cache)
+            if (!isStaticAsset || !contentType.includes('text/html')) {
+              const responseToCache = networkResponse.clone();
+              caches.open(CACHE_NAME).then((cache) => {
+                cache.put(e.request, responseToCache);
+              });
+            }
           }
           return networkResponse;
         }).catch(() => cachedResponse || new Response('Offline', { status: 503 }));

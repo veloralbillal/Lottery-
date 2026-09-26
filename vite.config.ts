@@ -388,6 +388,22 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
         console.log('Copied manifest.json to dist/');
       }
 
+      // Copy CNAME to dist for GitHub Pages custom domain
+      const srcCname = path.resolve(process.cwd(), 'CNAME');
+      const destCname = path.resolve(distDir, 'CNAME');
+      if (fs.existsSync(srcCname)) {
+        fs.copyFileSync(srcCname, destCname);
+        console.log('Copied CNAME to dist/');
+      }
+
+      // Copy 404.html to dist for GitHub Pages SPA routing
+      const src404 = path.resolve(process.cwd(), '404.html');
+      const dest404 = path.resolve(distDir, '404.html');
+      if (fs.existsSync(src404)) {
+        fs.copyFileSync(src404, dest404);
+        console.log('Copied 404.html to dist/');
+      }
+
       // Copy other JSON config if exists
       const srcBlueprint = path.resolve(process.cwd(), 'firebase-blueprint.json');
       const destBlueprint = path.resolve(distDir, 'firebase-blueprint.json');

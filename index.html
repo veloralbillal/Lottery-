@@ -3,9 +3,9 @@
   <head>
     <script>
       /**
-       * Dynamic Path Resolver & Asset Auto-Fixer
-       * Ensures the application works on both custom domains (root /) 
-       * and GitHub Pages subpaths (e.g. /project-name/).
+       * Dynamic Path Resolver & Universal Domain Normalizer
+       * Ensures the application works seamlessly on custom domains (root /) 
+       * as well as GitHub Pages subpaths (e.g. /project-name/).
        */
       (function() {
         const l = window.location;
@@ -13,63 +13,18 @@
         const segments = l.pathname.split('/').filter(Boolean);
         
         // 1. Resolve base path
+        // On custom domains (e.g. luckylock.veloralbillal.top): base is '/'
+        // On github.io subpaths (e.g. username.github.io/repo/): base is '/repo/'
         let base = '/';
         if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
           base = '/' + segments[0] + '/';
         }
         window.APP_BASE = base;
 
-        // 2. Inject <base> tag at the very top for automatic relative path resolution
-        if (!document.querySelector('base')) {
-          const baseTag = document.createElement('base');
-          baseTag.href = base;
-          document.head.prepend(baseTag);
-        }
+        // 2. Synchronously inject <base> tag into HTML stream before any links/scripts parse
+        document.write('<base href="' + base + '">');
 
-        // 3. Helper to make a path absolute by prepending the base
-        const toAbsolute = (path) => {
-          if (!path || path.startsWith('http') || path.startsWith('data:') || path.startsWith('/')) return path;
-          const cleanPath = path.startsWith('./') ? path.slice(2) : path;
-          return base + cleanPath;
-        };
-
-        // 4. Prepend base to critical static assets to ensure they load before JS takes over
-        const applyFixes = () => {
-          // Fix links
-          document.querySelectorAll('link[href]').forEach(el => {
-            const href = el.getAttribute('href');
-            if (href && !href.startsWith('http') && !href.startsWith('/') && !href.startsWith('#')) {
-              el.setAttribute('href', toAbsolute(href));
-            }
-          });
-          // Fix scripts
-          document.querySelectorAll('script[src]').forEach(el => {
-            const src = el.getAttribute('src');
-            if (src && !src.startsWith('http') && !src.startsWith('/')) {
-              el.setAttribute('src', toAbsolute(src));
-            }
-          });
-          // Fix images
-          document.querySelectorAll('img[src]').forEach(el => {
-            const src = el.getAttribute('src');
-            if (src && !src.startsWith('http') && !src.startsWith('/')) {
-              el.setAttribute('src', toAbsolute(src));
-            }
-          });
-          // Fix specific meta tags (OG/Twitter)
-          document.querySelectorAll('meta[property^="og:image"], meta[property^="twitter:image"], meta[property$="url"]').forEach(el => {
-            const content = el.getAttribute('content');
-            if (content && !content.startsWith('http') && !content.startsWith('/')) {
-              el.setAttribute('content', toAbsolute(content));
-            }
-          });
-        };
-        
-        applyFixes();
-        // Also run on DOM ready and periodically for dynamically injected items
-        document.addEventListener('DOMContentLoaded', applyFixes);
-
-        // 5. SPA Redirect handling (from 404.html logic)
+        // 3. SPA Redirect handling (from 404.html logic)
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
@@ -160,21 +115,21 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
-    <title id="dynamic-title">Lottery Winner - Premium Mobile Web Portal</title>
-    <meta name="description" id="dynamic-desc" content="Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots." />
+    <title id="dynamic-title">Lottery Winner</title>
+    <meta name="description" id="dynamic-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" id="og-url" content="" />
-    <meta property="og:title" id="og-title" content="Lottery Winner - Premium Mobile Web Portal" />
-    <meta property="og:description" id="og-desc" content="Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots." />
+    <meta property="og:title" id="og-title" content="Lottery Winner" />
+    <meta property="og:description" id="og-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     <meta property="og:image" id="og-image" content="logo.jpg" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" id="twitter-url" content="" />
-    <meta property="twitter:title" id="twitter-title" content="Lottery Winner - Premium Mobile Web Portal" />
-    <meta property="twitter:description" id="twitter-desc" content="Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots." />
+    <meta property="twitter:title" id="twitter-title" content="Lottery Winner" />
+    <meta property="twitter:description" id="twitter-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     <meta property="twitter:image" id="twitter-image" content="logo.jpg" />
 
     <link rel="canonical" id="canonical-url" href="" />
