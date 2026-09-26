@@ -1,0 +1,5458 @@
+// ============================================================================
+// ADMIN PANEL MODULAR SYSTEM
+// ============================================================================
+import { CheckinSettingsTab } from "../admin_tabs/checkinSettings.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { PathHelper } from "./pathHelper.js";
+
+export const AdminModule = {
+  renderAdmin() {
+    // Ensure user-facing winner reveal popup is closed when in admin panel
+    const winnerModal = document.getElementById("lottery-draw-winner-modal");
+    if (winnerModal) {
+      winnerModal.classList.add("hidden");
+      winnerModal.style.display = "none";
+    }
+
+    const isModerator = this.currentUser && this.currentUser.role === "moderator";
+
+    // Select Admin tab classes matching selection
+    const adminTabBtns = document.querySelectorAll(".admin-tab-selector-btn");
+    adminTabBtns.forEach(btn => {
+      const tabId = btn.getAttribute("data-tab");
+
+      if (isModerator) {
+        // Permit: stats, users, lotteries, deposits, withdraws, messages
+        const permittedTabs = ["stats", "users", "lotteries", "deposits", "withdraws", "messages"];
+        if (!permittedTabs.includes(tabId)) {
+          btn.classList.add("hidden");
+          if (this.currentAdminTab === tabId) {
+            this.currentAdminTab = "stats";
+          }
+        } else {
+          btn.classList.remove("hidden");
+        }
+      } else {
+        btn.classList.remove("hidden");
+      }
+
+      if (tabId === this.currentAdminTab) {
+        btn.classList.add("bg-gradient-to-r", "from-red-600", "to-rose-600", "text-white", "shadow-lg");
+        btn.classList.remove("bg-slate-900", "text-slate-400");
+      } else {
+        btn.classList.remove("bg-gradient-to-r", "from-red-600", "to-rose-600", "text-white", "shadow-lg");
+        btn.classList.add("bg-slate-900", "text-slate-400");
+      }
+    });
+
+    // Hide all viewports with safe guards
+    const hideViewport = (id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.add("hidden");
+    };
+    hideViewport("admin-tab-stats");
+    hideViewport("admin-tab-users");
+    hideViewport("admin-tab-lotteries");
+    hideViewport("admin-tab-deposits");
+    hideViewport("admin-tab-withdraws");
+    hideViewport("admin-tab-settings");
+    hideViewport("admin-tab-gateways");
+    hideViewport("admin-tab-sync-vault");
+    hideViewport("admin-tab-messages");
+    hideViewport("admin-tab-categories");
+    hideViewport("admin-tab-website");
+    hideViewport("admin-tab-reports");
+    hideViewport("admin-tab-badge-requests");
+    hideViewport("admin-tab-video-bounty");
+    hideViewport("admin-tab-refer");
+    hideViewport("admin-tab-vip");
+    hideViewport("admin-tab-jackpot");
+    hideViewport("admin-tab-tasks");
+    hideViewport("admin-tab-checkin");
+    hideViewport("admin-tab-agents");
+    hideViewport("admin-tab-agent-leaders");
+    hideViewport("admin-tab-subagents-list");
+    hideViewport("admin-tab-events");
+    hideViewport("admin-tab-splash");
+    hideViewport("admin-tab-commission");
+    hideViewport("admin-tab-legal");
+
+    // Dynamic pending reports counter
+    const pendingRepsCount = (this.db.reports || []).filter(r => r.status === "pending").length;
+    const badgeEl = document.getElementById("admin-reports-count-badge");
+    if (badgeEl) badgeEl.innerText = pendingRepsCount;
+
+    // Dynamic pending badge requests counter
+    const pendingBadgeReqsCount = (this.db.badgeRequests || []).filter(br => br.status === "pending").length;
+    const badgeReqsCountEl = document.getElementById("admin-badge-requests-count-badge");
+    if (badgeReqsCountEl) {
+      badgeReqsCountEl.innerText = pendingBadgeReqsCount;
+      if (pendingBadgeReqsCount > 0) {
+        badgeReqsCountEl.classList.remove("hidden");
+      } else {
+        badgeReqsCountEl.classList.add("hidden");
+      }
+    }
+
+    // Dynamic pending video bounties counter
+    const pendingBountiesCount = (this.db.videoBounties || []).filter(vb => vb.status === "pending").length;
+    const bountyCountEl = document.getElementById("admin-bounty-count-badge");
+    if (bountyCountEl) {
+      bountyCountEl.innerText = pendingBountiesCount;
+      if (pendingBountiesCount > 0) {
+        bountyCountEl.classList.remove("hidden");
+      } else {
+        bountyCountEl.classList.add("hidden");
+      }
+    }
+
+    // Show current tab viewport
+    const currentViewport = document.getElementById(`admin-tab-${this.currentAdminTab}`);
+    if (currentViewport) currentViewport.classList.remove("hidden");
+
+    try {
+      if (this.currentAdminTab === "stats") {
+        this.renderAdminStats();
+      } else if (this.currentAdminTab === "users") {
+        this.renderAdminUsers();
+      } else if (this.currentAdminTab === "lotteries") {
+        this.renderAdminLotteries();
+      } else if (this.currentAdminTab === "deposits") {
+        this.renderAdminDeposits();
+      } else if (this.currentAdminTab === "withdraws") {
+        this.renderAdminWithdraws();
+      } else if (this.currentAdminTab === "categories") {
+        this.renderAdminCategories();
+      } else if (this.currentAdminTab === "messages") {
+        this.renderAdminMessages();
+      } else if (this.currentAdminTab === "website") {
+        this.renderAdminWebsite();
+      } else if (this.currentAdminTab === "reports") {
+        this.renderAdminReports();
+      } else if (this.currentAdminTab === "badge-requests") {
+        this.renderAdminBadgeRequests();
+      } else if (this.currentAdminTab === "video-bounty") {
+        this.renderAdminVideoBounty();
+      } else if (this.currentAdminTab === "refer") {
+        this.renderAdminRefer();
+      } else if (this.currentAdminTab === "vip") {
+        this.renderAdminVipClub();
+      } else if (this.currentAdminTab === "jackpot") {
+        this.renderAdminJackpot();
+      } else if (this.currentAdminTab === "tasks") {
+        this.renderAdminTasks();
+      } else if (this.currentAdminTab === "checkin") {
+        this.renderAdminCheckin();
+      } else if (this.currentAdminTab === "settings" || this.currentAdminTab === "gateways") {
+        this.renderAdminSettings();
+      } else if (this.currentAdminTab === "sync-vault") {
+        this.renderSyncVaultTab();
+      } else if (this.currentAdminTab === "events") {
+        this.renderAdminEvents();
+      } else if (this.currentAdminTab === "splash") {
+        this.renderAdminSplashConfig();
+      } else if (this.currentAdminTab === "agents") {
+        this.renderAdminAgents();
+      } else if (this.currentAdminTab === "agent-leaders") {
+        this.renderAgentLeadersTab();
+      } else if (this.currentAdminTab === "subagents-list") {
+        this.renderSubAgentsListTab();
+      } else if (this.currentAdminTab === "commission") {
+        this.renderAdminCommission();
+      } else if (this.currentAdminTab === "legal") {
+        if (window.LegalPoliciesManager) {
+          window.LegalPoliciesManager.renderAdminSection(this);
+        }
+      }
+    } catch (err) {
+      console.error("Exception handling admin sub-tab render process for tab:", this.currentAdminTab, err);
+    }
+
+    // Flush any pending real-time security alerts/toasts
+    this.flushAdminToasts();
+  },
+
+  renderAdminStats() {
+    const totalUsers = this.db.users.length;
+    const activeLotteries = this.db.lotteries.filter(l => l.status === "active").length;
+    const completedLotteries = this.db.lotteries.filter(l => l.status === "drawn").length;
+
+    const totalDepositedApproved = this.db.deposits.filter(d => d.status === "approved").reduce((sum, d) => sum + d.amount, 0);
+    const pendingDeposCount = this.db.deposits.filter(d => d.status === "pending").length;
+    const pendingWdsCount = this.db.withdrawals.filter(w => w.status === "pending").length;
+    const totalWdsApproved = this.db.withdrawals.filter(w => w.status === "approved").reduce((sum, w) => sum + w.amount, 0);
+
+    let actualPaidTicketSpent = 0;
+    this.db.tickets.forEach(ticket => {
+      const lot = this.db.lotteries.find(l => l.id === ticket.lotteryId);
+      if (lot) actualPaidTicketSpent += lot.entryFee;
+    });
+
+    document.getElementById("admin-stat-sales").innerText = `৳${actualPaidTicketSpent}`;
+    document.getElementById("admin-stat-players").innerText = totalUsers;
+    document.getElementById("admin-stat-deposits").innerText = `৳${totalDepositedApproved}`;
+    document.getElementById("admin-stat-pending").innerText = `${pendingDeposCount + pendingWdsCount} Ops`;
+
+    document.getElementById("admin-metric-total-pools").innerText = `${this.db.lotteries.length} pools`;
+    document.getElementById("admin-metric-active-pools").innerText = `${activeLotteries} active Pools`;
+    document.getElementById("admin-metric-total-completes").innerText = `${completedLotteries} completed Pools`;
+    document.getElementById("admin-metric-withdrawn-approved").innerText = `৳${totalWdsApproved} paid out`;
+  },
+
+  renderAdminUsers() {
+    // 1. Overview Analytics Calculations
+    const totalUsers = this.db.users.length;
+    const onlineSimulated = Math.max(1, Math.round(totalUsers * 0.15));
+    const flaggedFraud = this.db.users.filter(u => u.status === "blocked").length;
+    const totalWalletPool = this.db.users.reduce((sum, u) => sum + (u.balance || 0), 0);
+
+    const totalEl = document.getElementById("admin-users-stat-total");
+    const onlineEl = document.getElementById("admin-users-stat-online");
+    const flaggedEl = document.getElementById("admin-users-stat-flagged");
+    const balanceEl = document.getElementById("admin-users-stat-balance");
+
+    if (totalEl) totalEl.innerText = totalUsers.toLocaleString();
+    if (onlineEl) onlineEl.innerText = onlineSimulated.toLocaleString();
+    if (flaggedEl) flaggedEl.innerText = flaggedFraud.toLocaleString();
+    if (balanceEl) balanceEl.innerText = "৳" + totalWalletPool.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // 2. Active Search Clear button handler
+    const clearBtn = document.getElementById("admin-players-clear-search-btn");
+    if (clearBtn) {
+      if (this.adminPlayersSearchQuery) {
+        clearBtn.classList.remove("hidden");
+      } else {
+        clearBtn.classList.add("hidden");
+      }
+    }
+
+    // 3. Filter Chips Rendering & Active State Management
+    if (!this.adminPlayersActiveFilter) {
+      this.adminPlayersActiveFilter = "all";
+    }
+
+    const filterBar = document.getElementById("admin-users-filter-bar");
+    if (filterBar) {
+      const filters = [
+        { id: "all", label: "All Users (সবাই)" },
+        { id: "active", label: "Active (সচল)" },
+        { id: "blocked", label: "Flagged" },
+        { id: "banned", label: "Banned (স্থগিত)" },
+        { id: "vip", label: "High Roller (ভিআইপি)" }
+      ];
+      filterBar.innerHTML = filters.map(f => {
+        const active = this.adminPlayersActiveFilter === f.id;
+        const btnClass = active
+          ? "px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black transition whitespace-nowrap cursor-pointer shadow-sm"
+          : "px-4 py-2 rounded-full bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition whitespace-nowrap cursor-pointer";
+        return `<button data-filter="${f.id}" class="${btnClass}">${f.label}</button>`;
+      }).join("");
+
+      filterBar.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.adminPlayersActiveFilter = btn.getAttribute("data-filter");
+          this.renderAdminUsers();
+        });
+      });
+    }
+
+    // 4. Filtering Users
+    let filteredUsers = this.db.users || [];
+    const query = (this.adminPlayersSearchQuery || "").toLowerCase().trim();
+    if (query) {
+      filteredUsers = filteredUsers.filter(u => {
+        const usernameMatch = (u.username || "").toLowerCase().includes(query);
+        const emailMatch = (u.email || "").toLowerCase().includes(query);
+        const phoneMatch = (u.phone || "").toLowerCase().includes(query);
+        return usernameMatch || emailMatch || phoneMatch;
+      });
+    }
+
+    if (this.adminPlayersActiveFilter === "active") {
+      filteredUsers = filteredUsers.filter(u => u.status === "active");
+    } else if (this.adminPlayersActiveFilter === "blocked") {
+      filteredUsers = filteredUsers.filter(u => u.status === "blocked");
+    } else if (this.adminPlayersActiveFilter === "banned") {
+      filteredUsers = filteredUsers.filter(u => u.status === "banned" || u.status === "suspended" || u.status === "blocked");
+    } else if (this.adminPlayersActiveFilter === "vip") {
+      filteredUsers = filteredUsers.filter(u => u.customBadge === "vip" || (u.balance || 0) >= 1000);
+    }
+
+    // 5. Populate Dynamic Cards Grid
+    const gridEl = document.getElementById("admin-users-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
+    if (filteredUsers.length === 0) {
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No matching platform accounts discovered.
+        </div>
+      `;
+      return;
+    }
+
+    filteredUsers.forEach(u => {
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750";
+
+      let statusClass = u.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : u.status === "blocked"
+        ? "text-amber-400 bg-amber-950/20 border border-amber-900/40"
+        : "text-rose-450 bg-rose-950/20 border border-rose-900/40";
+
+      let statusText = u.status === "active"
+        ? "● Active / সচল"
+        : u.status === "blocked"
+        ? "● Suspicious"
+        : "● Banned / বরখাস্ত";
+
+      const badgeLabel = u.customBadge ? u.customBadge.toUpperCase() : (u.role === "agent" ? "AGENT" : u.role === "moderator" ? "MODERATOR" : "LVL 1");
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-500 to-amber-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-rose-950/30 select-none uppercase">
+                ${u.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${u.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${u.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 text-amber-400 border border-amber-500/10 text-[8.5px] font-mono font-bold uppercase tracking-wider">${badgeLabel}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${u.realName || "Registered User"} • ${u.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
+          </div>
+        </div>
+
+        <!-- Financial Snapshot -->
+        <div class="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40 text-xs font-mono">
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Purse Balance</span>
+            <span class="text-xs font-black text-amber-300 mt-0.5 tabular-nums">৳${(u.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Lifetime Bets</span>
+            <span class="text-xs font-bold text-white mt-0.5 tabular-nums">৳${u.lifetimeBets || "85,000"}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Win Rate</span>
+            <span class="text-xs font-bold text-cyan-400 mt-0.5">${u.winRate || "35%"}</span>
+          </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-b border-slate-800/40 pb-2">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-regular fa-calendar-days text-[11px]"></i>
+            Joined: ${u.joinedDate || "14 Aug 2024"}
+          </span>
+          <span class="flex items-center gap-1.5 text-emerald-450 font-bold">
+            <i class="fa-solid fa-circle-check text-[11px]"></i>
+            KYC Verified
+          </span>
+        </div>
+
+        <!-- Actions Row -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-sans text-[11px]">
+          <button class="adjust-balance-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${u.id}">
+            <i class="fa-solid fa-coins text-slate-500 text-[10px]"></i>
+            <span>Adjust Balance</span>
+          </button>
+          <button class="freeze-user-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-rose-950/30 border border-slate-800 hover:border-rose-900/40 text-rose-400 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${u.id}">
+            <i class="fa-solid fa-lock text-rose-500/80 text-[10px]"></i>
+            <span>${u.status === "banned" ? "Unban Account" : "Freeze Wallet"}</span>
+          </button>
+        </div>
+      `;
+
+      gridEl.appendChild(card);
+    });
+
+    // 6. Attach Actions Handlers
+    gridEl.querySelectorAll(".adjust-balance-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const uId = e.currentTarget.getAttribute("data-id");
+        this.openUserEditModal(uId);
+      });
+    });
+
+    gridEl.querySelectorAll(".freeze-user-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const uId = e.currentTarget.getAttribute("data-id");
+        const matched = this.db.users.find(user => user.id === uId);
+        if (matched) {
+          if (matched.status === "banned") {
+            matched.status = "active";
+            this.showToast(`Account @${matched.username} unbanned successfully!`, "success");
+          } else {
+            matched.status = "banned";
+            this.showToast(`Account @${matched.username} is now frozen & suspended.`, "error");
+          }
+          this.saveDB();
+          this.renderAdminUsers();
+        }
+      });
+    });
+
+    // 7. Security Rules Persistence & Controls binding
+    if (!this.db.securityRules) {
+      this.db.securityRules = {
+        enforceOtp: true,
+        autoFreeze: true,
+        maxDailySpend: 50000
+      };
+    }
+
+    const otpToggle = document.getElementById("toggle-otp");
+    const freezeToggle = document.getElementById("toggle-freeze");
+    const spendSlider = document.getElementById("spend-slider");
+    const limitLabel = document.getElementById("limit-label");
+    const saveBtn = document.getElementById("save-rules-btn");
+
+    if (otpToggle) otpToggle.checked = this.db.securityRules.enforceOtp;
+    if (freezeToggle) freezeToggle.checked = this.db.securityRules.autoFreeze;
+    if (spendSlider) {
+      spendSlider.value = this.db.securityRules.maxDailySpend;
+      if (limitLabel) limitLabel.innerText = "৳" + parseInt(spendSlider.value).toLocaleString();
+      
+      spendSlider.oninput = (e) => {
+        if (limitLabel) limitLabel.innerText = "৳" + parseInt(e.target.value).toLocaleString();
+      };
+    }
+
+    if (saveBtn) {
+      saveBtn.onclick = () => {
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i> Saving Settings...';
+        saveBtn.disabled = true;
+
+        setTimeout(() => {
+          this.db.securityRules = {
+            enforceOtp: otpToggle ? otpToggle.checked : true,
+            autoFreeze: freezeToggle ? freezeToggle.checked : true,
+            maxDailySpend: spendSlider ? parseInt(spendSlider.value) : 50000
+          };
+          this.saveDB();
+          this.showToast("User security rules updated successfully!", "success");
+          saveBtn.innerHTML = originalText;
+          saveBtn.disabled = false;
+        }, 800);
+      };
+    }
+  },
+
+  renderAdminCategories() {
+    const listEl = document.getElementById("admin-categories-tbody");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    this.db.categories.forEach(cat => {
+      const row = document.createElement("tr");
+      row.className = "hover:bg-slate-900/40 border-b border-slate-800/60";
+
+      const showPrizes = cat.type === "multi" ? cat.defaultPrizes : "—";
+      const badgeClass = cat.type === "multi" ? "bg-emerald-950 text-emerald-400 border border-emerald-800/40" : "bg-cyan-950 text-cyan-400 border border-cyan-800/40";
+
+      row.innerHTML = `
+        <td class="p-3 font-bold text-white">${cat.label}</td>
+        <td class="p-3 font-mono text-slate-400">${cat.name}</td>
+        <td class="p-3">
+          <span class="px-2 py-0.5 rounded-full text-[9px] font-bold ${badgeClass}">
+            ${cat.type === "multi" ? "MULTI WINNER SPLIT" : "SINGLE WINNER"}
+          </span>
+        </td>
+        <td class="p-3 font-mono text-cyan-400">${showPrizes}</td>
+        <td class="p-3 text-right">
+          <button class="admin-delete-category-btn bg-red-950 hover:bg-red-950/80 text-red-400 border border-red-900/40 text-[9px] font-bold py-1 px-2.5 rounded-lg transition" data-id="${cat.id}">
+            Delete
+          </button>
+        </td>
+      `;
+
+      listEl.appendChild(row);
+    });
+
+    document.querySelectorAll(".admin-delete-category-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const catId = btn.getAttribute("data-id");
+        const matched = this.db.categories.find(c => c.id === catId);
+        if (!matched) return;
+
+        if (["c1", "c2", "c3", "c4", "c5"].includes(catId)) {
+          this.showToast("Cannot delete core defaults, only user custom ones!", "error");
+          return;
+        }
+
+        if (confirm(`Remove custom category '${matched.label}' permanently?`)) {
+          this.db.categories = this.db.categories.filter(c => c.id !== catId);
+          this.saveDB();
+          this.renderAdminCategories();
+          this.showToast("Custom category wiped successfully.", "success");
+        }
+      });
+    });
+  },
+
+  escapeHTML(str) {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  },
+
+  async fetchWithTimeout(url, options = {}, timeoutMs = 2000) {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(id);
+      return response;
+    } catch (e) {
+      clearTimeout(id);
+      throw e;
+    }
+  },
+
+  async getClientIP() {
+    try {
+      const res = await this.fetchWithTimeout("https://api.ipify.org?format=json", {}, 2000);
+      const data = await res.json();
+      return data.ip || "127.0.0.1";
+    } catch (err) {
+      let storedIp = localStorage.getItem("lw_simulated_ip");
+      if (!storedIp) {
+        const randA = Math.floor(Math.random() * 150) + 100;
+        const randB = Math.floor(Math.random() * 200) + 20;
+        storedIp = `103.45.${randA}.${randB}`;
+        localStorage.setItem("lw_simulated_ip", storedIp);
+      }
+      return storedIp;
+    }
+  },
+
+  async getIPDetails() {
+    try {
+      const response = await this.fetchWithTimeout("https://ipapi.co/json/", {}, 2000);
+      if (response.ok) {
+        const details = await response.json();
+        return {
+          ip: details.ip || "127.0.0.1",
+          country: details.country_name || "",
+          org: details.org || "",
+          timezone: details.timezone || "",
+          region: details.region || ""
+        };
+      }
+    } catch (e) {
+      console.warn("Retrying IP details fetch via fallback due to blocker", e);
+    }
+    const ip = await this.getClientIP();
+    return { ip, country: "", org: "", timezone: "", region: "" };
+  },
+
+  isVPN(details) {
+    if (!details) return false;
+    const orgLower = (details.org || "").toLowerCase();
+    const vpnKeywords = [
+      "vpn", "proxy", "hosting", "cloud", "server", "datacenter", "mullvad", 
+      "nordvpn", "expressvpn", "surfshark", "digitalocean", "linode", "ovh", 
+      "colocation", "amazon", "google", "microsoft", "leaseweb", "vultr", "packet", 
+      "private internet", "windscribe", "tor", "exit-node", "proton", "cloudflare", 
+      "fastly", "dedicated", "contabo", "interserver", "hetzner"
+    ];
+    const isVpnOrg = vpnKeywords.some(keyword => orgLower.includes(keyword));
+    if (isVpnOrg) return true;
+
+    const clientTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (details.timezone && clientTimezone && details.timezone !== clientTimezone) {
+      return true;
+    }
+    return false;
+  },
+
+  triggerAdminSecurityAlert(type, message) {
+    if (!this.db.securityLogs) {
+      this.db.securityLogs = [];
+    }
+    const newLog = {
+      id: "sec_" + Date.now() + "_" + Math.floor(Math.random() * 999),
+      type: type, 
+      message: message,
+      timestamp: new Date().toISOString()
+    };
+    this.db.securityLogs.unshift(newLog);
+    
+    if (this.db.securityLogs.length > 150) {
+      this.db.securityLogs = this.db.securityLogs.slice(0, 150);
+    }
+
+    if (!this.db.pendingAdminToasts) {
+      this.db.pendingAdminToasts = [];
+    }
+    this.db.pendingAdminToasts.push({
+      id: newLog.id,
+      message: message,
+      type: type
+    });
+
+    this.saveDB();
+
+    if (this.isAdminMode) {
+      this.flushAdminToasts();
+    }
+  },
+
+  flushAdminToasts() {
+    if (!this.isAdminMode) return;
+    const toasts = this.db.pendingAdminToasts || [];
+    if (toasts.length === 0) return;
+
+    toasts.forEach(t => {
+      let icon = "fa-solid fa-shield-halved text-rose-500 mr-2";
+      if (t.type === "duplicate_ip") {
+        icon = "fa-solid fa-fingerprint text-red-500 animate-bounce mr-2";
+      } else if (t.type === "region_restriction") {
+        icon = "fa-solid fa-earth-asia text-amber-500 animate-spin mr-2";
+      }
+      
+      this.showToast(`<span class="flex items-center gap-1 font-mono text-[10px] text-rose-400">
+        <i class="${icon}"></i>
+        <strong>[AUTO-SECURITY]</strong> ${this.escapeHTML(t.message)}
+      </span>`, "error");
+    });
+
+    this.db.pendingAdminToasts = [];
+    this.saveDB();
+
+    if (this.currentAdminTab === "refer") {
+      this.renderAdminRefer();
+    }
+  },
+
+  renderAdminMessages() {
+    const listEl = document.getElementById("admin-msg-history-list");
+    const countEl = document.getElementById("admin-msg-sent-count");
+    if (!listEl) return;
+
+    const msgs = this.db.messages || [];
+    if (countEl) countEl.innerText = `${msgs.length} Sent`;
+
+    if (msgs.length === 0) {
+      listEl.innerHTML = `
+        <tr>
+          <td colspan="5" class="py-6 text-center text-slate-500 font-mono text-[10px]">No sent messages history recorded.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    const sorted = [...msgs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    listEl.innerHTML = sorted.map(m => {
+      const dateStr = new Date(m.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+      const recipientText = m.recipientType === "bulk" 
+        ? `<span class="bg-cyan-950/45 text-cyan-400 border border-cyan-900/30 px-2 py-0.5 rounded text-[9px] font-sans font-bold">ALL USERS</span>` 
+        : `<span class="bg-purple-950/45 text-purple-400 border border-purple-900/30 px-2 py-0.5 rounded text-[9px] font-mono font-bold">@${m.targetUsername}</span>`;
+
+      let catBadge = "";
+      if (m.category === "general") {
+        catBadge = `<span class="text-[10px] font-sans font-bold bg-slate-950 text-slate-400 py-0.5 px-2 rounded-md border border-slate-800">📢 General</span>`;
+      } else if (m.category === "deposit") {
+        catBadge = `<span class="text-[10px] font-sans font-bold bg-emerald-950/45 text-emerald-400 py-0.5 px-2 rounded-md border border-emerald-900/20">💰 Deposit</span>`;
+      } else if (m.category === "withdrawal") {
+        catBadge = `<span class="text-[10px] font-sans font-bold bg-rose-955/45 text-rose-400 py-0.5 px-2 rounded-md border border-rose-900/20">💸 Payout</span>`;
+      } else if (m.category === "bonus") {
+        catBadge = `<span class="text-[10px] font-sans font-bold bg-amber-950/45 text-amber-400 py-0.5 px-2 rounded-md border border-amber-900/20">🎁 Bonus</span>`;
+      } else if (m.category === "alert") {
+        catBadge = `<span class="text-[10px] font-sans font-bold bg-yellow-950/45 text-yellow-400 py-0.5 px-2 rounded-md border border-yellow-900/20">⚠️ Alert</span>`;
+      }
+
+      return `
+        <tr class="border-b border-slate-800/40 hover:bg-slate-950/20 transition">
+          <td class="py-3 font-mono">${recipientText}</td>
+          <td class="py-3">${catBadge}</td>
+          <td class="py-3 font-sans text-slate-200">
+            <div class="font-bold text-[11px]">${this.escapeHTML(m.subject)}</div>
+            <div class="text-[9px] text-slate-500 mt-0.5 max-w-xs break-words">${this.escapeHTML(m.content)}</div>
+          </td>
+          <td class="py-3 font-mono text-[10px] text-slate-400">${dateStr}</td>
+          <td class="py-3 text-right">
+            <button class="delete-admin-msg-btn text-rose-500 hover:text-rose-400 p-1 bg-rose-955/25 border border-rose-900/20 hover:border-rose-800/45 rounded-lg active:scale-95 transition cursor-pointer" data-id="${m.id}" title="Delete msg">
+              <i class="fa-solid fa-trash-can text-[10px]"></i>
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    listEl.querySelectorAll(".delete-admin-msg-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.db.messages = (this.db.messages || []).filter(m => m.id !== id);
+        this.saveDB();
+        this.renderAdminMessages();
+        this.showToast("Message deleted from records.", "info");
+      });
+    });
+  },
+
+  renderUserInbox() {
+    if (!this.currentUser) return;
+
+    const listEl = document.getElementById("user-inbox-list");
+    const badgeEl = document.getElementById("user-inbox-unread-badge");
+    if (!listEl) return;
+
+    const msgs = this.db.messages || [];
+    const username = this.currentUser.username.toLowerCase();
+
+    const userMsgs = msgs.filter(m => {
+      if (m.recipientType === "bulk") return true;
+      if (m.recipientType === "specific" && m.targetUsername && m.targetUsername.toLowerCase() === username) return true;
+      return false;
+    });
+
+    const sorted = [...userMsgs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    const unreadCount = sorted.filter(m => !(m.readBy || []).includes(this.currentUser.username)).length;
+    if (badgeEl) {
+      badgeEl.innerText = `${unreadCount} Unread`;
+      if (unreadCount > 0) {
+        badgeEl.className = "text-[9px] font-bold bg-pink-950 text-pink-400 border border-pink-900 px-2 py-0.5 rounded-lg animate-pulse";
+      } else {
+        badgeEl.className = "text-[9px] font-bold bg-slate-950 text-slate-500 border border-slate-900 px-2 py-0.5 rounded-lg";
+      }
+    }
+
+    if (sorted.length === 0) {
+      listEl.innerHTML = `
+        <div class="p-8 text-center text-slate-500 font-mono text-[10px]">
+          <i class="fa-solid fa-envelope text-slate-800 text-2xl block mb-2"></i>
+          Your personal inbox is empty. No messages registered.
+        </div>
+      `;
+      return;
+    }
+
+    listEl.innerHTML = sorted.map(m => {
+      const isUnread = !(m.readBy || []).includes(this.currentUser.username);
+      const dateStr = new Date(m.date).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' });
+      
+      let catIcon = "fa-bell";
+      let catColor = "text-cyan-400 bg-cyan-950/40 border-cyan-900/30";
+      if (m.category === "deposit") {
+        catIcon = "fa-coins";
+        catColor = "text-emerald-400 bg-emerald-950/40 border-emerald-900/30";
+      } else if (m.category === "withdrawal") {
+        catIcon = "fa-money-bill-transfer";
+        catColor = "text-rose-400 bg-rose-955/40 border-rose-900/30";
+      } else if (m.category === "bonus") {
+        catIcon = "fa-gift";
+        catColor = "text-amber-400 bg-amber-950/40 border-amber-900/30";
+      } else if (m.category === "alert") {
+        catIcon = "fa-triangle-exclamation";
+        catColor = "text-yellow-400 bg-yellow-950/40 border-yellow-900/30";
+      }
+
+      const readActionMark = isUnread 
+        ? `<button class="mark-msg-read-btn text-[8px] tracking-tight bg-cyan-600 hover:bg-cyan-550 text-white font-bold py-1 px-2.5 rounded-lg transition-all cursor-pointer" data-id="${m.id}">Mark Read</button>`
+        : `<span class="text-[8px] font-mono text-slate-600 font-semibold uppercase flex items-center gap-1"><i class="fa-solid fa-check text-emerald-500 text-[8px]"></i> Read</span>`;
+
+      return `
+        <div class="p-3.5 rounded-2xl bg-slate-950/50 border border-slate-900/80 hover:border-slate-800 transition relative overflow-hidden group space-y-2">
+          ${isUnread ? '<div class="absolute top-0 right-0 w-1.5 h-1.5 bg-rose-500 rounded-bl-full animate-pulse"></div>' : ''}
+          
+          <div class="flex justify-between items-start gap-2">
+            <div class="flex items-center gap-2">
+              <div class="w-6 h-6 rounded-lg ${catColor} border flex items-center justify-center">
+                <i class="fa-solid ${catIcon} text-[9px]"></i>
+              </div>
+              <div>
+                <span class="text-[11px] font-bold text-white block ${isUnread ? 'text-cyan-300' : 'text-slate-300'} break-words">${this.escapeHTML(m.subject)}</span>
+                <span class="text-[8px] font-mono text-slate-500">${dateStr}</span>
+              </div>
+            </div>
+            ${readActionMark}
+          </div>
+          
+          <p class="text-[10px] text-slate-400 leading-normal font-sans pt-1 break-words">${this.escapeHTML(m.content)}</p>
+        </div>
+      `;
+    }).join("");
+
+    listEl.querySelectorAll(".mark-msg-read-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const found = (this.db.messages || []).find(m => m.id === id);
+        if (found) {
+          if (!found.readBy) found.readBy = [];
+          if (!found.readBy.includes(this.currentUser.username)) {
+            found.readBy.push(this.currentUser.username);
+            this.saveDB();
+            this.renderUserInbox();
+            this.showToast("Message marked as read.", "success");
+          }
+        }
+      });
+    });
+  },
+
+  renderAdminWebsite() {
+    const s = this.db.settings;
+    if (!s) return;
+
+    const siteNameEl = document.getElementById("sys-site-name");
+    const siteInfoEl = document.getElementById("sys-site-info");
+    const signupBonusEl = document.getElementById("sys-signup-bonus");
+    const supportNumEl = document.getElementById("sys-support-num");
+    const authFooterEl = document.getElementById("sys-auth-footer-text");
+
+    if (siteNameEl) siteNameEl.value = s.siteName || "";
+    if (siteInfoEl) siteInfoEl.value = s.siteInfo || "";
+    if (signupBonusEl) signupBonusEl.value = s.signupBonus ?? 100;
+    if (supportNumEl) supportNumEl.value = s.supportNumber || "";
+    if (authFooterEl) authFooterEl.value = s.authFooterText || "";
+  },
+
+  renderAdminReports() {
+    const postTabBtn = document.getElementById("admin-subtab-post-reports");
+    const commentTabBtn = document.getElementById("admin-subtab-comment-reports");
+
+    const postContainer = document.getElementById("admin-post-reports-container");
+    const commentContainer = document.getElementById("admin-comment-reports-container");
+
+    if (!this.currentAdminReportsTab) {
+      this.currentAdminReportsTab = "post";
+    }
+
+    if (this.currentAdminReportsTab === "post") {
+      if (postTabBtn) {
+        postTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold bg-slate-900 border border-slate-800 text-white cursor-pointer transition";
+      }
+      if (commentTabBtn) {
+        commentTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold text-slate-400 cursor-pointer transition hover:text-white";
+      }
+      if (postContainer) postContainer.classList.remove("hidden");
+      if (commentContainer) commentContainer.classList.add("hidden");
+    } else {
+      if (postTabBtn) {
+        postTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold text-slate-400 cursor-pointer transition hover:text-white";
+      }
+      if (commentTabBtn) {
+        commentTabBtn.className = "py-2 rounded-lg text-center text-xs font-bold bg-slate-900 border border-slate-800 text-white cursor-pointer transition";
+      }
+      if (postContainer) postContainer.classList.add("hidden");
+      if (commentContainer) commentContainer.classList.remove("hidden");
+    }
+
+    const postReports = (this.db.reports || []).filter(r => r.type === "post" && r.status === "pending");
+    const commentReports = (this.db.reports || []).filter(r => r.type === "comment" && r.status === "pending");
+
+    const postCountBadge = document.getElementById("admin-post-reports-count");
+    if (postCountBadge) postCountBadge.innerText = postReports.length;
+
+    const commentCountBadge = document.getElementById("admin-comment-reports-count");
+    if (commentCountBadge) commentCountBadge.innerText = commentReports.length;
+
+    const postList = document.getElementById("admin-post-reports-list");
+    if (postList) {
+      postList.innerHTML = "";
+      if (postReports.length === 0) {
+        postList.innerHTML = `
+          <div class="text-center py-8 text-slate-500 font-sans">
+            <i class="fa-solid fa-circle-check text-slate-700 text-lg block mb-1"></i>
+            No pending post reports. Clear slate!
+          </div>
+        `;
+      } else {
+        postReports.forEach(rep => {
+          const card = document.createElement("div");
+          card.className = "bg-slate-950 border border-slate-800/80 p-4 rounded-2xl space-y-3";
+          card.innerHTML = `
+            <div class="flex justify-between items-start text-[10px] text-slate-400 border-b border-slate-900 pb-2">
+              <div>
+                <span class="text-rose-500 font-bold">Post Report #${rep.id}</span>
+                <div class="text-[9px] text-slate-500 font-mono mt-0.5">Date: ${new Date(rep.date).toLocaleString()}</div>
+              </div>
+              <span class="bg-red-950/40 text-red-400 px-2 py-0.5 rounded uppercase font-bold text-[8px] border border-red-900/30">Pending</span>
+            </div>
+
+            <div class="space-y-1.5 font-sans">
+              <div>
+                <span class="text-[9px] uppercase font-mono text-slate-500 block">Reported Post Content:</span>
+                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-white border border-slate-800 font-sans italic max-h-24 overflow-y-auto">
+                  "${rep.targetText}"
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-[10px] mt-1 text-slate-300">
+                <div><strong class="text-slate-500">Author:</strong> <span class="text-cyan-400 font-bold">@${rep.authorUsername}</span></div>
+                <div><strong class="text-slate-400">Reporter:</strong> <span class="text-slate-300">@${rep.reporterUsername}</span></div>
+              </div>
+              <div class="text-amber-500 text-xs py-1">
+                <strong class="text-slate-500 text-[10px]">Reason:</strong> "${rep.reason}"
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 xs:grid-cols-3 gap-1.5 pt-2 border-t border-slate-900 font-sans">
+              <button class="admin-act-ban-user bg-rose-955/45 hover:bg-rose-900 border border-rose-800/40 text-rose-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-user-slash mr-1"></i> Ban Permanent
+              </button>
+              <button class="admin-act-temp-user bg-amber-950/45 hover:bg-amber-900 border border-amber-800/40 text-amber-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-hourglass-half mr-1"></i> Temp Block (24h)
+              </button>
+              <button class="admin-act-sched-user bg-indigo-950/45 hover:bg-indigo-900 border border-indigo-800/40 text-indigo-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-calendar-days mr-1"></i> Schedule (7 Days)
+              </button>
+              <button class="admin-act-remove-post bg-slate-900 hover:bg-slate-800 border border-slate-800 text-red-500 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-1 cursor-pointer" data-post-id="${rep.targetId}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-trash mr-1"></i> Delete Post Content
+              </button>
+              <button class="admin-act-dismiss bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-2 cursor-pointer" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-check mr-1"></i> Dismiss Report
+              </button>
+            </div>
+          `;
+          postList.appendChild(card);
+        });
+      }
+    }
+
+    const commentList = document.getElementById("admin-comment-reports-list");
+    if (commentList) {
+      commentList.innerHTML = "";
+      if (commentReports.length === 0) {
+        commentList.innerHTML = `
+          <div class="text-center py-8 text-slate-500 font-sans">
+            <i class="fa-solid fa-circle-check text-slate-700 text-lg block mb-1"></i>
+            No pending comment reports. Clear slate!
+          </div>
+        `;
+      } else {
+        commentReports.forEach(rep => {
+          const card = document.createElement("div");
+          card.className = "bg-slate-950 border border-slate-800/80 p-4 rounded-2xl space-y-3";
+          card.innerHTML = `
+            <div class="flex justify-between items-start text-[10px] text-slate-400 border-b border-slate-900 pb-2">
+              <div>
+                <span class="text-yellow-500 font-bold">Comment Report #${rep.id}</span>
+                <div class="text-[9px] text-slate-500 font-mono mt-0.5">Date: ${new Date(rep.date).toLocaleString()}</div>
+              </div>
+              <span class="bg-amber-950/40 text-amber-400 px-2 py-0.5 rounded uppercase font-bold text-[8px] border border-amber-900/30">Pending</span>
+            </div>
+
+            <div class="space-y-1.5 font-sans">
+              <div>
+                <span class="text-[9px] uppercase font-mono text-slate-500 block">Reported Comment Content:</span>
+                <div class="bg-slate-900 p-2.5 rounded-lg text-xs text-white border border-slate-800 font-sans italic max-h-24 overflow-y-auto">
+                  "${rep.targetText}"
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-[10px] mt-1 text-slate-300">
+                <div><strong class="text-slate-500">Author:</strong> <span class="text-cyan-400 font-bold">@${rep.authorUsername}</span></div>
+                <div><strong class="text-slate-400">Reporter:</strong> <span class="text-slate-300">@${rep.reporterUsername}</span></div>
+              </div>
+              <div class="text-amber-500 text-xs py-1">
+                <strong class="text-slate-500 text-[10px]">Reason:</strong> "${rep.reason}"
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 xs:grid-cols-3 gap-1.5 pt-2 border-t border-slate-900 font-sans">
+              <button class="admin-act-ban-user bg-rose-955/45 hover:bg-rose-900 border border-rose-800/40 text-rose-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-user-slash mr-1"></i> Ban Permanent
+              </button>
+              <button class="admin-act-temp-user bg-amber-950/45 hover:bg-amber-900 border border-amber-800/40 text-amber-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-hourglass-half mr-1"></i> Temp Block (24h)
+              </button>
+              <button class="admin-act-sched-user bg-indigo-950/45 hover:bg-indigo-900 border border-indigo-800/40 text-indigo-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition cursor-pointer" data-username="${rep.authorUsername}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-calendar-days mr-1"></i> Schedule (7 Days)
+              </button>
+              <button class="admin-act-remove-comment bg-slate-900 hover:bg-slate-800 border border-slate-800 text-red-500 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-1 cursor-pointer" data-comment-id="${rep.targetId}" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-trash mr-1"></i> Delete Reply Content
+              </button>
+              <button class="admin-act-dismiss bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400 font-bold py-1.5 px-2 rounded-lg text-[9px] transition col-span-2 xs:col-span-2 cursor-pointer" data-rep-id="${rep.id}">
+                <i class="fa-solid fa-check mr-1"></i> Dismiss Report
+              </button>
+            </div>
+          `;
+          commentList.appendChild(card);
+        });
+      }
+    }
+  },
+
+  populateCreatePoolCategories() {
+    const selectEl = document.getElementById("create-pool-cat");
+    if (!selectEl) return;
+    
+    const preValue = selectEl.value;
+    selectEl.innerHTML = "";
+    
+    this.db.categories.forEach(cat => {
+      const opt = document.createElement("option");
+      opt.value = cat.name;
+      opt.innerText = `${cat.label} (${cat.type === "multi" ? "Multi Winners" : "Single Winner"})`;
+      selectEl.appendChild(opt);
+    });
+    
+    if (preValue && this.db.categories.some(c => c.name === preValue)) {
+      selectEl.value = preValue;
+    } else if (this.db.categories.length > 0) {
+      selectEl.value = this.db.categories[0].name;
+    }
+  },
+
+  openUserEditModal(id) {
+    const u = this.db.users.find(user => user.id === id);
+    if (!u) return;
+
+    document.getElementById("edit-player-modal-id").innerText = `@${u.username}`;
+    document.getElementById("edit-player-id-field").value = u.id;
+    document.getElementById("edit-player-balance").value = u.balance;
+    document.getElementById("edit-player-email").value = u.email;
+    document.getElementById("edit-player-phone").value = u.phone;
+    document.getElementById("edit-player-password").value = ""; 
+    document.getElementById("edit-player-status").value = u.status;
+    
+    const badgeDropdown = document.getElementById("edit-player-badge");
+    if (badgeDropdown) {
+      badgeDropdown.value = u.customBadge || "";
+    }
+
+    const roleSelect = document.getElementById("edit-player-role");
+    const commInput = document.getElementById("edit-player-commission");
+    const commWrapper = document.getElementById("edit-player-commission-wrapper");
+    const districtSelect = document.getElementById("edit-player-district");
+    const districtWrapper = document.getElementById("edit-player-district-wrapper");
+    const targetWrapper = document.getElementById("edit-player-target-wrapper");
+    const targetTicketsInput = document.getElementById("edit-agent-target-tickets");
+    const targetRewardInput = document.getElementById("edit-agent-target-reward");
+
+    if (districtSelect) {
+      districtSelect.value = u.district || "Dhaka";
+    }
+
+    if (targetTicketsInput) {
+      targetTicketsInput.value = u.monthlyTargetTickets !== undefined ? u.monthlyTargetTickets : 0;
+    }
+    if (targetRewardInput) {
+      targetRewardInput.value = u.monthlyTargetReward !== undefined ? u.monthlyTargetReward : 0;
+    }
+
+    const targetLotterySelect = document.getElementById("edit-agent-target-lottery");
+    if (targetLotterySelect) {
+      targetLotterySelect.innerHTML = '<option value="any">Any Active Pool</option>';
+      const activeLotts = this.db.lotteries.filter(l => l.status === "active");
+      activeLotts.forEach(lot => {
+        const opt = document.createElement("option");
+        opt.value = lot.id;
+        opt.innerText = `${lot.name} (৳${lot.entryFee})`;
+        targetLotterySelect.appendChild(opt);
+      });
+      targetLotterySelect.value = u.monthlyTargetLotteryId || "any";
+    }
+
+    if (roleSelect && commWrapper) {
+      roleSelect.value = u.role || "player";
+      if (commInput) {
+        commInput.value = u.commissionRate !== undefined ? u.commissionRate : 5.0;
+      }
+      const toggleComm = () => {
+        if (roleSelect.value === "agent") {
+          commWrapper.classList.remove("hidden");
+          if (districtWrapper) districtWrapper.classList.remove("hidden");
+          if (targetWrapper) targetWrapper.classList.remove("hidden");
+        } else {
+          commWrapper.classList.add("hidden");
+          if (districtWrapper) districtWrapper.classList.add("hidden");
+          if (targetWrapper) targetWrapper.classList.add("hidden");
+        }
+      };
+      toggleComm();
+      roleSelect.onchange = toggleComm;
+    }
+
+    document.getElementById("admin-user-edit-modal").classList.remove("hidden");
+  },
+
+  savePlayerEditFromModal() {
+    const id = document.getElementById("edit-player-id-field").value;
+    const u = this.db.users.find(user => user.id === id);
+    if (!u) return;
+
+    u.balance = parseFloat(document.getElementById("edit-player-balance").value || "0");
+    u.email = document.getElementById("edit-player-email").value;
+    u.phone = document.getElementById("edit-player-phone").value;
+    u.status = document.getElementById("edit-player-status").value;
+    
+    const badgeDropdown = document.getElementById("edit-player-badge");
+    if (badgeDropdown) {
+      u.customBadge = badgeDropdown.value;
+    }
+
+    const roleSelect = document.getElementById("edit-player-role");
+    if (roleSelect) {
+      u.role = roleSelect.value;
+    }
+    const commInput = document.getElementById("edit-player-commission");
+    if (commInput) {
+      u.commissionRate = parseFloat(commInput.value || "5.0");
+    }
+    const districtSelectVal = document.getElementById("edit-player-district");
+    if (districtSelectVal) {
+      u.district = districtSelectVal.value;
+    }
+
+    const targetTicketsInput = document.getElementById("edit-agent-target-tickets");
+    const targetRewardInput = document.getElementById("edit-agent-target-reward");
+    const targetLotterySelect = document.getElementById("edit-agent-target-lottery");
+    if (targetTicketsInput && targetRewardInput) {
+      const newTarget = parseInt(targetTicketsInput.value || "0");
+      const newReward = parseFloat(targetRewardInput.value || "0");
+      const newLotteryId = targetLotterySelect ? targetLotterySelect.value : "any";
+      if (u.monthlyTargetTickets !== newTarget || u.monthlyTargetReward !== newReward || u.monthlyTargetLotteryId !== newLotteryId) {
+        u.monthlyTargetTickets = newTarget;
+        u.monthlyTargetReward = newReward;
+        u.monthlyTargetLotteryId = newLotteryId;
+        u.monthlyTargetClaimed = false; // reset claimed status for new targets
+        u.monthlySalesProgress = 0; // reset progress for the new specific pool/target
+      }
+    }
+
+    const newPass = document.getElementById("edit-player-password").value.trim();
+    if (newPass) {
+      u.password = newPass;
+      this.showToast(`Password successfully reset for @${u.username}!`, "success");
+    }
+
+    this.saveDB();
+    this.showToast("Player edited successfully!", "success");
+    document.getElementById("admin-user-edit-modal").classList.add("hidden");
+    this.render();
+  },
+
+  renderAdminAgents() {
+    const gridEl = document.getElementById("admin-agents-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
+    const searchInput = document.getElementById("agents-search-input");
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+      searchInput.addEventListener("input", () => this.renderAdminAgents());
+      searchInput.dataset.listenerAttached = "true";
+    }
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    // Stats calculations
+    const agentsCount = this.db.users.filter(u => u.role === "agent").length;
+    const modsCount = this.db.users.filter(u => u.role === "moderator").length;
+    
+    const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
+    const initialSeedComms = this.db.users.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
+
+    const statCountEl = document.getElementById("agents-stat-count");
+    const modCountEl = document.getElementById("moderators-stat-count");
+    const commissionEl = document.getElementById("agents-stat-commission");
+
+    if (statCountEl) statCountEl.innerText = `${agentsCount} Agents`;
+    if (modCountEl) modCountEl.innerText = `${modsCount} Mods`;
+    if (commissionEl) commissionEl.innerText = "৳" + (totalComms + initialSeedComms).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    // Filter Chips Rendering
+    if (!this.adminAgentsActiveFilter) {
+      this.adminAgentsActiveFilter = "all";
+    }
+
+    const filterBar = document.getElementById("admin-agents-filter-bar");
+    if (filterBar) {
+      const filters = [
+        { id: "all", label: "All Staff (সবাই)" },
+        { id: "agent", label: "Field Agents (এজেন্ট)" },
+        { id: "moderator", label: "Moderators (মডারেটর)" },
+        { id: "blocked", label: "Suspended" }
+      ];
+      filterBar.innerHTML = filters.map(f => {
+        const active = this.adminAgentsActiveFilter === f.id;
+        const btnClass = active
+          ? "px-4 py-2 rounded-full bg-amber-500 text-slate-950 font-black transition whitespace-nowrap cursor-pointer shadow-sm"
+          : "px-4 py-2 rounded-full bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800 transition whitespace-nowrap cursor-pointer";
+        return `<button data-filter="${f.id}" class="${btnClass}">${f.label}</button>`;
+      }).join("");
+
+      filterBar.querySelectorAll("button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          this.adminAgentsActiveFilter = btn.getAttribute("data-filter");
+          this.renderAdminAgents();
+        });
+      });
+    }
+
+    // Filtering
+    let staffAccounts = this.db.users.filter(u => u.role === "agent" || u.role === "moderator" || u.role === "subagent");
+    if (query) {
+      staffAccounts = staffAccounts.filter(u => u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query));
+    }
+
+    if (this.adminAgentsActiveFilter === "agent") {
+      staffAccounts = staffAccounts.filter(u => u.role === "agent" || u.role === "subagent");
+    } else if (this.adminAgentsActiveFilter === "moderator") {
+      staffAccounts = staffAccounts.filter(u => u.role === "moderator");
+    } else if (this.adminAgentsActiveFilter === "blocked") {
+      staffAccounts = staffAccounts.filter(u => u.status === "blocked" || u.status === "permanently_banned" || u.status === "suspended" || u.status === "banned");
+    }
+
+    if (staffAccounts.length === 0) {
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No matching registered staff members discovered.
+        </div>
+      `;
+      return;
+    }
+
+    staffAccounts.forEach(staff => {
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750";
+
+      let statusClass = staff.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : "text-rose-450 bg-rose-955/20 border border-rose-900/40";
+
+      let statusText = staff.status === "active"
+        ? "● Active / সচল"
+        : "● Suspended";
+
+      const districtLabel = (staff.role === "agent" || staff.role === "subagent") ? (staff.district || "Dhaka") : "SYSTEM";
+      const badgeColorClass = (staff.role === "agent" || staff.role === "subagent") ? "text-emerald-400 border-emerald-500/10 text-emerald-300" : "text-cyan-400 border-cyan-500/10 text-cyan-300";
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-emerald-950/30 select-none uppercase">
+                ${staff.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${staff.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${staff.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 border text-[8.5px] font-mono font-bold uppercase tracking-wider ${badgeColorClass}">${staff.role.toUpperCase()}</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${staff.email || "No Email"} • ${staff.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
+          </div>
+        </div>
+
+        <!-- Performance / Activity Snapshot -->
+        <div class="grid grid-cols-3 gap-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40 text-xs font-mono">
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Purse Balance</span>
+            <span class="text-xs font-black text-amber-300 mt-0.5 tabular-nums">৳${(staff.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Commission</span>
+            <span class="text-xs font-bold text-white mt-0.5 tabular-nums">
+              ${staff.role === "agent" ? `${(staff.commissionRate || 5.0).toFixed(1)}%` : "N/A"}
+            </span>
+          </div>
+          <div class="flex flex-col">
+            <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Total Bookings</span>
+            <span class="text-xs font-bold text-cyan-400 mt-0.5">${staff.role === "agent" ? (staff.totalBookings || 0) : "System Monitoring"}</span>
+          </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-b border-slate-800/40 pb-2">
+          <span class="flex items-center gap-1.5">
+            <i class="fa-solid fa-location-dot text-[11px]"></i>
+            Region: ${districtLabel}
+          </span>
+          <span class="flex items-center gap-1.5 text-emerald-450 font-bold">
+            <i class="fa-solid fa-circle-check text-[11px]"></i>
+            Earned: ৳${(staff.earnedCommission || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          </span>
+        </div>
+
+        <!-- Actions Row -->
+        <div class="grid grid-cols-2 gap-2 pt-1 font-sans text-[11px]">
+          <button class="staff-edit-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${staff.id}">
+            <i class="fa-solid fa-pen text-slate-500 text-[10px]"></i>
+            <span>Edit Staff</span>
+          </button>
+          <button class="staff-del-btn py-2.5 px-3 rounded-xl bg-slate-950 hover:bg-rose-955/30 border border-slate-800 hover:border-rose-900/40 text-rose-450 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95" data-id="${staff.id}">
+            <i class="fa-solid fa-trash-can text-rose-500/85 text-[10px]"></i>
+            <span>Delete Staff</span>
+          </button>
+        </div>
+      `;
+
+      gridEl.appendChild(card);
+    });
+
+    // Attach Event Handlers
+    gridEl.querySelectorAll(".staff-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.openUserEditModal(id);
+      });
+    });
+
+    gridEl.querySelectorAll(".staff-del-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const staff = this.db.users.find(u => u.id === id);
+        if (!staff) return;
+
+        if (confirm(`Are you absolutely sure you want to permanently delete the staff account @${staff.username}?`)) {
+          this.db.users = this.db.users.filter(u => u.id !== id);
+          this.saveDB();
+          this.showToast(`Deleted staff account @${staff.username} successfully.`, "success");
+          this.renderAdminAgents();
+        }
+      });
+    });
+  },
+
+  renderAgentLeadersTab() {
+    this.initAgentRecruitmentPanelNew();
+    this.updateAgentHubStats();
+    this.renderAgentHubSelect();
+    this.renderAgentLeadersDirectory();
+    this.renderAgentHubPendingList();
+    this.renderRecentAgentCashLoads();
+    this.initAgentLeadersCashLoad();
+    this.updateLeaderCashPreview();
+  },
+
+  initAgentRecruitmentPanelNew() {
+    const leadersBtn = document.getElementById("hub-tab-btn-leaders");
+    const shareBtn = document.getElementById("hub-tab-btn-share");
+    const approvalsBtn = document.getElementById("hub-tab-btn-approvals");
+    
+    const leadersTab = document.getElementById("hub-tab-content-leaders");
+    const shareTab = document.getElementById("hub-tab-content-share");
+    const approvalsTab = document.getElementById("hub-tab-content-approvals");
+
+    if (leadersBtn && !leadersBtn.dataset.hubListenersAttached) {
+      leadersBtn.dataset.hubListenersAttached = "true";
+
+      const setTab = (activeTab) => {
+        if (leadersTab) leadersTab.classList.toggle("hidden", activeTab !== "leaders");
+        if (shareTab) shareTab.classList.toggle("hidden", activeTab !== "share");
+        if (approvalsTab) approvalsTab.classList.toggle("hidden", activeTab !== "approvals");
+
+        const activeClass = "flex-1 min-w-[150px] py-2.5 px-3 rounded-xl transition-all bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-center gap-2 shadow-sm cursor-pointer active:scale-95";
+        const inactiveClass = "flex-1 min-w-[150px] py-2.5 px-3 rounded-xl transition-all text-slate-400 hover:text-white flex items-center justify-center gap-2 cursor-pointer active:scale-95";
+
+        if (leadersBtn) leadersBtn.className = activeTab === "leaders" ? activeClass : inactiveClass;
+        if (shareBtn) shareBtn.className = activeTab === "share" ? activeClass : inactiveClass;
+        if (approvalsBtn) approvalsBtn.className = activeTab === "approvals" ? activeClass : inactiveClass;
+
+        if (activeTab === "leaders") this.renderAgentLeadersDirectory();
+        if (activeTab === "approvals") this.renderAgentHubPendingList();
+        if (activeTab === "share") this.renderAgentHubSelect();
+      };
+
+      leadersBtn.addEventListener("click", () => setTab("leaders"));
+      shareBtn?.addEventListener("click", () => setTab("share"));
+      approvalsBtn?.addEventListener("click", () => setTab("approvals"));
+    }
+
+    // Refresh button
+    const refreshBtn = document.getElementById("leader-refresh-hub-btn");
+    if (refreshBtn && !refreshBtn.dataset.bound) {
+      refreshBtn.dataset.bound = "true";
+      refreshBtn.addEventListener("click", () => {
+        this.renderAgentLeadersTab();
+        this.showToastHub("Agent leaders hub refreshed successfully.");
+      });
+    }
+
+    // Copy Master Referral Link
+    const copyMasterBtn = document.getElementById("hub-copy-master-btn");
+    if (copyMasterBtn && !copyMasterBtn.dataset.bound) {
+      copyMasterBtn.dataset.bound = "true";
+      copyMasterBtn.addEventListener("click", () => {
+        const input = document.getElementById("hub-referral-link-input");
+        if (input) {
+          input.select();
+          navigator.clipboard.writeText(input.value);
+          this.showToastHub("Master Referral Link copied to clipboard!");
+        }
+      });
+    }
+
+    // Dropdown change updates referral link automatically
+    const leaderSelect = document.getElementById("hub-leader-select");
+    if (leaderSelect && !leaderSelect.dataset.bound) {
+      leaderSelect.dataset.bound = "true";
+      leaderSelect.addEventListener("change", () => {
+        this.updateMasterLinkValue();
+      });
+    }
+
+    // Campaign Custom Builder Button
+    const campaignBtn = document.getElementById("hub-generate-campaign-btn");
+    if (campaignBtn && !campaignBtn.dataset.bound) {
+      campaignBtn.dataset.bound = "true";
+      campaignBtn.addEventListener("click", () => {
+        const campaignInput = document.getElementById("hub-campaign-name");
+        const campaignVal = campaignInput ? campaignInput.value.trim() : "";
+        const leaderSelectEl = document.getElementById("hub-leader-select");
+        const leaderVal = leaderSelectEl ? leaderSelectEl.value : "";
+        const resultBlock = document.getElementById("hub-generated-result-block");
+        const outputEl = document.getElementById("hub-custom-link-output");
+
+        if (!leaderVal) {
+          this.showToastHub("Please register or select an Agent Leader first!");
+          return;
+        }
+        if (!campaignVal) {
+          this.showToastHub("Please enter a campaign zone tag first.");
+          return;
+        }
+
+        const smsTrackInput = document.getElementById("hub-sms-track");
+        const isSms = smsTrackInput ? smsTrackInput.checked : false;
+        const origin = window.location.origin;
+        const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0&campaign=${encodeURIComponent(campaignVal)}&sms_track=${isSms}`;
+
+        if (outputEl) outputEl.textContent = inviteUrl;
+        if (resultBlock) resultBlock.classList.remove("hidden");
+        this.showToastHub("Custom campaign link generated!");
+      });
+    }
+
+    // Copy Campaign Result Link
+    const copyCampaignBtn = document.getElementById("hub-copy-campaign-btn");
+    if (copyCampaignBtn && !copyCampaignBtn.dataset.bound) {
+      copyCampaignBtn.dataset.bound = "true";
+      copyCampaignBtn.addEventListener("click", () => {
+        const outputEl = document.getElementById("hub-custom-link-output");
+        const text = outputEl ? outputEl.textContent : "";
+        if (text) {
+          navigator.clipboard.writeText(text);
+          this.showToastHub("Campaign link copied to clipboard!");
+        }
+      });
+    }
+
+    // Offline QR Popup triggers
+    const openQrBtn = document.getElementById("hub-open-qr-btn");
+    const closeQrModalBtnTop = document.getElementById("hub-close-qr-modal-btn-top");
+    const closeQrModalBtn = document.getElementById("hub-close-qr-modal-btn");
+    const qrModal = document.getElementById("hub-qr-modal");
+
+    if (openQrBtn && !openQrBtn.dataset.bound) {
+      openQrBtn.dataset.bound = "true";
+      openQrBtn.addEventListener("click", () => {
+        const leaderSelectEl = document.getElementById("hub-leader-select");
+        const leaderVal = leaderSelectEl && leaderSelectEl.value ? leaderSelectEl.value : "agent_dhaka";
+        const qrLabel = document.getElementById("hub-qr-leader-label");
+        const qrBadge = document.getElementById("hub-qr-badge-code");
+
+        if (qrLabel) qrLabel.textContent = `@${leaderVal}`;
+        if (qrBadge) qrBadge.textContent = `${leaderVal.toUpperCase()}-OFFLINE-NODE`;
+
+        qrModal?.classList.remove("hidden");
+      });
+
+      const closeQr = () => qrModal?.classList.add("hidden");
+      closeQrModalBtnTop?.addEventListener("click", closeQr);
+      closeQrModalBtn?.addEventListener("click", closeQr);
+    }
+
+    // Social Quick Share Shortcuts
+    const getShareUrl = () => {
+      const input = document.getElementById("hub-referral-link-input");
+      return input ? input.value : `${window.location.origin}/?role=agent`;
+    };
+
+    const waBtn = document.getElementById("hub-share-whatsapp-btn");
+    waBtn && !waBtn.dataset.bound && (waBtn.dataset.bound = "true", waBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent("Join our official Agent network here: ")}${url}`, "_blank");
+    }));
+
+    const tgBtn = document.getElementById("hub-share-telegram-btn");
+    tgBtn && !tgBtn.dataset.bound && (tgBtn.dataset.bound = "true", tgBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      window.open(`https://t.me/share/url?url=${url}&text=${encodeURIComponent("Official Agent Leader Registration Link")}`, "_blank");
+    }));
+
+    const msgBtn = document.getElementById("hub-share-messenger-btn");
+    msgBtn && !msgBtn.dataset.bound && (msgBtn.dataset.bound = "true", msgBtn.addEventListener("click", () => {
+      const url = encodeURIComponent(getShareUrl());
+      navigator.clipboard.writeText(decodeURIComponent(url));
+      this.showToastHub("Registration URL copied! Open Messenger to paste.");
+    }));
+
+    const smsBtn = document.getElementById("hub-share-sms-btn");
+    smsBtn && !smsBtn.dataset.bound && (smsBtn.dataset.bound = "true", smsBtn.addEventListener("click", () => {
+      const url = getShareUrl();
+      window.location.href = `sms:?body=${encodeURIComponent("Register as an agent: " + url)}`;
+    }));
+  },
+
+  updateMasterLinkValue() {
+    const leaderSelect = document.getElementById("hub-leader-select");
+    const linkInput = document.getElementById("hub-referral-link-input");
+    if (leaderSelect && linkInput) {
+      const leaderVal = leaderSelect.value;
+      if (leaderVal) {
+        const origin = window.location.origin;
+        linkInput.value = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=5.0`;
+      } else {
+        linkInput.value = "No Agent Leaders Registered";
+      }
+    }
+  },
+
+  updateAgentHubStats() {
+    const activeLeaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+    const activeCount = activeLeaders.length;
+    const subagentsCount = this.db.users.filter(u => u.role === "subagent").length;
+    const pendingCount = this.db.users.filter(u => u.role === "agent" && u.status === "pending_approval").length;
+    const totalLeadersBalance = activeLeaders.reduce((sum, u) => sum + (u.balance || 0), 0);
+
+    const activeStat = document.getElementById("hub-active-count-stat");
+    if (activeStat) activeStat.textContent = activeCount;
+
+    const subagentsStat = document.getElementById("hub-subagents-count-stat");
+    if (subagentsStat) subagentsStat.textContent = subagentsCount;
+
+    const leadersBalStat = document.getElementById("hub-leaders-balance-stat");
+    if (leadersBalStat) leadersBalStat.textContent = `৳${totalLeadersBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+
+    const pendingStat = document.getElementById("hub-pending-count-stat");
+    if (pendingStat) pendingStat.textContent = pendingCount;
+
+    const badgePending = document.getElementById("hub-badge-pending");
+    if (badgePending) badgePending.textContent = pendingCount;
+  },
+
+  renderAgentHubSelect() {
+    const leaderSelect = document.getElementById("hub-leader-select");
+    const quickCashSelect = document.getElementById("leader-cash-select-user");
+    const leaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+
+    const optionsHtml = leaders.length === 0
+      ? `<option value="">No Active Agent Leaders Found</option>`
+      : leaders.map(l => `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"} - Bal: ৳${(l.balance || 0).toFixed(2)})</option>`).join("");
+
+    if (leaderSelect) {
+      const currentVal = leaderSelect.value;
+      leaderSelect.innerHTML = optionsHtml;
+      if (currentVal && leaders.some(l => l.username === currentVal)) leaderSelect.value = currentVal;
+      this.updateMasterLinkValue();
+    }
+
+    if (quickCashSelect) {
+      const currentVal = quickCashSelect.value;
+      quickCashSelect.innerHTML = optionsHtml;
+      if (currentVal && leaders.some(l => l.username === currentVal)) quickCashSelect.value = currentVal;
+
+      if (!quickCashSelect.dataset.bound) {
+        quickCashSelect.dataset.bound = "true";
+        quickCashSelect.addEventListener("change", () => {
+          this.updateLeaderCashPreview();
+        });
+      }
+    }
+
+    this.updateLeaderCashPreview();
+  },
+
+  updateLeaderCashPreview() {
+    const select = document.getElementById("leader-cash-select-user");
+    const username = select ? select.value : "";
+    const leader = this.db.users.find(u => u.username === username);
+
+    const initialEl = document.getElementById("leader-cash-preview-initial");
+    const nameEl = document.getElementById("leader-cash-preview-username");
+    const distEl = document.getElementById("leader-cash-preview-district");
+    const phoneEl = document.getElementById("leader-cash-preview-phone");
+    const curBalEl = document.getElementById("leader-cash-current-balance-preview");
+    const projBalEl = document.getElementById("leader-cash-projected-balance-preview");
+    const amtInput = document.getElementById("leader-cash-amount-input");
+    const enteredAmt = parseFloat(amtInput ? amtInput.value || "0" : "0");
+
+    if (leader) {
+      if (initialEl) initialEl.textContent = (leader.username || "A").substring(0, 2).toUpperCase();
+      if (nameEl) nameEl.textContent = `@${leader.username}`;
+      if (distEl) distEl.textContent = leader.district || leader.region || "Dhaka Zone";
+      if (phoneEl) phoneEl.textContent = `Phone: ${leader.phone || "N/A"}`;
+      const curBal = leader.balance || 0;
+      if (curBalEl) curBalEl.textContent = `৳${curBal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      const proj = curBal + (isNaN(enteredAmt) ? 0 : Math.max(0, enteredAmt));
+      if (projBalEl) projBalEl.textContent = `৳${proj.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    } else {
+      if (nameEl) nameEl.textContent = "No agent selected";
+      if (curBalEl) curBalEl.textContent = "৳0.00";
+      if (projBalEl) projBalEl.textContent = "৳0.00";
+    }
+  },
+
+  renderAgentLeadersDirectory() {
+    const container = document.getElementById("hub-leaders-cards-container");
+    const emptyState = document.getElementById("hub-leaders-empty-state");
+    const searchInput = document.getElementById("hub-leaders-search-input");
+    if (!container) return;
+
+    if (searchInput && !searchInput.dataset.bound) {
+      searchInput.dataset.bound = "true";
+      searchInput.addEventListener("input", () => this.renderAgentLeadersDirectory());
+    }
+
+    const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+    let leaders = this.db.users.filter(u => u.role === "agent");
+
+    if (query) {
+      leaders = leaders.filter(l => 
+        l.username.toLowerCase().includes(query) || 
+        (l.district && l.district.toLowerCase().includes(query)) ||
+        (l.phone && l.phone.includes(query)) ||
+        (l.email && l.email.toLowerCase().includes(query))
+      );
+    }
+
+    if (leaders.length === 0) {
+      container.innerHTML = "";
+      if (emptyState) {
+        emptyState.classList.remove("hidden");
+        emptyState.classList.add("flex");
+      }
+      return;
+    }
+
+    if (emptyState) {
+      emptyState.classList.add("hidden");
+      emptyState.classList.remove("flex");
+    }
+
+    container.innerHTML = leaders.map(l => {
+      const initial = (l.username || "A").substring(0, 2).toUpperCase();
+      const subCount = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === l.username.toLowerCase()).length;
+      const statusClass = l.status === "active" 
+        ? "bg-emerald-950/80 text-emerald-400 border border-emerald-800/40" 
+        : "bg-rose-950/80 text-rose-400 border border-rose-800/40";
+
+      return `
+        <div class="bg-slate-950/90 p-5 rounded-3xl border border-slate-850 hover:border-emerald-500/40 transition shadow-xl space-y-4 font-sans">
+          <!-- Card Header -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-400 to-yellow-300 flex items-center justify-center text-slate-950 font-black text-sm shadow-md shrink-0 font-mono relative">
+                ${initial}
+                <span class="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-slate-900 border border-amber-500/40 text-amber-400 flex items-center justify-center text-[9px]">
+                  <i class="fa-solid fa-crown text-[8px]"></i>
+                </span>
+              </div>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <h4 class="text-sm font-black text-white font-mono">@${l.username}</h4>
+                  <span class="text-[9.5px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded font-mono uppercase font-bold">${l.district || l.region || "Dhaka Zone"}</span>
+                </div>
+                <p class="text-[11px] text-slate-400 font-mono mt-0.5">Phone: ${l.phone || "N/A"}</p>
+              </div>
+            </div>
+            <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded uppercase ${statusClass}">
+              ${l.status || 'active'}
+            </span>
+          </div>
+
+          <!-- Key Metrics Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 bg-slate-900/70 p-3.5 rounded-2xl border border-slate-850 font-mono text-center">
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Purse Balance</span>
+              <span class="text-sm font-black text-amber-400 block tabular-nums">৳${(l.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Sub-Agents</span>
+              <span class="text-sm font-black text-indigo-400 block">${subCount}</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Commission</span>
+              <span class="text-sm font-black text-emerald-400 block">${(l.commissionRate || 5.0).toFixed(1)}%</span>
+            </div>
+            <div class="space-y-0.5">
+              <span class="text-[9px] text-slate-400 uppercase font-bold block">Total Earned</span>
+              <span class="text-sm font-black text-slate-200 block tabular-nums">৳${(l.earnedCommission || 0).toFixed(2)}</span>
+            </div>
+          </div>
+
+          <!-- Card Actions (Direct Cash Load prominent) -->
+          <div class="flex items-center gap-2 pt-1 font-mono text-xs">
+            <button class="leader-card-cash-load-btn flex-1 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black py-2.5 px-3 rounded-xl transition cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10" data-username="${l.username}" data-balance="${l.balance || 0}" data-district="${l.district || 'Dhaka'}">
+              <i class="fa-solid fa-wallet text-sm"></i>
+              <span>Cash In (টাকা লোড)</span>
+            </button>
+            <button class="leader-card-copy-ref-btn bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 py-2.5 px-3 rounded-xl font-bold transition active:scale-95 cursor-pointer flex items-center justify-center gap-1" data-username="${l.username}" title="Copy Referral Registration Link">
+              <i class="fa-solid fa-link text-xs"></i>
+              <span class="hidden sm:inline">Ref Link</span>
+            </button>
+            <button class="leader-card-edit-btn bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 py-2.5 px-3 rounded-xl font-bold transition active:scale-95 cursor-pointer flex items-center justify-center gap-1" data-id="${l.id}" title="Edit Leader Account Settings">
+              <i class="fa-solid fa-gear text-xs"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    // Bind card action buttons
+    container.querySelectorAll(".leader-card-cash-load-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const username = btn.getAttribute("data-username");
+        const balance = parseFloat(btn.getAttribute("data-balance") || "0");
+        const district = btn.getAttribute("data-district") || "Dhaka";
+        this.openAgentCashLoadModal(username, balance, district);
+      });
+    });
+
+    container.querySelectorAll(".leader-card-copy-ref-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const username = btn.getAttribute("data-username");
+        const origin = window.location.origin;
+        const link = `${origin}/?role=agent&ref=${encodeURIComponent(username)}&comm=5.0`;
+        navigator.clipboard.writeText(link);
+        this.showToastHub(`Copied referral link for @${username}!`);
+      });
+    });
+
+    container.querySelectorAll(".leader-card-edit-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.openUserEditModal(id);
+      });
+    });
+  },
+
+  openAgentCashLoadModal(username, currentBalance, district) {
+    const modal = document.getElementById("leader-cash-modal");
+    if (!modal) return;
+
+    const targetUserEl = document.getElementById("modal-cash-target-username");
+    const nameEl = document.getElementById("modal-cash-agent-name");
+    const distEl = document.getElementById("modal-cash-agent-district");
+    const balEl = document.getElementById("modal-cash-agent-balance");
+    const subEl = document.getElementById("modal-leader-subtitle");
+    const amtEl = document.getElementById("modal-cash-amount");
+
+    if (targetUserEl) targetUserEl.value = username;
+    if (nameEl) nameEl.innerText = `@${username}`;
+    if (distEl) distEl.innerText = district || "Dhaka";
+    if (balEl) balEl.innerText = `৳${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (subEl) subEl.innerText = `Refilling wallet purse for @${username}`;
+    if (amtEl) amtEl.value = "";
+
+    modal.classList.remove("hidden");
+  },
+
+  initAgentLeadersCashLoad() {
+    // Top Quick Cash Load Button triggers opening the modal or selects first agent
+    const topLoadBtn = document.getElementById("leader-quick-cash-load-top-btn");
+    if (topLoadBtn && !topLoadBtn.dataset.bound) {
+      topLoadBtn.dataset.bound = "true";
+      topLoadBtn.addEventListener("click", () => {
+        const select = document.getElementById("leader-cash-select-user");
+        const username = select ? select.value : "";
+        if (username) {
+          const leader = this.db.users.find(u => u.username === username);
+          this.openAgentCashLoadModal(username, leader ? (leader.balance || 0) : 0, leader ? (leader.district || "Dhaka") : "Dhaka");
+        } else {
+          this.showToastHub("No active agent leaders available to load cash!");
+        }
+      });
+    }
+
+    // Amount input in direct cash terminal updates projected balance live
+    const topAmtInput = document.getElementById("leader-cash-amount-input");
+    if (topAmtInput && !topAmtInput.dataset.bound) {
+      topAmtInput.dataset.bound = "true";
+      topAmtInput.addEventListener("input", () => {
+        this.updateLeaderCashPreview();
+      });
+    }
+
+    // Preset pills in top quick cash form
+    document.querySelectorAll(".leader-preset-pill").forEach(pill => {
+      if (!pill.dataset.bound) {
+        pill.dataset.bound = "true";
+        pill.addEventListener("click", () => {
+          const val = pill.getAttribute("data-val");
+          const input = document.getElementById("leader-cash-amount-input");
+          if (input) {
+            input.value = val;
+            this.updateLeaderCashPreview();
+          }
+        });
+      }
+    });
+
+    // Preset pills in modal
+    document.querySelectorAll(".modal-preset-btn").forEach(btn => {
+      if (!btn.dataset.bound) {
+        btn.dataset.bound = "true";
+        btn.addEventListener("click", () => {
+          const val = btn.getAttribute("data-val");
+          const input = document.getElementById("modal-cash-amount");
+          if (input) input.value = val;
+        });
+      }
+    });
+
+    // Close modal buttons
+    const closeBtn = document.getElementById("leader-close-cash-modal-btn");
+    const cancelBtn = document.getElementById("modal-cash-cancel-btn");
+    const modal = document.getElementById("leader-cash-modal");
+
+    const closeModal = () => modal?.classList.add("hidden");
+    closeBtn && !closeBtn.dataset.bound && (closeBtn.dataset.bound = "true", closeBtn.addEventListener("click", closeModal));
+    cancelBtn && !cancelBtn.dataset.bound && (cancelBtn.dataset.bound = "true", cancelBtn.addEventListener("click", closeModal));
+
+    // Submit top quick cash load form
+    const topCashForm = document.getElementById("leader-quick-cash-form");
+    if (topCashForm && !topCashForm.dataset.bound) {
+      topCashForm.dataset.bound = "true";
+      topCashForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document.getElementById("leader-cash-select-user").value;
+        const amount = parseFloat(document.getElementById("leader-cash-amount-input").value || "0");
+
+        if (!username || amount <= 0) {
+          this.showToastHub("Please select an agent leader and enter a valid positive amount!");
+          return;
+        }
+
+        this.executeAgentCashLoad(username, amount, "Admin Quick Cash Load");
+        topCashForm.reset();
+        this.updateLeaderCashPreview();
+      });
+    }
+
+    // Submit modal cash load form
+    const modalCashForm = document.getElementById("modal-agent-cash-form");
+    if (modalCashForm && !modalCashForm.dataset.bound) {
+      modalCashForm.dataset.bound = "true";
+      modalCashForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = document.getElementById("modal-cash-target-username").value;
+        const amount = parseFloat(document.getElementById("modal-cash-amount").value || "0");
+        const note = document.getElementById("modal-cash-note").value.trim() || "Admin Direct Fund Refill";
+
+        if (!username || amount <= 0) {
+          this.showToastHub("Please enter a valid positive amount!");
+          return;
+        }
+
+        this.executeAgentCashLoad(username, amount, note);
+        closeModal();
+      });
+    }
+
+    // Onboard new leader modal handlers
+    const addNewBtn = document.getElementById("leader-add-new-btn");
+    const addModal = document.getElementById("leader-add-modal");
+    const closeAddModalBtn = document.getElementById("leader-close-add-modal-btn");
+    const cancelAddModalBtn = document.getElementById("modal-add-cancel-btn");
+    const addLeaderForm = document.getElementById("modal-add-leader-form");
+
+    if (addNewBtn && !addNewBtn.dataset.bound) {
+      addNewBtn.dataset.bound = "true";
+      addNewBtn.addEventListener("click", () => {
+        if (addModal) addModal.classList.remove("hidden");
+      });
+    }
+
+    const closeAddModal = () => addModal?.classList.add("hidden");
+    if (closeAddModalBtn && !closeAddModalBtn.dataset.bound) {
+      closeAddModalBtn.dataset.bound = "true";
+      closeAddModalBtn.addEventListener("click", closeAddModal);
+    }
+    if (cancelAddModalBtn && !cancelAddModalBtn.dataset.bound) {
+      cancelAddModalBtn.dataset.bound = "true";
+      cancelAddModalBtn.addEventListener("click", closeAddModal);
+    }
+
+    if (addLeaderForm && !addLeaderForm.dataset.bound) {
+      addLeaderForm.dataset.bound = "true";
+      addLeaderForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("add-leader-username").value.trim().toLowerCase().replace(/\s+/g, "");
+        const phone = document.getElementById("add-leader-phone").value.trim();
+        const email = document.getElementById("add-leader-email").value.trim();
+        const district = document.getElementById("add-leader-district").value;
+        const commissionRate = parseFloat(document.getElementById("add-leader-commission").value || "5.0");
+        const initialBalance = parseFloat(document.getElementById("add-leader-balance").value || "5000");
+        const password = document.getElementById("add-leader-password").value;
+
+        if (!username || !phone || !email || !password) {
+          this.showToastHub("Please fill in all required fields!");
+          return;
+        }
+
+        // Check if username already exists in database
+        const exists = this.db.users.some(u => u.username.toLowerCase() === username);
+        if (exists) {
+          this.showToastHub(`Username @${username} is already taken!`);
+          return;
+        }
+
+        // Display loader state
+        const confirmBtn = document.getElementById("modal-add-confirm-btn");
+        const origBtnText = confirmBtn ? confirmBtn.innerHTML : "Register Leader";
+        if (confirmBtn) {
+          confirmBtn.disabled = true;
+          confirmBtn.innerHTML = `<i class="fa-solid fa-circle-notch animate-spin text-sm"></i> Registering...`;
+        }
+
+        try {
+          // Since our app syncs to Firestore, let's register the user using the SyncCloudModule or directly add to our synced db
+          // Let's create an auth account via createStaffAccount if SyncCloudModule is alive
+          let uid = "agent_" + Date.now();
+          if (typeof this.createStaffAccount === "function") {
+            const res = await this.createStaffAccount({
+              username,
+              email,
+              phone,
+              district,
+              role: "agent",
+              commissionRate,
+              balance: initialBalance,
+              password,
+              status: "active",
+              earnedCommission: 0,
+              totalBookings: 0
+            });
+            if (res && res.success) {
+              uid = res.uid;
+            } else {
+              throw new Error(res.error || "Firebase account creation failed.");
+            }
+          }
+
+          // Directly push into our local database array which snapshot syncing will replicate up
+          const newAgentObj = {
+            id: uid,
+            uid: uid,
+            username: username,
+            email: email,
+            phone: phone,
+            district: district,
+            region: district,
+            role: "agent",
+            commissionRate: commissionRate,
+            balance: initialBalance,
+            earnedCommission: 0,
+            totalBookings: 0,
+            password: password,
+            status: "active",
+            createdAt: new Date().toISOString()
+          };
+
+          this.db.users.push(newAgentObj);
+
+          // Add a deposit transaction if initial balance is > 0
+          if (initialBalance > 0) {
+            if (!this.db.transactions) this.db.transactions = [];
+            this.db.transactions.push({
+              id: "tx_" + Date.now(),
+              userId: uid,
+              userName: username,
+              username: username,
+              paymentMethod: "Admin Agent Cash Load",
+              phone: phone,
+              amount: initialBalance,
+              transactionType: "Deposit",
+              status: "complete",
+              bonusAmount: 0,
+              notes: "Initial Onboarding Balance Refill",
+              date: new Date().toLocaleString("en-US", {hour12: true})
+            });
+
+            if (!this.db.agentLedger) this.db.agentLedger = [];
+            this.db.agentLedger.push({
+              id: "act_" + Date.now(),
+              agentId: uid,
+              agentUsername: username,
+              timestamp: new Date().toISOString(),
+              targetUser: username,
+              description: `Initial Onboarding Purse Balance`,
+              amount: initialBalance,
+              commission: 0,
+              status: "complete"
+            });
+          }
+
+          this.saveDB();
+          this.showToastHub(`Successfully onboarded @${username} with ৳${initialBalance} initial balance!`);
+          addLeaderForm.reset();
+          closeAddModal();
+
+          // Refresh state & views
+          this.updateAgentHubStats();
+          this.renderAgentLeadersDirectory();
+          this.renderAgentHubSelect();
+          this.renderRecentAgentCashLoads();
+          this.updateLeaderCashPreview();
+        } catch (err) {
+          this.showToastHub(`Error onboarding agent: ${err.message || err}`);
+        } finally {
+          if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = origBtnText;
+          }
+        }
+      });
+    }
+  },
+
+  executeAgentCashLoad(username, amount, note) {
+    const leader = this.db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+    if (!leader) {
+      this.showToastHub("Agent account not found!");
+      return;
+    }
+
+    leader.balance = (leader.balance || 0) + amount;
+
+    if (!this.db.transactions) this.db.transactions = [];
+    this.db.transactions.push({
+      id: "tx_" + Date.now(),
+      userId: leader.id,
+      userName: leader.username,
+      username: leader.username,
+      paymentMethod: "Admin Agent Cash Load",
+      phone: leader.phone || "Internal Desk",
+      amount: amount,
+      transactionType: "Deposit",
+      status: "complete",
+      bonusAmount: 0,
+      notes: note || "Admin Agent Cash Load",
+      date: new Date().toLocaleString("en-US", {hour12: true})
+    });
+
+    if (!this.db.agentLedger) this.db.agentLedger = [];
+    this.db.agentLedger.push({
+      id: "act_" + Date.now(),
+      agentId: leader.id,
+      agentUsername: leader.username,
+      timestamp: new Date().toISOString(),
+      targetUser: leader.username,
+      description: `Admin Cash Load Refill: ${note}`,
+      amount: amount,
+      commission: 0,
+      status: "complete"
+    });
+
+    this.saveDB();
+    this.showToastHub(`Successfully loaded ৳${amount.toLocaleString()} into @${leader.username}'s wallet!`);
+    
+    // Refresh all displays
+    this.updateAgentHubStats();
+    this.renderAgentLeadersDirectory();
+    this.renderAgentHubSelect();
+    this.renderRecentAgentCashLoads();
+    this.updateLeaderCashPreview();
+  },
+
+  renderRecentAgentCashLoads() {
+    const tbody = document.getElementById("hub-recent-cashloads-tbody");
+    if (!tbody) return;
+
+    const txs = (this.db.transactions || [])
+      .filter(tx => tx.paymentMethod === "Admin Agent Cash Load" || (tx.notes && tx.notes.includes("Admin Cash Load Refill")))
+      .slice()
+      .reverse()
+      .slice(0, 15);
+
+    if (txs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="5" class="p-6 text-center text-slate-500 font-sans italic">
+            No agent cash refills recorded yet. Use the terminal above to load funds into an agent's wallet.
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = txs.map(tx => {
+      const dateStr = tx.date || (tx.timestamp ? new Date(tx.timestamp).toLocaleString("en-US", {hour12: true}) : "Recent");
+      const agentUser = tx.userName || tx.username || "agent";
+      const u = this.db.users.find(user => user.username === agentUser);
+      const district = u ? (u.district || u.region || "Dhaka Zone") : "Zone";
+
+      return `
+        <tr class="hover:bg-slate-950/60 transition">
+          <td class="p-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">${dateStr}</td>
+          <td class="p-3">
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white font-mono">@${agentUser}</span>
+              <span class="text-[9px] bg-slate-950 border border-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-sans">${district}</span>
+            </div>
+          </td>
+          <td class="p-3 font-bold text-emerald-400 font-mono tabular-nums">+৳${(tx.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+          <td class="p-3 text-slate-300 font-sans text-xs max-w-xs truncate">${tx.notes || "Admin Direct Fund Refill"}</td>
+          <td class="p-3 text-right">
+            <span class="text-[9.5px] font-bold uppercase font-mono px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40">COMPLETED</span>
+          </td>
+        </tr>
+      `;
+    }).join("");
+  },
+
+  renderAgentHubPendingList() {
+    const container = document.getElementById("hub-approvals-list-container");
+    const emptyState = document.getElementById("hub-empty-queue-state");
+    if (!container || !emptyState) return;
+
+    container.innerHTML = "";
+    const pendings = this.db.users.filter(u => u.status === "pending_approval" && u.role === "agent");
+
+    if (pendings.length === 0) {
+      container.classList.add("hidden");
+      emptyState.classList.remove("hidden");
+      emptyState.classList.add("flex");
+      return;
+    }
+
+    container.classList.remove("hidden");
+    emptyState.classList.add("hidden");
+    emptyState.classList.remove("flex");
+
+    pendings.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "bg-slate-950/80 rounded-2xl p-5 shadow-lg border border-slate-850 hover:border-emerald-500/30 transition-all space-y-3.5";
+      card.id = `hub-approval-card-${p.id}`;
+
+      const initial = (p.username || "A").substring(0, 2).toUpperCase();
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 font-mono font-bold text-xs shrink-0">
+              ${initial}
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm font-bold text-white font-mono">@${p.username}</h3>
+                <span class="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wider">${p.district || p.region || "Dhaka Zone"}</span>
+              </div>
+              <p class="text-[11px] text-slate-400 font-mono mt-0.5">Phone: ${p.phone || "N/A"} • ID: #${p.id}</p>
+            </div>
+          </div>
+          <span class="text-[9px] bg-amber-950/80 text-amber-400 px-2.5 py-1 rounded-full flex items-center gap-1 border border-amber-800/40 font-mono font-bold uppercase tracking-wider">
+            <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            Pending
+          </span>
+        </div>
+
+        <!-- Verification Badges -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-900/60 p-3 rounded-xl border border-slate-850 font-mono text-xs">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-id-card text-emerald-400 text-sm"></i>
+            <div>
+              <span class="text-[10px] text-white block font-bold">NID Verified</span>
+              <span class="text-[9px] text-slate-400 block">System Verified</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-certificate text-sky-400 text-sm"></i>
+            <div>
+              <span class="text-[10px] text-white block font-bold">Trade License</span>
+              <span class="text-[9px] text-slate-400 block">Authorized</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2 pt-1 font-mono text-xs">
+          <button class="hub-decline-btn flex-1 py-2.5 rounded-xl bg-slate-900 text-rose-400 hover:bg-rose-950/50 border border-slate-800 hover:border-rose-800/40 font-bold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer" data-id="${p.id}">
+            <i class="fa-solid fa-xmark"></i>
+            <span>Decline</span>
+          </button>
+          <button class="hub-approve-btn flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition cursor-pointer" data-id="${p.id}">
+            <i class="fa-solid fa-check"></i>
+            <span>Approve Agent</span>
+          </button>
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+
+    container.querySelectorAll(".hub-approve-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.handleAgentHubApproval(id, "approved");
+      });
+    });
+
+    container.querySelectorAll(".hub-decline-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.handleAgentHubApproval(id, "declined");
+      });
+    });
+  },
+
+  handleAgentHubApproval(userId, action) {
+    const matched = this.db.users.find(u => u.id === userId);
+    if (!matched) return;
+
+    if (action === "approved") {
+      matched.status = "active";
+      this.db.agentLedger = this.db.agentLedger || [];
+      this.db.agentLedger.push({
+        id: "act_" + Date.now(),
+        agentId: matched.id,
+        timestamp: new Date().toISOString(),
+        description: `Approved recruitment of sub-agent @${matched.username} under recruiting leader @${matched.referredBy || "System"}.`,
+        amount: 0,
+        commission: 0
+      });
+      this.saveDB();
+      this.showToastHub(`Agent @${matched.username} approved successfully!`);
+    } else {
+      this.db.users = this.db.users.filter(u => u.id !== userId);
+      this.saveDB();
+      this.showToastHub(`Application for @${matched.username} declined.`);
+    }
+
+    this.updateAgentHubStats();
+    this.renderAgentHubSelect();
+    this.renderAgentHubPendingList();
+  },
+
+  showToastHub(msg) {
+    const toast = document.getElementById("toast-notification");
+    const toastMsg = document.getElementById("toast-msg");
+    if (toast && toastMsg) {
+      toastMsg.textContent = msg;
+      toast.classList.remove("translate-y-20", "opacity-0", "pointer-events-none");
+      toast.classList.add("translate-y-0", "opacity-100");
+      setTimeout(() => {
+        toast.classList.remove("translate-y-0", "opacity-100");
+        toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
+      }, 3000);
+    } else {
+      alert(msg);
+    }
+  },
+
+
+  showAgentLeaderDetail(leaderId) {
+    const leader = this.db.users.find(u => u.id === leaderId);
+    if (!leader) return;
+
+    // Switch screens
+    document.getElementById("agent-leaders-list-view").classList.add("hidden");
+    document.getElementById("agent-leaders-detail-view").classList.remove("hidden");
+
+    // Profile settings
+    document.getElementById("detail-leader-avatar-initial").innerText = leader.username.charAt(0).toUpperCase();
+    document.getElementById("detail-leader-username").innerText = `@${leader.username}`;
+    document.getElementById("detail-leader-district-badge").innerText = (leader.district || "DHAKA").toUpperCase();
+    document.getElementById("detail-leader-email").innerText = leader.email || "N/A";
+    document.getElementById("detail-leader-phone").innerText = leader.phone || "N/A";
+    
+    const statusLbl = document.getElementById("detail-leader-status-lbl");
+    if (statusLbl) {
+      statusLbl.innerText = (leader.status || "active").toUpperCase();
+      statusLbl.className = leader.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
+    }
+
+    document.getElementById("detail-leader-balance-lbl").innerText = `৳${(leader.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-leader-commission-lbl").innerText = `${(leader.commissionRate || 5.0).toFixed(1)}%`;
+
+    // Targets & Mission
+    const target = leader.monthlyTargetTickets || 0;
+    const progress = leader.monthlySalesProgress || 0;
+    const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+    
+    document.getElementById("detail-leader-target-tickets").innerText = target;
+    document.getElementById("detail-leader-target-reward").innerText = `৳${(leader.monthlyTargetReward || 0).toFixed(2)}`;
+
+    // Target pool
+    let targetPoolName = "Any Active Pool";
+    const targetLotteryId = leader.monthlyTargetLotteryId || "any";
+    if (targetLotteryId !== "any") {
+      const foundLot = (this.db.lotteries || []).find(l => l.id === targetLotteryId);
+      if (foundLot) {
+        targetPoolName = `${foundLot.name} (৳${foundLot.entryFee})`;
+      } else {
+        targetPoolName = "Archived Pool";
+      }
+    }
+    document.getElementById("detail-leader-target-pool").innerText = targetPoolName;
+    document.getElementById("detail-leader-progress-pct").innerText = `${pct}%`;
+    document.getElementById("detail-leader-progress-bar").style.width = `${pct}%`;
+    document.getElementById("detail-leader-progress-val").innerText = `${progress} / ${target} Tickets`;
+
+    const badgeEl = document.getElementById("detail-leader-mission-badge");
+    if (badgeEl) {
+      if (target <= 0) {
+        badgeEl.innerText = "DISABLED";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-slate-950 text-slate-500 border border-slate-800";
+      } else if (progress >= target) {
+        badgeEl.innerText = "COMPLETED 🎉";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/40";
+      } else {
+        badgeEl.innerText = `${target - progress} LEFT`;
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/40 animate-pulse";
+      }
+    }
+
+    // Edit credentials click
+    const editBtn = document.getElementById("detail-leader-edit-profile-btn");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        this.openUserEditModal(leader.id);
+      };
+    }
+
+    // Populate Sub-agents
+    const subAgentsTbody = document.getElementById("detail-leader-subagents-tbody");
+    if (subAgentsTbody) {
+      subAgentsTbody.innerHTML = "";
+      const leaderSubs = this.db.users.filter(u => u.role === "subagent" && u.referredBy && u.referredBy.toLowerCase() === leader.username.toLowerCase());
+
+      if (leaderSubs.length === 0) {
+        subAgentsTbody.innerHTML = `
+          <tr>
+            <td colspan="7" class="p-4 text-center text-slate-500 italic font-sans text-xs">
+              No sub-agents recruited by this leader yet.
+            </td>
+          </tr>
+        `;
+      } else {
+        leaderSubs.forEach(sub => {
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-sans";
+          
+          const sTarget = sub.monthlyTargetTickets || 0;
+          const sProgress = sub.monthlySalesProgress || 0;
+
+          row.innerHTML = `
+            <td class="p-3.5 text-left font-sans">
+              <div class="flex items-center gap-2.5">
+                <div class="w-7 h-7 rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-300 font-bold text-[10px] uppercase select-none shrink-0">
+                  ${sub.username.charAt(0)}
+                </div>
+                <div class="min-w-0">
+                  <span class="text-white font-bold block truncate">@${sub.username}</span>
+                  <span class="text-[9.5px] text-slate-500 block truncate font-mono select-all">${sub.email}</span>
+                </div>
+              </div>
+            </td>
+            <td class="p-3.5 text-slate-300 font-bold font-mono tabular-nums">৳${(sub.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+            <td class="p-3.5 text-emerald-400 font-bold font-mono tabular-nums">${(sub.commissionRate || 3.0).toFixed(1)}%</td>
+            <td class="p-3.5 text-white font-bold font-mono tabular-nums">${sub.totalBookings || 0}</td>
+            <td class="p-3.5 text-slate-400 font-mono tabular-nums">${sProgress} / ${sTarget}</td>
+            <td class="p-3.5">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${sub.status === "active" ? "bg-emerald-400" : "bg-rose-400"}"></span>
+                <span class="text-[10px] uppercase font-mono font-bold ${sub.status === "active" ? "text-emerald-400" : "text-rose-400"}">${sub.status || "active"}</span>
+              </div>
+            </td>
+            <td class="p-3.5 text-right font-sans">
+              <button class="leader-sub-view-btn border border-slate-800 hover:border-slate-700 bg-slate-950/50 hover:bg-slate-950 text-slate-300 text-[10px] py-1.5 px-3 rounded-lg transition cursor-pointer shadow-sm active:scale-95" data-id="${sub.id}">
+                View Details
+              </button>
+            </td>
+          `;
+
+          row.querySelector(".leader-sub-view-btn").addEventListener("click", () => {
+            // Switch tabs
+            this.currentAdminTab = "subagents-list";
+            this.render();
+            this.showSubAgentDetail(sub.id);
+          });
+
+          subAgentsTbody.appendChild(row);
+        });
+      }
+    }
+
+    // Attach back button
+    document.getElementById("agent-leaders-detail-back-btn").onclick = () => {
+      document.getElementById("agent-leaders-detail-view").classList.add("hidden");
+      document.getElementById("agent-leaders-list-view").classList.remove("hidden");
+    };
+  },
+
+  initAgentRecruitmentPanel() {
+    const recruitBtn = document.getElementById("agent-recruitment-control-btn");
+    if (!recruitBtn || recruitBtn.dataset.listenerAttached === "true") return;
+    recruitBtn.dataset.listenerAttached = "true";
+
+    const listView = document.getElementById("agent-leaders-list-view");
+    const detailView = document.getElementById("agent-leaders-detail-view");
+    const recruitView = document.getElementById("agent-leaders-recruitment-view");
+    const backBtn = document.getElementById("agent-recruitment-back-btn");
+
+    recruitBtn.addEventListener("click", () => {
+      listView?.classList.add("hidden");
+      detailView?.classList.add("hidden");
+      recruitView?.classList.remove("hidden");
+      this.renderRecruitmentPanel();
+    });
+
+    backBtn?.addEventListener("click", () => {
+      recruitView?.classList.add("hidden");
+      listView?.classList.remove("hidden");
+      this.renderAgentLeadersTab();
+    });
+
+    const genBtn = document.getElementById("generate-recruitment-link-btn");
+    genBtn?.addEventListener("click", () => {
+      const leaderSelect = document.getElementById("recruit-leader-select");
+      const commRateInput = document.getElementById("recruit-commission-rate");
+      const linkCard = document.getElementById("generated-link-card");
+      const linkDisplay = document.getElementById("generated-link-display");
+
+      if (!leaderSelect || !commRateInput || !linkCard || !linkDisplay) return;
+
+      const leaderVal = leaderSelect.value;
+      const commVal = parseFloat(commRateInput.value || "5.0");
+
+      if (!leaderVal) {
+        alert("Please select a recruiter agent leader first!");
+        return;
+      }
+
+      // Generate a dynamic secure registration invite link
+      const origin = window.location.origin;
+      const inviteUrl = `${origin}/?role=agent&ref=${encodeURIComponent(leaderVal)}&comm=${commVal}`;
+
+      linkDisplay.value = inviteUrl;
+      linkCard.classList.remove("hidden");
+      
+      // Store log for references
+      this.db.agentRecruitsLogs = this.db.agentRecruitsLogs || [];
+      this.db.agentRecruitsLogs.push({
+        id: "link_" + Date.now(),
+        leader: leaderVal,
+        commRate: commVal,
+        timestamp: new Date().toISOString()
+      });
+      this.saveDB();
+
+      alert("Success! Link generated. You can now copy and share it with potential sub-agents!");
+    });
+
+    const copyBtn = document.getElementById("copy-recruitment-link-btn");
+    copyBtn?.addEventListener("click", () => {
+      const linkDisplay = document.getElementById("generated-link-display");
+      if (linkDisplay) {
+        linkDisplay.select();
+        navigator.clipboard.writeText(linkDisplay.value);
+        alert("Recruitment invite link copied successfully to clipboard!");
+      }
+    });
+  },
+
+  renderRecruitmentPanel() {
+    // 1. Populate recruit-leader-select select box with all registered agent leaders (role === "agent")
+    const leaderSelect = document.getElementById("recruit-leader-select");
+    if (leaderSelect) {
+      const leaders = this.db.users.filter(u => u.role === "agent");
+      leaderSelect.innerHTML = leaders.map(l => {
+        return `<option value="${l.username}">@${l.username} (${l.district || "Dhaka"})</option>`;
+      }).join("");
+
+      if (leaders.length === 0) {
+        leaderSelect.innerHTML = `<option value="">No Agent Leaders Registered</option>`;
+      }
+    }
+
+    // 2. Render Pending Recruits list (status === "pending_approval" && role === "agent")
+    const container = document.getElementById("pending-agent-recruits-container");
+    if (!container) return;
+    container.innerHTML = "";
+
+    const pendings = this.db.users.filter(u => u.status === "pending_approval" && u.role === "agent");
+
+    if (pendings.length === 0) {
+      container.innerHTML = `
+        <div class="p-12 text-center text-slate-500 text-xs font-mono border border-dashed border-slate-800 rounded-3xl bg-slate-950/40">
+          No pending sub-agent recruitment applications discovered.
+        </div>
+      `;
+      return;
+    }
+
+    pendings.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "p-5 rounded-3xl bg-slate-950 border border-slate-850/60 flex flex-col md:flex-row md:items-center justify-between gap-4 transition duration-300 hover:border-slate-800";
+
+      card.innerHTML = `
+        <div class="flex items-center gap-3.5">
+          <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-black text-white text-sm select-none uppercase">
+            ${p.username.substring(0, 2)}
+          </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span class="font-black text-white text-sm">@${p.username}</span>
+              <span class="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-[8.5px] font-mono text-amber-400 font-bold uppercase tracking-wider">Candidate</span>
+            </div>
+            <div class="text-xs text-slate-400 font-sans mt-0.5">
+              <span>District: <strong class="text-white">${p.district || p.region || "Dhaka"}</strong></span>
+              <span class="text-slate-600 select-none"> • </span>
+              <span>Leader: <strong class="text-amber-400 font-mono">@${p.referredBy || "System"}</strong></span>
+            </div>
+            <span class="text-[10px] text-slate-500 font-mono mt-1 select-all">${p.email || "No Email"} • ${p.phone || "No Mobile"}</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 font-sans self-end md:self-center">
+          <button class="recruit-approve-btn py-2 px-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition flex items-center gap-1.5 cursor-pointer shadow active:scale-95" data-id="${p.id}">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>Approve (অনুমোদন)</span>
+          </button>
+          <button class="recruit-decline-btn py-2 px-3.5 rounded-xl bg-slate-900 hover:bg-rose-955/20 border border-slate-800 hover:border-rose-900/40 text-rose-455 font-bold text-xs transition flex items-center gap-1.5 cursor-pointer active:scale-95" data-id="${p.id}">
+            <i class="fa-solid fa-circle-xmark text-rose-500"></i>
+            <span>Decline (প্রত্যাখ্যান)</span>
+          </button>
+        </div>
+      `;
+
+      container.appendChild(card);
+    });
+
+    // Event Handlers for Approve/Decline
+    container.querySelectorAll(".recruit-approve-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const applicant = this.db.users.find(u => u.id === id);
+        if (!applicant) return;
+
+        if (confirm(`Are you sure you want to APPROVE candidate @${applicant.username} to access the portal?`)) {
+          applicant.status = "active";
+          
+          // Log in ledger
+          this.db.agentLedger = this.db.agentLedger || [];
+          this.db.agentLedger.push({
+            id: "act_" + Date.now(),
+            agentId: applicant.id,
+            timestamp: new Date().toISOString(),
+            description: `Admin approved recruitment application of sub-agent @${applicant.username} under leader @${applicant.referredBy || "System"}.`,
+            amount: 0,
+            commission: 0
+          });
+
+          this.saveDB();
+          alert(`Success! Sub-agent @${applicant.username} is now active and can log in successfully.`);
+          this.renderRecruitmentPanel();
+          this.renderAgentLeadersTab();
+        }
+      });
+    });
+
+    container.querySelectorAll(".recruit-decline-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        const applicant = this.db.users.find(u => u.id === id);
+        if (!applicant) return;
+
+        if (confirm(`Are you sure you want to DECLINE & remove candidate @${applicant.username}'s application?`)) {
+          this.db.users = this.db.users.filter(u => u.id !== id);
+          this.saveDB();
+          alert(`Application declined and candidate account removed successfully.`);
+          this.renderRecruitmentPanel();
+        }
+      });
+    });
+  },
+
+  renderSubAgentsListTab() {
+    const gridEl = document.getElementById("subagents-list-cards-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
+
+    const searchInput = document.getElementById("subagents-list-search-input");
+    if (searchInput && !searchInput.dataset.listenerAttached) {
+      searchInput.addEventListener("input", () => this.renderSubAgentsListTab());
+      searchInput.dataset.listenerAttached = "true";
+    }
+    const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+    const subagents = this.db.users.filter(u => {
+      if (u.role !== "subagent") return false;
+      if (query) {
+        return u.username.toLowerCase().includes(query) ||
+               (u.email || "").toLowerCase().includes(query) ||
+               (u.phone || "").toLowerCase().includes(query) ||
+               (u.referredBy || "").toLowerCase().includes(query);
+      }
+      return true;
+    });
+
+    // Compute metrics
+    const lotteries = this.db.lotteries || [];
+    const tickets = this.db.tickets || [];
+    
+    // Total subagents
+    const totalSubsCount = this.db.users.filter(u => u.role === "subagent").length;
+
+    // Direct players count
+    const subUsernames = new Set(this.db.users.filter(u => u.role === "subagent").map(u => u.username.toLowerCase()));
+    const subPlayers = this.db.users.filter(u => u.referredBy && subUsernames.has(u.referredBy.toLowerCase()));
+    const totalPlayersReferred = subPlayers.length;
+
+    // Sales volume
+    let totalSalesVol = 0;
+    const playerIds = new Set(subPlayers.map(p => p.id));
+    tickets.forEach(t => {
+      if (playerIds.has(t.userId)) {
+        const lot = lotteries.find(l => l.id === t.lotteryId);
+        if (lot) totalSalesVol += (lot.entryFee || 100);
+      }
+    });
+
+    const countEl = document.getElementById("subagents-list-stat-count");
+    if (countEl) countEl.innerText = `${totalSubsCount} Sub-agent${totalSubsCount !== 1 ? 's' : ''}`;
+
+    const salesEl = document.getElementById("subagents-list-stat-sales");
+    if (salesEl) salesEl.innerText = "৳" + totalSalesVol.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+    const playersEl = document.getElementById("subagents-list-stat-players");
+    if (playersEl) playersEl.innerText = `${totalPlayersReferred} Player${totalPlayersReferred !== 1 ? 's' : ''}`;
+
+    if (subagents.length === 0) {
+      gridEl.innerHTML = `
+        <div class="col-span-full p-12 text-center text-slate-500 font-mono text-xs border border-dashed border-slate-800 rounded-3xl">
+          No sub-agent accounts matching the query discovered.
+        </div>
+      `;
+      return;
+    }
+
+    subagents.forEach(sub => {
+      const sTarget = sub.monthlyTargetTickets || 0;
+      const sProgress = sub.monthlySalesProgress || 0;
+      const pct = sTarget > 0 ? Math.min(100, Math.round((sProgress / sTarget) * 100)) : 0;
+
+      const card = document.createElement("div");
+      card.className = "flex flex-col p-5 rounded-3xl bg-slate-900 border border-slate-800/80 gap-5 shadow-xl relative overflow-hidden transition-all duration-300 hover:border-slate-750 cursor-pointer active:scale-[0.99]";
+
+      let statusClass = sub.status === "active"
+        ? "text-emerald-400 bg-emerald-950/20 border border-emerald-900/40"
+        : "text-rose-455 bg-rose-955/20 border border-rose-900/40";
+
+      let statusText = sub.status === "active"
+        ? "● Active"
+        : "● Suspended";
+
+      card.innerHTML = `
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="relative">
+              <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-indigo-500 to-cyan-500 flex items-center justify-center font-black text-base text-white shadow-md shadow-indigo-950/30 select-none uppercase">
+                ${sub.username.substring(0, 2).toUpperCase()}
+              </div>
+              <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 ${sub.status === "active" ? "bg-emerald-400" : "bg-rose-500"} border-2 border-slate-900 rounded-full"></span>
+            </div>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="font-black text-white truncate text-sm">@${sub.username}</span>
+                <span class="px-2 py-0.5 rounded-md bg-slate-950 border border-indigo-500/10 text-[8.5px] font-mono font-bold uppercase tracking-wider text-indigo-400">SUB-AGENT</span>
+              </div>
+              <span class="text-[11px] text-slate-400 font-sans truncate">${sub.email || "No Email"} • ${sub.phone || "No Mobile"}</span>
+            </div>
+          </div>
+          
+          <div class="flex items-center gap-2">
+            <span class="px-2.5 py-1 rounded-full text-[9px] font-mono font-bold uppercase tracking-wide ${statusClass}">
+              ${statusText}
+            </span>
+          </div>
+        </div>
+
+        <!-- Progress Metrics and Bar -->
+        <div class="space-y-2 p-3.5 rounded-2xl bg-slate-950/60 border border-slate-850/40">
+          <div class="flex justify-between items-center text-xs font-mono">
+            <span class="text-[8.5px] text-slate-500 font-black uppercase tracking-wider">Mission Target Quota</span>
+            <span class="text-xs font-black text-cyan-400 tabular-nums">${pct}% (${sProgress}/${sTarget})</span>
+          </div>
+          <!-- Progress bar track -->
+          <div class="relative w-full h-2 bg-slate-950 border border-slate-900 rounded-full overflow-hidden p-0.5">
+            <div class="absolute top-0.5 left-0.5 h-1 bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+          </div>
+        </div>
+
+        <!-- Performance Snapshot -->
+        <div class="grid grid-cols-3 gap-2 text-xs font-mono">
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Balance</span>
+            <span class="text-[11px] font-black text-amber-300 mt-0.5 tabular-nums">৳${(sub.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Comm. Rate</span>
+            <span class="text-[11px] font-black text-white mt-0.5">${(sub.commissionRate || 3.0).toFixed(1)}%</span>
+          </div>
+          <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
+            <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Bookings</span>
+            <span class="text-[11px] font-black text-emerald-400 mt-0.5">${sub.totalBookings || 0} Sales</span>
+          </div>
+        </div>
+
+        <!-- Metadata & Actions Row -->
+        <div class="flex items-center justify-between text-slate-550 font-mono text-[10px] border-t border-slate-800/40 pt-3">
+          <span class="flex items-center gap-1.5 text-amber-450 font-bold">
+            <i class="fa-solid fa-user-tie text-[11px]"></i>
+            Leader: @${sub.referredBy || "System"}
+          </span>
+          <button class="subagent-view-btn py-2 px-3.5 rounded-xl bg-slate-950 hover:bg-slate-850 hover:text-white border border-slate-800 hover:border-slate-750 text-slate-300 font-bold transition flex items-center justify-center gap-1.5 cursor-pointer text-xs active:scale-95" data-id="${sub.id}">
+            <span>View Operator</span>
+            <i class="fa-solid fa-arrow-right text-[9.5px]"></i>
+          </button>
+        </div>
+      `;
+
+      // Entire card is clickable unless a button is clicked
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("button")) return;
+        this.showSubAgentDetail(sub.id);
+      });
+
+      gridEl.appendChild(card);
+    });
+
+    gridEl.querySelectorAll(".subagent-view-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const id = btn.getAttribute("data-id");
+        this.showSubAgentDetail(id);
+      });
+    });
+  },
+
+  showSubAgentDetail(subId) {
+    const sub = this.db.users.find(u => u.id === subId);
+    if (!sub) return;
+
+    // Switch screens
+    document.getElementById("subagents-list-view").classList.add("hidden");
+    document.getElementById("subagents-detail-view").classList.remove("hidden");
+
+    // Profile settings
+    document.getElementById("detail-sub-avatar-initial").innerText = sub.username.charAt(0).toUpperCase();
+    document.getElementById("detail-sub-username").innerText = `@${sub.username}`;
+    document.getElementById("detail-sub-parent-lbl").innerText = `@${sub.referredBy || "System"}`;
+    document.getElementById("detail-sub-email").innerText = sub.email || "N/A";
+    document.getElementById("detail-sub-phone").innerText = sub.phone || "N/A";
+    
+    const statusLbl = document.getElementById("detail-sub-status-lbl");
+    if (statusLbl) {
+      statusLbl.innerText = (sub.status || "active").toUpperCase();
+      statusLbl.className = sub.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
+    }
+
+    document.getElementById("detail-sub-balance-lbl").innerText = `৳${(sub.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-sub-commission-lbl").innerText = `${(sub.commissionRate || 3.0).toFixed(1)}%`;
+    document.getElementById("detail-sub-bookings-lbl").innerText = `${sub.totalBookings || 0} Sales`;
+
+    // Targets & Mission
+    const target = sub.monthlyTargetTickets || 0;
+    const progress = sub.monthlySalesProgress || 0;
+    const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
+    
+    document.getElementById("detail-sub-target-tickets").innerText = target;
+    document.getElementById("detail-sub-target-reward").innerText = `৳${(sub.monthlyTargetReward || 0).toFixed(2)}`;
+
+    // Target pool
+    let targetPoolName = "Any Active Pool";
+    const targetLotteryId = sub.monthlyTargetLotteryId || "any";
+    if (targetLotteryId !== "any") {
+      const foundLot = (this.db.lotteries || []).find(l => l.id === targetLotteryId);
+      if (foundLot) {
+        targetPoolName = `${foundLot.name} (৳${foundLot.entryFee})`;
+      } else {
+        targetPoolName = "Archived Pool";
+      }
+    }
+    document.getElementById("detail-sub-target-pool").innerText = targetPoolName;
+    document.getElementById("detail-sub-progress-pct").innerText = `${pct}%`;
+    document.getElementById("detail-sub-progress-bar").style.width = `${pct}%`;
+    document.getElementById("detail-sub-progress-val").innerText = `${progress} / ${target} Tickets`;
+
+    const badgeEl = document.getElementById("detail-sub-mission-badge");
+    if (badgeEl) {
+      if (target <= 0) {
+        badgeEl.innerText = "DISABLED";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-slate-950 text-slate-500 border border-slate-800";
+      } else if (progress >= target) {
+        badgeEl.innerText = "COMPLETED 🎉";
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-emerald-950/40 text-emerald-400 border border-emerald-900/40";
+      } else {
+        badgeEl.innerText = `${target - progress} LEFT`;
+        badgeEl.className = "font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-rose-950/40 text-rose-400 border border-rose-900/40 animate-pulse";
+      }
+    }
+
+    // Edit settings click
+    const editBtn = document.getElementById("detail-sub-edit-profile-btn");
+    if (editBtn) {
+      editBtn.onclick = () => {
+        this.openUserEditModal(sub.id);
+      };
+    }
+
+    // Populate players
+    const playersTbody = document.getElementById("detail-sub-players-tbody");
+    if (playersTbody) {
+      playersTbody.innerHTML = "";
+      const subPlayers = this.db.users.filter(u => u.referredBy && u.referredBy.toLowerCase() === sub.username.toLowerCase() && u.role !== "subagent" && u.role !== "agent");
+
+      if (subPlayers.length === 0) {
+        playersTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="p-4 text-center text-slate-500 italic font-sans text-xs">
+              No players registered under this operator yet.
+            </td>
+          </tr>
+        `;
+      } else {
+        subPlayers.forEach(player => {
+          const row = document.createElement("tr");
+          row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition font-mono";
+
+          row.innerHTML = `
+            <td class="p-3 text-left font-sans">
+              <div class="flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full ${player.status === "active" ? "bg-emerald-500" : "bg-rose-500"}"></span>
+                <span class="text-white font-bold">@${player.username}</span>
+              </div>
+            </td>
+            <td class="p-3 text-slate-300 font-bold font-mono">৳${(player.balance || 0).toFixed(2)}</td>
+            <td class="p-3 text-slate-400 font-sans">${player.email || "N/A"}</td>
+            <td class="p-3 text-slate-400">${player.phone || "N/A"}</td>
+            <td class="p-3 text-right">
+              <button class="sub-player-view-btn bg-slate-950 hover:bg-slate-850 text-slate-300 text-[10px] py-1 px-2 border border-slate-800 rounded transition cursor-pointer font-sans" data-id="${player.id}">
+                Configure User
+              </button>
+            </td>
+          `;
+
+          row.querySelector(".sub-player-view-btn").addEventListener("click", () => {
+            this.openUserEditModal(player.id);
+          });
+
+          playersTbody.appendChild(row);
+        });
+      }
+    }
+
+    // Attach back button
+    document.getElementById("subagents-detail-back-btn").onclick = () => {
+      document.getElementById("subagents-detail-view").classList.add("hidden");
+      document.getElementById("subagents-list-view").classList.remove("hidden");
+    };
+  },
+
+  renderAdminLotteries() {
+    const listEl = document.getElementById("admin-pools-list-container");
+    listEl.innerHTML = "";
+
+    this.db.lotteries.forEach(lot => {
+      const card = document.createElement("div");
+      card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative space-y-4 shadow-lg";
+
+      const badge = lot.status === "drawn" ? `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-green-950 text-green-300">🏆 DRAW COMPLETED</span>` :
+                                             `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-cyan-950 text-cyan-400">⏳ ACTIVE RUNNING</span>`;
+
+      const drawBtn = lot.status === "active" ? `<button class="admin-manual-draw-trigger bg-green-600 hover:bg-green-500 text-white text-[10px] font-bold py-1.5 px-3 rounded-xl transition" data-id="${lot.id}">Force Draw Winner</button>` : "";
+
+      let multiPrizesDetails = "";
+      if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
+        multiPrizesDetails = `<div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-850/50 text-[10px] space-y-0.5">
+          <span class="text-slate-500 font-sans block text-[9px] uppercase tracking-wider">Multi Rank Prize Distribution Pool:</span>
+          ${lot.multiWinnerPrizes.map((p, idx) => `<div class="flex justify-between font-mono text-slate-300"><span>Rank #${idx+1} Winner</span><span class="text-yellow-500 font-bold">৳${p}</span></div>`).join("")}
+        </div>`;
+      }
+
+      card.innerHTML = `
+        <div class="flex justify-between items-start gap-4">
+          <div>
+            <h4 class="text-white font-bold font-sans text-sm">${this.escapeHTML(lot.name)}</h4>
+            <span class="text-[10px] text-slate-500 font-mono">Category: <span class="text-cyan-400 font-bold uppercase">${lot.category}</span></span>
+          </div>
+          ${badge}
+        </div>
+
+        <p class="text-xs text-slate-400 leading-normal">${this.escapeHTML(lot.details || "Experience live payout lottery draws.")}</p>
+
+        ${multiPrizesDetails}
+
+        <div class="grid grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3 rounded-2xl border border-slate-850/30">
+          <div><span class="text-slate-500 block text-[9.5px]">Entry Ticket Cost</span><span class="font-bold font-mono text-cyan-400">৳${lot.entryFee}</span></div>
+          <div><span class="text-slate-500 block text-[9.5px]">Pool Draw Reward</span><span class="font-bold font-mono text-yellow-500">৳${lot.prizeAmount}</span></div>
+          <div><span class="text-slate-500 block text-[9.5px]">Tickets Registered</span><span class="font-bold font-mono text-white">${lot.soldTickets} / ${lot.totalTickets}</span></div>
+          <div><span class="text-slate-550 block text-[9.5px]">Draw Target Time</span><span class="font-mono text-slate-300 text-[10.5px]">${new Date(lot.drawTime).toLocaleString()}</span></div>
+        </div>
+
+        <div class="flex justify-between items-center gap-2 pt-2">
+          <button class="admin-delete-pool-trigger bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 text-[10px] font-bold py-1.5 px-3 rounded-xl transition" data-id="${lot.id}">Delete Pool</button>
+          ${drawBtn}
+        </div>
+      `;
+
+      listEl.appendChild(card);
+    });
+
+    document.querySelectorAll(".admin-manual-draw-trigger").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const lotId = btn.getAttribute("data-id");
+        this.executeManualDrawWinner(lotId);
+      });
+    });
+
+    document.querySelectorAll(".admin-delete-pool-trigger").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const lotId = btn.getAttribute("data-id");
+        const pool = this.db.lotteries.find(l => l.id === lotId);
+        if (!pool) return;
+
+        if (confirm(`Are you sure you want to permanently delete lottery pool "${pool.name}"?`)) {
+          this.db.lotteries = this.db.lotteries.filter(l => l.id !== lotId);
+          this.saveDB();
+          this.renderAdminLotteries();
+          this.showToast(`Lottery pool "${pool.name}" has been deleted.`, "success");
+        }
+      });
+    });
+  },
+
+  executeManualDrawWinner(lotteryId) {
+    const lot = this.db.lotteries.find(l => l.id === lotteryId);
+    if (!lot) return;
+
+    if (lot.status !== "active") {
+      this.showToast("Cannot draw an already completed lottery!", "error");
+      return;
+    }
+
+    const tickets = this.db.tickets.filter(t => t.lotteryId === lotteryId);
+    if (tickets.length === 0) {
+      this.showToast("No tickets have been sold yet. Cannot draw winner from an empty pool!", "error");
+      return;
+    }
+
+    if (!confirm(`Force manual winner draw for "${lot.name}" right now?`)) return;
+
+    let winnersArr = [];
+
+    if (lot.multiWinnerPrizes && lot.multiWinnerPrizes.length > 0) {
+      const prizePool = lot.multiWinnerPrizes;
+      const shuffledTickets = [...tickets].sort(() => Math.random() - 0.5);
+
+      prizePool.forEach((prizeAmt, rankIdx) => {
+        const matchedTicket = shuffledTickets[rankIdx];
+        if (matchedTicket) {
+          matchedTicket.status = "won";
+          matchedTicket.prizeAmount = prizeAmt;
+
+          const player = this.db.users.find(u => u.id === matchedTicket.userId);
+          if (player) {
+            player.balance += prizeAmt;
+            player.wins = (player.wins || 0) + 1;
+            player.profit = (player.profit || 0) + prizeAmt;
+
+            winnersArr.push({
+              username: player.username,
+              prize: prizeAmt,
+              rank: rankIdx + 1,
+              ticketCode: matchedTicket.code
+            });
+          }
+        }
+      });
+
+      tickets.forEach(t => {
+        if (t.status === "active") {
+          t.status = "lost";
+          const player = this.db.users.find(u => u.id === t.userId);
+          if (player) {
+            player.loss = (player.loss || 0) + 1;
+            player.profit = (player.profit || 0) - lot.entryFee;
+          }
+        }
+      });
+    } else {
+      const randIdx = Math.floor(Math.random() * tickets.length);
+      const winnerTicket = tickets[randIdx];
+
+      winnerTicket.status = "won";
+      winnerTicket.prizeAmount = lot.prizeAmount;
+
+      if (winnerTicket.isSyndicate && winnerTicket.userIds) {
+        const share = Math.round((lot.prizeAmount / winnerTicket.userIds.length) * 100) / 100;
+        winnerTicket.userIds.forEach(uid => {
+          const u = this.db.users.find(usr => usr.id === uid);
+          if (u) {
+            u.balance += share;
+            u.wins = (u.wins || 0) + 1;
+            u.profit = (u.profit || 0) + share;
+
+            const notice = {
+              id: "msg_notice_" + Date.now() + "_" + Math.floor(Math.random() * 999),
+              recipientType: "specific",
+              targetUsername: u.username,
+              category: "notice",
+              subject: "Syndicate Jackpot Won! 🏆 (Admin Draw)",
+              content: `Congratulations! Your syndicate group "${winnerTicket.syndicateName || 'Friends Group'}" has won a split prize of ৳${share} (Total: ৳${lot.prizeAmount}) in the "${lot.name}" draw manually completed by admin!`,
+              date: new Date().toISOString(),
+              readBy: []
+            };
+            if (!this.db.messages) this.db.messages = [];
+            this.db.messages.unshift(notice);
+          }
+        });
+
+        winnersArr.push({
+          username: `Syndicate (${winnerTicket.syndicateName || 'Group'})`,
+          prize: lot.prizeAmount,
+          rank: 1,
+          ticketCode: winnerTicket.code
+        });
+      } else {
+        const winnerUser = this.db.users.find(u => u.id === winnerTicket.userId);
+        if (winnerUser) {
+          winnerUser.balance += lot.prizeAmount;
+          winnerUser.wins = (winnerUser.wins || 0) + 1;
+          winnerUser.profit = (winnerUser.profit || 0) + lot.prizeAmount;
+
+          winnersArr.push({
+            username: winnerUser.username,
+            prize: lot.prizeAmount,
+            rank: 1,
+            ticketCode: winnerTicket.code
+          });
+        }
+      }
+
+      tickets.forEach((t, index) => {
+        if (index !== randIdx) {
+          t.status = "lost";
+          if (t.isSyndicate && t.userIds) {
+            t.userIds.forEach(uid => {
+              const u = this.db.users.find(usr => usr.id === uid);
+              if (u) {
+                u.loss = (u.loss || 0) + 1;
+                u.profit = (u.profit || 0) - (lot.entryFee / t.userIds.length);
+              }
+            });
+          } else {
+            const player = this.db.users.find(u => u.id === t.userId);
+            if (player) {
+              player.loss = (player.loss || 0) + 1;
+              player.profit = (player.profit || 0) - lot.entryFee;
+            }
+          }
+        }
+      });
+    }
+
+    lot.status = "drawn";
+    lot.drawnWinnersList = winnersArr;
+
+    this.saveDB();
+    this.render();
+    this.showToast(`🏆 DRAW SUCCESS! Winner(s) selected dynamically for "${lot.name}".`, "success");
+
+    // Broadcast live draw winner reveal event to all users
+    try {
+      const celebrationWinners = (winnersArr || []).map((w, idx) => {
+        const u = (this.db.users || []).find(usr => usr.username === w.username);
+        return {
+          userId: u ? u.id : "",
+          username: w.username || "Winner",
+          name: u ? (u.name || u.username) : (w.username || "Winner"),
+          avatar: u ? (u.avatar || u.photoUrl || "") : "",
+          ticketCode: w.ticketCode || "LW-WINNER",
+          prizeAmount: w.prize || w.prizeAmount || lot.prizeAmount,
+          rank: w.rank || (idx + 1)
+        };
+      });
+
+      const drawEvent = {
+        id: "draw_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+        lotteryId: lot.id,
+        lotteryName: lot.name,
+        category: lot.category,
+        prizeAmount: lot.prizeAmount,
+        drawTime: new Date().toISOString(),
+        winningTicketCodes: celebrationWinners.map(w => w.ticketCode),
+        winnersCount: celebrationWinners.length,
+        winners: celebrationWinners
+      };
+
+      if (window.LiveDrawRevealEngine && typeof window.LiveDrawRevealEngine.broadcastDrawEvent === "function") {
+        window.LiveDrawRevealEngine.broadcastDrawEvent(drawEvent);
+      }
+    } catch (broadcastErr) {
+      console.warn("Draw event broadcast error:", broadcastErr);
+    }
+  },
+
+  renderAdminDeposits() {
+    const listEl = document.getElementById("admin-deposits-tbody");
+    const listDiv = document.getElementById("admin-deposits-list");
+
+    if (listEl) {
+      listEl.innerHTML = "";
+      const deps = this.db.deposits || [];
+      if (deps.length === 0) {
+        listEl.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-mono text-[10.5px]">No registered digital transactions found.</td></tr>`;
+        return;
+      }
+
+      const sorted = [...deps].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      sorted.forEach(d => {
+        const row = document.createElement("tr");
+        row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition";
+
+        const badgeColor = d.status === "approved" ? "bg-green-950 text-green-400 border border-green-900/30" :
+                           d.status === "pending" ? "bg-amber-950 text-amber-400 border border-amber-900/30" :
+                           "bg-red-950 text-red-500 border border-red-900/30";
+
+        let actionBtns = "";
+        if (d.status === "pending") {
+          actionBtns = `
+            <div class="flex justify-end gap-1 font-mono">
+              <button class="admin-approve-dep-btn bg-green-700 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-[9px] cursor-pointer" data-id="${d.id}">Approve</button>
+              <button class="admin-reject-dep-btn bg-red-700 hover:bg-red-600 text-white font-bold py-1 px-2 rounded-lg transition text-[9px] cursor-pointer" data-id="${d.id}">Reject</button>
+            </div>
+          `;
+        } else {
+          actionBtns = `<span class="text-[9.5px] font-mono text-slate-600 font-semibold uppercase flex items-center justify-end gap-1"><i class="fa-solid fa-square-check text-emerald-500 text-[9px]"></i> Processed</span>`;
+        }
+
+        row.innerHTML = `
+          <td class="p-3">
+            <div class="font-bold text-white">@${d.username}</div>
+            <div class="text-[9.5px] text-slate-500 font-mono">${new Date(d.date).toLocaleDateString()} at ${new Date(d.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </td>
+          <td class="p-3">
+            <div class="font-bold text-slate-200 capitalize">${d.gateway || d.method || "bKash"}</div>
+            <div class="text-[9.5px] text-slate-500 font-mono select-all">Acc: ${d.targetAccount || d.phone || ""}</div>
+          </td>
+          <td class="p-3">
+            <div class="font-bold text-emerald-400 font-mono text-[13px]">৳${d.amount}</div>
+            ${(d.txnid || d.trxId) ? `<div class="text-[9px] text-slate-400 select-all font-mono">TxnID: ${d.txnid || d.trxId}</div>` : ""}
+          </td>
+          <td class="p-3">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold leading-none ${badgeColor}">${d.status.toUpperCase()}</span>
+          </td>
+          <td class="p-3 text-right">${actionBtns}</td>
+        `;
+
+        listEl.appendChild(row);
+      });
+
+      listEl.querySelectorAll(".admin-approve-dep-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const depId = btn.getAttribute("data-id");
+          this.processDepositTransaction(depId, "approved");
+        });
+      });
+
+      listEl.querySelectorAll(".admin-reject-dep-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const depId = btn.getAttribute("data-id");
+          this.processDepositTransaction(depId, "rejected");
+        });
+      });
+    } else if (listDiv) {
+      listDiv.innerHTML = "";
+      const depos = this.db.deposits || [];
+      if (depos.length === 0) {
+        listDiv.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No payment deposits recorded.</div>`;
+        return;
+      }
+
+      depos.forEach(d => {
+        const card = document.createElement("div");
+        card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md";
+
+        let actionBlock = "";
+        if (d.status === "pending") {
+          actionBlock = `
+            <div class="flex gap-2">
+              <button class="approve-dep-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${d.id}">Approve</button>
+              <button class="decline-dep-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${d.id}">Decline</button>
+            </div>
+          `;
+        } else {
+          const clr = d.status === "approved" ? "text-emerald-400" : "text-rose-400";
+          actionBlock = `<span class="uppercase font-mono font-bold text-[10px] ${clr}">${d.status}</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="font-bold text-white">@${d.username}</div>
+            <div class="text-[10px] text-slate-400 font-mono">Gateway: ${d.gateway || d.method || "bKash"}</div>
+            <div class="text-[10px] text-cyan-400 font-mono select-all">Trx tracer: ${d.txnid || d.trxId || ""}</div>
+            <div class="text-[9px] text-slate-600 font-mono">${new Date(d.date).toLocaleString()}</div>
+          </div>
+          <div class="flex flex-col items-end gap-2 shrink-0 text-right">
+            <span class="text-sm font-black text-white font-mono">৳${d.amount}</span>
+            ${actionBlock}
+          </div>
+        `;
+
+        listDiv.appendChild(card);
+      });
+
+      listDiv.querySelectorAll(".approve-dep-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const depId = btn.getAttribute("data-id");
+          this.processDepositTransaction(depId, "approved");
+        });
+      });
+
+      listDiv.querySelectorAll(".decline-dep-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const depId = btn.getAttribute("data-id");
+          this.processDepositTransaction(depId, "rejected");
+        });
+      });
+    }
+  },
+
+  processDepositTransaction(depositId, outcome) {
+    const d = this.db.deposits.find(item => item.id === depositId);
+    if (!d) return;
+
+    if (d.status !== "pending") return;
+
+    // Resolve user by ID or Username
+    const u = this.db.users.find(user => (d.userId && user.id === d.userId) || (d.username && user.username.toLowerCase() === d.username.toLowerCase()));
+
+    if (outcome === "approved") {
+      d.status = "approved";
+      if (u) {
+        u.balance += d.amount;
+        u.totDeposit += d.amount;
+        this.showToast(`Deposit approved! Added ৳${d.amount} to @${u.username}'s balance.`, "success");
+
+        // Referral Qualification Check
+        const minDepRef = (this.db.settings && this.db.settings.minReferralDeposit !== undefined) ? parseFloat(this.db.settings.minReferralDeposit) : 50;
+        if (u.referredBy && !u.referralBonusAwarded && u.totDeposit >= minDepRef) {
+          if (typeof this.awardReferralBonus === "function") {
+            this.awardReferralBonus(u);
+          }
+        }
+
+        if (!this.db.messages) this.db.messages = [];
+        this.db.messages.push({
+          id: "sys_msg_" + Date.now(),
+          recipientType: "specific",
+          targetUsername: u.username,
+          category: "deposit",
+          subject: "Deposit Verified Successfully",
+          content: `Great news! Your manual deposit request of ৳${d.amount} via ${d.gateway} has been verified and credited to your main balance! Transaction ID: ${d.txnid || d.trxId || "Agent Cashin"}.`,
+          date: new Date().toISOString()
+        });
+      } else {
+        this.showToast(`Deposit status set to approved, but target user could not be found.`, "warning");
+      }
+    } else {
+      d.status = "rejected";
+      this.showToast(`Deposit request has been declined.`, "info");
+      if (u) {
+        if (!this.db.messages) this.db.messages = [];
+        this.db.messages.push({
+          id: "sys_msg_" + Date.now(),
+          recipientType: "specific",
+          targetUsername: u.username,
+          category: "alert",
+          subject: "Deposit Request Declined",
+          content: `Your deposit request of ৳${d.amount} via ${d.gateway} was declined during back-office auditing. Please verify the TxnID/receipt and try again or contact live chat support.`,
+          date: new Date().toISOString()
+        });
+      }
+    }
+
+    this.saveDB();
+    this.render();
+  },
+
+  renderAdminWithdraws() {
+    const listEl = document.getElementById("admin-withdraws-tbody");
+    const listDiv = document.getElementById("admin-withdraws-list");
+
+    if (listEl) {
+      listEl.innerHTML = "";
+      const withdrawals = this.db.withdrawals || [];
+      if (withdrawals.length === 0) {
+        listEl.innerHTML = `<tr><td colspan="5" class="p-8 text-center text-slate-500 font-mono text-[10.5px]">No payouts registered in records.</td></tr>`;
+        return;
+      }
+
+      const sorted = [...withdrawals].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      sorted.forEach(w => {
+        const row = document.createElement("tr");
+        row.className = "hover:bg-slate-900/40 text-xs border-b border-slate-800/40 transition";
+
+        const badgeColor = w.status === "approved" ? "bg-green-950 text-green-400 border border-green-900/30" :
+                           w.status === "pending" ? "bg-amber-950 text-amber-400 border border-amber-900/30" :
+                           "bg-red-950 text-red-500 border border-red-900/30";
+
+        let actionBtns = "";
+        if (w.status === "pending") {
+          actionBtns = `
+            <div class="flex justify-end gap-1 font-mono">
+              <button class="admin-approve-wd-btn bg-green-700 hover:bg-green-600 text-white font-bold py-1 px-2 rounded-lg transition text-[9px] cursor-pointer" data-id="${w.id}">Approve</button>
+              <button class="admin-reject-wd-btn bg-red-700 hover:bg-red-600 text-white font-bold py-1 px-2 rounded-lg transition text-[9px] cursor-pointer" data-id="${w.id}">Reject</button>
+            </div>
+          `;
+        } else {
+          actionBtns = `<span class="text-[9.5px] font-mono text-slate-600 font-semibold uppercase flex items-center justify-end gap-1"><i class="fa-solid fa-square-check text-emerald-500 text-[9px]"></i> Disbursed</span>`;
+        }
+
+        row.innerHTML = `
+          <td class="p-3">
+            <div class="font-bold text-white">@${w.username}</div>
+            <div class="text-[9.5px] text-slate-500 font-mono">${new Date(w.date).toLocaleDateString()} at ${new Date(w.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </td>
+          <td class="p-3">
+            <div class="font-bold text-slate-200 capitalize">${w.gateway || w.method || "bKash"}</div>
+            <div class="text-[9.5px] text-slate-500 font-mono select-all">Acc: ${w.targetAccount || w.phone || ""}</div>
+          </td>
+          <td class="p-3">
+            <div class="font-bold text-rose-400 font-mono text-[13px]">৳${w.amount}</div>
+          </td>
+          <td class="p-3">
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold leading-none ${badgeColor}">${w.status.toUpperCase()}</span>
+          </td>
+          <td class="p-3 text-right">${actionBtns}</td>
+        `;
+
+        listEl.appendChild(row);
+      });
+
+      listEl.querySelectorAll(".admin-approve-wd-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const wdId = btn.getAttribute("data-id");
+          this.processWithdrawTransaction(wdId, "approved");
+        });
+      });
+
+      listEl.querySelectorAll(".admin-reject-wd-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const wdId = btn.getAttribute("data-id");
+          this.processWithdrawTransaction(wdId, "rejected");
+        });
+      });
+    } else if (listDiv) {
+      listDiv.innerHTML = "";
+      const withdrawals = this.db.withdrawals || [];
+      if (withdrawals.length === 0) {
+        listDiv.innerHTML = `<div class="p-8 text-center text-slate-500 font-mono text-xs">No payment withdrawals recorded.</div>`;
+        return;
+      }
+
+      // Filter in listDiv if we have a filter element in SPA
+      let filtered = [...withdrawals];
+      const filterSelect = document.getElementById("admin-withdraws-filter");
+      if (filterSelect && filterSelect.value !== "all") {
+        filtered = filtered.filter(w => w.status === filterSelect.value);
+      }
+
+      const sorted = [...filtered].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+      sorted.forEach(w => {
+        const card = document.createElement("div");
+        card.className = "bg-slate-900 border border-slate-800 p-4 rounded-3xl flex justify-between items-center text-xs shadow-md";
+
+        let actionBlock = "";
+        if (w.status === "pending") {
+          actionBlock = `
+            <div class="flex gap-2">
+              <button class="approve-wd-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${w.id}">Approve</button>
+              <button class="decline-wd-btn bg-rose-900 hover:bg-rose-800 text-white font-bold py-1 px-3 rounded-lg text-[10px] transition" data-id="${w.id}">Decline</button>
+            </div>
+          `;
+        } else {
+          const clr = w.status === "approved" ? "text-emerald-400" : "text-rose-400";
+          actionBlock = `<span class="uppercase font-mono font-bold text-[10px] ${clr}">${w.status}</span>`;
+        }
+
+        card.innerHTML = `
+          <div class="space-y-1">
+            <div class="font-bold text-white">@${w.username}</div>
+            <div class="text-[10px] text-slate-400 font-mono">Gateway: ${w.gateway || w.method || "bKash"}</div>
+            <div class="text-[10px] text-cyan-400 font-mono select-all font-bold">Target: ${w.targetAccount || w.phone || ""}</div>
+            <div class="text-[9px] text-slate-600 font-mono">${new Date(w.date).toLocaleString()}</div>
+          </div>
+          <div class="flex flex-col items-end gap-2 shrink-0 text-right">
+            <span class="text-sm font-black text-rose-400 font-mono">৳${w.amount}</span>
+            ${actionBlock}
+          </div>
+        `;
+
+        listDiv.appendChild(card);
+      });
+
+      listDiv.querySelectorAll(".approve-wd-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const wdId = btn.getAttribute("data-id");
+          this.processWithdrawTransaction(wdId, "approved");
+        });
+      });
+
+      listDiv.querySelectorAll(".decline-wd-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const wdId = btn.getAttribute("data-id");
+          this.processWithdrawTransaction(wdId, "rejected");
+        });
+      });
+    }
+  },
+
+  processWithdrawTransaction(withdrawalId, outcome) {
+    const w = this.db.withdrawals.find(item => item.id === withdrawalId);
+    if (!w) return;
+
+    if (w.status !== "pending") return;
+
+    // Resolve user by ID or Username
+    const u = this.db.users.find(user => (w.userId && user.id === w.userId) || (w.username && user.username.toLowerCase() === w.username.toLowerCase()));
+
+    if (outcome === "approved") {
+      w.status = "approved";
+      if (u) {
+        u.totWithdraw += w.amount;
+        this.showToast(`Payout request processed successfully! Disbursed ৳${w.amount} to @${u.username}.`, "success");
+
+        if (!this.db.messages) this.db.messages = [];
+        this.db.messages.push({
+          id: "sys_msg_" + Date.now(),
+          recipientType: "specific",
+          targetUsername: u.username,
+          category: "withdrawal",
+          subject: "Withdrawal Completed Successfully",
+          content: `Congratulations! Your payout request of ৳${w.amount} has been approved by the finance department. Funds have been successfully sent to your target account (${w.targetAccount}) via ${w.gateway}!`,
+          date: new Date().toISOString()
+        });
+      }
+    } else {
+      w.status = "rejected";
+      if (u) {
+        const refundAmount = w.totalDebit !== undefined ? w.totalDebit : w.amount;
+        u.balance += refundAmount; // refund full debited amount
+        this.showToast(`Payout request declined. Balance ৳${refundAmount.toFixed(1)} refunded to @${u.username}.`, "info");
+
+        if (!this.db.messages) this.db.messages = [];
+        this.db.messages.push({
+          id: "sys_msg_" + Date.now(),
+          recipientType: "specific",
+          targetUsername: u.username,
+          category: "alert",
+          subject: "Withdrawal Request Refused",
+          content: `Your payout request of ৳${w.amount} was rejected. The locked amount of ৳${refundAmount.toFixed(1)} has been credited back to your wallet balance. Please review your payout account details or reach out to live chat support.`,
+          date: new Date().toISOString()
+        });
+      }
+    }
+
+    this.saveDB();
+    this.render();
+  },
+
+  renderAdminRefer() {
+    const s = this.db.settings;
+    if (!s) return;
+
+    const signupBonusReferrerEl = document.getElementById("sys-referral-referrer-bonus");
+    const signupBonusReferreeEl = document.getElementById("sys-referral-referee-bonus");
+    const geoBanBlockSelector = document.getElementById("sys-geofencing-country-selector");
+    const multicloudBlockCheckbox = document.getElementById("sys-multicloud-blocking");
+
+    if (signupBonusReferrerEl) signupBonusReferrerEl.value = s.referralBonusReferrer ?? 50;
+    if (signupBonusReferreeEl) signupBonusReferreeEl.value = s.referralBonusReferee ?? 25;
+    if (geoBanBlockSelector) geoBanBlockSelector.value = s.geofencedCountryRestrictions || "none";
+    if (multicloudBlockCheckbox) multicloudBlockCheckbox.checked = s.enableMultiCloudAntiFraud ?? false;
+
+    const listEl = document.getElementById("admin-security-logs-tbody");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const logs = this.db.securityLogs || [];
+    if (logs.length === 0) {
+      listEl.innerHTML = `<tr><td colspan="3" class="p-6 text-center text-slate-550 font-mono text-[10px]">No security alerts triggered yet. Anti-Fraud core standing by.</td></tr>`;
+      return;
+    }
+
+    logs.forEach(log => {
+      const row = document.createElement("tr");
+      row.className = "hover:bg-slate-900/40 text-[10.5px] border-b border-slate-900 transition font-mono";
+
+      let colorClass = log.type === "duplicate_ip" ? "text-red-400 font-bold" : "text-amber-400";
+      let typeLabel = log.type === "duplicate_ip" ? "IP-SPOOF BAN" : "REGION RESTR";
+
+      row.innerHTML = `
+        <td class="p-3 text-slate-500 text-[9.5px]">${new Date(log.timestamp).toLocaleString()}</td>
+        <td class="p-3"><span class="${colorClass}">${typeLabel}</span></td>
+        <td class="p-3 text-slate-200 text-left select-all">${this.escapeHTML(log.message)}</td>
+      `;
+      listEl.appendChild(row);
+    });
+  },
+
+  renderAdminCheckin() {
+    CheckinSettingsTab.renderCheckinSettings(this);
+  },
+
+  renderAdminSettings() {
+    const s = this.db.settings;
+    if (!s) return;
+
+    // Populate App Maintenance & Config Fields
+    const maintenanceToggle = document.getElementById("sys-maintenance-toggle");
+    if (maintenanceToggle) maintenanceToggle.checked = !!s.maintenanceMode;
+
+    const quickdrawToggle = document.getElementById("sys-quickdraw-toggle");
+    if (quickdrawToggle) quickdrawToggle.checked = s.quickDrawEnabled !== false;
+
+    const maintenanceMsg = document.getElementById("sys-maintenance-msg");
+    if (maintenanceMsg) maintenanceMsg.value = s.maintenanceMessage || "";
+
+    const appUrl = document.getElementById("sys-app-url");
+    if (appUrl) appUrl.value = s.forceUpdateLink || "";
+
+    const appVer = document.getElementById("sys-app-ver");
+    if (appVer) appVer.value = s.appVersion || "5.0";
+
+    const adminP = document.getElementById("sys-admin-p");
+    if (adminP) adminP.value = s.adminPass || "Admin123";
+
+    const agentRefBonus = document.getElementById("sys-agent-referral-bonus");
+    if (agentRefBonus) agentRefBonus.value = s.agentReferralBonus ?? 100;
+
+    // Populate Sign-Up Welcome Bonus Settings
+    const signupBonusToggle = document.getElementById("sys-signup-bonus-toggle");
+    if (signupBonusToggle) signupBonusToggle.checked = s.signupBonusEnabled !== false;
+
+    const signupBonusAmount = document.getElementById("sys-signup-bonus-amount");
+    if (signupBonusAmount) signupBonusAmount.value = s.signupBonus !== undefined ? s.signupBonus : 50;
+
+    const signupBonusWeb = document.getElementById("sys-signup-bonus");
+    if (signupBonusWeb) signupBonusWeb.value = s.signupBonus !== undefined ? s.signupBonus : 50;
+
+    const whatsappUrl = document.getElementById("sys-whatsapp-url");
+    if (whatsappUrl) whatsappUrl.value = s.whatsappUrl || "";
+
+    const minReferralDep = document.getElementById("sys-min-referral-deposit");
+    if (minReferralDep) minReferralDep.value = s.minReferralDeposit ?? 50;
+
+    const limitInput = document.getElementById("admin-consecutive-block-limit");
+    if (limitInput) limitInput.value = s.consecutiveDrawsLimit || 5;
+
+    const btcInput = document.getElementById("sys-crypto-address-btc");
+    const ethInput = document.getElementById("sys-crypto-address-eth");
+    const usdtInput = document.getElementById("sys-crypto-address-usdt");
+
+    const bkashInput = document.getElementById("sys-bkash-num");
+    const nagadInput = document.getElementById("sys-nagad-num");
+    const rocketInput = document.getElementById("sys-rocket-num");
+
+    if (btcInput) btcInput.value = s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+    if (ethInput) ethInput.value = s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+    if (usdtInput) usdtInput.value = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
+
+    if (bkashInput) bkashInput.value = s.bkashNumber || "+8801700000001";
+    if (nagadInput) nagadInput.value = s.nagadNumber || "+8801900000005";
+    if (rocketInput) rocketInput.value = s.rocketNumber || "+8801800000009";
+
+    const qrTypeSelect = document.getElementById("sys-crypto-qr-type");
+    const customBtcQREl = document.getElementById("sys-crypto-qr-url-btc");
+    const customEthQREl = document.getElementById("sys-crypto-qr-url-eth");
+    const customUsdtQREl = document.getElementById("sys-crypto-qr-url-usdt");
+
+    if (qrTypeSelect) qrTypeSelect.value = s.cryptoQRType || "auto";
+    if (customBtcQREl) customBtcQREl.value = s.cryptoQRUrlBTC || "";
+    if (customEthQREl) customEthQREl.value = s.cryptoQRUrlETH || "";
+    if (customUsdtQREl) customUsdtQREl.value = s.cryptoQRUrlUSDT || "";
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.value = val !== undefined && val !== null ? val : "";
+    };
+    const setChk = (id, checked) => {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!checked;
+    };
+
+    // Populate Mobile Banking Gateways (bKash, Nagad, Rocket, Upay, DBBL)
+    setChk("sys-pay-bkash-enabled", s.payBkashEnabled !== false);
+    setVal("sys-pay-bkash-personal", s.mobilePersonalBkash || s.bkashNumber || "+8801700000001");
+    setVal("sys-pay-bkash-agent", s.mobileAgentBkash || "");
+    setVal("sys-pay-bkash-instruction", s.mobileInstructionBkash || "");
+
+    setChk("sys-pay-nagad-enabled", s.payNagadEnabled !== false);
+    setVal("sys-pay-nagad-personal", s.mobilePersonalNagad || s.nagadNumber || "+8801900000005");
+    setVal("sys-pay-nagad-agent", s.mobileAgentNagad || "");
+    setVal("sys-pay-nagad-instruction", s.mobileInstructionNagad || "");
+
+    setChk("sys-pay-rocket-enabled", s.payRocketEnabled !== false);
+    setVal("sys-pay-rocket-personal", s.mobilePersonalRocket || s.rocketNumber || "+8801800000009");
+    setVal("sys-pay-rocket-agent", s.mobileAgentRocket || "");
+    setVal("sys-pay-rocket-instruction", s.mobileInstructionRocket || "");
+
+    setChk("sys-pay-upay-enabled", s.payUpayEnabled !== false);
+    setVal("sys-pay-upay-personal", s.mobilePersonalUpay || "");
+    setVal("sys-pay-upay-agent", s.mobileAgentUpay || "");
+    setVal("sys-pay-upay-instruction", s.mobileInstructionUpay || "");
+
+    setChk("sys-pay-dbbl-enabled", s.payDbblEnabled !== false);
+    setVal("sys-pay-dbbl", s.dbblDetails || "");
+    setVal("sys-pay-dbbl-instruction", s.dbblInstruction || "");
+
+    // Populate Crypto Gateway
+    setChk("sys-pay-usdt-enabled", s.payUsdtEnabled !== false);
+    setVal("sys-pay-crypto-usdt", s.cryptoAddressUSDT || s.cryptoAddress || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X");
+    setChk("sys-pay-btc-enabled", s.payBtcEnabled === true);
+    setVal("sys-pay-crypto-btc", s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa");
+    setChk("sys-pay-eth-enabled", s.payEthEnabled === true);
+    setVal("sys-pay-crypto-eth", s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+    setVal("sys-pay-crypto-qr-type", s.cryptoQRType || "auto");
+    setVal("sys-pay-crypto-qr-usdt", s.cryptoQRUrlUSDT || "");
+    setVal("sys-pay-crypto-qr-btc", s.cryptoQRUrlBTC || "");
+    setVal("sys-pay-crypto-qr-eth", s.cryptoQRUrlETH || "");
+    setVal("sys-pay-crypto-instruction", s.cryptoInstruction || "");
+
+    // Populate Agent-Assisted local channels
+    setChk("sys-pay-agent-deposit-enabled", s.payAgentDepositEnabled !== false);
+    setVal("sys-pay-agent-deposit-instruction", s.mobileInstructionAgentDeposit || "");
+    setChk("sys-pay-agent-withdraw-enabled", s.payAgentWithdrawEnabled !== false);
+    setVal("sys-pay-agent-withdraw-instruction", s.mobileInstructionAgentWithdraw || "");
+
+    // Populate Master Switch and Automated Gateways
+    setChk("sys-pay-master-enabled", s.payMasterEnabled !== false);
+    setChk("sys-pay-uddoktapay-enabled", s.payUddoktapayEnabled !== false);
+    setVal("sys-pay-uddoktapay-apikey", s.uddoktapayApiKey || "");
+    setVal("sys-pay-uddoktapay-mode", s.uddoktapayMode || "sandbox");
+    setVal("sys-pay-uddoktapay-url", s.uddoktapayBaseUrl || "https://sandbox.uddoktapay.com/api/checkout-v2");
+    setVal("sys-pay-uddoktapay-instruction", s.uddoktapayInstruction || "");
+    setChk("sys-pay-zinipay-enabled", s.payZinipayEnabled !== false && s.payZiniPayEnabled !== false);
+    setVal("sys-pay-zinipay-apikey", s.zinipayApiKey || "");
+    setVal("sys-pay-zinipay-mode", s.zinipayMode || "live");
+    setVal("sys-pay-zinipay-url", s.zinipayBaseUrl || "https://api.zinipay.com/v1/payment/create");
+    setVal("sys-pay-zinipay-instruction", s.zinipayInstruction || "");
+    setChk("sys-pay-bkash-pgw-enabled", s.payBkashPgwEnabled !== false && s.payBkashPgwEnabled !== undefined);
+    setChk("sys-pay-nagad-pgw-enabled", s.payNagadPgwEnabled !== false && s.payNagadPgwEnabled !== undefined);
+    setChk("sys-pay-aamarpay-enabled", s.payAamarpayEnabled !== false && s.payAamarpayEnabled !== undefined);
+    setChk("sys-pay-binance-enabled", s.payBinanceEnabled !== false && s.payBinancePayEnabled !== false);
+    setChk("sys-pay-cryptomus-enabled", s.payCryptomusEnabled !== false);
+
+    const toggleCustomFields = () => {
+      const wraps = document.querySelectorAll(".custom-qr-file-wrapper");
+      wraps.forEach(w => {
+        if (qrTypeSelect && qrTypeSelect.value === "custom") {
+          w.classList.remove("hidden");
+        } else {
+          w.classList.add("hidden");
+        }
+      });
+    };
+    toggleCustomFields();
+    if (qrTypeSelect) qrTypeSelect.onchange = toggleCustomFields;
+
+    this.refreshAdminQRPreview();
+    this.updatePaymentGatewaysStatusUI();
+    this.bindGateways1ClickControls();
+    this.renderWebPushAdsHistory();
+    this.renderSEOAndFaviconSettings();
+    this.bindSEOAndFaviconControls();
+  },
+
+  updatePaymentGatewaysStatusUI() {
+    const s = this.db.settings || {};
+    const channelCheckboxIds = [
+      "sys-pay-bkash-enabled",
+      "sys-pay-nagad-enabled",
+      "sys-pay-rocket-enabled",
+      "sys-pay-upay-enabled",
+      "sys-pay-dbbl-enabled",
+      "sys-pay-usdt-enabled",
+      "sys-pay-btc-enabled",
+      "sys-pay-eth-enabled",
+      "sys-pay-uddoktapay-enabled",
+      "sys-pay-zinipay-enabled",
+      "sys-pay-bkash-pgw-enabled",
+      "sys-pay-nagad-pgw-enabled",
+      "sys-pay-aamarpay-enabled",
+      "sys-pay-binance-enabled",
+      "sys-pay-cryptomus-enabled",
+      "sys-pay-agent-deposit-enabled",
+      "sys-pay-agent-withdraw-enabled"
+    ];
+
+    let activeCount = 0;
+    channelCheckboxIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.checked) activeCount++;
+    });
+
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    const isMasterOn = masterEl ? masterEl.checked : (s.payMasterEnabled !== false);
+    const totalChannels = channelCheckboxIds.length;
+
+    const linesCountEl = document.getElementById("admin-pay-lines-count");
+    if (linesCountEl) {
+      linesCountEl.textContent = `${activeCount} / ${totalChannels}`;
+      linesCountEl.className = activeCount === 0 
+        ? "text-sm font-black text-rose-500 mt-0.5 block" 
+        : (activeCount === totalChannels ? "text-sm font-black text-emerald-400 mt-0.5 block" : "text-sm font-black text-amber-400 mt-0.5 block");
+    }
+
+    const badgeEl = document.getElementById("admin-pay-master-badge");
+    const statusTextEl = document.getElementById("admin-pay-master-status-text");
+    const pulseEl = document.getElementById("admin-pay-master-pulse");
+    const iconWrapEl = document.getElementById("admin-pay-master-icon-wrap");
+    const iconEl = document.getElementById("admin-pay-master-icon");
+    const depStatusEl = document.getElementById("admin-pay-user-dep-status");
+    const wdStatusEl = document.getElementById("admin-pay-user-wd-status");
+
+    if (!isMasterOn || activeCount === 0) {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-rose-950/80 text-rose-300 border border-rose-500/50 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = "ALL PAYMENTS DISABLED (0 ACTIVE)";
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-rose-500";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-rose-500/15 border border-rose-500/50 flex items-center justify-center text-rose-400 text-xl shadow-[0_0_20px_rgba(244,63,94,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-ban";
+      if (depStatusEl) {
+        depStatusEl.textContent = "PAUSED (LOCKED)";
+        depStatusEl.className = "text-sm font-black text-rose-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "PAUSED (LOCKED)";
+        wdStatusEl.className = "text-sm font-black text-rose-400 mt-0.5 block";
+      }
+    } else if (activeCount === totalChannels) {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = `ALL CHANNELS ACTIVE (${totalChannels}/${totalChannels})`;
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl shadow-[0_0_20px_rgba(16,185,129,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-power-off";
+      if (depStatusEl) {
+        depStatusEl.textContent = "ACTIVE";
+        depStatusEl.className = "text-sm font-black text-emerald-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "ACTIVE";
+        wdStatusEl.className = "text-sm font-black text-emerald-400 mt-0.5 block";
+      }
+    } else {
+      if (badgeEl) badgeEl.className = "text-[9px] px-2.5 py-0.5 rounded-full font-bold font-mono bg-amber-950/80 text-amber-300 border border-amber-500/50 flex items-center gap-1.5 shadow";
+      if (statusTextEl) statusTextEl.textContent = `PARTIAL ACTIVE (${activeCount}/${totalChannels})`;
+      if (pulseEl) pulseEl.className = "w-2 h-2 rounded-full bg-amber-400 animate-pulse";
+      if (iconWrapEl) iconWrapEl.className = "w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-xl shadow-[0_0_20px_rgba(245,158,11,0.3)] shrink-0 transition-all";
+      if (iconEl) iconEl.className = "fa-solid fa-toggle-on";
+      if (depStatusEl) {
+        depStatusEl.textContent = `${activeCount} ACTIVE`;
+        depStatusEl.className = "text-sm font-black text-amber-400 mt-0.5 block";
+      }
+      if (wdStatusEl) {
+        wdStatusEl.textContent = "SELECTIVE";
+        wdStatusEl.className = "text-sm font-black text-amber-400 mt-0.5 block";
+      }
+    }
+  },
+
+  setAllPaymentGatewaysState(enabled, showToast = true) {
+    const s = this.db.settings;
+    if (!s) return;
+
+    const channelKeys = [
+      { id: "sys-pay-bkash-enabled", key: "payBkashEnabled" },
+      { id: "sys-pay-nagad-enabled", key: "payNagadEnabled" },
+      { id: "sys-pay-rocket-enabled", key: "payRocketEnabled" },
+      { id: "sys-pay-upay-enabled", key: "payUpayEnabled" },
+      { id: "sys-pay-dbbl-enabled", key: "payDbblEnabled" },
+      { id: "sys-pay-usdt-enabled", key: "payUsdtEnabled" },
+      { id: "sys-pay-btc-enabled", key: "payBtcEnabled" },
+      { id: "sys-pay-eth-enabled", key: "payEthEnabled" },
+      { id: "sys-pay-uddoktapay-enabled", key: "payUddoktapayEnabled" },
+      { id: "sys-pay-zinipay-enabled", key: "payZinipayEnabled" },
+      { id: "sys-pay-bkash-pgw-enabled", key: "payBkashPgwEnabled" },
+      { id: "sys-pay-nagad-pgw-enabled", key: "payNagadPgwEnabled" },
+      { id: "sys-pay-aamarpay-enabled", key: "payAamarpayEnabled" },
+      { id: "sys-pay-binance-enabled", key: "payBinanceEnabled" },
+      { id: "sys-pay-cryptomus-enabled", key: "payCryptomusEnabled" },
+      { id: "sys-pay-agent-deposit-enabled", key: "payAgentDepositEnabled" },
+      { id: "sys-pay-agent-withdraw-enabled", key: "payAgentWithdrawEnabled" }
+    ];
+
+    channelKeys.forEach(item => {
+      s[item.key] = enabled;
+      const el = document.getElementById(item.id);
+      if (el) el.checked = enabled;
+    });
+
+    s.payZiniPayEnabled = enabled;
+    s.payBinancePayEnabled = enabled;
+    s.payMasterEnabled = enabled;
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    if (masterEl) masterEl.checked = enabled;
+
+    this.saveDB();
+    this.updatePaymentGatewaysStatusUI();
+
+    if (window.app) {
+      if (typeof window.app.rebuildDepositGatewaySelect === "function") {
+        window.app.rebuildDepositGatewaySelect();
+      }
+      if (typeof window.app.rebuildWithdrawGatewaySelect === "function") {
+        window.app.rebuildWithdrawGatewaySelect();
+      }
+    }
+
+    if (showToast) {
+      if (enabled) {
+        this.showToast("⚡ ১ ক্লিকে সমস্ত পেমেন্ট গেটওয়ে চালু করা হয়েছে! (All 17 Payment Gateways Enabled)", "success");
+      } else {
+        this.showToast("🛑 ১ ক্লিকে সমস্ত পেমেন্ট গেটওয়ে বন্ধ করা হয়েছে! (Emergency Lock: All Payment Gateways Disabled)", "error");
+      }
+    }
+  },
+
+  bindGateways1ClickControls() {
+    if (this._gatewaysEventsBound) return;
+    this._gatewaysEventsBound = true;
+
+    const enableAllBtn = document.getElementById("btn-1click-enable-all-payments");
+    if (enableAllBtn) {
+      enableAllBtn.addEventListener("click", () => {
+        this.setAllPaymentGatewaysState(true, true);
+      });
+    }
+
+    const disableAllBtn = document.getElementById("btn-1click-disable-all-payments");
+    if (disableAllBtn) {
+      disableAllBtn.addEventListener("click", () => {
+        this.setAllPaymentGatewaysState(false, true);
+      });
+    }
+
+    const masterEl = document.getElementById("sys-pay-master-enabled");
+    if (masterEl) {
+      masterEl.addEventListener("change", () => {
+        this.setAllPaymentGatewaysState(masterEl.checked, true);
+      });
+    }
+
+    const channelKeyMap = {
+      "sys-pay-bkash-enabled": "payBkashEnabled",
+      "sys-pay-nagad-enabled": "payNagadEnabled",
+      "sys-pay-rocket-enabled": "payRocketEnabled",
+      "sys-pay-upay-enabled": "payUpayEnabled",
+      "sys-pay-dbbl-enabled": "payDbblEnabled",
+      "sys-pay-usdt-enabled": "payUsdtEnabled",
+      "sys-pay-btc-enabled": "payBtcEnabled",
+      "sys-pay-eth-enabled": "payEthEnabled",
+      "sys-pay-uddoktapay-enabled": "payUddoktapayEnabled",
+      "sys-pay-zinipay-enabled": "payZinipayEnabled",
+      "sys-pay-bkash-pgw-enabled": "payBkashPgwEnabled",
+      "sys-pay-nagad-pgw-enabled": "payNagadPgwEnabled",
+      "sys-pay-aamarpay-enabled": "payAamarpayEnabled",
+      "sys-pay-binance-enabled": "payBinanceEnabled",
+      "sys-pay-cryptomus-enabled": "payCryptomusEnabled",
+      "sys-pay-agent-deposit-enabled": "payAgentDepositEnabled",
+      "sys-pay-agent-withdraw-enabled": "payAgentWithdrawEnabled"
+    };
+
+    Object.keys(channelKeyMap).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener("change", () => {
+          const key = channelKeyMap[id];
+          if (this.db && this.db.settings) {
+            this.db.settings[key] = el.checked;
+            if (key === "payBinanceEnabled") {
+              this.db.settings.payBinancePayEnabled = el.checked;
+            }
+            this.saveDB();
+          }
+          this.updatePaymentGatewaysStatusUI();
+          if (window.app) {
+            if (typeof window.app.rebuildDepositGatewaySelect === "function") {
+              window.app.rebuildDepositGatewaySelect();
+            }
+            if (typeof window.app.rebuildWithdrawGatewaySelect === "function") {
+              window.app.rebuildWithdrawGatewaySelect();
+            }
+          }
+        });
+      }
+    });
+  },
+
+  renderWebPushAdsHistory() {
+    const tbody = document.getElementById("web-push-ads-history-tbody");
+    if (!tbody) return;
+
+    if (!this.db.webPushAds) this.db.webPushAds = [];
+
+    if (this.db.webPushAds.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" class="py-6 text-center text-slate-500 font-sans italic text-xs">
+            No Web Push Ad campaigns dispatched yet. Use the console above to broadcast your first promo ad!
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = this.db.webPushAds.map(ad => {
+      const dateStr = ad.date ? new Date(ad.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Just now";
+      const targetLabel = {
+        all: "🌐 All Players",
+        vip: "👑 VIP Members",
+        unverified: "⚠️ Unverified",
+        agents: "👤 Agents"
+      }[ad.targetAudience] || "🌐 All Players";
+
+      return `
+        <tr class="hover:bg-slate-850/60 transition">
+          <td class="py-2.5 px-2">
+            <div class="flex items-center gap-2">
+              ${ad.imageUrl ? `<img src="${ad.imageUrl}" class="w-7 h-7 rounded-lg object-cover border border-slate-800 shrink-0" alt="ad" />` : `<div class="w-7 h-7 rounded-lg bg-cyan-950 text-cyan-400 flex items-center justify-center font-bold shrink-0"><i class="fa-solid fa-rectangle-ad text-xs"></i></div>`}
+              <div>
+                <span class="font-bold text-white block line-clamp-1">${ad.title}</span>
+                <span class="text-[9px] text-slate-500 line-clamp-1 font-sans">${ad.message}</span>
+              </div>
+            </div>
+          </td>
+          <td class="py-2.5 px-2">
+            <span class="inline-block px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[9px] font-bold text-cyan-300">${targetLabel}</span>
+          </td>
+          <td class="py-2.5 px-2 text-center font-mono text-[10px] text-slate-400">
+            ${(ad.targetTab || "none").replace("tab-", "")}
+          </td>
+          <td class="py-2.5 px-2 text-center font-bold text-emerald-400 font-mono">
+            ${ad.clicks || 0}
+          </td>
+          <td class="py-2.5 px-2 text-right font-mono text-[10px] text-slate-400 whitespace-nowrap">
+            ${dateStr}
+          </td>
+          <td class="py-2.5 px-2 text-right">
+            <div class="flex items-center justify-end gap-1">
+              <button data-resend-ad="${ad.id}" class="resend-ad-btn px-2 py-1 bg-cyan-950 hover:bg-cyan-900 border border-cyan-800/60 text-cyan-300 rounded text-[9px] font-bold transition cursor-pointer" title="Re-dispatch Campaign">
+                🚀 Re-Send
+              </button>
+              <button data-delete-ad="${ad.id}" class="delete-ad-btn p-1 text-slate-500 hover:text-rose-400 transition cursor-pointer" title="Delete Log">
+                <i class="fa-solid fa-trash-can text-xs"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join("");
+
+    // Attach event listeners for Re-Send and Delete buttons
+    tbody.querySelectorAll(".resend-ad-btn").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-resend-ad");
+        const ad = this.db.webPushAds.find(a => a.id === id);
+        if (ad) {
+          NotificationEngine.triggerWebPushAd(ad);
+          this.showToast(`🚀 Web Push Ad "${ad.title}" re-dispatched!`, "success");
+        }
+      };
+    });
+
+    tbody.querySelectorAll(".delete-ad-btn").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-delete-ad");
+        this.db.webPushAds = this.db.webPushAds.filter(a => a.id !== id);
+        this.saveDB();
+        this.renderWebPushAdsHistory();
+        this.showToast("Web Push Ad log deleted.", "info");
+      };
+    });
+  },
+
+  refreshAdminQRPreview() {
+    try {
+      const s = this.db.settings;
+      const selector = document.getElementById("admin-spa-qr-selector");
+      const qrImg = document.getElementById("admin-spa-qr-preview");
+      if (!selector || !qrImg) return;
+
+      const selectedCoinType = selector.value; 
+      
+      let activeAddress = "";
+      let customQRUrl = "";
+
+      if (selectedCoinType === "usdt") {
+        activeAddress = s.cryptoAddressUSDT || "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X";
+        customQRUrl = s.cryptoQRUrlUSDT;
+      } else if (selectedCoinType === "btc") {
+        activeAddress = s.cryptoAddressBTC || "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa";
+        customQRUrl = s.cryptoQRUrlBTC;
+      } else {
+        activeAddress = s.cryptoAddressETH || "0x742d35Cc6634C0532925a3b844Bc454e4438f44e";
+        customQRUrl = s.cryptoQRUrlETH;
+      }
+
+      if (s.cryptoQRType === "custom" && customQRUrl) {
+        qrImg.src = customQRUrl;
+      } else {
+        qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(activeAddress)}`;
+      }
+    } catch (err) {
+      console.warn("Exception in refreshAdminQRPreview:", err);
+    }
+  },
+
+  renderSponsorClickAnalytics() {
+    const totalEl = document.getElementById("admin-sponsor-total-clicks");
+    const verifiedEl = document.getElementById("admin-sponsor-verified-visits");
+    const todayEl = document.getElementById("admin-sponsor-today-clicks");
+    const rateEl = document.getElementById("admin-sponsor-success-rate");
+    const countEl = document.getElementById("admin-sponsor-log-count");
+    const tbody = document.getElementById("admin-sponsor-click-logs-body");
+
+    if (!totalEl || !tbody) return;
+
+    const logs = this.db.sponsorClickLogs || [];
+    const todayStr = new Date().toISOString().split("T")[0];
+
+    const totalCount = logs.length;
+    const verifiedCount = logs.filter(l => l.verified).length;
+    const todayCount = logs.filter(l => l.date === todayStr).length;
+    const rate = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 100;
+
+    totalEl.innerText = totalCount;
+    verifiedEl.innerText = verifiedCount;
+    todayEl.innerText = todayCount;
+    rateEl.innerText = `${rate}%`;
+    if (countEl) countEl.innerText = `${totalCount} records`;
+
+    if (logs.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="p-4 text-center text-slate-500 text-[10px] italic">No click logs recorded yet.</td>
+        </tr>`;
+    } else {
+      // Show newest 25 logs
+      const sortedLogs = [...logs].reverse().slice(0, 25);
+      tbody.innerHTML = sortedLogs.map(l => {
+        const isVerified = l.verified;
+        const statusBadge = isVerified
+          ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-400 text-[9px] font-bold"><i class="fa-solid fa-circle-check"></i> Verified</span>`
+          : `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-400 text-[9px] font-bold"><i class="fa-solid fa-clock"></i> Pending / Failed</span>`;
+
+        return `
+          <tr class="hover:bg-slate-900/60 transition">
+            <td class="p-2.5 pl-3 font-bold text-white flex items-center gap-1.5">
+              <i class="fa-solid fa-user text-amber-500 text-[10px]"></i> ${l.userName || "Guest"}
+            </td>
+            <td class="p-2.5 text-slate-400 text-[10px]">${l.timestamp || l.date || "N/A"}</td>
+            <td class="p-2.5">${statusBadge}</td>
+            <td class="p-2.5 pr-3 text-right font-bold text-slate-300">${l.timeSpentSeconds || 0}s</td>
+          </tr>`;
+      }).join("");
+    }
+
+    // Attach clear listener
+    const clearBtn = document.getElementById("clear-sponsor-click-logs-btn");
+    if (clearBtn && !clearBtn.dataset.bound) {
+      clearBtn.dataset.bound = "true";
+      clearBtn.addEventListener("click", () => {
+        if (confirm("Are you sure you want to reset and clear all sponsor link click logs?")) {
+          this.db.sponsorClickLogs = [];
+          this.saveDB();
+          this.renderSponsorClickAnalytics();
+          this.showToast("Sponsor link click history cleared.", "info");
+        }
+      });
+    }
+  },
+
+  createNewLotteryPool(name, entryFee, prizeAmount, totalTickets, category, drawMode = "manual", drawDuration = 10, exactDatetime = "", desc = "", multiWinnerPrizes = null) {
+    let drawTimeDate;
+    const resolvedDrawMode = (drawMode === "manual") ? "manual" : "auto";
+    if (drawMode === "auto") {
+      drawTimeDate = new Date(Date.now() + drawDuration * 60 * 1000);
+    } else if (drawMode === "auto_datetime" && exactDatetime) {
+      drawTimeDate = new Date(exactDatetime);
+    } else {
+      drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+
+    let defaultsDesc = desc;
+    if (!defaultsDesc) {
+      if (multiWinnerPrizes && multiWinnerPrizes.length > 0) {
+        const totalAward = multiWinnerPrizes.reduce((sum, p) => sum + p, 0);
+        defaultsDesc = `Multiple Rank Winners Draw event! A total cash pool of ৳${totalAward} is distributed among top ${multiWinnerPrizes.length} lucky ticket holders! Rank prizes: ${multiWinnerPrizes.map((p, i) => `#${i+1} gets ৳${p}`).join(", ")}.`;
+      } else {
+        defaultsDesc = `Exclusive ${entryFee} Taka lottery draw pool. The luck winner receives ৳${prizeAmount}!`;
+      }
+    }
+
+    const newLot = {
+      id: "l" + Date.now(),
+      name: name,
+      details: defaultsDesc,
+      entryFee: entryFee,
+      totalTickets: totalTickets,
+      soldTickets: 0,
+      category: category,
+      drawTime: drawTimeDate.toISOString(),
+      status: "active",
+      prizeAmount: prizeAmount,
+      drawMode: resolvedDrawMode,
+      drawDuration: drawDuration,
+      originalDrawMode: drawMode,
+      exactDatetime: exactDatetime,
+      multiWinnerPrizes: multiWinnerPrizes
+    };
+
+    this.db.lotteries.unshift(newLot);
+    this.saveDB();
+    this.render();
+    this.showToast(`New ${category} lottery created dynamically!`, "success");
+  },
+
+  renderAdminVipClub() {
+    const list = document.getElementById("admin-vip-tiers-list");
+    if (!list) return;
+
+    list.innerHTML = "";
+    const tiers = this.db.settings.vipTiers || [];
+
+    const countEl = document.getElementById("vip-tiers-count");
+    if (countEl) countEl.innerText = `${tiers.length} Active VIPs`;
+
+    if (tiers.length === 0) {
+      list.innerHTML = `
+        <div class="text-slate-500 text-center py-8 font-sans">
+          No VIP Tiers created. Use the editor on the left to initialize a premium plan!
+        </div>
+      `;
+      return;
+    }
+
+    tiers.forEach(tier => {
+      list.innerHTML += `
+        <div class="flex items-center justify-between py-3 border-b border-slate-900 last:border-0 font-mono text-[10px]">
+          <div class="space-y-1">
+            <span class="text-xs font-bold text-white block">${tier.title}</span>
+            <div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500 font-sans">
+              <span>Price: <strong class="text-slate-300">৳${tier.price}</strong></span>
+              <span>•</span>
+              <span>Bonus: <strong class="text-emerald-400">৳${tier.bonus}</strong></span>
+              <span>•</span>
+              <span>Mult: <strong class="text-amber-400">${tier.multiplier.toFixed(2)}x</strong></span>
+              <span>•</span>
+              <span>Discount: <strong class="text-purple-400">${tier.discount}%</strong></span>
+            </div>
+          </div>
+          <button onclick="window.appInstance.deleteAdminVipTier('${tier.id}')" class="bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 hover:text-rose-300 px-2 py-1 rounded text-[8px] transition cursor-pointer">
+            Delete
+          </button>
+        </div>
+      `;
+    });
+  },
+
+  deleteAdminVipTier(tierId) {
+    if (!this.db || !this.db.settings || !this.db.settings.vipTiers) return;
+    
+    const title = this.db.settings.vipTiers.find(t => t.id === tierId)?.title || "Tier";
+    this.db.settings.vipTiers = this.db.settings.vipTiers.filter(t => t.id !== tierId);
+    this.saveDB();
+    this.showToast(`Removed VIP Club level tier "${title}" from the registry.`, "info");
+    this.renderAdminVipClub();
+  },
+
+  renderAdminJackpot() {
+    const s = this.db.settings;
+    const poolAmountEl = document.getElementById("admin-jackpot-pool-indicator");
+    if (poolAmountEl) {
+      poolAmountEl.innerText = `৳${(s.jackpotPool || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    const fundInput = document.getElementById("admin-jackpot-pool-input");
+    const costInput = document.getElementById("admin-jackpot-price-input");
+    const exInput = document.getElementById("admin-jackpot-expiry-input");
+
+    if (fundInput && document.activeElement !== fundInput) {
+      fundInput.value = (s.jackpotPool || 0).toFixed(2);
+    }
+    if (costInput && document.activeElement !== costInput) {
+      costInput.value = (s.jackpotTicketCost || 20.00).toFixed(2);
+    }
+    if (exInput && document.activeElement !== exInput) {
+      exInput.value = s.jackpotExpiry || "";
+    }
+
+    const tbody = document.getElementById("admin-jackpot-purchases-tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = "";
+    const regs = this.db.jackpotRegistrations || [];
+
+    const countEl = document.getElementById("admin-jackpot-logs-count");
+    if (countEl) countEl.innerText = `${regs.length} entries`;
+
+    const sumEl = document.getElementById("admin-jackpot-tickets-sum");
+    if (sumEl) {
+      const ticketsSum = regs.reduce((sum, r) => sum + r.qty, 0);
+      sumEl.innerText = `${ticketsSum} tickets`;
+    }
+
+    if (regs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" class="py-6 text-center text-slate-500 font-sans text-xs">No active Jackpot tickets purchased.</td></tr>`;
+      return;
+    }
+
+    [...regs].reverse().forEach(reg => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-slate-850/45 hover:bg-slate-900/60 transition";
+      tr.innerHTML = `
+        <td class="py-2.5 text-slate-400 text-[10.5px]">#${reg.id.split("_").pop() || reg.id}</td>
+        <td class="py-2.5 font-bold text-white text-[10.5px]">${this.escapeHTML(reg.userName)}</td>
+        <td class="py-2.5 text-center text-purple-300 font-bold text-[10.5px]">${reg.qty}x</td>
+        <td class="py-2.5 text-center text-emerald-400 font-bold text-[10.5px]">৳${reg.spent.toFixed(2)}</td>
+        <td class="py-2.5 text-right text-slate-500 text-[9.5px]">${reg.date}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  renderAdminTasks() {
+    const activeTasksCountEl = document.getElementById("admin-active-tasks-count");
+    const pendingSubsCountEl = document.getElementById("admin-pending-submissions-count");
+    const activeTasks = this.db.dailyTasks || [];
+    const submissions = this.db.taskSubmissions || [];
+
+    if (activeTasksCountEl) activeTasksCountEl.innerText = `${activeTasks.length} Active`;
+    if (pendingSubsCountEl) {
+      const pendingCount = submissions.filter(s => s.status === "pending").length;
+      pendingSubsCountEl.innerText = `${pendingCount} Pending`;
+    }
+
+    const listContainer = document.getElementById("admin-tasks-list-container");
+    if (listContainer) {
+      listContainer.innerHTML = "";
+      if (activeTasks.length === 0) {
+        listContainer.innerHTML = `<div class="text-slate-550 py-6 text-center text-[10px] font-sans">No active promo tasks created yet. Use panel above to create one.</div>`;
+      } else {
+        activeTasks.forEach(task => {
+          const div = document.createElement("div");
+          div.className = "py-3 border-b border-slate-900 last:border-0 font-mono text-[10.5px] flex items-center justify-between";
+          div.innerHTML = `
+            <div class="space-y-1 max-w-[70%] text-left">
+              <h5 class="text-white font-bold truncate">${this.escapeHTML(task.title)}</h5>
+              <div class="flex gap-2 items-center text-[8.5px] text-slate-500">
+                <span>Reward: <strong class="text-emerald-400 font-mono">৳${task.reward}</strong></span>
+                <span>•</span>
+                <span class="capitalize text-cyan-400">${task.category}</span>
+              </div>
+            </div>
+            <button onclick="window.appInstance.deleteAdminTask('${task.id}')" class="bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 hover:text-rose-350 px-2.5 py-1 rounded text-[8.5px] transition cursor-pointer">
+              Delete
+            </button>
+          `;
+          listContainer.appendChild(div);
+        });
+      }
+    }
+
+    const gallery = document.getElementById("admin-task-submissions-gallery");
+    if (gallery) {
+      gallery.innerHTML = "";
+      
+      const activeFilterBtn = document.querySelector(".task-verify-filter-btn.bg-cyan-955\\/35");
+      const currentFilter = activeFilterBtn ? activeFilterBtn.getAttribute("data-filter") : "pending";
+
+      let filteredSubs = submissions;
+      if (currentFilter !== "all") {
+        filteredSubs = submissions.filter(s => s.status === currentFilter);
+      }
+
+      if (filteredSubs.length === 0) {
+        gallery.innerHTML = `
+          <div class="text-slate-500 text-center py-10">
+            <i class="fa-solid fa-folder-open text-slate-700 text-3xl mb-1.5 block"></i>
+            <span>No task registration submissions matching (${currentFilter}) status.</span>
+          </div>
+        `;
+        return;
+      }
+
+      [...filteredSubs].reverse().forEach(sub => {
+        const correspondingTask = activeTasks.find(t => t.id === sub.taskId);
+        
+        let actions = "";
+        let notesLabel = "";
+        
+        if (sub.status === "pending") {
+          actions = `
+            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3.5 border-t border-slate-900 text-left">
+              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Specify note/reason..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
+              <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'approved')" class="flex-1 sm:flex-initial bg-emerald-600 hover:bg-emerald-555 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
+                  Approve & Reward
+                </button>
+                <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'rejected')" class="flex-1 sm:flex-initial bg-rose-600 hover:bg-rose-550 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
+                  Decline / Reject
+                </button>
+              </div>
+            </div>
+          `;
+        } else if (sub.status === "approved") {
+          const badgeClass = "text-emerald-400 bg-emerald-955/15 border-emerald-900/40";
+          notesLabel = `
+            <div class="mt-2.5 pt-2.5 border-t border-slate-900/60 flex flex-wrap items-center justify-between text-[9px] text-left">
+              <span class="text-slate-550 mr-2">Audit Response notes: <strong class="text-slate-300 font-sans">${this.escapeHTML(sub.adminNotes || "None")}</strong></span>
+              <span class="px-2 py-0.5 rounded-lg border uppercase font-mono font-bold text-[7.5px] ${badgeClass}">${sub.status}</span>
+            </div>
+          `;
+          actions = `
+            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3 border-t border-slate-900 text-left">
+              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Specify decline reason..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
+              <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'rejected')" class="w-full sm:w-auto bg-rose-700 hover:bg-rose-600 text-white font-bold px-3 py-1.5 rounded-lg text-[9.5px] transition cursor-pointer shrink-0">
+                Decline & Revoke Reward
+              </button>
+            </div>
+          `;
+        } else if (sub.status === "rejected") {
+          const badgeClass = "text-rose-450 bg-rose-955/15 border-rose-900/40";
+          notesLabel = `
+            <div class="mt-2.5 pt-2.5 border-t border-slate-900/60 flex flex-wrap items-center justify-between text-[9px] text-left">
+              <span class="text-slate-550 mr-2">Rejection reason: <strong class="text-slate-300 font-sans">${this.escapeHTML(sub.adminNotes || "None")}</strong></span>
+              <span class="px-2 py-0.5 rounded-lg border uppercase font-mono font-bold text-[7.5px] ${badgeClass}">${sub.status}</span>
+            </div>
+          `;
+          actions = `
+            <div class="flex flex-col sm:flex-row gap-2 font-mono mt-3 pt-3 border-t border-slate-900 text-left">
+              <input type="text" id="admin-sub-notes-${sub.id}" placeholder="Change response note..." class="w-full sm:flex-grow bg-slate-900 border border-slate-800 rounded-lg py-1.5 px-2 text-white outline-none focus:border-cyan-500 text-[10.5px]" />
+              <button onclick="window.appInstance.verifyTaskSubmission('${sub.id}', 'approved')" class="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-555 text-white font-bold px-3 py-1.5 rounded-lg text-[9px] transition cursor-pointer shrink-0">
+                Re-approve & Reward
+              </button>
+            </div>
+          `;
+        }
+
+        const card = document.createElement("div");
+        card.className = "bg-slate-900 border border-slate-800/80 p-4.5 rounded-2xl text-[10.5px] space-y-3 shadow-md font-mono relative overflow-hidden text-left";
+        card.innerHTML = `
+          <div class="flex justify-between items-start gap-4">
+            <div class="space-y-1 max-w-[65%]">
+              <span class="text-[8px] font-bold text-slate-500 uppercase block tracking-wider">PLATFORM DEED AUDIT</span>
+              <h5 class="text-cyan-400 font-black truncate">${this.escapeHTML(correspondingTask ? correspondingTask.title : sub.taskTitle)}</h5>
+              <div class="flex flex-wrap items-center gap-1.5 text-[9px] text-slate-500 font-sans mt-0.5">
+                <span>Player: <strong class="text-white">${sub.userName}</strong></span>
+                <span>•</span>
+                <span>Prize: <strong class="text-yellow-500">৳${sub.reward}</strong></span>
+              </div>
+            </div>
+
+            <div class="shrink-0 relative group cursor-zoom-in" onclick="window.appInstance.openScreenshotViewer('${sub.id}')">
+              <img src="${sub.screenshot}" class="w-14 h-14 aspect-square object-cover rounded-lg border border-slate-800" />
+              <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition rounded-lg">
+                <i class="fa-solid fa-expand text-white text-xs animate-pulse"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-slate-950 p-2 rounded-xl text-[9.5px]">
+            <span class="text-slate-500 leading-normal block">Date submitted: <strong class="text-slate-400">${sub.date}</strong></span>
+          </div>
+
+          ${notesLabel}
+          ${actions}
+        `;
+        gallery.appendChild(card);
+      });
+    }
+  },
+
+  deleteAdminTask(taskId) {
+    if (!this.db || !this.db.dailyTasks) return;
+    const task = this.db.dailyTasks.find(t => t.id === taskId);
+    const title = task ? task.title : "Task";
+    
+    this.db.dailyTasks = this.db.dailyTasks.filter(t => t.id !== taskId);
+    this.saveDB();
+    this.showToast(`Deleted task "${title}" from the active database catalog.`, "info");
+    this.renderAdminTasks();
+  },
+
+  renderAdminBadgeRequests() {
+    const listEl = document.getElementById("admin-badge-requests-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const reqs = this.db.badgeRequests || [];
+    
+    // Update count labels and bubble counters
+    const pendingCount = reqs.filter(r => r.status === "pending").length;
+    const subStatEl = document.getElementById("admin-badge-reqs-sub-stats");
+    if (subStatEl) {
+      subStatEl.innerText = `${pendingCount} pending applications`;
+    }
+    const headerBadge = document.getElementById("admin-badge-requests-count-badge");
+    if (headerBadge) {
+      headerBadge.innerText = pendingCount;
+      if (pendingCount > 0) {
+        headerBadge.classList.remove("hidden");
+      } else {
+        headerBadge.classList.add("hidden");
+      }
+    }
+
+    if (reqs.length === 0) {
+      listEl.innerHTML = `
+        <div class="text-center py-10 bg-slate-950 border border-slate-850 rounded-2xl text-[11px] text-slate-500 font-mono">
+          <i class="fa-solid fa-ribbon text-slate-700 text-base block mb-1"></i>
+          No badge requests submitted by any players yet.
+        </div>
+      `;
+      return;
+    }
+
+    // Sort pending first, then newest
+    const sorted = [...reqs].sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return new Date(b.date) - new Date(a.date);
+    });
+
+    sorted.forEach(r => {
+      const item = document.createElement("div");
+      item.className = "bg-slate-950 border border-slate-850 p-4 rounded-2xl space-y-3 font-mono";
+
+      const badgeMap = {
+        vip: { icon: "💎", label: "VIP Player", value: "vip" },
+        moderator: { icon: "🛡️", label: "Staff Mod", value: "moderator" },
+        star: { icon: "⭐", label: "Elite Star", value: "star" },
+        premium: { icon: "✨", label: "Premium Member", value: "premium" },
+        pro: { icon: "🔥", label: "Pro Active", value: "pro" },
+        legend: { icon: "👑", label: "Royal Legend", value: "legend" }
+      };
+
+      const bConf = badgeMap[r.requestedBadge] || { icon: "🎖️", label: r.requestedBadge, value: r.requestedBadge };
+
+      let statusColor = "bg-slate-900 text-slate-400";
+      if (r.status === "approved") {
+        statusColor = "bg-green-950 text-green-400 border border-green-800/40";
+      } else if (r.status === "rejected") {
+        statusColor = "bg-red-950 text-red-500 border border-red-850/40";
+      } else {
+        statusColor = "bg-amber-950 text-amber-500 border border-amber-800/40 animate-pulse";
+      }
+
+      item.innerHTML = `
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+          <div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="font-extrabold text-white text-sm">@${r.username}</span>
+              <span class="text-[9px] text-slate-500">(${new Date(r.date).toLocaleString()})</span>
+            </div>
+            
+            <div class="flex items-center gap-1.5 mt-2">
+              <span class="text-slate-400 text-[10px]">Claims Badge:</span>
+              <span class="bg-indigo-950 text-indigo-300 font-bold px-2 py-0.5 rounded text-[10px] border border-indigo-800/30">
+                ${bConf.icon} ${bConf.label}
+              </span>
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusColor}">
+                ${r.status.toUpperCase()}
+              </span>
+            </div>
+
+            ${r.reason ? `
+              <div class="text-[11px] text-slate-300 bg-slate-900 border border-slate-850 p-2.5 rounded-xl mt-2.5 italic font-sans">
+                <span class="text-[9px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">User Justification Message:</span>
+                "${r.reason}"
+              </div>
+            ` : ""}
+          </div>
+
+          <div class="flex gap-1.5 self-start md:self-center">
+            ${r.status === "pending" ? `
+              <button class="admin-badge-act-btn bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-1.5 px-3 rounded-lg transition cursor-pointer text-[10px]" data-action="approve" data-req-id="${r.id}">
+                Approve
+              </button>
+              <button class="admin-badge-act-btn bg-rose-600 hover:bg-rose-500 text-white font-bold py-1.5 px-3 rounded-lg transition cursor-pointer text-[10px]" data-action="reject" data-req-id="${r.id}">
+                Reject
+              </button>
+            ` : ""}
+            <button class="admin-badge-act-btn bg-slate-900 border border-slate-850 hover:bg-red-950/20 text-slate-400 hover:text-red-400 font-bold py-1.5 px-2.5 rounded-lg transition cursor-pointer text-[10px]" data-action="delete" data-req-id="${r.id}">
+              Delete
+            </button>
+          </div>
+        </div>
+      `;
+
+      listEl.appendChild(item);
+    });
+
+    // Bind action events
+    listEl.querySelectorAll(".admin-badge-act-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const action = btn.getAttribute("data-action");
+        const reqId = btn.getAttribute("data-req-id");
+        
+        const req = (this.db.badgeRequests || []).find(x => x.id === reqId);
+        if (!req) return;
+
+        if (action === "approve") {
+          req.status = "approved";
+          
+          // Auto grant user the badge in users table
+          const targetUser = (this.db.users || []).find(usr => usr.id === req.userId || usr.username === req.username);
+          if (targetUser) {
+            targetUser.customBadge = req.requestedBadge;
+            this.showToast(`Granted ${req.requestedBadge.toUpperCase()} Badge to user @${targetUser.username}!`, "success");
+          } else {
+            this.showToast("User record not found, but marked as approved.", "info");
+          }
+        } else if (action === "reject") {
+          req.status = "rejected";
+          this.showToast("Badge request rejected.", "warning");
+        } else if (action === "delete") {
+          this.db.badgeRequests = (this.db.badgeRequests || []).filter(x => x.id !== reqId);
+          this.showToast("Badge request deleted from database.", "info");
+        }
+
+        this.saveDB();
+        this.renderAdminBadgeRequests(); // Redraw requests view
+        this.renderAdmin(); // Sync headers count
+      });
+    });
+  },
+
+  renderAdminVideoBounty() {
+    const listEl = document.getElementById("admin-bounties-list");
+    if (!listEl) return;
+    listEl.innerHTML = "";
+
+    const bounties = this.db.videoBounties || [];
+
+    // Update statistics
+    const pendingCount = bounties.filter(b => b.status === "pending").length;
+    const approvedCount = bounties.filter(b => b.status === "approved").length;
+    const totalPayout = bounties.filter(b => b.status === "approved").reduce((sum, b) => sum + (b.reward || 0), 0);
+
+    const pendingCountEl = document.getElementById("admin-bounty-pending-count");
+    if (pendingCountEl) pendingCountEl.innerText = `${pendingCount} claims`;
+
+    const approvedCountEl = document.getElementById("admin-bounty-approved-count");
+    if (approvedCountEl) approvedCountEl.innerText = `${approvedCount} claims`;
+
+    const totalPayoutEl = document.getElementById("admin-bounty-total-payout");
+    if (totalPayoutEl) totalPayoutEl.innerText = `৳${totalPayout.toLocaleString()}`;
+
+    const subStatEl = document.getElementById("admin-bounties-sub-stats");
+    if (subStatEl) subStatEl.innerText = `${pendingCount} pending reviews`;
+
+    // Dynamic header bubble counter
+    const headerBadge = document.getElementById("admin-bounty-count-badge");
+    if (headerBadge) {
+      headerBadge.innerText = pendingCount;
+      if (pendingCount > 0) {
+        headerBadge.classList.remove("hidden");
+      } else {
+        headerBadge.classList.add("hidden");
+      }
+    }
+
+    if (bounties.length === 0) {
+      listEl.innerHTML = `
+        <div class="text-center py-10 bg-slate-950 border border-slate-850 rounded-2xl text-[11px] text-slate-500 font-mono">
+          <i class="fa-solid fa-video text-slate-700 text-base block mb-1"></i>
+          No video bounty claims submitted by players yet.
+        </div>
+      `;
+      return;
+    }
+
+    // Sort pending first, then newest
+    const sorted = [...bounties].sort((a, b) => {
+      if (a.status === "pending" && b.status !== "pending") return -1;
+      if (a.status !== "pending" && b.status === "pending") return 1;
+      return new Date(b.date) - new Date(a.date);
+    });
+
+    sorted.forEach(b => {
+      const item = document.createElement("div");
+      item.className = "bg-slate-950 border border-slate-850 p-4 rounded-2xl space-y-3 font-mono text-xs";
+
+      let statusColor = "bg-slate-900 text-slate-400 border border-slate-800";
+      if (b.status === "approved") {
+        statusColor = "bg-green-950 text-green-400 border border-green-800/40";
+      } else if (b.status === "rejected") {
+        statusColor = "bg-red-950 text-red-500 border border-red-850/40";
+      } else {
+        statusColor = "bg-amber-950 text-amber-500 border border-amber-800/40 animate-pulse";
+      }
+
+      const platformLabels = {
+        tiktok: "🎵 TikTok",
+        youtube: "📹 YouTube Shorts",
+        facebook: "👥 Facebook Reels",
+        instagram: "📸 Instagram Reels"
+      };
+      const pLabel = platformLabels[b.platform] || b.platform;
+
+      item.innerHTML = `
+        <div class="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div class="space-y-2 flex-1 min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-extrabold text-white text-sm">@${b.username}</span>
+              <span class="text-[9px] text-slate-500">(${new Date(b.date).toLocaleString()})</span>
+              <span class="px-2 py-0.5 rounded text-[9px] font-bold ${statusColor}">
+                ${b.status.toUpperCase()}
+              </span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 text-[10px] bg-slate-900 border border-slate-850 p-2.5 rounded-xl">
+              <div>
+                <span class="text-slate-500 block uppercase text-[8px]">Platform</span>
+                <span class="text-slate-300 font-bold">${pLabel}</span>
+              </div>
+              <div>
+                <span class="text-slate-500 block uppercase text-[8px]">Views Claimed</span>
+                <span class="text-cyan-400 font-bold">${b.views.toLocaleString()}</span>
+              </div>
+            </div>
+
+            <div class="text-[10px] text-indigo-400 truncate">
+              <a href="${b.videoUrl}" target="_blank" class="hover:underline flex items-center gap-1">
+                <i class="fa-solid fa-link text-[8px]"></i> URL: ${b.videoUrl}
+              </a>
+            </div>
+
+            ${b.note ? `
+              <div class="text-[11px] text-slate-300 bg-slate-900/60 border border-slate-850 p-2.5 rounded-xl italic font-sans">
+                <span class="text-[8px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">User Claim Message:</span>
+                "${b.note}"
+              </div>
+            ` : ""}
+
+            ${b.status !== "pending" && b.adminNotes ? `
+              <div class="text-[11px] text-slate-400 bg-slate-900/40 border border-slate-850 p-2.5 rounded-xl italic font-sans">
+                <span class="text-[8px] text-slate-500 block not-italic font-mono uppercase pb-0.5 font-bold">Admin Note:</span>
+                "${b.adminNotes}"
+              </div>
+            ` : ""}
+
+            ${b.status === "approved" ? `
+              <div class="text-[11px] text-emerald-400 font-bold">
+                Rewarded payout: ৳${b.reward}
+              </div>
+            ` : ""}
+          </div>
+
+          <!-- Actions & Fields -->
+          <div class="w-full md:w-56 space-y-3 bg-slate-900 border border-slate-850 p-3 rounded-2xl">
+            ${b.status === "pending" ? `
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 text-[9px] uppercase">Reward Amount (৳100 - ৳500)</label>
+                <input type="number" id="bounty-reward-${b.id}" class="w-full bg-slate-950 border border-slate-800 rounded-lg py-1 px-2 text-white outline-none text-xs" value="200" min="100" max="500" />
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="block text-slate-500 text-[9px] uppercase">Review Note</label>
+                <textarea id="bounty-note-${b.id}" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none resize-none text-[10px]" rows="1.5" placeholder="Good review! ৳200 credited."></textarea>
+              </div>
+
+              <div class="flex gap-2">
+                <button class="admin-bounty-act-btn flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="approve" data-bounty-id="${b.id}">
+                  Approve
+                </button>
+                <button class="admin-bounty-act-btn flex-1 bg-rose-600 hover:bg-rose-500 text-white font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="reject" data-bounty-id="${b.id}">
+                  Reject
+                </button>
+              </div>
+            ` : ""}
+
+            <button class="admin-bounty-act-btn w-full bg-slate-950 border border-slate-850 hover:bg-red-950/20 text-slate-400 hover:text-red-400 font-bold py-2 rounded-lg transition cursor-pointer text-[10px]" data-action="delete" data-bounty-id="${b.id}">
+              Delete Record
+            </button>
+          </div>
+        </div>
+      `;
+
+      listEl.appendChild(item);
+    });
+
+    // Bind actions
+    listEl.querySelectorAll(".admin-bounty-act-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        const action = btn.getAttribute("data-action");
+        const bountyId = btn.getAttribute("data-bounty-id");
+
+        const b = (this.db.videoBounties || []).find(x => x.id === bountyId);
+        if (!b) return;
+
+        if (action === "approve") {
+          const rewardVal = parseInt(document.getElementById(`bounty-reward-${bountyId}`)?.value || "200");
+          if (isNaN(rewardVal) || rewardVal < 100 || rewardVal > 500) {
+            this.showToast("Bounty reward must be between ৳100 and ৳500!", "error");
+            return;
+          }
+
+          const adminNotesVal = document.getElementById(`bounty-note-${bountyId}`)?.value?.trim() || "Good review video, ৳" + rewardVal + " bonus credited!";
+
+          b.status = "approved";
+          b.reward = rewardVal;
+          b.adminNotes = adminNotesVal;
+
+          // Credit balance to player
+          const targetUser = (this.db.users || []).find(u => u.id === b.userId || u.username === b.username);
+          if (targetUser) {
+            targetUser.balance = (targetUser.balance || 0) + rewardVal;
+            this.showToast(`Approved & credited ৳${rewardVal} to user @${targetUser.username}!`, "success");
+          } else {
+            this.showToast("Bounty approved, but user record was not found.", "info");
+          }
+
+        } else if (action === "reject") {
+          const adminNotesVal = document.getElementById(`bounty-note-${bountyId}`)?.value?.trim() || "Video review does not meet program requirements (e.g., view count/content validation).";
+
+          b.status = "rejected";
+          b.reward = 0;
+          b.adminNotes = adminNotesVal;
+          this.showToast(`Bounty claim has been rejected.`, "warning");
+
+        } else if (action === "delete") {
+          this.db.videoBounties = (this.db.videoBounties || []).filter(x => x.id !== bountyId);
+          this.showToast("Video bounty record removed from database.", "info");
+        }
+
+        this.saveDB();
+        this.renderAdminVideoBounty();
+        this.renderAdmin();
+      });
+    });
+  },
+
+  renderAdminEvents() {
+    const s = this.db.settings || {};
+    const popup = s.popupEvent || {
+      enabled: true,
+      title: "Eid Mega Draw Festival! 🎉",
+      message: "Deposit ৳500 or more today and get a free Ticket to the ৳100,000 Eid Pool! This exclusive premium bonus is available for a limited time only.",
+      imageUrl: "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop",
+      actionText: "Claim Bonus",
+      actionLink: "wallet"
+    };
+
+    // Populate popup configs
+    const enabledInput = document.getElementById("admin-popup-enabled");
+    const titleInput = document.getElementById("admin-popup-title");
+    const actionTextInput = document.getElementById("admin-popup-action-text");
+    const imageUrlInput = document.getElementById("admin-popup-image-url");
+    const redirectSelect = document.getElementById("admin-popup-redirect-tab");
+    const msgTextarea = document.getElementById("admin-popup-message");
+
+    if (enabledInput) enabledInput.checked = !!popup.enabled;
+    if (titleInput) titleInput.value = popup.title || "";
+    if (actionTextInput) actionTextInput.value = popup.actionText || "";
+    if (imageUrlInput) imageUrlInput.value = popup.imageUrl || "";
+    if (redirectSelect) redirectSelect.value = popup.actionLink || "home";
+    if (msgTextarea) msgTextarea.value = popup.message || "";
+
+    // Populate advanced financial fees
+    const depChargePctInput = document.getElementById("admin-dep-charge-pct");
+    const withdrawChargePctInput = document.getElementById("admin-withdraw-charge-pct");
+
+    if (depChargePctInput) depChargePctInput.value = (s.depositFeePct !== undefined) ? s.depositFeePct : 0;
+    if (withdrawChargePctInput) withdrawChargePctInput.value = (s.withdrawFeePct !== undefined) ? s.withdrawFeePct : 2.0;
+
+    // Render active sliding banners
+    this.renderActiveBanners();
+
+    // Bind save popup button
+    const savePopupBtn = document.getElementById("save-popup-event-btn");
+    if (savePopupBtn) {
+      savePopupBtn.onclick = (e) => {
+        e.preventDefault();
+        const enabled = enabledInput ? enabledInput.checked : false;
+        const title = titleInput ? titleInput.value.trim() : "";
+        const actionText = actionTextInput ? actionTextInput.value.trim() : "";
+        const imageUrl = imageUrlInput ? imageUrlInput.value.trim() : "";
+        const actionLink = redirectSelect ? redirectSelect.value : "home";
+        const message = msgTextarea ? msgTextarea.value.trim() : "";
+
+        this.db.settings.popupEvent = {
+          enabled,
+          title,
+          actionText,
+          imageUrl,
+          actionLink,
+          message
+        };
+        this.saveDB();
+        this.showToast("Full-Screen Popup Event settings updated!", "success");
+      };
+    }
+
+    // Bind add slide button
+    const addBannerBtn = document.getElementById("add-new-banner-btn");
+    if (addBannerBtn) {
+      addBannerBtn.onclick = (e) => {
+        e.preventDefault();
+        const bannerTitleInput = document.getElementById("admin-banner-title");
+        const bannerSubtitleInput = document.getElementById("admin-banner-subtitle");
+        const bannerImageInput = document.getElementById("admin-banner-image");
+        const bannerLinkSelect = document.getElementById("admin-banner-link-tab");
+
+        const title = bannerTitleInput ? bannerTitleInput.value.trim() : "";
+        const subtitle = bannerSubtitleInput ? bannerSubtitleInput.value.trim() : "";
+        const imageUrl = bannerImageInput ? bannerImageInput.value.trim() : "";
+        const link = bannerLinkSelect ? bannerLinkSelect.value : "home";
+
+        if (!title || !imageUrl) {
+          this.showToast("Banner Title and Image URL are required!", "error");
+          return;
+        }
+
+        if (!this.db.settings.bannerSlides) {
+          this.db.settings.bannerSlides = [];
+        }
+
+        const newSlide = {
+          id: "b_" + Date.now(),
+          title,
+          subtitle,
+          imageUrl,
+          link
+        };
+
+        this.db.settings.bannerSlides.push(newSlide);
+        this.saveDB();
+        this.showToast("New sliding banner added!", "success");
+
+        if (bannerTitleInput) bannerTitleInput.value = "";
+        if (bannerSubtitleInput) bannerSubtitleInput.value = "";
+        if (bannerImageInput) bannerImageInput.value = "";
+
+        this.renderActiveBanners();
+      };
+    }
+
+    // Bind save financial fees button
+    const saveAdvFeesBtn = document.getElementById("save-adv-fees-btn");
+    if (saveAdvFeesBtn) {
+      saveAdvFeesBtn.onclick = (e) => {
+        e.preventDefault();
+        const depFee = depChargePctInput ? parseFloat(depChargePctInput.value) : 0;
+        const withdrawFee = withdrawChargePctInput ? parseFloat(withdrawChargePctInput.value) : 2.0;
+
+        this.db.settings.depositFeePct = depFee;
+        this.db.settings.withdrawFeePct = withdrawFee;
+        this.saveDB();
+        this.showToast("Advanced financial fee configs updated!", "success");
+      };
+    }
+
+    // Bind simulation deposit button
+    const simDepositBtn = document.getElementById("sim-deposit-pulse-btn");
+    if (simDepositBtn) {
+      simDepositBtn.onclick = (e) => {
+        e.preventDefault();
+        const icon = document.getElementById("pulse-icon");
+        const spinner = document.getElementById("pulse-spinner");
+        if (icon && spinner) {
+          icon.classList.add("hidden");
+          spinner.classList.remove("hidden");
+        }
+
+        setTimeout(() => {
+          if (!this.db.deposits) this.db.deposits = [];
+          
+          // Find any user
+          const users = this.db.users || [];
+          if (users.length === 0) {
+            this.showToast("No players registered in DB to simulate deposit for!", "error");
+            if (icon && spinner) {
+              icon.classList.remove("hidden");
+              spinner.classList.add("hidden");
+            }
+            return;
+          }
+
+          const randUser = users[Math.floor(Math.random() * users.length)];
+          const amount = Math.floor(Math.random() * 4500) + 500;
+          
+          const mockDep = {
+            id: "dep_sim_" + Date.now(),
+            userId: randUser.id,
+            username: randUser.username,
+            amount,
+            gateway: ["bKash", "Nagad", "Rocket", "USDT"][Math.floor(Math.random() * 4)],
+            trxid: "TXN" + Math.random().toString(36).substr(2, 9).toUpperCase(),
+            date: new Date().toISOString(),
+            status: "pending"
+          };
+
+          this.db.deposits.push(mockDep);
+          this.saveDB();
+
+          if (icon && spinner) {
+            icon.classList.remove("hidden");
+            spinner.classList.add("hidden");
+          }
+          this.showToast(`Simulated deposit of ৳${amount} for @${randUser.username} initialized!`, "success");
+        }, 800);
+      };
+    }
+
+    // Bind factory reset button
+    const factoryResetBtn = document.getElementById("factory-reset-db-btn");
+    if (factoryResetBtn) {
+      factoryResetBtn.onclick = (e) => {
+        e.preventDefault();
+        if (confirm("🚨 WARNING: Are you absolutely sure you want to completely wipe all database states and factory reset the application? This cannot be undone.")) {
+          localStorage.removeItem(this.dbKey);
+          this.showToast("Database completely cleared. Reloading page now...", "warning");
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        }
+      };
+    }
+  },
+
+  renderActiveBanners() {
+    const container = document.getElementById("admin-active-banners-container");
+    if (!container) return;
+
+    const slides = this.db.settings.bannerSlides || [];
+    if (slides.length === 0) {
+      container.innerHTML = `
+        <div class="col-span-1 md:col-span-2 text-center py-6 text-slate-500 font-sans text-xs bg-slate-950 rounded-2xl border border-slate-850">
+          No active banners. Add a banner below!
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    slides.forEach((slide) => {
+      const el = document.createElement("div");
+      el.className = "bg-slate-950 border border-slate-800 rounded-2xl p-3 flex gap-3 items-center justify-between";
+      el.innerHTML = `
+        <div class="flex gap-2.5 items-center overflow-hidden">
+          <img src="${slide.imageUrl || 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?q=80&w=100&auto=format&fit=crop'}" class="w-12 h-12 object-cover rounded-xl shrink-0">
+          <div class="overflow-hidden space-y-0.5">
+            <span class="text-[8px] bg-red-950 border border-red-900/40 text-red-400 px-1.5 py-0.5 rounded-full font-sans">${slide.subtitle || 'PROMO'}</span>
+            <h4 class="text-xs font-bold text-white truncate max-w-[150px] font-sans">${slide.title}</h4>
+            <span class="text-[9px] text-slate-500 block">Link: <strong class="text-cyan-400 font-sans">${slide.link}</strong></span>
+          </div>
+        </div>
+        <button class="delete-banner-btn bg-rose-950/40 hover:bg-rose-900 border border-rose-900/30 text-rose-400 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer" data-id="${slide.id}">
+          <i class="fa-solid fa-trash-can text-xs"></i>
+        </button>
+      `;
+
+      // Event listener for delete button
+      el.querySelector(".delete-banner-btn").onclick = (e) => {
+        e.preventDefault();
+        this.db.settings.bannerSlides = this.db.settings.bannerSlides.filter(s => s.id !== slide.id);
+        this.saveDB();
+        this.showToast("Sliding banner deleted successfully!", "info");
+        this.renderActiveBanners();
+      };
+
+      container.appendChild(el);
+    });
+  },
+
+  renderAdminSplashConfig() {
+    if (!this.db.settings) this.db.settings = {};
+    if (this.db.settings.splashEnabled === undefined) this.db.settings.splashEnabled = true;
+    if (!this.db.settings.splashTitle) this.db.settings.splashTitle = "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+    if (!this.db.settings.splashSubtitle) this.db.settings.splashSubtitle = "Official Lottery Winner VIP Hall of Fame Spotlight";
+    if (!this.db.settings.splashDuration) this.db.settings.splashDuration = 5;
+    if (this.db.settings.splashShowWinnerCard === undefined) this.db.settings.splashShowWinnerCard = true;
+    if (!this.db.settings.splashFeaturedWinner) this.db.settings.splashFeaturedWinner = "auto";
+    if (this.db.settings.splashSoundEnabled === undefined) this.db.settings.splashSoundEnabled = true;
+    if (!this.db.settings.splashThemeStyle) this.db.settings.splashThemeStyle = "royalty";
+    if (!this.db.settings.splashActionText) this.db.settings.splashActionText = "Enter Grand Lobby 🚀";
+    if (!this.db.settings.splashImpressionsToday) this.db.settings.splashImpressionsToday = 1420;
+    if (!this.db.settings.splashSkipCount) this.db.settings.splashSkipCount = 85;
+
+    const isEnabled = this.db.settings.splashEnabled !== false;
+    const badgeEl = document.getElementById("admin-splash-status-badge");
+    if (badgeEl) {
+      if (isEnabled) {
+        badgeEl.className = "px-2.5 py-1 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-black text-[10px]";
+        badgeEl.innerText = "ENABLED 🟢";
+      } else {
+        badgeEl.className = "px-2.5 py-1 rounded-lg bg-red-950 text-red-400 border border-red-800/60 font-black text-[10px]";
+        badgeEl.innerText = "DISABLED 🔴";
+      }
+    }
+
+    // Stat displays
+    const impEl = document.getElementById("splash-stat-impressions");
+    if (impEl) impEl.innerText = (this.db.settings.splashImpressionsToday || 1420).toLocaleString();
+
+    const skipEl = document.getElementById("splash-stat-skiprate");
+    if (skipEl) {
+      const imp = this.db.settings.splashImpressionsToday || 1420;
+      const skip = this.db.settings.splashSkipCount || 85;
+      const rate = ((skip / Math.max(1, imp)) * 100).toFixed(1);
+      skipEl.innerText = `${rate}%`;
+    }
+
+    const durDispEl = document.getElementById("splash-stat-duration-display");
+    if (durDispEl) durDispEl.innerText = `${Number(this.db.settings.splashDuration || 5).toFixed(1)}s`;
+
+    // Toggle button binding
+    const toggleBtn = document.getElementById("admin-toggle-splash-enable-btn");
+    if (toggleBtn) {
+      toggleBtn.onclick = (e) => {
+        e.preventDefault();
+        this.db.settings.splashEnabled = !this.db.settings.splashEnabled;
+        this.saveDB();
+        const stateStr = this.db.settings.splashEnabled ? "Enabled" : "Disabled";
+        this.showToast(`Startup Splash Screen is now ${stateStr}!`, this.db.settings.splashEnabled ? "success" : "warning");
+        this.renderAdminSplashConfig();
+      };
+    }
+
+    // Test button binding
+    const testBtn = document.getElementById("admin-test-splash-btn");
+    if (testBtn) {
+      testBtn.onclick = (e) => {
+        e.preventDefault();
+        if (window.uiEffects && typeof window.uiEffects.triggerTestSplash === "function") {
+          window.uiEffects.triggerTestSplash();
+        } else {
+          this.showToast("Triggering splash screen preview...", "info");
+          const splashEl = document.getElementById("splash-screen");
+          if (splashEl) {
+            splashEl.classList.remove("hidden");
+            splashEl.style.opacity = "1";
+            setTimeout(() => {
+              splashEl.style.opacity = "0";
+              setTimeout(() => splashEl.classList.add("hidden"), 500);
+            }, 5000);
+          }
+        }
+      };
+    }
+
+    // Determine Top #1 Winner for Preview Card
+    const users = this.db.users || [];
+    let topWinner = null;
+    const featuredId = this.db.settings.splashFeaturedWinner;
+    if (featuredId && featuredId !== "auto") {
+      topWinner = users.find(u => u.id === featuredId || u.username === featuredId);
+    }
+    if (!topWinner && users.length) {
+      topWinner = [...users].sort((a,b) => (b.profit||0) - (a.profit||0))[0];
+    }
+
+    const previewContainer = document.getElementById("admin-top-winner-preview-container");
+    if (previewContainer) {
+      if (topWinner) {
+        const photoUrl = topWinner.photo || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150";
+        previewContainer.innerHTML = `
+          <div class="flex items-center gap-3.5">
+            <!-- SVIP TOP 1 FRAME WITH PROFILE PHOTO -->
+            <div class="relative w-14 h-14 shrink-0 flex items-center justify-center select-none py-1">
+              <div class="absolute -top-3 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center animate-bounce" style="animation-duration: 2s;">
+                <i class="fa-solid fa-crown text-amber-300 text-xs drop-shadow-[0_0_8px_rgba(251,191,36,1)]"></i>
+              </div>
+              <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500 via-yellow-300 to-amber-600 p-[2px] animate-spin-slow shadow-[0_0_15px_rgba(251,191,36,0.8)] pointer-events-none">
+                <div class="w-full h-full bg-slate-950 rounded-full"></div>
+              </div>
+              <div class="absolute -inset-1.5 rounded-full border border-amber-400/40 animate-pulse pointer-events-none"></div>
+              <div class="w-11 h-11 rounded-full overflow-hidden relative z-10 border-2 border-amber-300/90 bg-slate-900 shadow-inner flex items-center justify-center">
+                <img src="${photoUrl}" class="w-full h-full object-cover" alt="Top Winner Profile" />
+              </div>
+              <div class="absolute -bottom-2 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 text-slate-950 font-black text-[7px] font-mono px-1.5 py-0.5 rounded-full border border-amber-200 shadow-md uppercase whitespace-nowrap tracking-tighter">
+                TOP 1 SVIP
+              </div>
+            </div>
+
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[8px] font-black uppercase text-amber-300 tracking-wider bg-amber-950/90 px-2 py-0.5 rounded border border-amber-700/60 font-mono flex items-center gap-1">
+                  <i class="fa-solid fa-trophy text-[9px] text-amber-400"></i> TOP 1 WINNER
+                </span>
+                <span class="text-[9px] font-mono text-slate-400">ID: <strong class="text-cyan-300">#${topWinner.id}</strong></span>
+              </div>
+              <h4 class="text-sm font-black text-white font-sans">@${topWinner.username}</h4>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-4 text-right">
+            <div>
+              <span class="block text-[8px] font-mono text-slate-400 uppercase">App Logo</span>
+              <img src="logo.jpg" class="w-8 h-8 rounded-lg border border-amber-400/80 object-cover inline-block" style="width: 32px; height: 32px; max-width: 32px; max-height: 32px; object-fit: cover;" />
+            </div>
+            <div>
+              <span class="block text-[8px] font-mono text-slate-400 uppercase">Top Profit</span>
+              <span class="font-black text-amber-300 text-base font-mono">৳${(topWinner.profit || 1250000).toLocaleString()}</span>
+            </div>
+          </div>
+        `;
+      } else {
+        previewContainer.innerHTML = `
+          <div class="text-slate-400 text-xs font-mono">No players registered in database yet. Default fallback top winner card will be shown.</div>
+        `;
+      }
+    }
+
+    // Populate user select dropdown
+    const winnerSelect = document.getElementById("sys-splash-featured-winner");
+    if (winnerSelect) {
+      winnerSelect.innerHTML = `<option value="auto">🔥 Auto-Detect (Highest Profit Player)</option>`;
+      users.forEach(u => {
+        const isSelected = (featuredId === u.id || featuredId === u.username) ? "selected" : "";
+        winnerSelect.innerHTML += `<option value="${u.id}" ${isSelected}>@${u.username} (ID: #${u.id} - Profit: ৳${(u.profit||0).toLocaleString()})</option>`;
+      });
+      winnerSelect.value = featuredId || "auto";
+    }
+
+    // Populate form fields
+    const titleInput = document.getElementById("sys-splash-title");
+    if (titleInput) titleInput.value = this.db.settings.splashTitle;
+
+    const subtitleInput = document.getElementById("sys-splash-subtitle");
+    if (subtitleInput) subtitleInput.value = this.db.settings.splashSubtitle || "";
+
+    const durationInput = document.getElementById("sys-splash-duration");
+    if (durationInput) durationInput.value = this.db.settings.splashDuration;
+
+    const actionTextInput = document.getElementById("sys-splash-action-text");
+    if (actionTextInput) actionTextInput.value = this.db.settings.splashActionText || "Enter Grand Lobby 🚀";
+
+    const showCardSelect = document.getElementById("sys-splash-show-winner-card");
+    if (showCardSelect) showCardSelect.value = this.db.settings.splashShowWinnerCard ? "true" : "false";
+
+    const soundSelect = document.getElementById("sys-splash-sound");
+    if (soundSelect) soundSelect.value = this.db.settings.splashSoundEnabled !== false ? "true" : "false";
+
+    const themeSelect = document.getElementById("sys-splash-theme");
+    if (themeSelect) themeSelect.value = this.db.settings.splashThemeStyle || "royalty";
+
+    // Update simulation title preview live
+    const simTitlePreview = document.getElementById("sim-splash-title-preview");
+    if (simTitlePreview) simTitlePreview.innerText = this.db.settings.splashTitle;
+
+    // Bind form submit
+    const form = document.getElementById("admin-splash-config-form");
+    if (form) {
+      form.onsubmit = (e) => {
+        e.preventDefault();
+        const title = document.getElementById("sys-splash-title")?.value?.trim();
+        const subtitle = document.getElementById("sys-splash-subtitle")?.value?.trim();
+        const duration = parseInt(document.getElementById("sys-splash-duration")?.value || "5");
+        const actionText = document.getElementById("sys-splash-action-text")?.value?.trim();
+        const featured = document.getElementById("sys-splash-featured-winner")?.value || "auto";
+        const showWinner = document.getElementById("sys-splash-show-winner-card")?.value === "true";
+        const soundEnabled = document.getElementById("sys-splash-sound")?.value === "true";
+        const themeStyle = document.getElementById("sys-splash-theme")?.value || "royalty";
+
+        this.db.settings.splashTitle = title || "🏆 CONGRATULATIONS TO OUR TOP WINNER!";
+        this.db.settings.splashSubtitle = subtitle || "Official Lottery Winner VIP Hall of Fame Spotlight";
+        this.db.settings.splashDuration = isNaN(duration) ? 5 : Math.max(2, Math.min(15, duration));
+        this.db.settings.splashActionText = actionText || "Enter Grand Lobby 🚀";
+        this.db.settings.splashFeaturedWinner = featured;
+        this.db.settings.splashShowWinnerCard = showWinner;
+        this.db.settings.splashSoundEnabled = soundEnabled;
+        this.db.settings.splashThemeStyle = themeStyle;
+
+        this.saveDB();
+        this.showToast("Splash Screen settings saved & applied successfully!", "success");
+        this.renderAdminSplashConfig();
+      };
+    }
+  },
+
+  renderAdminCommission() {
+    const settings = this.db.settings || {};
+    const ucInput = document.getElementById("admin-setting-user-creation-comm");
+    const blInput = document.getElementById("admin-setting-balance-load-comm");
+    if (ucInput) ucInput.value = settings.agentUserCreationCommission !== undefined ? settings.agentUserCreationCommission : (settings.agentReferralBonus || 100);
+    if (blInput) blInput.value = settings.agentBalanceLoadCommission !== undefined ? settings.agentBalanceLoadCommission : 2.0;
+
+    const ledger = this.db.agentLedger || [];
+    let totalComm = 0;
+    let creationsCount = 0;
+    let totalLoadsAmount = 0;
+
+    ledger.forEach(item => {
+      totalComm += (item.commission || 0);
+      if (item.description && item.description.includes("Registration")) {
+        creationsCount += 1;
+      }
+      if (item.description && item.description.includes("Deposit")) {
+        totalLoadsAmount += (item.amount || 0);
+      }
+    });
+
+    const totEarnedEl = document.getElementById("admin-comm-total-earned");
+    const totCreationsEl = document.getElementById("admin-comm-total-creations");
+    const totLoadsEl = document.getElementById("admin-comm-total-loads");
+    const countEl = document.getElementById("admin-comm-logs-count");
+
+    if (totEarnedEl) totEarnedEl.innerText = `৳${totalComm.toFixed(2)}`;
+    if (totCreationsEl) totCreationsEl.innerText = creationsCount;
+    if (totLoadsEl) totLoadsEl.innerText = `৳${totalLoadsAmount.toFixed(2)}`;
+    if (countEl) countEl.innerText = `${ledger.length} Records`;
+
+    const tbody = document.getElementById("admin-commission-ledger-tbody");
+    if (tbody) {
+      if (ledger.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500 font-mono">No commission or activity records found yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = ledger.slice(-50).reverse().map(item => `
+          <tr class="hover:bg-slate-850/40 transition">
+            <td class="p-3 font-mono text-[11px] text-slate-400">${new Date(item.timestamp).toLocaleString()}</td>
+            <td class="p-3 font-mono text-cyan-400 font-bold">@${item.agentUsername || item.agentId}</td>
+            <td class="p-3 font-mono text-white">@${item.targetUser || "N/A"}</td>
+            <td class="p-3 font-sans text-slate-300">${item.description || "Agent Action"}</td>
+            <td class="p-3 font-mono font-bold text-amber-400">৳${(item.amount || 0).toFixed(2)}</td>
+            <td class="p-3 font-mono font-bold text-right text-emerald-400">+৳${(item.commission || 0).toFixed(2)}</td>
+          </tr>
+        `).join("");
+      }
+    }
+
+    const commForm = document.getElementById("admin-commission-settings-form");
+    if (commForm && !commForm.dataset.bound) {
+      commForm.dataset.bound = "true";
+      commForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const ucVal = parseFloat(document.getElementById("admin-setting-user-creation-comm").value) || 100;
+        const blVal = parseFloat(document.getElementById("admin-setting-balance-load-comm").value) || 2.0;
+
+        if (!this.db.settings) this.db.settings = {};
+        this.db.settings.agentUserCreationCommission = ucVal;
+        this.db.settings.agentReferralBonus = ucVal;
+        this.db.settings.agentBalanceLoadCommission = blVal;
+        this.saveDB();
+
+        this.showToast("Agent commission rules saved successfully!", "success");
+        this.renderAdminCommission();
+      });
+    }
+
+    const agentSelect = document.getElementById("admin-load-agent-username");
+    if (agentSelect) {
+      const agents = this.db.users.filter(u => u.role === "agent" || u.role === "subagent");
+      if (agents.length === 0) {
+        agentSelect.innerHTML = `<option value="">No agents found</option>`;
+      } else {
+        agentSelect.innerHTML = agents.map(ag => `<option value="${ag.username}">@${ag.username} (${ag.district || "Dhaka"} - Bal: ৳${(ag.balance || 0).toFixed(2)})</option>`).join("");
+      }
+    }
+
+    const loadForm = document.getElementById("admin-agent-balance-load-form");
+    if (loadForm && !loadForm.dataset.bound) {
+      loadForm.dataset.bound = "true";
+      loadForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const agentUsername = document.getElementById("admin-load-agent-username").value;
+        const loadAmount = parseFloat(document.getElementById("admin-load-agent-amount").value || "0");
+
+        if (!agentUsername || loadAmount <= 0) {
+          this.showToast("Please select a valid agent and enter a positive load amount!", "error");
+          return;
+        }
+
+        const targetAgent = this.db.users.find(u => u.username.toLowerCase() === agentUsername.toLowerCase());
+        if (!targetAgent) {
+          this.showToast("Agent account not found!", "error");
+          return;
+        }
+
+        targetAgent.balance = (targetAgent.balance || 0) + loadAmount;
+
+        if (!this.db.transactions) this.db.transactions = [];
+        this.db.transactions.push({
+          id: "tx_" + Date.now(),
+          userId: targetAgent.id,
+          userName: targetAgent.username,
+          username: targetAgent.username,
+          paymentMethod: "Admin Fund Refill",
+          phone: "Admin Direct",
+          amount: loadAmount,
+          transactionType: "Deposit",
+          status: "complete",
+          bonusAmount: 0,
+          notes: "Direct Balance Load from Admin Panel",
+          date: new Date().toLocaleString("en-US", {hour12: true})
+        });
+
+        if (!this.db.agentLedger) this.db.agentLedger = [];
+        this.db.agentLedger.push({
+          id: "act_" + Date.now(),
+          agentId: targetAgent.id,
+          agentUsername: targetAgent.username,
+          timestamp: new Date().toISOString(),
+          targetUser: targetAgent.username,
+          description: `Admin Direct Balance Load / Purse Refill`,
+          amount: loadAmount,
+          commission: 0,
+          status: "complete"
+        });
+
+        this.saveDB();
+        this.showToast(`Successfully loaded ৳${loadAmount.toFixed(2)} into agent @${targetAgent.username}'s wallet!`, "success");
+        loadForm.reset();
+        this.renderAdminCommission();
+      });
+    }
+  },
+
+  renderSEOAndFaviconSettings() {
+    const s = this.db.settings || {};
+    
+    // Populate SEO fields
+    const titleEl = document.getElementById("sys-seo-title");
+    const descEl = document.getElementById("sys-seo-desc");
+    const imageEl = document.getElementById("sys-seo-image");
+    
+    if (titleEl) titleEl.value = s.websiteTitle || "Lottery Winner - Premium Mobile Web Portal";
+    if (descEl) descEl.value = s.websiteDesc || "Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots.";
+    if (imageEl) imageEl.value = s.shareImageUrl || PathHelper.resolveUrl("logo.jpg");
+
+    // Populate Favicon preview
+    const favPreview = document.getElementById("admin-current-favicon-preview");
+    if (favPreview) {
+      favPreview.src = s.faviconUrl || PathHelper.resolveUrl("logo.jpg");
+    }
+  },
+
+  bindSEOAndFaviconControls() {
+    if (this._seoEventsBound) return;
+    this._seoEventsBound = true;
+
+    // SEO Form Submit
+    const seoForm = document.getElementById("admin-settings-seo-form");
+    if (seoForm) {
+      seoForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const s = this.db.settings || {};
+        s.websiteTitle = document.getElementById("sys-seo-title").value;
+        s.websiteDesc = document.getElementById("sys-seo-desc").value;
+        s.shareImageUrl = document.getElementById("sys-seo-image").value;
+        
+        this.db.settings = s;
+        this.saveDB();
+        this.showToast("SEO & Social Share settings updated successfully!", "success");
+        
+        // Dynamically update head if on same session
+        if (window.app && typeof window.app.applyDynamicSEO === "function") {
+          window.app.applyDynamicSEO();
+        }
+      });
+    }
+
+    // Share Image Preview
+    const previewBtn = document.getElementById("btn-preview-share-img");
+    if (previewBtn) {
+      previewBtn.addEventListener("click", () => {
+        const url = document.getElementById("sys-seo-image").value;
+        if (url) window.open(url, "_blank");
+      });
+    }
+
+    // Favicon Upload
+    const favInput = document.getElementById("sys-favicon-upload");
+    const favStatus = document.getElementById("favicon-upload-status");
+    if (favInput) {
+      favInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Security check
+        const allowedTypes = ["image/png", "image/jpeg", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+          this.showToast("Invalid file type. Supported: PNG, JPG, SVG, ICO, WEBP.", "error");
+          return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          this.showToast("File too large. Max 2MB allowed.", "error");
+          return;
+        }
+
+        favStatus.textContent = "⌛ Uploading icon...";
+        favStatus.className = "text-[9px] text-center font-bold text-amber-400 block";
+        favStatus.classList.remove("hidden");
+
+        try {
+          const storage = getStorage();
+          const storageRef = ref(storage, `app_assets/favicon_${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadUrl = await getDownloadURL(snapshot.ref);
+
+          const s = this.db.settings || {};
+          s.faviconUrl = downloadUrl;
+          this.db.settings = s;
+          this.saveDB();
+
+          this.renderSEOAndFaviconSettings();
+          favStatus.textContent = "✅ Favicon updated!";
+          favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+          this.showToast("Favicon uploaded and set as active!", "success");
+          
+          if (window.app && typeof window.app.applyDynamicSEO === "function") {
+            window.app.applyDynamicSEO();
+          }
+        } catch (err) {
+          console.error("Favicon upload failed:", err);
+          favStatus.textContent = "❌ Upload failed.";
+          favStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
+          this.showToast("Failed to upload favicon. Check permissions.", "error");
+        }
+      });
+    }
+
+    // Reset Favicon
+    const resetFavBtn = document.getElementById("btn-reset-favicon");
+    if (resetFavBtn) {
+      resetFavBtn.addEventListener("click", () => {
+        const s = this.db.settings || {};
+        s.faviconUrl = ""; // Reset to default
+        this.db.settings = s;
+        this.saveDB();
+        this.renderSEOAndFaviconSettings();
+        this.showToast("Favicon reset to system default.", "info");
+        
+        if (window.app && typeof window.app.applyDynamicSEO === "function") {
+          window.app.applyDynamicSEO();
+        }
+      });
+    }
+  }
+};

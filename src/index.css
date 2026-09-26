@@ -1,0 +1,793 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Custom high-fidelity colors used in UI design */
+  --color-slate-850: rgb(24, 32, 47);
+  --color-slate-955: rgb(5, 7, 14);
+  --color-rose-955: #2d060a;
+
+  /* 3D Animations */
+  --animate-float-3d: float3d 6s ease-in-out infinite;
+  --animate-orbit-3d: orbit3d 12s linear infinite;
+  --animate-shimmer-hologram: shimmerHologram 4s linear infinite;
+  --animate-perspective-pulse: perspectivePulse 3s ease-in-out infinite;
+  --animate-shimmer: shimmer 3s infinite;
+  --animate-spin-slow: spin 15s linear infinite;
+  --animate-flap-wings: flapWings 2s ease-in-out infinite;
+  --animate-pulse-glow: pulseGlow 1.5s ease-in-out infinite;
+  --animate-drift-sparkle: driftSparkle 3s ease-in-out infinite;
+  --animate-heart-beat: heartBeating 1.2s ease-in-out infinite;
+  --animate-dragon-orbit: dragonOrbit 8s linear infinite;
+  --animate-gold-shine: goldShine 2.5s ease-in-out infinite;
+  --animate-fire-burn: fireBurn 1.5s ease-in-out infinite;
+
+  @keyframes float3d {
+    0%, 100% {
+      transform: translateY(0px) rotateX(0deg) rotateY(0deg) translateZ(0);
+      box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.4), 0 5px 15px -3px rgba(0, 0, 0, 0.3);
+    }
+    50% {
+      transform: translateY(-8px) rotateX(1.5deg) rotateY(-1.5deg) translateZ(10px);
+      box-shadow: 0 25px 45px -10px rgba(6, 182, 212, 0.35), 0 8px 20px -6px rgba(99, 102, 241, 0.25);
+    }
+  }
+
+  @keyframes orbit3d {
+    0% { transform: rotate3d(1, 1, 1, 0deg); }
+    100% { transform: rotate3d(1, 1, 1, 360deg); }
+  }
+
+  @keyframes shimmerHologram {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  @keyframes perspectivePulse {
+    0%, 100% { transform: perspective(800px) rotateX(5deg); }
+    50% { transform: perspective(800px) rotateX(12deg) scale(1.01); }
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  @keyframes flapWings {
+    0%, 100% { transform: scale(1) rotate(0deg); opacity: 0.95; }
+    50% { transform: scale(1.1) rotate(4deg); opacity: 1; }
+  }
+
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.04); filter: brightness(1.2); }
+  }
+
+  @keyframes driftSparkle {
+    0%, 100% { transform: translateY(0) scale(0.8); opacity: 0.5; }
+    50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
+  }
+
+  @keyframes heartBeating {
+    0%, 100% { transform: scale(1); }
+    30% { transform: scale(1.15); }
+    60% { transform: scale(1.05); }
+  }
+
+  @keyframes dragonOrbit {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  @keyframes goldShine {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes fireBurn {
+    0%, 100% { transform: translateY(0) scaleY(1); filter: hue-rotate(0deg); }
+    50% { transform: translateY(-2px) scaleY(1.12); filter: hue-rotate(10deg); }
+  }
+}
+
+/* Luxury 3D Custom Utilities */
+@utility perspective-1000 {
+  perspective: 1000px;
+}
+
+@utility preserve-3d {
+  transform-style: preserve-3d;
+}
+
+@utility backface-hidden {
+  backface-visibility: hidden;
+}
+
+@utility transform-3d {
+  transform: translate3d(var(--tw-translate-x), var(--tw-translate-y), var(--tw-translate-z)) rotateX(var(--tw-rotate-x)) rotateY(var(--tw-rotate-y)) rotateZ(var(--tw-rotate));
+}
+
+/* Interactive Mouse-tracked 3D card */
+.interactive-tilt-card {
+  transition: transform 0.15s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.25s ease;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+.interactive-tilt-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(6, 182, 212, 0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.interactive-tilt-card:hover::before {
+  opacity: 1;
+}
+
+.holo-glass-gradient {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.9) 100%);
+  position: relative;
+}
+
+.holo-glass-gradient::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #3b82f6);
+  background-size: 300% 300%;
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+  animation: shimmerHologram 4s linear infinite;
+}
+
+.interactive-tilt-card:hover {
+  box-shadow: 0 25px 50px -12px rgba(6, 182, 212, 0.4);
+}
+
+/* Card Flip 3D classes */
+.flip-card {
+  perspective: 1000px;
+}
+.flip-card-inner {
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-style: preserve-3d;
+}
+.flip-card-flipped {
+  transform: rotateY(180deg);
+}
+.flip-card-front, .flip-card-back {
+  backface-visibility: hidden;
+  position: absolute;
+  inset: 0;
+}
+.flip-card-back {
+  transform: rotateY(180deg);
+}
+
+/* Ensure all modal overlays are extremely high in standard z-index stack without breaking fixed-positioning with 3D transforms */
+#full-screen-popup-modal,
+#congrats-splash-modal,
+#lucky-spin-modal,
+#daily-checkin-modal,
+#vip-lounge-modal,
+#ticket-info-modal,
+#lottery-details-modal,
+#lottery-draw-winner-modal,
+#admin-user-edit-modal,
+#admin-draw-modal,
+#admin-create-pool-modal,
+#screenshot-viewer-modal,
+#offline-modal,
+#cloud-sync-modal,
+#maintenance-backdoor-modal,
+#community-report-modal {
+  z-index: 100000 !important;
+}
+
+#profile-details-modal {
+  z-index: 105000 !important;
+}
+
+/* Explicit fallback background colors and filters to prevent backdrop opacity/blur rendering bugs when focus changes */
+#full-screen-popup-modal {
+  background-color: #030712 !important;
+}
+#congrats-splash-modal {
+  background-color: #020617 !important;
+}
+#lucky-spin-modal {
+  background-color: #000000 !important;
+}
+#daily-checkin-modal {
+  background-color: #000000 !important;
+}
+#vip-lounge-modal {
+  background-color: #000000 !important;
+}
+#ticket-info-modal,
+#lottery-details-modal,
+#admin-user-edit-modal,
+#admin-draw-modal,
+#admin-create-pool-modal {
+  background-color: rgba(0, 0, 0, 0.85) !important;
+}
+#screenshot-viewer-modal {
+  background-color: rgba(2, 6, 23, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#offline-modal {
+  background-color: rgba(2, 6, 23, 1) !important;
+}
+#cloud-sync-modal {
+  background-color: rgba(2, 6, 23, 0.80) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#maintenance-backdoor-modal {
+  background-color: rgba(2, 6, 23, 0.90) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+#community-report-modal {
+  background-color: rgba(2, 6, 23, 0.95) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+}
+
+/* Prevent any 3D elements in the background from piercing through active modals */
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard .interactive-tilt-card,
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [style*="perspective"],
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [style*="translateZ"],
+body:has([id$="-modal"]:not(.hidden)) #screen-dashboard [id*="vip-card"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth .interactive-tilt-card,
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [style*="perspective"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [style*="translateZ"],
+body:has([id$="-modal"]:not(.hidden)) #screen-auth [id*="vip-card"] {
+  transform: none !important;
+  perspective: none !important;
+  transform-style: flat !important;
+}
+
+/* Auth Portal Card and UI Theme from User Template */
+:root {
+  --portal-bg-color: #0b0e14;
+  --portal-card-bg: #121824;
+  --portal-accent-gold: #d4af37;
+  --portal-accent-gold-hover: #f3ca40;
+  --portal-input-bg: #090d14;
+  --portal-text-main: #e2e8f0;
+  --portal-text-muted: #94a3b8;
+  --portal-border-color: #1e293b;
+}
+
+.portal-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--portal-card-bg);
+  border-radius: 16px;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(212, 175, 55, 0.1);
+  overflow: hidden;
+}
+
+/* Bonus Banner */
+.bonus-banner {
+  background: linear-gradient(90deg, #d4af37, #aa820a);
+  color: #000;
+  text-align: center;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  animation: pulse 2s infinite;
+}
+
+/* Header Styling */
+.portal-header {
+  text-align: center;
+  padding: 20px 20px 10px;
+}
+
+.portal-header .logo-icon {
+  font-size: 32px;
+  margin-bottom: 5px;
+}
+
+.portal-header h1 {
+  font-size: 20px;
+  color: var(--portal-accent-gold);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.portal-header p {
+  font-size: 11px;
+  color: var(--portal-text-muted);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* System Status Pills */
+.status-bar {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.pill {
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--portal-border-color);
+  color: var(--portal-text-muted);
+}
+
+.pill-green {
+  color: #10b981;
+}
+
+/* Top Nav Switcher */
+.nav-tabs {
+  display: flex;
+  background: rgba(0, 0, 0, 0.2);
+  margin: 15px 20px;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--portal-border-color);
+}
+
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: var(--portal-text-muted);
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-btn.active {
+  background: var(--portal-accent-gold);
+  color: #000;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.3);
+}
+
+/* Forms Wrapper & Full Screen Fix */
+.forms-wrapper {
+  width: 100%;
+  overflow: hidden;
+  padding: 0 0 25px 0;
+}
+
+.form-container {
+  display: flex;
+  width: 200%;
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-container.show-register {
+  transform: translateX(-50%);
+}
+
+.form-box {
+  width: 50%;
+  padding: 0 20px;
+}
+
+/* 1-Click Action Bar */
+.one-click-box {
+  background: rgba(212, 175, 55, 0.05);
+  border: 1px dashed var(--portal-accent-gold);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.one-click-box span {
+  font-size: 12px;
+  color: var(--portal-accent-gold);
+  font-weight: 600;
+}
+
+.btn-one-click {
+  background: var(--portal-accent-gold);
+  color: #000;
+  border: none;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: bold;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-one-click:hover {
+  background: var(--portal-accent-gold-hover);
+}
+
+/* Inputs */
+.portal-card .input-group {
+  margin-bottom: 12px;
+}
+
+.portal-card .input-group label {
+  display: block;
+  font-size: 11px;
+  color: var(--portal-text-muted);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.input-field {
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-border-color);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  border-color: var(--portal-accent-gold);
+}
+
+/* Math Captcha styling */
+.captcha-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.captcha-badge {
+  background: #1e293b;
+  color: var(--portal-accent-gold);
+  border: 1px solid var(--portal-border-color);
+  border-radius: 8px;
+  padding: 0 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 14px;
+  min-width: 90px;
+  user-select: none;
+}
+
+/* Submit Button */
+.btn-submit {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #d4af37, #aa820a);
+  color: #000;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-submit:hover {
+  opacity: 0.9;
+}
+
+/* Modal / Popup for 1-Click Details & Bonus */
+#credModal.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.85);
+  justify-content: center;
+  align-items: center;
+  z-index: 100000;
+}
+
+#credModal .modal-content {
+  background: var(--portal-card-bg);
+  border: 1px solid var(--portal-accent-gold);
+  border-radius: 12px;
+  padding: 20px;
+  width: 85%;
+  max-width: 320px;
+  text-align: center;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+
+#credModal .modal-content h3 {
+  color: var(--portal-accent-gold);
+  margin-bottom: 5px;
+  font-size: 18px;
+}
+
+.bonus-alert {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid #10b981;
+  color: #10b981;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.credentials-box {
+  background: var(--portal-input-bg);
+  border: 1px solid var(--portal-border-color);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.credentials-box p {
+  margin: 4px 0;
+  color: var(--portal-text-main);
+}
+
+/* ================= EXCITING LOTTERY VIBE ENHANCEMENTS ================= */
+.lottery-ticket-card {
+  position: relative;
+  background: linear-gradient(145deg, #101426 0%, #0a0d1a 50%, #121024 100%);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.6), 0 0 20px -5px rgba(251, 191, 36, 0.12);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.lottery-ticket-card:hover {
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: 0 15px 40px -5px rgba(0, 0, 0, 0.7), 0 0 30px -5px rgba(251, 191, 36, 0.22);
+  transform: translateY(-2px);
+}
+
+.lottery-ticket-notch-left {
+  position: absolute;
+  left: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #030712;
+  border-right: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: inset -2px 0 5px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+.lottery-ticket-notch-right {
+  position: absolute;
+  right: -9px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background-color: #030712;
+  border-left: 1px solid rgba(251, 191, 36, 0.35);
+  box-shadow: inset 2px 0 5px rgba(0, 0, 0, 0.8);
+  z-index: 10;
+}
+
+.lottery-ticket-dashed {
+  border-top: 1.5px dashed rgba(251, 191, 36, 0.3);
+  position: relative;
+  margin: 0 -4px;
+}
+
+/* 3D Realistic Lottery Balls */
+.lottery-ball-3d {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  flex-shrink: 0;
+  position: relative;
+  user-select: none;
+}
+.lottery-ball-gold {
+  background: radial-gradient(circle at 35% 30%, #fffbeb 0%, #fef08a 25%, #f59e0b 70%, #92400e 100%);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.5), inset -2px -2px 5px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.9);
+  color: #451a03;
+}
+.lottery-ball-rose {
+  background: radial-gradient(circle at 35% 30%, #fff1f2 0%, #fecdd3 25%, #f43f5e 70%, #881337 100%);
+  box-shadow: 0 4px 12px rgba(244, 63, 94, 0.5), inset -2px -2px 5px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.9);
+  color: #fff;
+}
+.lottery-ball-cyan {
+  background: radial-gradient(circle at 35% 30%, #ecfeff 0%, #a5f3fc 25%, #06b6d4 70%, #164e63 100%);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.5), inset -2px -2px 5px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.9);
+  color: #083344;
+}
+.lottery-ball-emerald {
+  background: radial-gradient(circle at 35% 30%, #ecfdf5 0%, #a7f3d0 25%, #10b981 70%, #064e3b 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.5), inset -2px -2px 5px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.9);
+  color: #022c22;
+}
+.lottery-ball-purple {
+  background: radial-gradient(circle at 35% 30%, #faf5ff 0%, #e9d5ff 25%, #a855f7 70%, #581c87 100%);
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.5), inset -2px -2px 5px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.9);
+  color: #fff;
+}
+
+/* Shiny Gold Lottery Button */
+.lottery-ticket-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+  box-shadow: 0 4px 15px rgba(245, 158, 11, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(254, 240, 138, 0.4);
+  color: #fff;
+  font-weight: 900;
+  transition: all 0.2s ease;
+}
+.lottery-ticket-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.5), inset 0 1px 2px rgba(255, 255, 255, 0.6);
+  transform: scale(1.03);
+}
+
+/* Jackpot ticker animation */
+@keyframes lottoTicker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.animate-lotto-ticker {
+  display: flex;
+  width: max-content;
+  animation: lottoTicker 28s linear infinite;
+}
+.animate-lotto-ticker:hover {
+  animation-play-state: paused;
+}
+
+/* ================= MODAL & TOAST POPUP CENTERING GUARANTEES ================= */
+#toast-container {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 16px !important;
+  z-index: 999999 !important;
+  pointer-events: none !important;
+  margin: 0 !important;
+  transform: none !important;
+}
+
+.app-toast-item {
+  pointer-events: auto !important;
+  max-width: min(92vw, 420px) !important;
+  width: auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  box-sizing: border-box !important;
+  word-break: break-word !important;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(6, 182, 212, 0.25) !important;
+}
+
+/* Global modal dialog centering helper */
+.modal-centered-dialog {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 12px !important;
+  overflow-y: auto !important;
+}
+
+.modal-centered-dialog > div {
+  margin-top: auto !important;
+  margin-bottom: auto !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+/* ================= FULL-SCREEN MOBILE EDGE-TO-EDGE ADMIN PANEL ================= */
+@media screen and (max-width: 768px) {
+  #screen-admin {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow-x: hidden !important;
+  }
+
+  #screen-admin .flex-grow {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 6px !important;
+    padding-right: 6px !important;
+    padding-top: 8px !important;
+    padding-bottom: 96px !important;
+    box-sizing: border-box !important;
+  }
+
+  /* Admin tab content containers: eliminate left/right gaps */
+  #screen-admin [id^="admin-tab-"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Admin card elements & forms */
+  #screen-admin [id^="admin-tab-"] > div,
+  #screen-admin [id^="admin-tab-"] > form,
+  #screen-admin [id^="admin-tab-"] .bg-slate-900,
+  #screen-admin [id^="admin-tab-"] .bg-slate-950,
+  #screen-admin [id^="admin-tab-"] section {
+    border-radius: 1rem !important;
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+    padding-top: 0.85rem !important;
+    padding-bottom: 0.85rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Nested cards inside sections (like individual gateway cards or subpanels) */
+  #screen-admin [id^="admin-tab-"] .p-4,
+  #screen-admin [id^="admin-tab-"] .p-5,
+  #screen-admin [id^="admin-tab-"] .p-6 {
+    padding: 0.65rem !important;
+  }
+
+  /* Responsive tables inside admin */
+  #screen-admin table {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  #screen-admin th,
+  #screen-admin td {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.5rem !important;
+  }
+
+  /* Admin pill buttons for top horizontal navigation bar */
+  #screen-admin .admin-tab-selector-btn {
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    font-size: 11px !important;
+    padding: 7px 12px !important;
+  }
+}
+

@@ -1,0 +1,255 @@
+{
+  "entities": {
+    "user": {
+      "title": "User",
+      "description": "Stores user profiles, wallets, and gameplay statistics.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique user ID"
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique username"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address"
+        },
+        "phone": {
+          "type": "string",
+          "description": "Mobile contact number"
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current balance in credits/Taka"
+        },
+        "totDeposit": {
+          "type": "number",
+          "description": "Total deposited cash"
+        },
+        "totWithdraw": {
+          "type": "number",
+          "description": "Total withdrawn cash"
+        },
+        "wins": {
+          "type": "integer",
+          "description": "Number of won lotteries"
+        },
+        "loss": {
+          "type": "integer",
+          "description": "Number of lost lotteries"
+        },
+        "profit": {
+          "type": "number",
+          "description": "Total profit accumulated"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "blocked"],
+          "description": "Account status identifier"
+        },
+        "joinDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when user joined"
+        }
+      },
+      "required": ["id", "username", "email", "balance", "status"]
+    },
+    "lottery": {
+      "title": "Lottery",
+      "description": "Active and past lottery game pools.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique pool ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the lottery pool"
+        },
+        "details": {
+          "type": "string",
+          "description": "Detailed gameplay rules or rewards"
+        },
+        "entryFee": {
+          "type": "number",
+          "description": "Cost per single ticket"
+        },
+        "totalTickets": {
+          "type": "integer",
+          "description": "Maximum available tickets"
+        },
+        "soldTickets": {
+          "type": "integer",
+          "description": "Number of purchased tickets"
+        },
+        "category": {
+          "type": "string",
+          "description": "Event category or banner badge"
+        },
+        "drawTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the automated drawing triggers"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "drawn", "cancelled"],
+          "description": "Current status of the pool"
+        },
+        "prizeAmount": {
+          "type": "number",
+          "description": "Payout reward for the winning code"
+        }
+      },
+      "required": ["id", "name", "entryFee", "totalTickets", "soldTickets", "status", "prizeAmount"]
+    },
+    "ticket": {
+      "title": "Ticket",
+      "description": "Lottery purchasing tickets submitted by users.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique ticket ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner identifier reference"
+        },
+        "lotteryId": {
+          "type": "string",
+          "description": "Reference to the lottery game pool"
+        },
+        "code": {
+          "type": "string",
+          "description": "Ticket submission guess code"
+        },
+        "purchaseDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of ticket purchase"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "won", "lost"],
+          "description": "Outcome status of this ticket"
+        },
+        "prizeAmount": {
+          "type": "number",
+          "description": "Prize amount won if status is won"
+        }
+      },
+      "required": ["id", "userId", "lotteryId", "code", "purchaseDate", "status"]
+    },
+    "deposit": {
+      "title": "Deposit",
+      "description": "Deposit transaction logs.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "method": {
+          "type": "string"
+        },
+        "trxId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "username", "amount", "method", "trxId", "status", "date"]
+    },
+    "withdrawal": {
+      "title": "Withdrawal",
+      "description": "Withdrawal request records.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "amount": {
+          "type": "number"
+        },
+        "method": {
+          "type": "string"
+        },
+        "targetAccount": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "approved", "rejected"]
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "username", "amount", "method", "targetAccount", "status", "date"]
+    },
+    "setting": {
+      "title": "Setting",
+      "description": "Key-value configuration for the platform's active state.",
+      "type": "object",
+      "properties": {
+        "setting_key": {
+          "type": "string",
+          "description": "Unique key matching setting parameters"
+        },
+        "setting_value": {
+          "type": "string",
+          "description": "Value data payload"
+        }
+      },
+      "required": ["setting_key", "setting_value"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "user",
+      "description": "Standard users matching auth logins."
+    },
+    "/lotteries/{lotteryId}": {
+      "schema": "lottery",
+      "description": "Pool listings of lotteries catalogued."
+    },
+    "/tickets/{ticketId}": {
+      "schema": "ticket",
+      "description": "Individual ticket numbers registered."
+    },
+    "/deposits/{depositId}": {
+      "schema": "deposit",
+      "description": "Trx audit logs of payment updates."
+    },
+    "/withdrawals/{withdrawalId}": {
+      "schema": "withdrawal",
+      "description": "Cash withdrawal request approvals pending."
+    },
+    "/settings/{settingKey}": {
+      "schema": "setting",
+      "description": "Global settings toggles."
+    }
+  }
+}

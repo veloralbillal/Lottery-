@@ -1,0 +1,6 @@
+/* Jackpot Tab Custom Styles */
+.jp-qty-btn-active {
+  background: rgba(147, 51, 234, 0.4);
+  border-color: #a855f7;
+  color: #ffffff;
+}

@@ -1,0 +1,8 @@
+/* Wallet Tab custom classes */
+#user-support-agents-list::-webkit-scrollbar {
+  width: 4px;
+}
+#user-support-agents-list::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
