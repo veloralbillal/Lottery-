@@ -2,9 +2,28 @@
 <html lang="en">
   <head>
     <script>
-      // Single Page Apps for GitHub Pages
-      // https://github.com/rafgraph/spa-github-pages
-      (function(l) {
+      // Single Page Apps for GitHub Pages & Custom Domains
+      // Dynamic Base Path Resolver
+      (function() {
+        const l = window.location;
+        const isGitHub = l.hostname.includes('github.io');
+        const segments = l.pathname.split('/').filter(Boolean);
+        
+        // Resolve base
+        let base = '/';
+        if (isGitHub && segments.length > 0 && !segments[0].includes('.')) {
+          base = '/' + segments[0] + '/';
+        }
+        
+        // Inject base tag if not already present
+        if (!document.querySelector('base')) {
+          const baseTag = document.createElement('base');
+          baseTag.href = base;
+          document.head.appendChild(baseTag);
+        }
+        window.__APP_BASE__ = base;
+
+        // SPA Redirect handling
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
@@ -103,26 +122,28 @@
     <meta property="og:url" id="og-url" content="" />
     <meta property="og:title" id="og-title" content="Lottery Winner - Premium Mobile Web Portal" />
     <meta property="og:description" id="og-desc" content="Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots." />
-    <meta property="og:image" id="og-image" content="./logo.jpg" />
+    <meta property="og:image" id="og-image" content="logo.jpg" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" id="twitter-url" content="" />
     <meta property="twitter:title" id="twitter-title" content="Lottery Winner - Premium Mobile Web Portal" />
     <meta property="twitter:description" id="twitter-desc" content="Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots." />
-    <meta property="twitter:image" id="twitter-image" content="./logo.jpg" />
+    <meta property="twitter:image" id="twitter-image" content="logo.jpg" />
 
     <link rel="canonical" id="canonical-url" href="" />
 
     <!-- Web App Manifest & Mobile PWA Integration -->
-    <link rel="manifest" href="./manifest.json" />
+    <link rel="manifest" href="manifest.json" />
     <meta name="theme-color" content="#030712" />
-    <link rel="apple-touch-icon" id="apple-icon" href="./logo.jpg" />
-    <link rel="icon" id="dynamic-favicon" href="./logo.jpg" />
+    <link rel="apple-touch-icon" id="apple-icon" href="logo.jpg" />
+    <link rel="icon" id="dynamic-favicon" href="logo.jpg" />
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
+          // Use absolute path for service worker to ensure it works across routes
+          const swPath = (window.__APP_BASE__ || '/') + 'sw.js';
+          navigator.serviceWorker.register(swPath)
             .then(reg => console.log('Service Worker registered!', reg))
             .catch(err => console.warn('Service Worker failed:', err));
         });

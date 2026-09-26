@@ -75,8 +75,8 @@ self.addEventListener('push', (event) => {
 
   const options = {
     body: data.body || 'New notification from Lottery Winner',
-    icon: './logo.jpg',
-    badge: './logo.jpg',
+    icon: 'logo.jpg',
+    badge: 'logo.jpg',
     image: data.imageUrl || data.image || undefined,
     vibrate: [300, 100, 300],
     data: { url: data.url || data.targetTab || '/' },
@@ -94,8 +94,8 @@ self.addEventListener('message', (event) => {
     const payload = event.data.payload || {};
     const options = {
       body: payload.message || payload.body || 'Instant update from Lottery Winner',
-      icon: './logo.jpg',
-      badge: './logo.jpg',
+      icon: 'logo.jpg',
+      badge: 'logo.jpg',
       image: payload.imageUrl || undefined,
       vibrate: [300, 100, 300],
       tag: payload.tag || 'status-bar-push-' + Date.now(),
@@ -119,7 +119,7 @@ self.addEventListener('notificationclick', (event) => {
           return;
         }
       }
-      if (clients.openWindow) return clients.openWindow('./index.html');
+      if (clients.openWindow) return clients.openWindow('index.html');
     })
   );
 });

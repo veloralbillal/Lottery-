@@ -10,12 +10,18 @@ export const PathHelper = {
    * If on a custom domain, it returns /.
    */
   getBasePath(): string {
-    const pathname = window.location.pathname;
-    // Common GitHub Pages pattern: /project-name/ or /project-name/index.html
-    // If the first segment is NOT index.html and there's more than one segment, it might be a project name.
-    // However, since we don't know the project name for sure, we use Vite's BASE_URL if available,
-    // or infer it from index.html location.
+    // Check for explicit base path injection from index.html
+    // @ts-ignore
+    if (window.__APP_BASE__) return window.__APP_BASE__;
+
+    const l = window.location;
+    const isGitHub = l.hostname.includes('github.io');
+    const segments = l.pathname.split('/').filter(Boolean);
     
+    if (isGitHub && segments.length > 0 && !segments[0].includes('.')) {
+      return '/' + segments[0] + '/';
+    }
+
     // Vite injects BASE_URL during build.
     // @ts-ignore
     const viteBase = import.meta.env.BASE_URL;
@@ -23,9 +29,6 @@ export const PathHelper = {
       return viteBase;
     }
 
-    // Fallback: Infer from current script or known structure
-    // Most robust for this setup is to use relative paths where possible,
-    // but for absolute URL generation (OG tags, etc.), we need a full origin.
     return '/';
   },
 
