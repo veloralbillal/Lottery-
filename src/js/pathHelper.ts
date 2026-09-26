@@ -10,19 +10,20 @@ export const PathHelper = {
    * If on a custom domain, it returns /.
    */
   getBasePath(): string {
-    // Check for explicit base path injection from index.html
+    // Check for explicit base path injection from index.html (Primary source)
     // @ts-ignore
     if (window.__APP_BASE__) return window.__APP_BASE__;
 
+    // Fallback detection logic
     const l = window.location;
     const isGitHub = l.hostname.includes('github.io');
     const segments = l.pathname.split('/').filter(Boolean);
     
-    if (isGitHub && segments.length > 0 && !segments[0].includes('.')) {
+    if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
       return '/' + segments[0] + '/';
     }
 
-    // Vite injects BASE_URL during build.
+    // Vite fallback
     // @ts-ignore
     const viteBase = import.meta.env.BASE_URL;
     if (viteBase && viteBase !== './' && viteBase !== '/') {
@@ -33,17 +34,26 @@ export const PathHelper = {
   },
 
   /**
-   * Resolves a path to an absolute URL relative to the app root.
+   * Resolves a path to an absolute URL (with origin) relative to the app root.
+   * Useful for social sharing tags and canonical URLs.
    */
   resolveUrl(path: string): string {
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
     const base = this.getBasePath();
     const fullBase = base.endsWith('/') ? base : `${base}/`;
-    return new URL(cleanPath, window.location.origin + fullBase).href;
+    
+    // Construct the full absolute URL
+    try {
+      return new URL(cleanPath, window.location.origin + fullBase).href;
+    } catch (e) {
+      console.warn("PathHelper: Failed to resolve absolute URL for", path);
+      return fullBase + cleanPath;
+    }
   },
 
   /**
-   * Resolves a path to a root-relative path.
+   * Resolves a path to a root-relative path (without origin).
+   * Useful for internal link generation.
    */
   resolvePath(path: string): string {
     const cleanPath = path.startsWith('/') ? path.slice(1) : path;
@@ -53,7 +63,7 @@ export const PathHelper = {
   },
 
   /**
-   * Get the current origin + base for sharing
+   * Get the current origin + base for sharing/API purposes
    */
   getAppOrigin(): string {
     const base = this.getBasePath();

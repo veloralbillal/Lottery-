@@ -1,37 +1,25 @@
-# Implementation Plan: Admin Panel Sign-Up Bonus Control
+# Implementation Plan - Custom Domain Asset Fix
 
-Provide complete control over the new user registration welcome bonus from the Admin Panel Settings tab, allowing administrators to enable/disable the bonus and configure custom bonus amounts.
+The goal is to resolve asset loading issues on custom domains by dynamically prepending the correct base path (detected at runtime) to all local asset references in `index.html`.
 
 ## Proposed Changes
 
-### 1. Admin Settings Tab (`index.html`)
-- Add a dedicated **Sign-Up Welcome Bonus** card in `#admin-tab-settings`:
-  - **Enable/Disable Switch**: Toggle `signupBonusEnabled` on or off.
-  - **Bonus Amount Input**: Custom number input for `signupBonus` (e.g., $50 / ৳50).
-  - **Save Configuration Form**: `admin-settings-signup-bonus-form` with instant local/cloud synchronization and success toast notification.
+### 1. `index.html`
+- **Dynamic Base Detection**: Refine the inline script to accurately detect `window.__APP_BASE__` for both GitHub Pages subpaths and custom domains.
+- **Script-Based Asset Prepension**: Add a small script that runs before the app loads. This script will find specific elements (manifest, icons, logo) and update their `href` or `src` attributes by prepending `window.__APP_BASE__`.
+- **Base Tag Removal/Verification**: Ensure that either the `<base>` tag or script-based prepending is used consistently to avoid mixed resolution strategies.
 
-### 2. State & Admin Form Handlers (`src/main.ts` & `src/js/admin.js`)
-- Populate current `signupBonusEnabled` and `signupBonus` values when the Admin Settings tab loads.
-- Handle form submissions to save `signupBonusEnabled` (boolean) and `signupBonus` (number) into `app.db.settings` and sync with Firestore.
+### 2. `src/js/pathHelper.ts`
+- **Refinement**: Update the `PathHelper` to be the single source of truth for path resolution throughout the TypeScript codebase.
+- **Absolute URLs**: Ensure it can generate full absolute URLs (origin + base + path) for SEO tags that require them.
 
-### 3. Dynamic Registration Flow (`src/main.ts` & `index.html`)
-- Update standard registration and 1-Click fast registration flows:
-  - If `signupBonusEnabled === true`: Credit the configured `signupBonus` amount to the new user's initial wallet balance, and log the initial bonus transaction.
-  - If `signupBonusEnabled === false`: Credit `0` balance on registration.
-- Dynamically bind the bonus amounts and labels on the Sign-Up screen (e.g. `REGISTER NOW & GET $XX FREE BONUS`, `CLAIM $XX & REGISTER`, `1-CLICK REGISTER + $XX Bonus`).
+### 3. `vite.config.ts`
+- **Base Path**: Set `base: './'` to allow Vite-generated assets to be resolved relative to the current path, while our manual script handles the top-level `index.html` assets.
+
+### 4. `sw.js` & `404.html`
+- **Dynamic Routing**: Verify the 404 redirect logic and Service Worker registration use the dynamic base path to prevent breaks on page refresh.
 
 ## Verification Plan
-
-### Automated Build Verification
-- Run `compile_applet` to verify syntax, imports, and bundling.
-- Run `npm run build` to update the production `dist/` directory.
-
-### Functional Verification
-1. **Admin Panel Control**:
-   - Open Admin Panel -> Settings Tab -> change Sign-Up Bonus amount to 75 and save.
-   - Verify toast confirmation and database persistence.
-2. **Registration with Enabled Bonus**:
-   - Register a new account -> Verify starting wallet balance is exactly 75.
-3. **Registration with Disabled Bonus**:
-   - Toggle Sign-Up Bonus to OFF in Admin Settings and save.
-   - Register a new account -> Verify starting wallet balance is 0.
+1. **Local Build**: Run `npm run build` to ensure Vite correctly bundles assets with relative paths.
+2. **Path Inspection**: Check the compiled `index.html` to see how the script handles the base path.
+3. **Simulated Hosting**: Verify that assets would resolve correctly at both the root `/` (custom domain) and a subpath `/project/` (GitHub Pages).

@@ -1,6 +1,6 @@
 {
-  "summary":  "Plan to implement Admin Panel controls for the Sign-Up Welcome Bonus, including an enable/disable switch and custom bonus amount input in Admin Settings, and dynamic balance crediting during user registration.",
-  "updatedAt":  "2026-09-25T18:48:19.578532222Z",
+  "summary":  "Implementation plan to fix custom domain asset breaks by using a dynamic path resolver script to prepend the application base path to all local assets.",
+  "updatedAt":  "2026-09-26T04:50:11.402689611Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

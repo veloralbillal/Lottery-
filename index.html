@@ -3,27 +3,44 @@
   <head>
     <script>
       // Single Page Apps for GitHub Pages & Custom Domains
-      // Dynamic Base Path Resolver
+      // Dynamic Base Path Resolver & Asset Auto-Fixer
       (function() {
         const l = window.location;
         const isGitHub = l.hostname.includes('github.io');
         const segments = l.pathname.split('/').filter(Boolean);
         
-        // Resolve base
+        // 1. Resolve base path
         let base = '/';
-        if (isGitHub && segments.length > 0 && !segments[0].includes('.')) {
+        if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
           base = '/' + segments[0] + '/';
-        }
-        
-        // Inject base tag if not already present
-        if (!document.querySelector('base')) {
-          const baseTag = document.createElement('base');
-          baseTag.href = base;
-          document.head.appendChild(baseTag);
         }
         window.__APP_BASE__ = base;
 
-        // SPA Redirect handling
+        // 2. Prepend base to critical static assets BEFORE browser fetches them (where possible)
+        // This ensures manifest, favicon, and logo load correctly on any domain/subpath.
+        const fixAsset = (selector, attr) => {
+          const el = document.querySelector(selector);
+          if (el) {
+            const val = el.getAttribute(attr);
+            if (val && !val.startsWith('http') && !val.startsWith('data:') && !val.startsWith('/')) {
+              el.setAttribute(attr, base + val);
+            }
+          }
+        };
+
+        // We run this immediately to catch as many as possible, and again on DOMContentLoaded
+        const applyFixes = () => {
+          fixAsset('link[rel="manifest"]', 'href');
+          fixAsset('link[rel="icon"]', 'href');
+          fixAsset('link[rel="apple-touch-icon"]', 'href');
+          fixAsset('#og-image', 'content');
+          fixAsset('#twitter-image', 'content');
+        };
+        
+        applyFixes();
+        document.addEventListener('DOMContentLoaded', applyFixes);
+
+        // 3. SPA Redirect handling
         if (l.search[1] === '/' ) {
           var decoded = l.search.slice(1).split('&').map(function(s) { 
             return s.replace(/~and~/g, '&')
