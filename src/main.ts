@@ -38,6 +38,8 @@ import { AffiliateAgentSystem } from "./dashboard_tabs/affiliate_agent_system.js
 import { WalletExtensions } from "./dashboard_tabs/wallet_extensions.js";
 import { LiveDrawRevealEngine } from "./js/liveDrawRevealEngine.js";
 import { LegalPoliciesManager } from "./js/legalPoliciesManager.js";
+import { GlobalCache, debounce, throttle, paginate, LazyTabManager, VisibilityLifecycle } from "./js/performanceOptimizer.js";
+import { PathHelper } from "./js/pathHelper.js";
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -212,27 +214,26 @@ export class StateManager {
       // Initialize 3D immersive card tilts and micro-animations
       this.init3DTiltEffect();
 
-      // Load dashboard templates dynamically for local client-side dev/Vite
-      // Guarantee immediate UI render so login screen or dashboard shows instantly without delay
-      console.log("StateManager: Initial Render...");
+      // Performance Mode: Initialize visibility lifecycle
+      VisibilityLifecycle.init();
+
+      // Lazy-load only current active tab template upfront (instead of loading all 20+ tabs at once)
+      this.ensureTabLoaded("tab-home");
+
+      console.log("StateManager: Initial Render (Performance Mode Active)...");
       this.render();
 
-      this.loadDashboardTabs().then(() => {
-        console.log("All dashboard tabs loaded successfully.");
-        HomeTab.init(this);
-        VideoBountyTab.init(this);
-        ProfileTab.init(this);
-        SettingsTab.init(this);
-        HistoryTab.init(this);
-        WalletTab.init(this);
-        TicketsTab.init(this);
-        GameHubModule.init(this);
-        LiveDrawRevealEngine.init(this);
-        this.render();
-      }).catch(err => {
-        console.warn("Non-fatal dashboard tabs load exception caught:", err);
-        this.render();
-      });
+      // Defer secondary module templates to idle time
+      if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => {
+          this.ensureTabLoaded("tab-wallet");
+          this.ensureTabLoaded("tab-tickets");
+        }, { timeout: 1500 });
+      } else {
+        setTimeout(() => {
+          this.ensureTabLoaded("tab-wallet");
+        }, 500);
+      }
 
       // Trigger spectacular 3D loading splash screen sequence
       console.log("StateManager: Starting Splash Screen...");
@@ -862,79 +863,42 @@ export class StateManager {
     }
   }
 
-  async loadDashboardTabs() {
-    const tabs = [
-      { id: "tab-home", file: "src/dashboard_tabs/home.php" },
-      { id: "tab-events", file: "src/dashboard_tabs/events_tab.php" },
-      { id: "tab-tickets", file: "src/dashboard_tabs/tickets.php" },
-      { id: "tab-wallet", file: "src/dashboard_tabs/user_balance.php" },
-      { id: "tab-deposit", file: "src/dashboard_tabs/deposit.php" },
-      { id: "tab-withdraw", file: "src/dashboard_tabs/withdraw.php" },
-      { id: "tab-agent", file: "src/dashboard_tabs/agent.php" },
-      { id: "tab-history", file: "src/dashboard_tabs/history.php" },
-      { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
-      { id: "tab-settings", file: "src/dashboard_tabs/settings.php" },
-      { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
-      { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
-      { id: "tab-jackpot", file: "src/dashboard_tabs/jackpot.php" },
-      { id: "tab-tasks", file: "src/dashboard_tabs/missions.php" },
-      { id: "tab-otp", file: "src/dashboard_tabs/otp.php" },
-      { id: "tab-recovery", file: "src/dashboard_tabs/recovery.php" },
-      { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
-      { id: "tab-games", file: "src/dashboard_tabs/games.php" },
-      { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
-      { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
-      { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
-    ];
-    
-    for (const tab of tabs) {
-      const el = document.getElementById(tab.id);
-      if (el) {
-        const cacheKey = `tab_cache_${tab.id}`;
-        
-        // 1. Instant load from bundledTabs if available
-        if (bundledTabs && bundledTabs[tab.id]) {
-          try {
-            const text = bundledTabs[tab.id];
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(text, 'text/html');
-            const content = doc.getElementById(tab.id);
-            const finalHTML = content ? content.innerHTML : text;
-            if (finalHTML && finalHTML.trim().length > 20) {
-              el.innerHTML = finalHTML;
-            }
-          } catch (bErr) {
-            console.warn("Could not parse bundledTab for:", tab.id, bErr);
-          }
-        } else {
-          // Fallback to cache if bundledTabs is somehow not present
-          const cachedHTML = localStorage.getItem(cacheKey);
-          if (cachedHTML && cachedHTML.trim().length > 100 && !el.innerHTML.trim()) {
-            el.innerHTML = cachedHTML;
-          }
-        }
+  ensureTabLoaded(tabId: string) {
+    if (!tabId) return;
+    const cleanId = tabId.startsWith("tab-") || tabId.startsWith("admin-tab-") ? tabId : `tab-${tabId}`;
+    LazyTabManager.loadTabTemplate(cleanId, bundledTabs);
 
-        // 2. Try background fetch ONLY if running on http server and el is still empty
-        if (!el.innerHTML.trim()) {
-          try {
-            const response = await fetch(`${tab.file}?v=${Date.now()}`);
-            if (response.ok) {
-              const text = await response.text();
-              const parser = new DOMParser();
-              const doc = parser.parseFromString(text, 'text/html');
-              const content = doc.getElementById(tab.id);
-              const finalHTML = content ? content.innerHTML : text;
-              if (finalHTML.trim() && finalHTML.trim().length > 100) {
-                el.innerHTML = finalHTML;
-                localStorage.setItem(cacheKey, finalHTML);
-              }
-            }
-          } catch (e) {
-            console.warn(`Static/Offline fetch notice for ${tab.id}:`, e.message);
-          }
-        }
-      }
+    // Lazily initialize module event listeners when tab is opened
+    if (cleanId === "tab-home" && !LazyTabManager.isModuleInitialized("HomeTab")) {
+      LazyTabManager.markModuleInitialized("HomeTab");
+      HomeTab.init(this);
+    } else if (cleanId === "tab-wallet" && !LazyTabManager.isModuleInitialized("WalletTab")) {
+      LazyTabManager.markModuleInitialized("WalletTab");
+      WalletTab.init(this);
+    } else if (cleanId === "tab-tickets" && !LazyTabManager.isModuleInitialized("TicketsTab")) {
+      LazyTabManager.markModuleInitialized("TicketsTab");
+      TicketsTab.init(this);
+    } else if (cleanId === "tab-history" && !LazyTabManager.isModuleInitialized("HistoryTab")) {
+      LazyTabManager.markModuleInitialized("HistoryTab");
+      HistoryTab.init(this);
+    } else if (cleanId === "tab-profile" && !LazyTabManager.isModuleInitialized("ProfileTab")) {
+      LazyTabManager.markModuleInitialized("ProfileTab");
+      ProfileTab.init(this);
+    } else if (cleanId === "tab-settings" && !LazyTabManager.isModuleInitialized("SettingsTab")) {
+      LazyTabManager.markModuleInitialized("SettingsTab");
+      SettingsTab.init(this);
+    } else if (cleanId === "tab-games" && !LazyTabManager.isModuleInitialized("GameHubModule")) {
+      LazyTabManager.markModuleInitialized("GameHubModule");
+      GameHubModule.init(this);
+    } else if (cleanId === "tab-video-bounty" && !LazyTabManager.isModuleInitialized("VideoBountyTab")) {
+      LazyTabManager.markModuleInitialized("VideoBountyTab");
+      VideoBountyTab.init(this);
     }
+  }
+
+  async loadDashboardTabs() {
+    // Fast path: Only ensure active current tab is loaded
+    this.ensureTabLoaded(`tab-${this.currentTab}`);
   }
 
   
@@ -960,6 +924,9 @@ export class StateManager {
 
   startAutoDrawChecker() {
     setInterval(() => {
+      // Performance Mode: Pause intensive checks if user switched away from the browser/tab
+      if (typeof document !== 'undefined' && document.hidden) return;
+      
       this.checkAndExecuteAutoDraws();
       this.checkLiveNotifications();
       this.cleanupExpiredAndDrawnLotteries();
@@ -1679,6 +1646,7 @@ export class StateManager {
   }
 
   render() {
+    this.applyDynamicSEO();
     try {
       this.checkLiveNotifications();
 
@@ -1782,6 +1750,37 @@ export class StateManager {
     if ((window as any).generateMathCaptcha) {
       (window as any).generateMathCaptcha();
     }
+
+    const isBonusEnabled = (this.db && this.db.settings && this.db.settings.signupBonusEnabled !== false);
+    const bonusAmount = isBonusEnabled ? (parseFloat(this.db?.settings?.signupBonus ?? 50) || 0) : 0;
+
+    const bannerEl = document.getElementById("auth-bonus-banner");
+    if (bannerEl) {
+      if (isBonusEnabled && bonusAmount > 0) {
+        bannerEl.innerHTML = `🎁 REGISTER NOW &amp; GET $${bonusAmount} FREE BONUS`;
+        bannerEl.classList.remove("hidden");
+      } else {
+        bannerEl.innerHTML = `✨ CREATE YOUR ACCOUNT &amp; START PLAYING`;
+      }
+    }
+
+    const oneClickTextEl = document.getElementById("auth-one-click-text");
+    if (oneClickTextEl) {
+      if (isBonusEnabled && bonusAmount > 0) {
+        oneClickTextEl.innerHTML = `⚡ Instant Setup + $${bonusAmount} Bonus`;
+      } else {
+        oneClickTextEl.innerHTML = `⚡ Instant 1-Click Fast Setup`;
+      }
+    }
+
+    const submitBtnEl = document.getElementById("reg-submit-btn");
+    if (submitBtnEl) {
+      if (isBonusEnabled && bonusAmount > 0) {
+        submitBtnEl.innerHTML = `CLAIM $${bonusAmount} &amp; REGISTER`;
+      } else {
+        submitBtnEl.innerHTML = `CREATE ACCOUNT &amp; REGISTER`;
+      }
+    }
   }
 
   // ================= DASHBOARD USER VIEW RENDER =================
@@ -1831,6 +1830,9 @@ export class StateManager {
         btn.className = "tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400 hover:text-white";
       }
     });
+
+    // Performance Mode: Ensure active tab template and modules are lazily loaded
+    this.ensureTabLoaded(`tab-${this.currentTab}`);
 
     // Show current tab
     if (this.currentTab === "badge-request") {
@@ -4087,6 +4089,53 @@ export class StateManager {
 
     document.getElementById("ticket-info-modal").classList.remove("hidden");
   }
+
+  applyDynamicSEO() {
+    const s = this.db.settings || {};
+    const title = s.websiteTitle || "Lottery Winner - Premium Mobile Web Portal";
+    const desc = s.websiteDesc || "Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots.";
+    const shareImg = s.shareImageUrl || PathHelper.resolveUrl("logo.jpg");
+    const favUrl = s.faviconUrl || PathHelper.resolveUrl("logo.jpg");
+    const canonical = PathHelper.getAppOrigin();
+
+    // Update Head Elements
+    const titleTags = ["dynamic-title", "og-title", "twitter-title"];
+    titleTags.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        if (el.tagName === "TITLE") el.innerText = title;
+        else el.setAttribute("content", title);
+      }
+    });
+
+    const descTags = ["dynamic-desc", "og-desc", "twitter-desc"];
+    descTags.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("content", desc);
+    });
+
+    const imgTags = ["og-image", "twitter-image"];
+    imgTags.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("content", shareImg);
+    });
+
+    const urlTags = ["og-url", "twitter-url"];
+    urlTags.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.setAttribute("content", canonical);
+    });
+
+    const canEl = document.getElementById("canonical-url");
+    if (canEl) canEl.setAttribute("href", canonical);
+
+    // Update Favicon
+    const favEl = document.getElementById("dynamic-favicon") as HTMLLinkElement;
+    if (favEl) favEl.href = favUrl;
+
+    const appleEl = document.getElementById("apple-icon") as HTMLLinkElement;
+    if (appleEl) appleEl.href = favUrl;
+  }
 }
 
 Object.assign(StateManager.prototype, AdminModule);
@@ -4486,7 +4535,11 @@ function initApplicationLoader() {
   const orderIdParam = urlParams.get("order_id") || urlParams.get("invoice_id") || urlParams.get("trxId");
   const paymentStatus = urlParams.get("payment_status");
 
-  if (pathname === "/payment/success" || paymentStatus === "success" || (urlParams.get("gateway") === "zinipay" && orderIdParam)) {
+  // Base-aware path check for success/cancel
+  const isSuccessPath = pathname.endsWith("/payment/success");
+  const isCancelPath = pathname.endsWith("/payment/cancel");
+
+  if (isSuccessPath || paymentStatus === "success" || (urlParams.get("gateway") === "zinipay" && orderIdParam)) {
     if (orderIdParam) {
       app.currentTab = "payment-success";
       (app as any).activePaymentOrderId = orderIdParam;
@@ -4494,7 +4547,7 @@ function initApplicationLoader() {
       // Clean up search params so refresh works cleanly without re-triggering redirect tab logic
       window.history.replaceState({}, document.title, window.location.pathname);
     }
-  } else if (pathname === "/payment/cancel" || paymentStatus === "cancelled" || paymentStatus === "failed") {
+  } else if (isCancelPath || paymentStatus === "cancelled" || paymentStatus === "failed") {
     app.currentTab = "payment-cancel";
     if (orderIdParam) {
       (app as any).activePaymentOrderId = orderIdParam;
@@ -4503,12 +4556,16 @@ function initApplicationLoader() {
     window.history.replaceState({}, document.title, window.location.pathname);
   }
 
-  // Instant Search Engine inside Community Space
-  const commSearchInput = document.getElementById("community-search-input");
+  // Instant Search Engine inside Community Space (Debounced 350ms)
+  const commSearchInput = document.getElementById("community-search-input") as HTMLInputElement | null;
   if (commSearchInput) {
-    commSearchInput.addEventListener("input", (e) => {
-      app.communitySearchQuery = e.target.value;
+    const debouncedCommSearch = debounce((query: string) => {
+      app.communitySearchQuery = query;
       app.renderCommunitySection();
+    }, 350);
+
+    commSearchInput.addEventListener("input", (e: any) => {
+      debouncedCommSearch(e.target.value);
     });
   }
   const commClearSearchBtn = document.getElementById("community-clear-search-btn");
@@ -4522,12 +4579,16 @@ function initApplicationLoader() {
 
   // ================= BINDINGS REGISTER SCREEN TRIGGERS =================
 
-  // Admin players search bindings
-  const adminPlayersSearchInput = document.getElementById("admin-players-search-input");
+  // Admin players search bindings (Debounced 350ms)
+  const adminPlayersSearchInput = document.getElementById("admin-players-search-input") as HTMLInputElement | null;
   if (adminPlayersSearchInput) {
-    adminPlayersSearchInput.addEventListener("input", (e) => {
-      app.adminPlayersSearchQuery = e.target.value;
+    const debouncedAdminPlayerSearch = debounce((query: string) => {
+      app.adminPlayersSearchQuery = query;
       app.renderAdminUsers();
+    }, 350);
+
+    adminPlayersSearchInput.addEventListener("input", (e: any) => {
+      debouncedAdminPlayerSearch(e.target.value);
     });
   }
 
@@ -4854,7 +4915,8 @@ function initApplicationLoader() {
       return p ? String(p.version || 1) + ".0" : "1.0";
     };
 
-    const welcomeBonus = 50;
+    const isBonusEnabled = (app.db?.settings?.signupBonusEnabled !== false);
+    const welcomeBonus = isBonusEnabled ? (parseFloat(app.db?.settings?.signupBonus ?? 50) || 0) : 0;
     const clientIp = await app.getClientIP();
     const newUser = {
       id: "u" + Date.now(),
@@ -4888,6 +4950,20 @@ function initApplicationLoader() {
     };
 
     app.db.users.push(newUser);
+
+    if (welcomeBonus > 0 && app.db.transactions) {
+      app.db.transactions.push({
+        id: "tx_bonus_" + Date.now(),
+        userId: newUser.id,
+        username: newUser.username,
+        type: "bonus",
+        amount: welcomeBonus,
+        description: "Welcome Registration Bonus Credit",
+        date: new Date().toISOString(),
+        status: "completed"
+      });
+    }
+
     app.saveDB();
 
     (window as any).lastOneClickUser = newUser;
@@ -4899,6 +4975,16 @@ function initApplicationLoader() {
     if (copyUserTxt) copyUserTxt.innerText = "Copy";
     if (copyPassTxt) copyPassTxt.innerText = "Copy";
     if (copyAllTxt) copyAllTxt.innerText = "Copy Both";
+
+    const credBadge = document.getElementById("cred-modal-bonus-badge");
+    if (credBadge) {
+      if (welcomeBonus > 0) {
+        credBadge.innerHTML = `<span>💵</span> $${welcomeBonus} FREE BONUS ADDED TO WALLET`;
+        credBadge.classList.remove("hidden");
+      } else {
+        credBadge.classList.add("hidden");
+      }
+    }
 
     const modal = document.getElementById("credModal");
     if (modal) modal.style.display = "flex";
@@ -4954,17 +5040,22 @@ function initApplicationLoader() {
     const userObj = (window as any).lastOneClickUser;
     const username = document.getElementById("genUser")?.innerText.trim() || userObj?.username || "user";
     const password = document.getElementById("genPass")?.innerText.trim() || userObj?.password || "";
-    const bonus = userObj?.balance || 50;
+    const isBonusEnabled = (app.db?.settings?.signupBonusEnabled !== false);
+    const bonus = userObj?.balance !== undefined ? userObj.balance : (isBonusEnabled ? (parseFloat(app.db?.settings?.signupBonus ?? 50) || 0) : 0);
     const now = new Date();
     const formattedDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
     const portalUrl = window.location.origin + window.location.pathname;
+
+    const bonusLine = bonus > 0 
+      ? `🎁 Welcome Bonus   : $${bonus} USD (Added to Wallet Balance)`
+      : `🎁 Welcome Bonus   : None (Inactive)`;
 
     const fileContent = [
       "================================================================",
       "             🎰 LOTTERY WINNER - ACCOUNT CREDENTIALS            ",
       "================================================================",
       `📅 Generated Date  : ${formattedDate}`,
-      `🎁 Welcome Bonus   : $${bonus} USD (Added to Wallet Balance)`,
+      bonusLine,
       "----------------------------------------------------------------",
       `👤 Username        : ${username}`,
       `🔑 Password        : ${password}`,
@@ -5008,7 +5099,8 @@ function initApplicationLoader() {
 
       app.currentUser = StateManager.removeCircularReferences(user);
       localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-      app.showToast(`Welcome! $50 bonus credited. Logged in as @${user.username}`, "success");
+      const bonusMsg = (user.balance && user.balance > 0) ? `$${user.balance} bonus credited. ` : "";
+      app.showToast(`Welcome! ${bonusMsg}Logged in as @${user.username}`, "success");
       app.render();
     } else {
       switchTab('signin');
@@ -5415,9 +5507,10 @@ function initApplicationLoader() {
           }
         }
 
-        const welcomeBonus = (app.db && app.db.settings && app.db.settings.signupBonus !== undefined) 
-          ? parseFloat(app.db.settings.signupBonus) 
-          : 100;
+        const isBonusEnabled = (app.db?.settings?.signupBonusEnabled !== false);
+        const welcomeBonus = isBonusEnabled 
+          ? (parseFloat(app.db?.settings?.signupBonus ?? 50) || 0) 
+          : 0;
 
         const userData = {
           username: userVal.toLowerCase(),
@@ -5466,6 +5559,20 @@ function initApplicationLoader() {
           const newUser = { ...userData, id: result.uid, uid: result.uid };
           delete newUser.password;
           app.db.users.push(newUser);
+
+          if (welcomeBonus > 0 && app.db.transactions) {
+            app.db.transactions.push({
+              id: "tx_bonus_" + Date.now(),
+              userId: newUser.id,
+              username: newUser.username,
+              type: "bonus",
+              amount: welcomeBonus,
+              description: "Welcome Registration Bonus Credit",
+              date: new Date().toISOString(),
+              status: "completed"
+            });
+          }
+
           app.saveDB();
 
           // Apply referral rewards and counters
@@ -6890,6 +6997,21 @@ function initApplicationLoader() {
     });
   }
 
+  const saveSignupBonusForm = document.getElementById("admin-settings-signup-bonus-form");
+  if (saveSignupBonusForm) {
+    saveSignupBonusForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const toggle = document.getElementById("sys-signup-bonus-toggle") as HTMLInputElement | null;
+      const amountInput = document.getElementById("sys-signup-bonus-amount") as HTMLInputElement | null;
+      app.db.settings.signupBonusEnabled = toggle ? toggle.checked : true;
+      app.db.settings.signupBonus = amountInput ? (parseFloat(amountInput.value) || 0) : 50;
+
+      app.saveDB();
+      app.showToast("🎁 Sign-Up Welcome Bonus configurations updated successfully!", "success");
+      app.render();
+    });
+  }
+
   const saveWebsiteForm = document.getElementById("admin-settings-website-form");
   if (saveWebsiteForm) {
     saveWebsiteForm.addEventListener("submit", (e) => {
@@ -6897,7 +7019,10 @@ function initApplicationLoader() {
 
       app.db.settings.siteName = document.getElementById("sys-site-name").value.trim();
       app.db.settings.siteInfo = document.getElementById("sys-site-info").value.trim();
-      app.db.settings.signupBonus = parseFloat(document.getElementById("sys-signup-bonus").value.trim());
+      const signupBonusInput = document.getElementById("sys-signup-bonus") as HTMLInputElement | null;
+      if (signupBonusInput) {
+        app.db.settings.signupBonus = parseFloat(signupBonusInput.value.trim()) || 0;
+      }
       app.db.settings.supportNumber = document.getElementById("sys-support-num").value.trim();
       app.db.settings.authFooterText = document.getElementById("sys-auth-footer-text").value.trim();
 

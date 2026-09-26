@@ -445,12 +445,28 @@ export default defineConfig(({ mode }) => {
       outDir: 'dist',
       assetsDir: 'assets',
       emptyOutDir: true,
-      sourcemap: true,
+      sourcemap: mode !== 'production',
+      minify: 'esbuild',
+      cssMinify: true,
+      reportCompressedSize: false,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html')
+        },
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules/firebase')) {
+              return 'vendor-firebase';
+            }
+            if (id.includes('node_modules/motion') || id.includes('node_modules/lucide-react')) {
+              return 'vendor-ui-icons';
+            }
+          }
         }
       }
+    },
+    esbuild: {
+      drop: mode === 'production' ? ['console', 'debugger'] : []
     }
   };
 });

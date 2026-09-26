@@ -261,7 +261,9 @@ export function getDefaultDB() {
       maintenanceMessage: "Internal server hardware upgrade and database syncing in progress. Please try again soon.",
       appVersion: "5.2.0",
       forceUpdateLink: "https://example.com/download/LotteryWinner_v5.2.apk",
-      adminPass: "Admin123"
+      adminPass: "Admin123",
+      signupBonusEnabled: true,
+      signupBonus: 50
     }
   };
 }

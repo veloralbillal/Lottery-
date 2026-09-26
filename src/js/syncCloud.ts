@@ -1,6 +1,7 @@
 import { initializeApp, getApps, deleteApp } from "firebase/app";
 import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
@@ -51,6 +52,7 @@ export const SyncCloudModule = {
         useFetchStreams: false
       }, dbId);
       this.auth = getAuth(app);
+      this.storage = getStorage(app);
       this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
       
       console.log("Firebase sync engine initialized successfully.");
@@ -206,17 +208,23 @@ export const SyncCloudModule = {
       return { success: false, error: err.message };
     }
   },
+  unsubscribeFromCloud() {
+    if (this.firestoreUnsubscribe) {
+      try {
+        this.firestoreUnsubscribe();
+        this.firestoreUnsubscribe = null;
+        console.log("[SyncEngine] Realtime Firestore listener unsubscribed.");
+      } catch (e) {
+        console.warn("Failed to unsubscribe listener:", e);
+      }
+    }
+  },
+
   listenToCloud() {
     if (!this.firestoreDocRef) return;
     
     // Safety check to prevent duplicate listeners
-    if (this.firestoreUnsubscribe) {
-      try {
-        this.firestoreUnsubscribe();
-      } catch (e) {
-        console.warn("Failed to unsubscribe old listener:", e);
-      }
-    }
+    this.unsubscribeFromCloud();
 
     this.setSyncState("loading");
 
@@ -263,6 +271,20 @@ export const SyncCloudModule = {
       // Silently operate in local-first offline fallback mode to avoid environment/sandbox warnings
       this.setSyncState("offline");
     });
+
+    // Auto-pause listener when document is hidden to conserve background network and CPU
+    if (!this._visibilityListenerAdded && typeof document !== 'undefined') {
+      this._visibilityListenerAdded = true;
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          console.log("[PerformanceMode] Page hidden - pausing Firestore listener to save resources");
+          this.unsubscribeFromCloud();
+        } else if (!this.firestoreUnsubscribe && this.firestoreDocRef) {
+          console.log("[PerformanceMode] Page visible - resuming Firestore listener");
+          this.listenToCloud();
+        }
+      });
+    }
   },
 
   async loadFromCloud() {

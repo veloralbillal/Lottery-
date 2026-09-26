@@ -394,7 +394,7 @@ export class NotificationEngine {
     this.showSimulatedBanner(title, message, iconType, actionTab);
 
     // 2. Trigger real HTML5 Native OS Status Bar Notification
-    const logoUrl = window.location.origin + "/logo.jpg";
+    const logoUrl = new URL('./logo.jpg', window.location.href).href;
     this.sendNativeNotification(title, {
       body: message,
       icon: logoUrl,
@@ -412,7 +412,7 @@ export class NotificationEngine {
     this.playChime();
 
     // 1. Trigger Native Device OS Status Bar Push Alert (System Tray)
-    const logoUrl = adData.imageUrl || (window.location.origin + "/logo.jpg");
+    const logoUrl = adData.imageUrl || new URL('./logo.jpg', window.location.href).href;
     this.sendNativeNotification(`⚡ ${adData.title}`, {
       body: adData.message,
       icon: logoUrl,

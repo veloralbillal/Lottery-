@@ -5,33 +5,24 @@
     <title>Lottery Winner</title>
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages
-      // MIT License
       // https://github.com/rafgraph/spa-github-pages
-      // This script checks to see if a redirect is present in the query string,
-      // converts it back into a correct url and adds it to the
-      // browser's history using window.history.replaceState(...),
-      // which will cause the window to load the correct route.
       var l = window.location;
-      if (l.search[1] === '/' ) {
-        var decoded = l.search.slice(1).split('&').map(function(s) { 
-          return s.replace(/~and~/g, '&')
-        }).join('?');
-        window.history.replaceState(null, null,
-            l.pathname.slice(0, -1) + decoded + l.hash
-        );
-      }
+      
+      // Determine number of segments to keep in path (0 for custom domain, 1 for github.io/repo)
+      // Usually, if there's a repository name, we keep 1.
+      // But we can just use the current pathname logic.
+      var pathSegments = l.pathname.split('/');
+      
+      // Redirect to index.html with the current path in the query string
+      l.replace(
+        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+        l.pathname.split('/').slice(0, 1).join('/') + '/?/' +
+        l.pathname.split('/').slice(1).join('/').replace(/&/g, '~and~') +
+        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+        l.hash
+      );
     </script>
   </head>
   <body>
-    <script type="text/javascript">
-      // Redirect to index.html with the current path in the query string
-      window.location.replace(
-        window.location.protocol + '//' + window.location.hostname + (window.location.port ? ':' + window.location.port : '') +
-        window.location.pathname.split('/').slice(0, 1).join('/') + '/?/' +
-        window.location.pathname.split('/').slice(1).join('/').replace(/&/g, '~and~') +
-        (window.location.search ? '&' + window.location.search.slice(1).replace(/&/g, '~and~') : '') +
-        window.location.hash
-      );
-    </script>
   </body>
 </html>

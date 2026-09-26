@@ -1,6 +1,6 @@
 {
-  "summary":  "Remove Lottery Winner header banner from login / auth screen",
-  "updatedAt":  "2026-09-25T16:50:18.620614476Z",
+  "summary":  "Plan to implement Admin Panel controls for the Sign-Up Welcome Bonus, including an enable/disable switch and custom bonus amount input in Admin Settings, and dynamic balance crediting during user registration.",
+  "updatedAt":  "2026-09-25T18:48:19.578532222Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

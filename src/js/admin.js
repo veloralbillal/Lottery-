@@ -2,6 +2,8 @@
 // ADMIN PANEL MODULAR SYSTEM
 // ============================================================================
 import { CheckinSettingsTab } from "../admin_tabs/checkinSettings.js";
+import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+import { PathHelper } from "./pathHelper.js";
 
 export const AdminModule = {
   renderAdmin() {
@@ -3543,6 +3545,16 @@ export const AdminModule = {
     const agentRefBonus = document.getElementById("sys-agent-referral-bonus");
     if (agentRefBonus) agentRefBonus.value = s.agentReferralBonus ?? 100;
 
+    // Populate Sign-Up Welcome Bonus Settings
+    const signupBonusToggle = document.getElementById("sys-signup-bonus-toggle");
+    if (signupBonusToggle) signupBonusToggle.checked = s.signupBonusEnabled !== false;
+
+    const signupBonusAmount = document.getElementById("sys-signup-bonus-amount");
+    if (signupBonusAmount) signupBonusAmount.value = s.signupBonus !== undefined ? s.signupBonus : 50;
+
+    const signupBonusWeb = document.getElementById("sys-signup-bonus");
+    if (signupBonusWeb) signupBonusWeb.value = s.signupBonus !== undefined ? s.signupBonus : 50;
+
     const whatsappUrl = document.getElementById("sys-whatsapp-url");
     if (whatsappUrl) whatsappUrl.value = s.whatsappUrl || "";
 
@@ -3663,6 +3675,8 @@ export const AdminModule = {
     this.updatePaymentGatewaysStatusUI();
     this.bindGateways1ClickControls();
     this.renderWebPushAdsHistory();
+    this.renderSEOAndFaviconSettings();
+    this.bindSEOAndFaviconControls();
   },
 
   updatePaymentGatewaysStatusUI() {
@@ -5304,6 +5318,129 @@ export const AdminModule = {
         this.showToast(`Successfully loaded ৳${loadAmount.toFixed(2)} into agent @${targetAgent.username}'s wallet!`, "success");
         loadForm.reset();
         this.renderAdminCommission();
+      });
+    }
+  },
+
+  renderSEOAndFaviconSettings() {
+    const s = this.db.settings || {};
+    
+    // Populate SEO fields
+    const titleEl = document.getElementById("sys-seo-title");
+    const descEl = document.getElementById("sys-seo-desc");
+    const imageEl = document.getElementById("sys-seo-image");
+    
+    if (titleEl) titleEl.value = s.websiteTitle || "Lottery Winner - Premium Mobile Web Portal";
+    if (descEl) descEl.value = s.websiteDesc || "Premium lottery ticket marketplace with instant draws, verified bKash/Nagad agent withdrawals, and interactive progressive jackpots.";
+    if (imageEl) imageEl.value = s.shareImageUrl || PathHelper.resolveUrl("logo.jpg");
+
+    // Populate Favicon preview
+    const favPreview = document.getElementById("admin-current-favicon-preview");
+    if (favPreview) {
+      favPreview.src = s.faviconUrl || PathHelper.resolveUrl("logo.jpg");
+    }
+  },
+
+  bindSEOAndFaviconControls() {
+    if (this._seoEventsBound) return;
+    this._seoEventsBound = true;
+
+    // SEO Form Submit
+    const seoForm = document.getElementById("admin-settings-seo-form");
+    if (seoForm) {
+      seoForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const s = this.db.settings || {};
+        s.websiteTitle = document.getElementById("sys-seo-title").value;
+        s.websiteDesc = document.getElementById("sys-seo-desc").value;
+        s.shareImageUrl = document.getElementById("sys-seo-image").value;
+        
+        this.db.settings = s;
+        this.saveDB();
+        this.showToast("SEO & Social Share settings updated successfully!", "success");
+        
+        // Dynamically update head if on same session
+        if (window.app && typeof window.app.applyDynamicSEO === "function") {
+          window.app.applyDynamicSEO();
+        }
+      });
+    }
+
+    // Share Image Preview
+    const previewBtn = document.getElementById("btn-preview-share-img");
+    if (previewBtn) {
+      previewBtn.addEventListener("click", () => {
+        const url = document.getElementById("sys-seo-image").value;
+        if (url) window.open(url, "_blank");
+      });
+    }
+
+    // Favicon Upload
+    const favInput = document.getElementById("sys-favicon-upload");
+    const favStatus = document.getElementById("favicon-upload-status");
+    if (favInput) {
+      favInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        // Security check
+        const allowedTypes = ["image/png", "image/jpeg", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+          this.showToast("Invalid file type. Supported: PNG, JPG, SVG, ICO, WEBP.", "error");
+          return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) { // 2MB limit
+          this.showToast("File too large. Max 2MB allowed.", "error");
+          return;
+        }
+
+        favStatus.textContent = "⌛ Uploading icon...";
+        favStatus.className = "text-[9px] text-center font-bold text-amber-400 block";
+        favStatus.classList.remove("hidden");
+
+        try {
+          const storage = getStorage();
+          const storageRef = ref(storage, `app_assets/favicon_${Date.now()}_${file.name}`);
+          const snapshot = await uploadBytes(storageRef, file);
+          const downloadUrl = await getDownloadURL(snapshot.ref);
+
+          const s = this.db.settings || {};
+          s.faviconUrl = downloadUrl;
+          this.db.settings = s;
+          this.saveDB();
+
+          this.renderSEOAndFaviconSettings();
+          favStatus.textContent = "✅ Favicon updated!";
+          favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+          this.showToast("Favicon uploaded and set as active!", "success");
+          
+          if (window.app && typeof window.app.applyDynamicSEO === "function") {
+            window.app.applyDynamicSEO();
+          }
+        } catch (err) {
+          console.error("Favicon upload failed:", err);
+          favStatus.textContent = "❌ Upload failed.";
+          favStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
+          this.showToast("Failed to upload favicon. Check permissions.", "error");
+        }
+      });
+    }
+
+    // Reset Favicon
+    const resetFavBtn = document.getElementById("btn-reset-favicon");
+    if (resetFavBtn) {
+      resetFavBtn.addEventListener("click", () => {
+        const s = this.db.settings || {};
+        s.faviconUrl = ""; // Reset to default
+        this.db.settings = s;
+        this.saveDB();
+        this.renderSEOAndFaviconSettings();
+        this.showToast("Favicon reset to system default.", "info");
+        
+        if (window.app && typeof window.app.applyDynamicSEO === "function") {
+          window.app.applyDynamicSEO();
+        }
       });
     }
   }
