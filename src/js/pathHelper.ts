@@ -12,7 +12,7 @@ export const PathHelper = {
   getBasePath(): string {
     // Check for explicit base path injection from index.html (Primary source)
     // @ts-ignore
-    if (window.__APP_BASE__) return window.__APP_BASE__;
+    if (window.APP_BASE) return window.APP_BASE;
 
     // Fallback detection logic
     const l = window.location;
