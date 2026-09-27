@@ -19,6 +19,7 @@ import { TicketsTab } from "./dashboard_tabs/tickets.js";
 import { WalletTab } from "./dashboard_tabs/wallet.js";
 import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
+import { StoreTab } from "./dashboard_tabs/store.js";
 import { SettingsTab } from "./dashboard_tabs/settings.js";
 import { CustomizerStore } from "./dashboard_tabs/customizer_store.js";
 import { ReferTab } from "./dashboard_tabs/share_earn.js";
@@ -884,6 +885,9 @@ export class StateManager {
     } else if (cleanId === "tab-profile" && !LazyTabManager.isModuleInitialized("ProfileTab")) {
       LazyTabManager.markModuleInitialized("ProfileTab");
       ProfileTab.init(this);
+    } else if (cleanId === "tab-store" && !LazyTabManager.isModuleInitialized("StoreTab")) {
+      LazyTabManager.markModuleInitialized("StoreTab");
+      StoreTab.init(this);
     } else if (cleanId === "tab-settings" && !LazyTabManager.isModuleInitialized("SettingsTab")) {
       LazyTabManager.markModuleInitialized("SettingsTab");
       SettingsTab.init(this);
@@ -1810,6 +1814,11 @@ export class StateManager {
     document.getElementById("tab-history")?.classList.add("hidden");
     document.getElementById("tab-profile")?.classList.add("hidden");
     document.getElementById("tab-edit-profile")?.classList.add("hidden");
+    document.getElementById("tab-store")?.classList.add("hidden");
+    document.getElementById("tab-store-cart")?.classList.add("hidden");
+    document.getElementById("tab-store-details")?.classList.add("hidden");
+    document.getElementById("tab-store-checkout")?.classList.add("hidden");
+    document.getElementById("tab-store-support")?.classList.add("hidden");
     document.getElementById("tab-settings")?.classList.add("hidden");
     document.getElementById("tab-customizer")?.classList.add("hidden");
     document.getElementById("tab-jackpot")?.classList.add("hidden");
@@ -1883,6 +1892,16 @@ export class StateManager {
       this.renderHistoryTab();
     } else if (this.currentTab === "profile") {
       this.renderProfileTab();
+    } else if (this.currentTab === "store") {
+      StoreTab.render(this);
+    } else if (this.currentTab === "store-cart") {
+      StoreTab.renderCartPage(this);
+    } else if (this.currentTab === "store-details") {
+      StoreTab.renderDetailsPage(this);
+    } else if (this.currentTab === "store-checkout") {
+      StoreTab.renderCheckoutPage(this);
+    } else if (this.currentTab === "store-support") {
+      StoreTab.renderSupportPage(this);
     } else if (this.currentTab === "edit-profile") {
       this.renderEditProfileTab();
     } else if (this.currentTab === "settings") {
@@ -6150,7 +6169,14 @@ function initApplicationLoader() {
       return;
     }
 
-    const comingSoonBtn = e.target.closest("#home-coming-soon-1-btn") || e.target.closest("#home-coming-soon-2-btn");
+    const homeShopBtn = e.target.closest("#home-shop-sub-btn");
+    if (homeShopBtn) {
+      app.currentTab = "store";
+      app.render();
+      return;
+    }
+
+    const comingSoonBtn = e.target.closest("#home-coming-soon-2-btn");
     if (comingSoonBtn) {
       app.showToast("This feature is coming soon! Stay tuned! 🚀", "info");
       return;
