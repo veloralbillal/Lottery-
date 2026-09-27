@@ -1085,6 +1085,11 @@
         <div id="tab-history" class="hidden space-y-4"></div>
         <div id="tab-profile" class="hidden space-y-5"></div>
         <div id="tab-edit-profile" class="hidden space-y-6"></div>
+        <div id="tab-store" class="hidden space-y-6"></div>
+        <div id="tab-store-cart" class="hidden space-y-6"></div>
+        <div id="tab-store-details" class="hidden space-y-6"></div>
+        <div id="tab-store-checkout" class="hidden space-y-6"></div>
+        <div id="tab-store-support" class="hidden space-y-6"></div>
         <div id="tab-settings" class="hidden space-y-6"></div>
         <div id="tab-customizer" class="hidden space-y-6"></div>
         <div id="tab-badge-request" class="hidden space-y-6"></div>
@@ -1185,6 +1190,10 @@
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="withdraws">
               <span><i class="fa-solid fa-money-bill-transfer mr-2"></i> Payouts</span>
+              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+            </button>
+            <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="store">
+              <span><i class="fa-solid fa-store text-cyan-400 mr-2"></i> Digital Store</span>
               <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="gateways">
@@ -3952,6 +3961,107 @@
           </div>
           
           <div id="favicon-upload-status" class="hidden text-[9px] text-center font-bold"></div>
+        </div>
+      </div>
+
+      <!-- ================= ADMIN TAB: DIGITAL STORE MANAGEMENT ================= -->
+      <div id="admin-tab-store" class="hidden space-y-6">
+        <!-- Header Info Banner -->
+        <div class="bg-gradient-to-r from-slate-900 to-[#12192b] border border-cyan-500/20 p-6 rounded-3xl relative overflow-hidden shadow-2xl">
+          <div class="absolute -right-12 -top-12 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <div class="space-y-2 relative z-10 font-sans">
+            <h3 class="text-sm font-black font-mono tracking-wide uppercase text-cyan-400 flex items-center gap-2">
+              <i class="fa-solid fa-store"></i> Digital Store Central Control
+            </h3>
+            <p class="text-[10px] text-slate-400">Add digital products, track secure download transactions, view sales logs, and answer helpdesk tickets.</p>
+          </div>
+        </div>
+
+        <!-- Sales Metrics and Stats Row -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 font-mono">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-1">
+            <span class="block text-[8px] text-slate-500 uppercase">Store Revenue</span>
+            <strong id="admin-store-rev-lbl" class="text-lg font-black text-emerald-400 block">৳0.00</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-1">
+            <span class="block text-[8px] text-slate-500 uppercase">Total Purchases</span>
+            <strong id="admin-store-sales-lbl" class="text-lg font-black text-white block">0 sales</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-1">
+            <span class="block text-[8px] text-slate-500 uppercase">Catalog Products</span>
+            <strong id="admin-store-count-lbl" class="text-lg font-black text-cyan-400 block">0 Items</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl text-center space-y-1">
+            <span class="block text-[8px] text-slate-500 uppercase">Open Support</span>
+            <strong id="admin-store-tickets-lbl" class="text-lg font-black text-amber-500 block">0 tickets</strong>
+          </div>
+        </div>
+
+        <!-- Double Column Area -->
+        <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          
+          <!-- Column 1: Add New Product Form -->
+          <div class="xl:col-span-2 bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 font-mono text-xs">
+            <span class="block text-[10px] font-black uppercase text-white tracking-wider border-b border-slate-800 pb-2">
+              <i class="fa-solid fa-plus-circle text-cyan-400"></i> Add New Product to Catalog
+            </span>
+            <form id="admin-add-product-form" class="space-y-3.5">
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Unique Product ID</label>
+                <input type="text" id="admin-prod-id" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500" placeholder="e.g. prod-canva-agency" required />
+              </div>
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Product Title</label>
+                <input type="text" id="admin-prod-title" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500" placeholder="e.g. Agency Promos Pack" required />
+              </div>
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Product Category</label>
+                <select id="admin-prod-category" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500 cursor-pointer">
+                  <option value="web-templates">🌐 Web Templates</option>
+                  <option value="sheets-trackers">📊 Excel & Sheets</option>
+                  <option value="design-assets">🎨 Design Assets</option>
+                  <option value="ebooks-guides">📚 Ebooks & Guides</option>
+                </select>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Price Amount (৳)</label>
+                <input type="number" step="1" min="5" id="admin-prod-price" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500" placeholder="e.g. 250" required />
+              </div>
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Secure Filename / Path</label>
+                <input type="text" id="admin-prod-filepath" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500" placeholder="e.g. templates_canva_pro.zip" required />
+              </div>
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[8px] uppercase font-bold">Description Summary</label>
+                <textarea id="admin-prod-desc" rows="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-white outline-none focus:border-cyan-500 placeholder-slate-700" placeholder="Briefly detail what is included in this digital asset pack..."></textarea>
+              </div>
+              <button type="submit" class="w-full bg-gradient-to-r from-cyan-600 to-indigo-600 hover:brightness-110 text-white font-bold py-2.5 rounded-xl uppercase tracking-wider text-[9px] cursor-pointer transition active:scale-95">Save Product to DB</button>
+            </form>
+          </div>
+
+          <!-- Column 2: Manage Active Catalog Products -->
+          <div class="xl:col-span-3 bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 font-mono text-xs">
+            <span class="block text-[10px] font-black uppercase text-white tracking-wider border-b border-slate-800 pb-2">
+              <i class="fa-solid fa-layer-group text-cyan-400"></i> Active Catalog Assets
+            </span>
+            <div id="admin-store-catalog-list" class="space-y-2.5 max-h-[420px] overflow-y-auto pr-1 scrollbar-thin">
+              <!-- Populated dynamically -->
+              <div class="text-[9px] text-slate-500 text-center py-16">Loading store inventory...</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Helpdesk Ticket Responses Panel -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 font-mono text-xs">
+          <span class="block text-[10px] font-black uppercase text-white tracking-wider border-b border-slate-800 pb-2 flex justify-between items-center">
+            <span><i class="fa-solid fa-headset text-indigo-400 animate-pulse"></i> Customer Helpdesk Tickets Queue</span>
+            <button id="admin-refresh-tickets-btn" class="bg-slate-950 text-slate-400 px-2 py-0.5 rounded text-[7px] uppercase cursor-pointer hover:text-white transition">Refresh Queue</button>
+          </span>
+          <div id="admin-store-tickets-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1 scrollbar-thin">
+            <!-- Populated dynamically -->
+            <div class="text-[9px] text-slate-500 text-center py-12">No active store support tickets.</div>
+          </div>
         </div>
       </div>
 

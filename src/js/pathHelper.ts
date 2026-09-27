@@ -69,5 +69,23 @@ export const PathHelper = {
     const base = this.getBasePath();
     const fullBase = base.endsWith('/') ? base : `${base}/`;
     return window.location.origin + fullBase;
+  },
+
+  /**
+   * Get the central API Base URL for backend communications
+   */
+  getApiBaseUrl(): string {
+    // @ts-ignore
+    const envApi = import.meta.env.VITE_API_BASE_URL;
+    if (envApi) {
+      // Ensure trailing slash
+      return envApi.endsWith('/') ? envApi : `${envApi}/`;
+    }
+    // Handle local development fallback
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.port === '3000') {
+      return `${window.location.protocol}//${window.location.hostname}:3000/api/`;
+    }
+    // Production relative fallback
+    return '/api/';
   }
 };

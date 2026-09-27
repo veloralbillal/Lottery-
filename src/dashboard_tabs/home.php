@@ -146,17 +146,17 @@
       <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-teal-500 via-emerald-400 to-cyan-300 text-slate-950 flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(20,184,166,0.45)] border border-teal-200/60 group-hover:scale-110 transition duration-200">
         <i class="fa-solid fa-users text-[11px]"></i>
       </div>
-      <span class="text-[9.5px] font-black text-white block truncate group-hover:text-teal-300 transition">Group Lottery</span>
-      <span class="text-[7px] text-teal-400 font-mono font-bold mt-0.5 bg-teal-950/60 px-1.5 py-0.2 rounded border border-teal-500/20">Split Cost</span>
+      <span class="text-[9.5px] font-black text-white block truncate group-hover:text-teal-300 transition">LuckyBox Group</span>
+      <span class="text-[7px] text-teal-400 font-mono font-bold mt-0.5 bg-teal-950/60 px-1.5 py-0.2 rounded border border-teal-500/20">Lottery</span>
     </button>
 
-    <!-- Coming Soon 1 -->
-    <button id="home-coming-soon-1-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#0e1220] to-[#080a14] border border-slate-800/60 p-2 sm:p-2.5 rounded-2xl opacity-60 text-center group transition active:scale-95 shadow-md">
-      <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-700/60 text-slate-400 flex items-center justify-center mb-1.5">
-        <i class="fa-solid fa-gift text-[10px]"></i>
+    <!-- Shop Button -->
+    <button id="home-shop-sub-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 via-sky-400 to-indigo-400 text-slate-950 flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(6,182,212,0.45)] border border-cyan-200/60 group-hover:scale-110 transition duration-200">
+        <i class="fa-solid fa-store text-[11px]"></i>
       </div>
-      <span class="text-[9.5px] font-bold text-slate-400 block truncate">Lucky Box</span>
-      <span class="text-[7px] text-slate-500 font-mono mt-0.5">Locked</span>
+      <span class="text-[9.5px] font-black text-white block truncate group-hover:text-cyan-300 transition">LuckyBox Shop</span>
+      <span class="text-[7px] text-cyan-400 font-mono font-bold mt-0.5 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/20">Lucky Shop</span>
     </button>
 
     <!-- Coming Soon 2 -->

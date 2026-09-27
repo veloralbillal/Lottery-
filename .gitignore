@@ -6,3 +6,10 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Decoupled PHP Backend Security
+backend/.env
+backend/config/*.local.php
+/private_storage/
+/uploads/private/
+/logs/
