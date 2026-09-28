@@ -196,19 +196,8 @@ export const SyncVaultModule = {
   },
 
   initSyncClickHandlers() {
-    // Add event delegation or direct click triggers for sync badges
-    document.addEventListener("click", (e) => {
-      if (!e.target || typeof e.target.closest !== "function") return;
-      const trigger = e.target.closest(".cloud-sync-debug-trigger");
-      if (trigger) {
-        e.preventDefault();
-        const modal = document.getElementById("cloud-sync-modal");
-        if (modal) {
-          modal.classList.remove("hidden");
-          this.updateDiagnosticsModal(this.syncState || 'synced');
-        }
-      }
-    });
+    // Cloud sync runs silently and automatically in real-time in the background.
+    // Sync badges are read-only status indicators without sensitive DB/user-pool popups.
 
     // Add click trigger for manual refresh button inside the diagnostics modal
     const manualBtn = document.getElementById("sync-manual-trigger-btn");

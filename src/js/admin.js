@@ -5379,6 +5379,16 @@ export const AdminModule = {
     if (favPreview) {
       favPreview.src = s.faviconUrl || PathHelper.resolveUrl("logo.jpg");
     }
+
+    // Populate App Custom Logo preview and input
+    const logoPreview = document.getElementById("admin-current-logo-preview");
+    if (logoPreview) {
+      logoPreview.src = s.appLogoUrl || s.shareImageUrl || PathHelper.resolveUrl("logo.jpg");
+    }
+    const logoUrlInput = document.getElementById("sys-app-logo-url-input");
+    if (logoUrlInput) {
+      logoUrlInput.value = s.appLogoUrl || "";
+    }
   },
 
   bindSEOAndFaviconControls() {
@@ -5397,9 +5407,8 @@ export const AdminModule = {
         
         this.db.settings = s;
         this.saveDB();
-        this.showToast("SEO & Social Share settings updated successfully!", "success");
+        this.showToast("SEO & Social Share settings updated & synced to cloud!", "success");
         
-        // Dynamically update head if on same session
         if (window.app && typeof window.app.applyDynamicSEO === "function") {
           window.app.applyDynamicSEO();
         }
@@ -5415,6 +5424,40 @@ export const AdminModule = {
       });
     }
 
+    // Canvas image compression helper to keep favicon & logo uploads lightweight & fast
+    const compressImage = (file, maxDim = 512, quality = 0.85) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            let width = img.width;
+            let height = img.height;
+            if (width > maxDim || height > maxDim) {
+              if (width > height) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+              } else {
+                width = Math.round((width * maxDim) / height);
+                height = maxDim;
+              }
+            }
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, 0, 0, width, height);
+            const format = file.type === "image/png" ? "image/png" : "image/jpeg";
+            resolve(canvas.toDataURL(format, quality));
+          };
+          img.onerror = () => resolve(e.target.result);
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    };
+
     // Favicon Upload
     const favInput = document.getElementById("sys-favicon-upload");
     const favStatus = document.getElementById("favicon-upload-status");
@@ -5423,53 +5466,51 @@ export const AdminModule = {
         const file = e.target.files[0];
         if (!file) return;
 
-        // Security check
         const allowedTypes = ["image/png", "image/jpeg", "image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon", "image/webp"];
         if (!allowedTypes.includes(file.type)) {
           this.showToast("Invalid file type. Supported: PNG, JPG, SVG, ICO, WEBP.", "error");
           return;
         }
 
-        if (file.size > 2 * 1024 * 1024) { // 2MB limit
-          this.showToast("File too large. Max 2MB allowed.", "error");
+        if (file.size > 5 * 1024 * 1024) {
+          this.showToast("File too large. Max 5MB allowed.", "error");
           return;
         }
 
-        favStatus.textContent = "⌛ Processing icon...";
-        favStatus.className = "text-[9px] text-center font-bold text-amber-400 block";
-        favStatus.classList.remove("hidden");
+        if (favStatus) {
+          favStatus.textContent = "⌛ Optimizing & syncing favicon to cloud...";
+          favStatus.className = "text-[9px] text-center font-bold text-amber-400 block";
+          favStatus.classList.remove("hidden");
+        }
 
         try {
-          const reader = new FileReader();
-          reader.onload = (event) => {
-            if (event.target && event.target.result) {
-              const dataUrl = event.target.result;
-              const s = this.db.settings || {};
-              s.faviconUrl = dataUrl;
-              this.db.settings = s;
-              this.saveDB();
+          const dataUrl = await compressImage(file, 256, 0.9);
+          const app = window.app || this;
+          if (!app.db.settings) app.db.settings = {};
+          app.db.settings.faviconUrl = dataUrl;
+          this.db.settings = app.db.settings;
 
-              this.renderSEOAndFaviconSettings();
-              favStatus.textContent = "✅ Favicon updated!";
-              favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
-              this.showToast("Favicon uploaded and set as active!", "success");
+          app.saveDB();
+          if (typeof app.syncToCloud === "function") {
+            app.syncToCloud();
+          }
 
-              if (window.app && typeof window.app.applyDynamicSEO === "function") {
-                window.app.applyDynamicSEO();
-              }
-            }
-          };
-          reader.onerror = (err) => {
-            console.error("Favicon file reading error:", err);
-            favStatus.textContent = "❌ Upload failed.";
-            favStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
-            this.showToast("Failed to read icon file.", "error");
-          };
-          reader.readAsDataURL(file);
+          this.renderSEOAndFaviconSettings();
+          if (favStatus) {
+            favStatus.textContent = "✅ Favicon uploaded & synced live to cloud!";
+            favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+          }
+          this.showToast("Favicon uploaded and synced to user panels!", "success");
+
+          if (typeof app.applyDynamicSEO === "function") {
+            app.applyDynamicSEO();
+          }
         } catch (err) {
           console.error("Favicon upload failed:", err);
-          favStatus.textContent = "❌ Upload failed.";
-          favStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
+          if (favStatus) {
+            favStatus.textContent = "❌ Upload failed.";
+            favStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
+          }
           this.showToast("Failed to upload favicon.", "error");
         }
       });
@@ -5479,15 +5520,123 @@ export const AdminModule = {
     const resetFavBtn = document.getElementById("btn-reset-favicon");
     if (resetFavBtn) {
       resetFavBtn.addEventListener("click", () => {
-        const s = this.db.settings || {};
-        s.faviconUrl = ""; // Reset to default
-        this.db.settings = s;
-        this.saveDB();
+        const app = window.app || this;
+        if (!app.db.settings) app.db.settings = {};
+        app.db.settings.faviconUrl = "";
+        this.db.settings = app.db.settings;
+
+        app.saveDB();
+        if (typeof app.syncToCloud === "function") {
+          app.syncToCloud();
+        }
         this.renderSEOAndFaviconSettings();
-        this.showToast("Favicon reset to system default.", "info");
+        this.showToast("Favicon reset to default.", "info");
         
-        if (window.app && typeof window.app.applyDynamicSEO === "function") {
-          window.app.applyDynamicSEO();
+        if (typeof app.applyDynamicSEO === "function") {
+          app.applyDynamicSEO();
+        }
+      });
+    }
+
+    // Custom App Logo Upload
+    const logoInput = document.getElementById("sys-app-logo-upload");
+    const logoStatus = document.getElementById("app-logo-upload-status");
+    if (logoInput) {
+      logoInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const allowedTypes = ["image/png", "image/jpeg", "image/svg+xml", "image/webp"];
+        if (!allowedTypes.includes(file.type)) {
+          this.showToast("Invalid image type. Supported: PNG, JPG, SVG, WEBP.", "error");
+          return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          this.showToast("File size limit is 5MB.", "error");
+          return;
+        }
+
+        if (logoStatus) {
+          logoStatus.textContent = "⌛ Optimizing & syncing custom logo to cloud...";
+          logoStatus.className = "text-[9px] text-center font-bold text-amber-400 block";
+          logoStatus.classList.remove("hidden");
+        }
+
+        try {
+          const dataUrl = await compressImage(file, 512, 0.9);
+          const app = window.app || this;
+          if (!app.db.settings) app.db.settings = {};
+          app.db.settings.appLogoUrl = dataUrl;
+          this.db.settings = app.db.settings;
+
+          app.saveDB();
+          if (typeof app.syncToCloud === "function") {
+            app.syncToCloud();
+          }
+
+          this.renderSEOAndFaviconSettings();
+          if (logoStatus) {
+            logoStatus.textContent = "✅ Custom App Logo updated & synced!";
+            logoStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+          }
+          this.showToast("Custom App Logo uploaded & synced to all user panels!", "success");
+
+          if (typeof app.applyDynamicSEO === "function") {
+            app.applyDynamicSEO();
+          }
+        } catch (err) {
+          console.error("Logo upload failed:", err);
+          if (logoStatus) {
+            logoStatus.textContent = "❌ Upload failed.";
+            logoStatus.className = "text-[9px] text-center font-bold text-rose-400 block";
+          }
+        }
+      });
+    }
+
+    // Save Custom Logo URL
+    const saveLogoUrlBtn = document.getElementById("btn-save-logo-url");
+    if (saveLogoUrlBtn) {
+      saveLogoUrlBtn.addEventListener("click", () => {
+        const urlInput = document.getElementById("sys-app-logo-url-input");
+        const url = urlInput ? urlInput.value.trim() : "";
+        const app = window.app || this;
+        if (!app.db.settings) app.db.settings = {};
+        app.db.settings.appLogoUrl = url;
+        this.db.settings = app.db.settings;
+
+        app.saveDB();
+        if (typeof app.syncToCloud === "function") {
+          app.syncToCloud();
+        }
+        this.renderSEOAndFaviconSettings();
+        this.showToast(url ? "Custom Logo URL saved and synced to cloud!" : "Custom Logo cleared.", "success");
+
+        if (typeof app.applyDynamicSEO === "function") {
+          app.applyDynamicSEO();
+        }
+      });
+    }
+
+    // Reset Custom App Logo
+    const resetLogoBtn = document.getElementById("btn-reset-app-logo");
+    if (resetLogoBtn) {
+      resetLogoBtn.addEventListener("click", () => {
+        const app = window.app || this;
+        if (!app.db.settings) app.db.settings = {};
+        app.db.settings.appLogoUrl = "";
+        this.db.settings = app.db.settings;
+
+        app.saveDB();
+        if (typeof app.syncToCloud === "function") {
+          app.syncToCloud();
+        }
+        this.renderSEOAndFaviconSettings();
+        this.showToast("Custom App Logo reset to default clover icon.", "info");
+
+        if (typeof app.applyDynamicSEO === "function") {
+          app.applyDynamicSEO();
         }
       });
     }
