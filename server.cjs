@@ -1438,10 +1438,42 @@ function getDefaultLegalPages(settings) {
 }
 
 // server.ts
+var import_multer = __toESM(require("multer"), 1);
+var import_jszip = __toESM(require("jszip"), 1);
+var import_fs2 = __toESM(require("fs"), 1);
 var app = (0, import_express.default)();
 var PORT = Number(process.env.PORT) || 3e3;
 var currentDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
 app.use(import_express.default.json());
+var upload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage() });
+app.post("/api/plugins/upload", upload.single("pluginFile"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
+  try {
+    const zip = new import_jszip.default();
+    const content = await zip.loadAsync(req.file.buffer);
+    const pluginDir = import_path2.default.join(currentDir, "public", "plugins", req.file.originalname.replace(".zip", ""));
+    if (!import_fs2.default.existsSync(pluginDir)) import_fs2.default.mkdirSync(pluginDir, { recursive: true });
+    let filesCount = 0;
+    for (const [filename, file] of Object.entries(content.files)) {
+      if (file.dir) continue;
+      const dest = import_path2.default.join(pluginDir, filename);
+      const parentDir = import_path2.default.dirname(dest);
+      if (!import_fs2.default.existsSync(parentDir)) import_fs2.default.mkdirSync(parentDir, { recursive: true });
+      const data = await file.async("nodebuffer");
+      import_fs2.default.writeFileSync(dest, data);
+      filesCount++;
+    }
+    return res.json({
+      success: true,
+      message: "Plugin uploaded and extracted successfully.",
+      pluginName: req.file.originalname.replace(".zip", ""),
+      filesCount
+    });
+  } catch (err) {
+    console.error("[Plugin Upload Error]", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 app.post("/api/send-reset-email", (req, res) => {
   return handleSendResetEmail(req, res);
 });

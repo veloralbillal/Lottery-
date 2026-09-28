@@ -2065,7 +2065,7 @@ export class ChatProfileSystem {
         const responderMessage = {
           id: "msg_" + Math.random().toString(36).substring(2, 10),
           fromId: senderPeer.id || senderPeer.username,
-          toId: this.app.currentUser.id || this.app.currentUser.username,
+          toId: this.app.currentUser ? (this.app.currentUser.id || this.app.currentUser.username) : "admin",
           type: "text",
           content: randomReplyText,
           timestamp: new Date().toISOString(),

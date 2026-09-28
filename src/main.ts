@@ -19,7 +19,7 @@ import { TicketsTab } from "./dashboard_tabs/tickets.js";
 import { WalletTab } from "./dashboard_tabs/wallet.js";
 import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
-import { StoreTab } from "./dashboard_tabs/store.js";
+import { StoreTab } from "./store/StoreManager.js";
 import { SettingsTab } from "./dashboard_tabs/settings.js";
 import { CustomizerStore } from "./dashboard_tabs/customizer_store.js";
 import { ReferTab } from "./dashboard_tabs/share_earn.js";
@@ -41,6 +41,33 @@ import { LiveDrawRevealEngine } from "./js/liveDrawRevealEngine.js";
 import { LegalPoliciesManager } from "./js/legalPoliciesManager.js";
 import { GlobalCache, debounce, throttle, paginate, LazyTabManager, VisibilityLifecycle } from "./js/performanceOptimizer.js";
 import { PathHelper } from "./js/pathHelper.js";
+
+// Expose global handlers immediately to prevent ReferenceErrors during early UI interactions
+if (typeof window !== "undefined") {
+  (window as any).switchTab = (tab: 'signin' | 'register') => {
+    const formContainer = document.getElementById("formContainer");
+    const signInTab = document.getElementById("signInTab");
+    const registerTab = document.getElementById("registerTab");
+
+    if (tab === 'register') {
+      formContainer?.classList.add("show-register");
+      registerTab?.classList.add("active");
+      signInTab?.classList.remove("active");
+
+      const pendingRef = localStorage.getItem("lw_pending_ref");
+      const regReferInput = document.getElementById("reg-refer-by") as HTMLInputElement | null;
+      if (pendingRef && regReferInput && !regReferInput.value) {
+        regReferInput.value = pendingRef;
+      }
+    } else {
+      formContainer?.classList.remove("show-register");
+      signInTab?.classList.add("active");
+      registerTab?.classList.remove("active");
+    }
+    if ((window as any).generateMathCaptcha) (window as any).generateMathCaptcha();
+  };
+  (window as any).switchAuthTab = (mode: 'login' | 'register') => (window as any).switchTab(mode === 'login' ? 'signin' : 'register');
+}
 
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
@@ -181,11 +208,28 @@ export class StateManager {
       this.adminPlayersSearchQuery = "";
       this.communityFilter = "recent";
       this.genTier = "free"; // 'free' or 'premium' for standby code generator
+      this.currentStoreSubTab = "dashboard"; // dashboard, product, payment, category, ticket, etc.
+      this.currentStoreSubTab = "dashboard"; // dashboard, product, payment, category, ticket, etc.
 
       // Load or bootstrap database
       this.initDatabase();
       this.loadSession();
       this.startAutoDrawChecker();
+
+      // Capture invite URL referral code parameter on app startup
+      try {
+        if (typeof window !== "undefined" && window.location.search) {
+          const params = new URLSearchParams(window.location.search);
+          const refCode = params.get("ref") || params.get("invite") || params.get("referral") || params.get("code") || params.get("recruiter");
+          if (refCode && refCode.trim()) {
+            const cleanRef = refCode.trim().toLowerCase();
+            localStorage.setItem("lw_pending_ref", cleanRef);
+            console.log("Captured invite URL referral code:", cleanRef);
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to parse invite URL params:", e);
+      }
 
       this.syncState = 'synced';
       this.lastSyncedTime = new Date();
@@ -885,7 +929,7 @@ export class StateManager {
     } else if (cleanId === "tab-profile" && !LazyTabManager.isModuleInitialized("ProfileTab")) {
       LazyTabManager.markModuleInitialized("ProfileTab");
       ProfileTab.init(this);
-    } else if (cleanId === "tab-store" && !LazyTabManager.isModuleInitialized("StoreTab")) {
+    } else if ((cleanId === "tab-store" || cleanId.startsWith("tab-store-")) && !LazyTabManager.isModuleInitialized("StoreTab")) {
       LazyTabManager.markModuleInitialized("StoreTab");
       StoreTab.init(this);
     } else if (cleanId === "tab-settings" && !LazyTabManager.isModuleInitialized("SettingsTab")) {
@@ -1646,6 +1690,14 @@ export class StateManager {
     if (this.currentUser.role === "agent" || this.currentUser.role === "subagent") {
       return "agent";
     }
+    if (this.currentTab === "store" || this.currentTab.startsWith("store-")) {
+      if (this.db?.settings?.shopEnabled === false) {
+        this.showToast("Digital Shop is currently disabled by Admin.", "warning");
+        this.currentTab = "home";
+        return "dashboard";
+      }
+      return "store";
+    }
     return "dashboard";
   }
 
@@ -1692,7 +1744,7 @@ export class StateManager {
 
       const view = this.getAppView();
       // Safe screen hiding
-      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent"];
+      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent", "screen-store"];
       screens.forEach(s => {
         const el = document.getElementById(s);
         if (el) el.classList.add("hidden");
@@ -1707,6 +1759,13 @@ export class StateManager {
         if (el) el.classList.remove("hidden");
         this.renderAuth();
       } else if (view === "dashboard") {
+        const isShopStaff = this.currentUser && (this.currentUser.role === "shop_admin" || this.currentUser.role === "shop_manager" || this.currentUser.role === "shop_owner");
+        if (isShopStaff) {
+          this.isAdminMode = true;
+          this.currentAdminTab = "store";
+          this.render();
+          return;
+        }
         const el = document.getElementById("screen-dashboard");
         if (el) el.classList.remove("hidden");
         this.renderDashboard();
@@ -1724,6 +1783,19 @@ export class StateManager {
         if (agentScreen) {
           agentScreen.classList.remove("hidden");
           this.renderAgentWorkspace();
+        }
+      } else if (view === "store") {
+        const storeScreen = document.getElementById("screen-store");
+        if (storeScreen) {
+          storeScreen.classList.remove("hidden");
+          
+          // Ensure Shop module is initialized (shell injected, events bound)
+          if (!LazyTabManager.isModuleInitialized("StoreTab")) {
+            LazyTabManager.markModuleInitialized("StoreTab");
+            StoreTab.init(this);
+          }
+          
+          StoreTab.render(this);
         }
       }
     } catch (renderError) {
@@ -1814,11 +1886,6 @@ export class StateManager {
     document.getElementById("tab-history")?.classList.add("hidden");
     document.getElementById("tab-profile")?.classList.add("hidden");
     document.getElementById("tab-edit-profile")?.classList.add("hidden");
-    document.getElementById("tab-store")?.classList.add("hidden");
-    document.getElementById("tab-store-cart")?.classList.add("hidden");
-    document.getElementById("tab-store-details")?.classList.add("hidden");
-    document.getElementById("tab-store-checkout")?.classList.add("hidden");
-    document.getElementById("tab-store-support")?.classList.add("hidden");
     document.getElementById("tab-settings")?.classList.add("hidden");
     document.getElementById("tab-customizer")?.classList.add("hidden");
     document.getElementById("tab-jackpot")?.classList.add("hidden");
@@ -1900,8 +1967,8 @@ export class StateManager {
       StoreTab.renderDetailsPage(this);
     } else if (this.currentTab === "store-checkout") {
       StoreTab.renderCheckoutPage(this);
-    } else if (this.currentTab === "store-support") {
-      StoreTab.renderSupportPage(this);
+    } else if (this.currentTab === "store-profile") {
+      StoreTab.renderProfilePage();
     } else if (this.currentTab === "edit-profile") {
       this.renderEditProfileTab();
     } else if (this.currentTab === "settings") {
@@ -1964,6 +2031,15 @@ export class StateManager {
     HomeTab.render(this);
     this.renderHomeBannerSliders();
     this.startLiveActivityTicker();
+
+    const homeAdminBtn = document.getElementById("home-admin-sub-btn");
+    if (homeAdminBtn) {
+      if (this.isAdminMode || (this.currentUser && this.currentUser.role === "moderator")) {
+        homeAdminBtn.classList.remove("hidden");
+      } else {
+        homeAdminBtn.classList.add("hidden");
+      }
+    }
   }
 
   renderEventsTab() {
@@ -4464,6 +4540,25 @@ Object.assign(StateManager.prototype, GoogleDriveModule);
 // Initialize Application State on DOM load
 function initApplicationLoader() {
   if (window.appInstance) return; // Prevent double initialization
+  // Expose global handlers immediately to prevent ReferenceErrors during early UI interactions
+  (window as any).switchTab = (tab: 'signin' | 'register') => {
+    const formContainer = document.getElementById("formContainer");
+    const signInTab = document.getElementById("signInTab");
+    const registerTab = document.getElementById("registerTab");
+
+    if (tab === 'register') {
+      formContainer?.classList.add("show-register");
+      registerTab?.classList.add("active");
+      signInTab?.classList.remove("active");
+    } else {
+      formContainer?.classList.remove("show-register");
+      signInTab?.classList.add("active");
+      registerTab?.classList.remove("active");
+    }
+    if ((window as any).generateMathCaptcha) (window as any).generateMathCaptcha();
+  };
+  (window as any).switchAuthTab = (mode: 'login' | 'register') => (window as any).switchTab(mode === 'login' ? 'signin' : 'register');
+
   const app = new StateManager();
   window.appInstance = app; // expose global handler helper
   (window as any).app = app;
@@ -5195,25 +5290,7 @@ function initApplicationLoader() {
   (window as any).validateRegCaptcha = validateRegCaptcha;
   (window as any).solveCaptcha = solveCaptcha;
 
-  const switchTab = (tab: 'signin' | 'register') => {
-    const formContainer = document.getElementById("formContainer");
-    const signInTab = document.getElementById("signInTab");
-    const registerTab = document.getElementById("registerTab");
-
-    if (tab === 'register') {
-      formContainer?.classList.add("show-register");
-      registerTab?.classList.add("active");
-      signInTab?.classList.remove("active");
-    } else {
-      formContainer?.classList.remove("show-register");
-      signInTab?.classList.add("active");
-      registerTab?.classList.remove("active");
-    }
-    generateMathCaptcha();
-  };
-
-  (window as any).switchTab = switchTab;
-  (window as any).switchAuthTab = (mode: 'login' | 'register') => switchTab(mode === 'login' ? 'signin' : 'register');
+  // Global handlers (already assigned at top of loader)
 
   // 1-Click Fast Registration
   (window as any).handleOneClickReg = async () => {
@@ -5428,7 +5505,7 @@ function initApplicationLoader() {
       app.showToast(`Welcome! ${bonusMsg}Logged in as @${user.username}`, "success");
       app.render();
     } else {
-      switchTab('signin');
+      (window as any).switchTab('signin');
     }
   };
 
@@ -5772,17 +5849,12 @@ function initApplicationLoader() {
 
         // 2. Fetch Client IP and Check blocklists
         const clientIp = await app.getClientIP();
-        const bannedIPs = app.db.settings.bannedIPs || [];
+        if (!app.db.settings.bannedIPs) app.db.settings.bannedIPs = [];
+        const bannedIPs = app.db.settings.bannedIPs;
+
         if (bannedIPs.includes(clientIp)) {
-          if (isLocalOrPreview) {
-            // Auto unban developers/testers to prevent locking themselves out during development
-            app.db.settings.bannedIPs = bannedIPs.filter(ip => ip !== clientIp);
-            app.saveDB();
-            app.showToast("Local IP un-banned automatically in development mode.", "info");
-          } else {
-            app.showToast(`SECURITY DETECTED: This computer's network IP (${clientIp}) has been banned!`, "error");
-            return;
-          }
+          app.showToast(`SECURITY DETECTED: This network IP (${clientIp}) is blacklisted! Registration denied.`, "error");
+          return;
         }
 
         if (app.db.settings.vpnBlockEnabled !== false && !isLocalOrPreview) {
@@ -5791,43 +5863,37 @@ function initApplicationLoader() {
             app.showToast(`SECURITY ALERT: VPN / Proxy detected. Sign-up is strictly forbidden. Disable VPN!`, "error");
             return;
           }
-        } else if (isLocalOrPreview && app.db.settings.vpnBlockEnabled !== false) {
-          console.log("Bypassed VPN check in local/preview development mode");
         }
 
-        // 3. Multi-Account Restriction (1 account per IP)
-        if (app.db.settings.ipPreventionEnabled !== false && !isLocalOrPreview) {
+        // 3. Multi-Account Restriction (1 account per IP address)
+        if (app.db.settings.ipPreventionEnabled !== false) {
           const ipExists = app.db.users.some(u => u.registeredIp === clientIp);
           if (ipExists) {
             // Automatically blacklist this duplicate IP address
-            if (!app.db.settings.bannedIPs) app.db.settings.bannedIPs = [];
             if (!app.db.settings.bannedIPs.includes(clientIp)) {
               app.db.settings.bannedIPs.push(clientIp);
             }
-            // Suspend any user sharing this IP too to lock down the clones
-            app.db.users.forEach(u => {
-              if (u.registeredIp === clientIp) u.status = "blocked";
-            });
             app.saveDB();
 
             app.triggerAdminSecurityAlert("duplicate_ip", `Auto-Ban: Blocked multi-account registration attempt by @${userVal} on duplicate IP ${clientIp}. Network IP has been automatically blacklisted.`);
             app.showToast(`CLONE DETECTED: Multi-Account Block. Only 1 account is permitted per network (IP: ${clientIp})! IP has been auto-banned.`, "error");
             return;
           }
-        } else if (isLocalOrPreview && app.db.settings.ipPreventionEnabled !== false) {
-          app.showToast("Multi-account duplicate IP block bypassed in development mode.", "info");
         }
 
-        // 4. Referral Code verification
+        // 4. Referral Code verification (from form input or invite URL pending ref)
+        const storedPendingRef = localStorage.getItem("lw_pending_ref") || "";
+        const effectiveReferBy = (referByVal || storedPendingRef).trim().toLowerCase();
+
         let referrer = null;
-        if (referByVal) {
-          referrer = app.db.users.find(u => u.username.toLowerCase() === referByVal.toLowerCase());
+        if (effectiveReferBy) {
+          referrer = app.db.users.find(u => u.username.toLowerCase() === effectiveReferBy);
           if (!referrer) {
-            app.showToast(`Referral Code Error: Recruiter username @${referByVal} does not exist.`, "error");
+            app.showToast(`Referral Code Error: Recruiter username @${effectiveReferBy} does not exist.`, "error");
             return;
           }
           if (referrer.username.toLowerCase() === userVal.toLowerCase()) {
-            app.showToast(`Referral Code Error: Self-referring is strictly prohibited under terms!`, "error");
+            app.showToast(`Referral Code Error: Self-referring is strictly prohibited!`, "error");
             return;
           }
         }
@@ -5846,7 +5912,7 @@ function initApplicationLoader() {
           region: regionVal,
           phone: phoneVal,
           registeredIp: clientIp,
-          referredBy: referByVal || null,
+          referredBy: referrer ? referrer.username : (effectiveReferBy || null),
           referralBonusAwarded: false,
           balance: welcomeBonus,
           totDeposit: 0,
@@ -5874,14 +5940,12 @@ function initApplicationLoader() {
 
         app.showToast("Creating your secure account...", "info");
 
-        // Use new unified registration method
+        // Use unified registration method
         const result = await app.signUpUser(userData);
 
         if (result.success) {
           app.showToast(`Registration Successful! Welcome to Lottery Winner.`, "success");
           
-          // Profile will be loaded by onAuthStateChanged listener
-          // Also add to local db for legacy compatibility
           const newUser = { ...userData, id: result.uid, uid: result.uid };
           delete newUser.password;
           app.db.users.push(newUser);
@@ -5897,6 +5961,23 @@ function initApplicationLoader() {
               date: new Date().toISOString(),
               status: "completed"
             });
+          }
+
+          // Instantly update recruiter stats and referred list
+          if (referrer) {
+            referrer.refersCount = (referrer.refersCount || 0) + 1;
+            if (!referrer.referredUsers) referrer.referredUsers = [];
+            if (!referrer.referredUsers.some((ru: any) => ru.username?.toLowerCase() === newUser.username.toLowerCase())) {
+              referrer.referredUsers.unshift({
+                id: newUser.id,
+                username: newUser.username,
+                date: new Date().toISOString(),
+                region: newUser.region || "Dhaka",
+                status: "registered"
+              });
+            }
+            localStorage.removeItem("lw_pending_ref");
+            console.log(`Referral count updated for recruiter @${referrer.username}: Total ${referrer.refersCount}`);
           }
 
           app.saveDB();
@@ -6171,8 +6252,23 @@ function initApplicationLoader() {
 
     const homeShopBtn = e.target.closest("#home-shop-sub-btn");
     if (homeShopBtn) {
+      if (app.db.settings?.shopEnabled === false) {
+        app.showToast("Digital Shop is currently disabled by Admin.", "warning");
+        return;
+      }
       app.currentTab = "store";
       app.render();
+      return;
+    }
+
+    const homeAdminBtn = e.target.closest("#home-admin-sub-btn");
+    if (homeAdminBtn) {
+      if (app.isAdminMode || (app.currentUser && app.currentUser.role === "moderator")) {
+        app.isAdminMode = true;
+        app.render();
+      } else {
+        app.showToast("Unauthorized access restricted.", "error");
+      }
       return;
     }
 
@@ -7196,11 +7292,28 @@ function initApplicationLoader() {
     saveAppConfigForm.addEventListener("submit", (e) => {
       e.preventDefault();
 
-    app.db.settings.maintenanceMode = document.getElementById("sys-maintenance-toggle").checked;
-    app.db.settings.maintenanceMessage = document.getElementById("sys-maintenance-msg").value.trim();
-    app.db.settings.forceUpdateLink = document.getElementById("sys-app-url").value.trim();
-    app.db.settings.appVersion = document.getElementById("sys-app-ver").value.trim();
-    app.db.settings.adminPass = document.getElementById("sys-admin-p").value.trim();
+    app.db.settings.maintenanceMode = (document.getElementById("sys-maintenance-toggle") as HTMLInputElement)?.checked ?? false;
+    
+    const shopEnabledInput = document.getElementById("sys-shop-enabled-toggle") as HTMLInputElement | null;
+    if (shopEnabledInput) {
+      app.db.settings.shopEnabled = shopEnabledInput.checked;
+    }
+    const shopMaintInput = document.getElementById("sys-shop-maintenance-toggle") as HTMLInputElement | null;
+    if (shopMaintInput) {
+      app.db.settings.shopMaintenanceMode = shopMaintInput.checked;
+      if (!app.db.shopSettings) app.db.shopSettings = {};
+      app.db.shopSettings.isOpen = !shopMaintInput.checked;
+      app.db.shopSettings.isMaintenance = shopMaintInput.checked;
+    }
+
+    const maintMsgInput = document.getElementById("sys-maintenance-msg") as HTMLInputElement | null;
+    if (maintMsgInput) app.db.settings.maintenanceMessage = maintMsgInput.value.trim();
+    const appUrlInput = document.getElementById("sys-app-url") as HTMLInputElement | null;
+    if (appUrlInput) app.db.settings.forceUpdateLink = appUrlInput.value.trim();
+    const appVerInput = document.getElementById("sys-app-ver") as HTMLInputElement | null;
+    if (appVerInput) app.db.settings.appVersion = appVerInput.value.trim();
+    const adminPassInput = document.getElementById("sys-admin-p") as HTMLInputElement | null;
+    if (adminPassInput) app.db.settings.adminPass = adminPassInput.value.trim();
 
     // Save Deposit Match Booster parameters
     app.db.settings.depBonusPercent = parseFloat(document.getElementById("sys-dep-boost-percent").value);

@@ -1,0 +1,53 @@
+/* LuckyBox Shop - Standalone App Styles */
+
+#screen-store {
+  --store-bg: #0a0a0c;
+  --store-card: #16161a;
+  --store-accent: #06b6d4; /* cyan-500 */
+  --store-text: #f1f5f9;
+  --store-text-muted: #64748b;
+}
+
+#screen-store .custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+#screen-store .custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+#screen-store .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(6, 182, 212, 0.2);
+  border-radius: 10px;
+}
+
+#screen-store .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(6, 182, 212, 0.4);
+}
+
+/* Animations specific to store */
+@keyframes storeFadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.store-animate-fade {
+  animation: storeFadeIn 0.4s ease-out forwards;
+}
+
+/* Store Navigation Active States */
+.store-nav-btn.active div {
+  background-color: var(--store-accent);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.4);
+  color: #0f172a;
+}
+
+.store-nav-btn.active span {
+  color: var(--store-accent);
+  opacity: 1;
+}
+
+.store-nav-btn.active i {
+  color: #0f172a;
+}
