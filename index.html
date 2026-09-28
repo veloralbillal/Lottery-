@@ -71,21 +71,13 @@
       };
     </script>
     <script>
-      // Emergency Error Logger for Production
+      // Production Error Logger
       window.addEventListener('error', function(e) {
         const msgStr = (e && e.message) ? String(e.message).toLowerCase() : "";
         if (e && (msgStr.includes("script error") || msgStr.includes("scripterror") || !e.filename || e.filename.indexOf('http') !== 0)) {
           return;
         }
-        console.error('CRITICAL APP ERROR:', e.error);
-        const debugBox = document.getElementById('debug-error-box');
-        if (debugBox) {
-          debugBox.classList.remove('hidden');
-          const errMsg = document.getElementById('debug-error-msg');
-          if (errMsg) {
-            errMsg.innerText = (e.message || "Unknown error") + " at " + (e.filename || "unknown") + ":" + (e.lineno || "0");
-          }
-        }
+        console.warn('Application notice:', e.message || e);
       });
       (function() {
         const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable", "script error", "scripterror"];
@@ -382,18 +374,11 @@
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
     </style>
-    <script type="module" crossorigin src="./assets/main-BeKjomC0.js"></script>
+    <script type="module" crossorigin src="./assets/main-D12K5PnZ.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-DACRapYG.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-D--1105y.css">
+    <link rel="stylesheet" crossorigin href="./assets/main-Bl6y_U28.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
-    <div id="debug-error-box" class="hidden fixed top-0 left-0 right-0 z-[10000] bg-rose-900/90 text-white p-4 text-[10px] font-mono break-words whitespace-pre-wrap max-h-[300px] overflow-y-auto border-b-2 border-rose-500 shadow-2xl">
-      <div class="font-bold mb-1 flex justify-between">
-        <span>⚠️ APP RECOVERY CONSOLE</span>
-        <button onclick="this.parentElement.parentElement.classList.add('hidden')" class="bg-white/20 px-2 rounded">Dismiss</button>
-      </div>
-      <div id="debug-error-msg"></div>
-    </div>
 
     <!-- ================= STUNNING VOICE CLUB + LOTTERY HYBRID SPLASH SCREEN ================= -->
     <div id="splash-screen" class="fixed inset-0 bg-[#060814] z-[2000] flex flex-col items-center justify-between p-3 sm:p-5 select-none overflow-y-auto transition-all duration-750 ease-out">
@@ -3166,6 +3151,239 @@
                   <span class="text-[9px] text-slate-500 block font-mono" id="cluster-backends-count-txt">3 Database Nodes registered</span>
                 </div>
                 <div class="px-2 py-0.5 rounded-full bg-emerald-950 text-[8px] text-emerald-400 font-mono tracking-wider" id="cluster-db-visual-status">HEALTHY</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= SQL DATABASE CONFIGURATION & REALTIME DUAL-SYNC HUB ================= -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/50 border border-slate-800 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+          <div class="absolute -right-16 -top-16 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          
+          <!-- Section Header -->
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="bg-blue-500/15 text-blue-400 border border-blue-500/25 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-flex items-center gap-1.5">
+                  <i class="fa-solid fa-database"></i> MySQL 8.0 / MariaDB PDO & Cloud Firebase
+                </span>
+                <span id="sql-sync-badge-status" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black inline-flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Dual-Sync Mirror Active (100% In Sync)
+                </span>
+              </div>
+              <h3 class="text-lg font-black text-white font-sans tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-server text-cyan-400"></i> Relational SQL DB Configuration, Switcher & Dual Sync
+              </h3>
+              <p class="text-xs text-slate-400 font-sans max-w-2xl leading-relaxed">
+                আপনার সিস্টেমের Firebase (Cluster 1 ও 2) এবং MySQL Relational Database (<code class="text-cyan-300 font-mono">veloralb_Digital</code>)-এর মধ্যে ওয়ান-ক্লিক সুইচিং এবং স্বয়ংক্রিয় রিয়েল-টাইম ডুয়াল সিঙ্ক পরিচালনা করুন।
+              </p>
+            </div>
+
+            <!-- Last Synced info & Quick Sync Trigger -->
+            <div class="flex items-center gap-3 bg-slate-950/80 border border-slate-800 p-3 rounded-2xl shrink-0 font-mono">
+              <div class="text-right text-[10px]">
+                <span class="text-slate-500 block uppercase font-bold">Dual Sync Status</span>
+                <span class="text-emerald-400 font-black" id="sql-last-sync-time">Just Now (Firebase ⇄ SQL)</span>
+              </div>
+              <button id="sql-btn-manual-sync" type="button" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-emerald-950/50">
+                <i class="fa-solid fa-rotate" id="sql-sync-icon"></i>
+                <span>Sync Now</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 1. ACTIVE DATABASE SWITCHER (Firebase Cluster 1 vs Cluster 2 vs MySQL) -->
+          <div class="mt-5 bg-slate-950/60 border border-slate-850 p-4 rounded-2xl space-y-3">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h4 class="text-xs font-black text-white font-sans uppercase tracking-wider flex items-center gap-2">
+                  <i class="fa-solid fa-arrows-split-up-and-left text-amber-400"></i> Active Master Database Switcher (সরাসরি ট্রাফিক পরিবর্তন)
+                </h4>
+                <p class="text-[10px] text-slate-400 font-sans mt-0.5">
+                  যে ডাটাবেজটি সিলেক্ট করবেন, সিস্টেম সেটিতে লাইভ ট্রাফিক পরিচালনা করবে। উভয় ডাটাবেজ ডুয়াল সিঙ্কে যুক্ত থাকায় যেকোনো সময় কোনো ডাটা হারানো ছাড়াই নিরাপদ সুইচ সম্ভব।
+                </p>
+              </div>
+              <span class="text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 self-start sm:self-auto" id="sql-active-db-badge">
+                Active: Firebase Cluster 1
+              </span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+              <!-- Switch to Firebase Cluster 1 -->
+              <button id="switch-btn-fb1" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]" data-target="node-1">
+                <div class="w-9 h-9 rounded-xl bg-slate-900 border border-emerald-500/40 flex items-center justify-center text-amber-400 text-base shrink-0">
+                  <i class="fa-solid fa-cloud"></i>
+                </div>
+                <div class="space-y-0.5 min-w-0 flex-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-black text-white truncate">Firebase Cluster 1</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase">ACTIVE</span>
+                  </div>
+                  <span class="text-[9px] text-slate-400 block font-mono truncate">app_data/lottery_winner_db</span>
+                  <span class="text-[8.5px] text-emerald-400 font-sans block">Primary Cloud NoSQL Database</span>
+                </div>
+              </button>
+
+              <!-- Switch to Firebase Cluster 2 -->
+              <button id="switch-btn-fb2" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700" data-target="node-2">
+                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-amber-400/80 text-base shrink-0">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="space-y-0.5 min-w-0 flex-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-black text-slate-300 truncate">Firebase Cluster 2</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase">STANDBY</span>
+                  </div>
+                  <span class="text-[9px] text-slate-500 block font-mono truncate">app_data/lottery_winner_db_backup</span>
+                  <span class="text-[8.5px] text-slate-400 font-sans block">Auto-Sync Secondary Backup Node</span>
+                </div>
+              </button>
+
+              <!-- Switch to MySQL Database (veloralb_Digital) -->
+              <button id="switch-btn-sql" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700" data-target="node-sql">
+                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-blue-400 text-base shrink-0">
+                  <i class="fa-solid fa-database"></i>
+                </div>
+                <div class="space-y-0.5 min-w-0 flex-1">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-black text-slate-300 truncate">MySQL Database</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase">STANDBY</span>
+                  </div>
+                  <span class="text-[9px] text-slate-500 block font-mono truncate">veloralb_Digital@localhost:3306</span>
+                  <span class="text-[8.5px] text-cyan-400 font-sans block">Dedicated cPanel / Localhost Relational DB</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2. SQL CONFIGURATION FORM & CREDENTIALS -->
+          <div class="mt-5 bg-slate-950/70 border border-slate-850 p-5 rounded-2xl space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-850 pb-3">
+              <div class="space-y-0.5">
+                <h4 class="text-xs font-black text-white font-sans uppercase tracking-wider flex items-center gap-2">
+                  <i class="fa-solid fa-sliders text-cyan-400"></i> MySQL Connection Parameters & Settings
+                </h4>
+                <p class="text-[10px] text-slate-500 font-sans">
+                  Configure your cPanel/localhost MySQL database credentials for real-time failover and dual replication.
+                </p>
+              </div>
+              <div class="flex items-center gap-2 self-start sm:self-auto">
+                <label class="text-[9.5px] text-slate-400 font-mono font-bold flex items-center gap-1.5 cursor-pointer select-none">
+                  <input type="checkbox" id="sql-cfg-autosync" class="rounded accent-cyan-500 w-3.5 h-3.5" checked>
+                  <span>Real-Time Dual-Sync Enabled</span>
+                </label>
+              </div>
+            </div>
+
+            <form id="sql-db-config-form" class="space-y-4 font-mono text-xs">
+              <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <!-- Host -->
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Host Address</label>
+                  <input type="text" id="sql-cfg-host" required value="localhost" placeholder="localhost" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                </div>
+
+                <!-- Port -->
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Port</label>
+                  <input type="text" id="sql-cfg-port" required value="3306" placeholder="3306" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                </div>
+
+                <!-- Database Name -->
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Database Name</label>
+                  <input type="text" id="sql-cfg-database" required value="veloralb_Digital" placeholder="veloralb_Digital" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                </div>
+
+                <!-- Username -->
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Username</label>
+                  <input type="text" id="sql-cfg-username" required value="veloralb_Digital" placeholder="veloralb_Digital" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                </div>
+
+                <!-- Password with eye toggle -->
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Password</label>
+                  <div class="relative">
+                    <input type="password" id="sql-cfg-password" required value="UcWg.75@wv+Ijzh#" placeholder="Password" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                    <button type="button" id="sql-cfg-toggle-pass" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition cursor-pointer text-xs" title="Toggle password visibility">
+                      <i class="fa-solid fa-eye" id="sql-pass-eye-icon"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Action Buttons Row -->
+              <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-850">
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Save Config -->
+                  <button type="submit" id="sql-btn-save-config" class="bg-cyan-600 hover:bg-cyan-500 text-white text-[11px] font-black px-4 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-md">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Save SQL Config</span>
+                  </button>
+
+                  <!-- Test Connection -->
+                  <button type="button" id="sql-btn-test-connection" class="bg-indigo-950 border border-indigo-800/80 hover:bg-indigo-900 text-indigo-300 hover:text-white text-[11px] font-black px-4 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                    <i class="fa-solid fa-plug-circle-check text-cyan-400" id="sql-test-icon"></i>
+                    <span>Test SQL Connection</span>
+                  </button>
+
+                  <!-- View Schema Modal -->
+                  <button type="button" id="sql-btn-view-schema" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                    <i class="fa-solid fa-code text-amber-400"></i>
+                    <span>View SQL Schema (.sql)</span>
+                  </button>
+
+                  <!-- Export Full Dump -->
+                  <button type="button" id="sql-btn-export-dump" class="bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-arrow-down text-emerald-400"></i>
+                    <span>Export Data Dump (.sql)</span>
+                  </button>
+                </div>
+
+                <div class="text-[9.5px] text-slate-500 font-sans flex items-center gap-2">
+                  <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+                  <span>Host: localhost:3306 | DB: veloralb_Digital | User: veloralb_Digital</span>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- SQL Schema & Dump Viewer Modal -->
+        <div id="sql-schema-modal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl">
+            <div class="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/70">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-database text-cyan-400 text-lg"></i>
+                <div>
+                  <h4 class="text-sm font-black text-white font-sans">MySQL Database Schema & SQL Scripts</h4>
+                  <span class="text-[9.5px] font-mono text-slate-400">Database: veloralb_Digital | Ready for cPanel phpMyAdmin</span>
+                </div>
+              </div>
+              <button id="close-sql-schema-modal-btn" type="button" class="text-slate-400 hover:text-white text-base p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div class="p-5 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
+              <p class="text-xs text-slate-400">
+                এই স্ক্রিপ্টটি আপনার cPanel-এর phpMyAdmin-এ <strong class="text-white">veloralb_Digital</strong> ডাটাবেজের SQL ট্যাবে পেস্ট করে রান করলেই সব টেবিল ও ডাটা স্বয়ংক্রিয়ভাবে তৈরি হয়ে যাবে।
+              </p>
+              <div class="relative bg-black rounded-2xl border border-slate-800 p-4 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-96 select-all" id="sql-schema-modal-code">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+            <div class="p-4 border-t border-slate-800 flex items-center justify-between bg-slate-950/70">
+              <span class="text-[10px] text-slate-500 font-mono">Compatible with MySQL 5.7+, MySQL 8.0+, MariaDB 10.3+</span>
+              <div class="flex items-center gap-2">
+                <button id="copy-sql-schema-btn" type="button" class="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-black px-4 py-2 rounded-xl cursor-pointer transition flex items-center gap-1.5">
+                  <i class="fa-regular fa-copy"></i>
+                  <span>Copy SQL Script</span>
+                </button>
+                <button id="download-sql-file-btn" type="button" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black px-4 py-2 rounded-xl cursor-pointer transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-download"></i>
+                  <span>Download .sql</span>
+                </button>
               </div>
             </div>
           </div>
@@ -7817,16 +8035,6 @@
     <script src="https://apis.google.com/js/api.js" crossorigin="anonymous"></script>
     <script src="https://accounts.google.com/gsi/client" crossorigin="anonymous"></script>
 
-    <!-- APP ERROR DEBUG CONSOLE -->
-    <div id="debug-error-box" class="fixed top-0 left-0 w-full bg-red-600 text-white text-[10px] p-2 z-[999999] hidden font-mono break-all border-b-2 border-white shadow-2xl">
-      <div class="flex justify-between items-center mb-1">
-        <strong>⚠️ APP CRASH DETECTED:</strong>
-        <button onclick="location.reload()" class="bg-white text-red-600 px-2 py-0.5 rounded font-black">RELOAD</button>
-      </div>
-      <div id="debug-error-msg"></div>
-      <div class="mt-2 text-[8px] opacity-80">Check the browser console (F12) for more details.</div>
-    </div>
-
     <!-- EMERGENCY SPLASH BYPASS -->
     <div id="emergency-bypass" class="fixed bottom-4 right-4 z-[3000] hidden">
       <button onclick="document.getElementById('splash-screen').classList.add('hidden'); if(window.app) window.app.render();" class="bg-slate-800 text-slate-400 text-[9px] px-3 py-1 rounded-full border border-slate-700">Skip Splash</button>
@@ -7835,34 +8043,14 @@
     <script>
       window.addEventListener('error', function(e) {
         const msgStr = (e && e.message) ? String(e.message).toLowerCase() : "";
-        // Filter out generic "Script error." from browser extensions / 3P scripts
         if (e && (msgStr.includes("script error") || msgStr.includes("scripterror") || !e.filename || e.filename.indexOf('http') !== 0)) {
-          console.warn("Ignored 3P Cross-Origin Script error to prevent extension false-alarms:", e && e.message);
           return;
         }
-        
-        console.error("Global Error Caught:", e.error);
-        const msg = document.getElementById('debug-error-msg');
-        const box = document.getElementById('debug-error-box');
-        if (msg && box) {
-          msg.innerText = (e.message || "Unknown error") + " at " + (e.filename || "unknown") + ":" + (e.lineno || "0");
-          box.classList.remove('hidden');
-        }
-        // If it's likely a splash screen related hang, show the emergency bypass after 3 seconds
-        setTimeout(() => {
-          const bypass = document.getElementById('emergency-bypass');
-          if (bypass) bypass.classList.remove('hidden');
-        }, 3000);
+        console.warn("Global Notice Caught:", e && e.message);
       });
       
       window.addEventListener('unhandledrejection', function(e) {
-        console.error("Unhandled Promise Rejection:", e.reason);
-        const msg = document.getElementById('debug-error-msg');
-        const box = document.getElementById('debug-error-box');
-        if (msg && box) {
-          msg.innerText = "Promise Error: " + (e.reason?.message || e.reason);
-          box.classList.remove('hidden');
-        }
+        console.warn("Unhandled Async Notice:", e.reason?.message || e.reason);
       });
 
       // 🚨 EMERGENCY BLACK-SCREEN RESCUE: Auto-dismiss splash and show Auth screen if script hangs

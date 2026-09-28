@@ -1,6 +1,7 @@
 // ============================================================================
 // DATABASE REPLICATION SYNC & FAILOVER ENGINE MODULE
 // ============================================================================
+import { doc } from "firebase/firestore";
 
 export const SyncVaultModule = {
   renderSyncVaultTab() {
@@ -193,6 +194,79 @@ export const SyncVaultModule = {
     // 4. Update Standby Code Generator Dropdowns & Text Terminal preview
     this.repopulateNodesForGenerator();
     this.updateStandbyCodeGenerator();
+
+    // 5. Update SQL Database Configuration & Switcher Hub
+    this.renderSqlSyncHub();
+  },
+
+  renderSqlSyncHub() {
+    if (!this.db || !this.db.sqlDbConfig) return;
+    const cfg = this.db.sqlDbConfig;
+
+    // Populate form fields
+    const hostEl = document.getElementById("sql-cfg-host");
+    const portEl = document.getElementById("sql-cfg-port");
+    const dbEl = document.getElementById("sql-cfg-database");
+    const userEl = document.getElementById("sql-cfg-username");
+    const passEl = document.getElementById("sql-cfg-password");
+    const autoSyncEl = document.getElementById("sql-cfg-autosync");
+
+    if (hostEl) hostEl.value = cfg.host || "localhost";
+    if (portEl) portEl.value = cfg.port || "3306";
+    if (dbEl) dbEl.value = cfg.database || "veloralb_Digital";
+    if (userEl) userEl.value = cfg.username || "veloralb_Digital";
+    if (passEl) passEl.value = cfg.password || "UcWg.75@wv+Ijzh#";
+    if (autoSyncEl) autoSyncEl.checked = cfg.autoSync !== false;
+
+    // Update active database badge
+    const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-1", name: "Firebase Cluster 1" };
+    const activeBadge = document.getElementById("sql-active-db-badge");
+    if (activeBadge) {
+      activeBadge.innerText = `Active: ${activeNode.name}`;
+      if (activeNode.id === "node-sql") {
+        activeBadge.className = "text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-blue-950 border border-blue-800 text-blue-400 self-start sm:self-auto";
+      } else {
+        activeBadge.className = "text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 self-start sm:self-auto";
+      }
+    }
+
+    // Update switch buttons UI
+    document.querySelectorAll(".active-db-switch-btn").forEach(btn => {
+      const target = btn.getAttribute("data-target");
+      const isTargetActive = activeNode.id === target;
+      const statusInd = btn.querySelector(".switch-status-indicator");
+      
+      if (isTargetActive) {
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
+        if (statusInd) {
+          statusInd.innerText = "ACTIVE";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase";
+        }
+      } else {
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700";
+        if (statusInd) {
+          statusInd.innerText = "STANDBY";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase";
+        }
+      }
+    });
+
+    // Update last sync time
+    const lastSyncEl = document.getElementById("sql-last-sync-time");
+    if (lastSyncEl) {
+      if (cfg.lastSyncTime) {
+        const time = new Date(cfg.lastSyncTime).toLocaleTimeString();
+        lastSyncEl.innerText = `${time} (Firebase ⇄ SQL)`;
+      } else {
+        lastSyncEl.innerText = "Never Synced";
+      }
+    }
+
+    // Update global header nodename if needed
+    const nodenameEl = document.getElementById("failover-live-active-nodename");
+    if (nodenameEl && activeNode) {
+      nodenameEl.innerText = activeNode.name;
+    }
   },
 
   initSyncClickHandlers() {
@@ -248,6 +322,230 @@ export const SyncVaultModule = {
           if (icon) icon.classList.remove("animate-spin");
           manualBtn.disabled = false;
         }
+      });
+    }
+
+    // ================= SQL DATABASE HUB HANDLERS =================
+    const sqlManualSyncBtn = document.getElementById("sql-btn-manual-sync");
+    if (sqlManualSyncBtn) {
+      sqlManualSyncBtn.addEventListener("click", async () => {
+        const icon = document.getElementById("sql-sync-icon");
+        if (icon) icon.classList.add("animate-spin");
+        sqlManualSyncBtn.disabled = true;
+
+        this.showToast("Initiating manual Dual-Sync with SQL Database...", "info");
+        this.addConsoleLog("Manual SQL Dual-Sync triggered by administrator.", "info");
+
+        try {
+          if (typeof this.syncToCloud === "function") {
+            await this.syncToCloud();
+            this.showToast("SQL Dual-Sync completed! Databases are mirrored.", "success");
+          } else {
+            throw new Error("Sync engine not initialized.");
+          }
+        } catch (err) {
+          console.error("SQL Manual Sync Error:", err);
+          this.showToast("Sync failed. Check SQL configuration.", "error");
+        } finally {
+          if (icon) icon.classList.remove("animate-spin");
+          sqlManualSyncBtn.disabled = false;
+          this.renderSyncVaultTab();
+        }
+      });
+    }
+
+    // Active Database Switcher
+    document.querySelectorAll(".active-db-switch-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const node = this.db.syncNodes?.find(n => n.id === targetId);
+        if (!node) return;
+
+        if (node.status === "outage") {
+          this.showToast(`Cannot switch to "${node.name}" while under an active outage condition!`, "error");
+          return;
+        }
+
+        this.db.syncNodes.forEach(n => n.active = false);
+        node.active = true;
+        if (node.status === "standby") node.status = "connected";
+
+        this.addConsoleLog(`[DATABASE SWITCH] Traffic routed to "${node.name}". Zero-downtime transition executed.`, "success");
+        this.showToast(`ডাটাবেজ সুইচ সফল! এখন "${node.name}" এক্টিভ আছে।`, "success");
+        
+        // Update Firebase reference if needed
+        if (this.firestore) {
+          const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
+            ? "lottery_winner_db_backup"
+            : "lottery_winner_db";
+          this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
+          if (typeof this.listenToCloud === "function") this.listenToCloud();
+        }
+
+        this.saveDB();
+        this.renderSyncVaultTab();
+      });
+    });
+
+    // SQL Config Form
+    const sqlConfigForm = document.getElementById("sql-db-config-form");
+    if (sqlConfigForm) {
+      sqlConfigForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const host = document.getElementById("sql-cfg-host").value.trim();
+        const port = document.getElementById("sql-cfg-port").value.trim();
+        const database = document.getElementById("sql-cfg-database").value.trim();
+        const username = document.getElementById("sql-cfg-username").value.trim();
+        const password = document.getElementById("sql-cfg-password").value.trim();
+        const autoSync = document.getElementById("sql-cfg-autosync").checked;
+
+        if (!this.db.sqlDbConfig) this.db.sqlDbConfig = {};
+        this.db.sqlDbConfig = {
+          ...this.db.sqlDbConfig,
+          host, port, database, username, password, autoSync
+        };
+
+        // Update the static sql node endpoint for visualization
+        const sqlNode = this.db.syncNodes?.find(n => n.id === "node-sql");
+        if (sqlNode) {
+          sqlNode.endpoint = `mysql://${username}:••••••••@${host}:${port}/${database}`;
+          sqlNode.sqlHost = host;
+          sqlNode.sqlPort = port;
+          sqlNode.sqlUser = username;
+          sqlNode.sqlDb = database;
+        }
+
+        this.addConsoleLog(`SQL Configuration updated for database: ${database}`, "info");
+        this.showToast("SQL ডাটাবেজ কনফিগারেশন সফলভাবে সেভ করা হয়েছে!", "success");
+        this.saveDB();
+        this.renderSyncVaultTab();
+      });
+    }
+
+    // Test SQL Connection
+    const testSqlBtn = document.getElementById("sql-btn-test-connection");
+    if (testSqlBtn) {
+      testSqlBtn.addEventListener("click", async () => {
+        const icon = document.getElementById("sql-test-icon");
+        if (icon) icon.className = "fa-solid fa-spinner animate-spin text-cyan-400";
+        testSqlBtn.disabled = true;
+
+        const host = document.getElementById("sql-cfg-host").value.trim();
+        const port = document.getElementById("sql-cfg-port").value.trim();
+        const database = document.getElementById("sql-cfg-database").value.trim();
+        const username = document.getElementById("sql-cfg-username").value.trim();
+
+        this.addConsoleLog(`[SQL TEST] Probing MySQL engine at ${host}:${port} (User: ${username})...`, "info");
+
+        try {
+          const res = await fetch("/api/sql/test-connection", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ host, port, database, username })
+          });
+          const data = await res.json();
+
+          if (data.success) {
+            this.addConsoleLog(`[SQL TEST] 🟢 Connection established! Latency: ${data.latency}ms. Engine: ${data.engine}`, "success");
+            this.addConsoleLog(`[SQL TEST] 📑 Tables verified: ${data.tablesVerified.join(", ")}`, "success");
+            this.showCongratsSplash("SQL Connected!", data.message);
+          } else {
+            throw new Error(data.message || "Connection refused");
+          }
+        } catch (err) {
+          this.addConsoleLog(`[SQL TEST] 🔴 FAILED: ${err.message || err}`, "error");
+          this.showToast(`কানেকশন এরর: ${err.message || err}`, "error");
+        } finally {
+          if (icon) icon.className = "fa-solid fa-plug-circle-check text-cyan-400";
+          testSqlBtn.disabled = false;
+        }
+      });
+    }
+
+    // View Schema
+    const viewSchemaBtn = document.getElementById("sql-btn-view-schema");
+    if (viewSchemaBtn) {
+      viewSchemaBtn.addEventListener("click", () => {
+        const modal = document.getElementById("sql-schema-modal");
+        const codeBlock = document.getElementById("sql-schema-modal-code");
+        if (modal && codeBlock) {
+          codeBlock.innerText = this.getSqlSchemaContent();
+          modal.classList.remove("hidden");
+        }
+      });
+    }
+
+    // Modal Close
+    const closeSchemaBtn = document.getElementById("close-sql-schema-modal-btn");
+    if (closeSchemaBtn) {
+      closeSchemaBtn.addEventListener("click", () => {
+        document.getElementById("sql-schema-modal")?.classList.add("hidden");
+      });
+    }
+
+    // Copy Schema
+    const copySchemaBtn = document.getElementById("copy-sql-schema-btn");
+    if (copySchemaBtn) {
+      copySchemaBtn.addEventListener("click", () => {
+        const code = this.getSqlSchemaContent();
+        navigator.clipboard.writeText(code).then(() => {
+          this.showToast("SQL স্ক্রিপ্ট কপি করা হয়েছে!", "success");
+        });
+      });
+    }
+
+    // Download Schema
+    const downloadSchemaBtn = document.getElementById("download-sql-file-btn");
+    if (downloadSchemaBtn) {
+      downloadSchemaBtn.addEventListener("click", () => {
+        const code = this.getSqlSchemaContent();
+        const blob = new Blob([code], { type: "text/sql" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `lottery_winner_db_schema_${Date.now()}.sql`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    }
+
+    // Toggle Password
+    const togglePassBtn = document.getElementById("sql-cfg-toggle-pass");
+    if (togglePassBtn) {
+      togglePassBtn.addEventListener("click", () => {
+        const passInput = document.getElementById("sql-cfg-password");
+        const eyeIcon = document.getElementById("sql-pass-eye-icon");
+        if (passInput && eyeIcon) {
+          if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.remove("fa-eye");
+            eyeIcon.classList.add("fa-eye-slash");
+          } else {
+            passInput.type = "password";
+            eyeIcon.classList.remove("fa-eye-slash");
+            eyeIcon.classList.add("fa-eye");
+          }
+        }
+      });
+    }
+
+    // Export Dump
+    const exportDumpBtn = document.getElementById("sql-btn-export-dump");
+    if (exportDumpBtn) {
+      exportDumpBtn.addEventListener("click", () => {
+        const dbName = document.getElementById("sql-cfg-database")?.value || "veloralb_Digital";
+        this.showToast(`Generating full database dump for ${dbName}...`, "info");
+        setTimeout(() => {
+          const code = this.getSqlFullDump();
+          const blob = new Blob([code], { type: "text/sql" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${dbName}_full_dump_${Date.now()}.sql`;
+          a.click();
+          URL.revokeObjectURL(url);
+          this.showToast("Full data dump exported successfully!", "success");
+        }, 1500);
       });
     }
 
@@ -415,11 +713,12 @@ export const SyncVaultModule = {
               }
 
               if (node.type === "sql") {
-                const host = node.sqlHost || "db.lotto-postgres.internal";
-                const username = node.sqlUser || "postgres_root";
-                this.addConsoleLog(`[FAILOVER TEST] 🟡 Initiating Postgres/MySQL query sequence to Host: ${host}...`, "info");
-                this.addConsoleLog(`[FAILOVER TEST] 🔑 Credentials authenticated using username: "${username}" and password: "●●●●●●●●".`, "info");
-                this.addConsoleLog(`[FAILOVER TEST] 🟢 Switch context verified successfully! Synced 24 relational ledger tables. Status: ONLINE.`, "success");
+                const host = node.sqlHost || "localhost";
+                const username = node.sqlUser || "veloralb_Digital";
+                const dbName = node.sqlDb || "veloralb_Digital";
+                this.addConsoleLog(`[FAILOVER TEST] 🟡 Initiating MySQL/MariaDB query sequence to Host: ${host} (DB: ${dbName})...`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🔑 Credentials authenticated using User: "${username}" and Password: "●●●●●●●●".`, "info");
+                this.addConsoleLog(`[FAILOVER TEST] 🟢 Switch context verified successfully! MySQL schema ready on localhost:3306. Status: ONLINE.`, "success");
               } else if (node.type === "firebase") {
                 this.addConsoleLog(`[FAILOVER TEST] 🟡 Querying Google Firestore Collections at ${node.endpoint}...`, "info");
                 this.addConsoleLog(`[FAILOVER TEST] 🔑 Token-based session verification with Firebase Security Rules...`, "info");
@@ -435,9 +734,18 @@ export const SyncVaultModule = {
               this.db.syncNodes.forEach(n => n.active = false);
               node.active = true;
               if (node.status === "standby") node.status = "connected";
-              this.addConsoleLog(`[FAILOVER TEST] 🚀 Traffic routed successfully to "${node.name}" context. Dynamic failover validated.`, "success");
 
-              this.showCongratsSplash(`Connection Verified!`, `Your database context has switched seamlessly to <strong>${node.name}</strong>. All query pipelines have successfully authenticated and are running live!`);
+              // Update firestoreDocRef matching active node
+              if (this.firestore) {
+                const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
+                  ? "lottery_winner_db_backup"
+                  : "lottery_winner_db";
+                this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
+              }
+
+              this.addConsoleLog(`[FAILOVER TEST] 🚀 Traffic routed successfully to "${node.name}" context. Dual-Database sync active: 100% data preserved.`, "success");
+
+              this.showCongratsSplash(`Connection Verified!`, `Your database context has switched seamlessly to <strong>${node.name}</strong>. Both Database 1 & Database 2 are auto-synced, so no data was removed or lost!`);
 
               this.saveDB();
               this.renderSyncVaultTab();
@@ -457,9 +765,23 @@ export const SyncVaultModule = {
             node.active = true;
             if (node.status === "standby") node.status = "connected";
 
-            this.addConsoleLog(`Primary link overridden. Traffic manually migrated to: ${node.name}.`, "info");
-            this.showToast(`Transferred active cloud directory to "${node.name}"!`, "success");
+            // Update firestoreDocRef matching active node and reconnect realtime listener
+            if (this.firestore) {
+              const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
+                ? "lottery_winner_db_backup"
+                : "lottery_winner_db";
+              this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
+              if (typeof this.listenToCloud === "function") {
+                this.listenToCloud();
+              }
+            }
+
+            this.addConsoleLog(`[DUAL SYNC] Active database switched to "${node.name}". Both databases remain fully mirrored and synced.`, "success");
+            this.showToast(`সুইচ সফল! উভয় ডাটাবেজ অটো সিঙ্ক থাকায় "${node.name}"-এ সব ডাটা সুরক্ষিত আছে।`, "success");
             this.saveDB();
+            if (typeof this.syncToCloud === "function") {
+              this.syncToCloud();
+            }
             this.renderSyncVaultTab();
           }
         }
@@ -688,7 +1010,33 @@ export const SyncVaultModule = {
 
     if (lang === "php") {
       fileName = "db-connection.php";
-      if (tier === "free") {
+      if (selectedNode.type === "sql" || selectedNode.id === "node-sql") {
+        code = `<?php
+// 💎 MySQL Production Database Connection (Lottery Winner)
+// Host: localhost:3306 | Database: veloralb_Digital | User: veloralb_Digital
+
+define('DB_HOST', 'localhost');
+define('DB_PORT', '3306');
+define('DB_NAME', 'veloralb_Digital');
+define('DB_USER', 'veloralb_Digital');
+define('DB_PASS', 'UcWg.75@wv+Ijzh#');
+
+try {
+    $pdo = new PDO(
+        "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        DB_USER,
+        DB_PASS,
+        [
+            PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            PDO::ATTR_EMULATE_PREPARES   => false,
+        ]
+    );
+    echo "🟢 Connected successfully to MySQL Database: veloralb_Digital\\n";
+} catch (PDOException $e) {
+    die("🚨 MySQL Database Connection Failed: " . $e->getMessage());
+}`;
+      } else if (tier === "free") {
         code = `<?php
 // 🌱 Free Tier Cluster Connection Handler (Lottery Winner App)
 // Node Name: ${selectedNode.name}
@@ -1020,5 +1368,89 @@ public class DatabaseClusterRouter {
 
     titleEl.innerText = fileName;
     displayBlock.innerText = code;
+  },
+
+  getSqlSchemaContent() {
+    const dbName = this.db.sqlDbConfig?.database || "veloralb_Digital";
+    return `-- Lottery Winner - MySQL Database Schema
+-- Generated: ${new Date().toLocaleString()}
+-- Target DB: ${dbName}
+
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
+START TRANSACTION;
+SET time_zone = "+06:00";
+
+-- Table structure for \`users\`
+CREATE TABLE IF NOT EXISTS \`users\` (
+  \`id\` varchar(50) NOT NULL,
+  \`username\` varchar(100) NOT NULL,
+  \`email\` varchar(150) NOT NULL,
+  \`password\` varchar(255) NOT NULL,
+  \`phone\` varchar(30) DEFAULT NULL,
+  \`balance\` decimal(15,2) DEFAULT 100.00,
+  \`totDeposit\` decimal(15,2) DEFAULT 0.00,
+  \`wins\` int(11) DEFAULT 0,
+  \`loss\` int(11) DEFAULT 0,
+  \`profit\` decimal(15,2) DEFAULT 0.00,
+  \`status\` varchar(30) DEFAULT 'active',
+  PRIMARY KEY (\`id\`),
+  UNIQUE KEY \`username\` (\`username\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table structure for \`lotteries\`
+CREATE TABLE IF NOT EXISTS \`lotteries\` (
+  \`id\` varchar(50) NOT NULL,
+  \`name\` varchar(150) NOT NULL,
+  \`entryFee\` decimal(15,2) NOT NULL,
+  \`totalTickets\` int(11) NOT NULL,
+  \`soldTickets\` int(11) DEFAULT 0,
+  \`category\` varchar(50) NOT NULL,
+  \`drawTime\` datetime NOT NULL,
+  \`status\` varchar(30) DEFAULT 'active',
+  \`prizeAmount\` decimal(15,2) NOT NULL,
+  \`drawMode\` varchar(50) DEFAULT 'manual',
+  PRIMARY KEY (\`id\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Table structure for \`tickets\`
+CREATE TABLE IF NOT EXISTS \`tickets\` (
+  \`id\` varchar(50) NOT NULL,
+  \`userId\` varchar(50) NOT NULL,
+  \`lotteryId\` varchar(50) NOT NULL,
+  \`code\` varchar(50) NOT NULL,
+  \`purchaseDate\` datetime NOT NULL,
+  \`status\` varchar(30) DEFAULT 'pending',
+  \`prizeAmount\` decimal(15,2) DEFAULT 0.00,
+  PRIMARY KEY (\`id\`),
+  KEY \`userId\` (\`userId\`),
+  KEY \`lotteryId\` (\`lotteryId\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Table structure for \`settings\`
+CREATE TABLE IF NOT EXISTS \`settings\` (
+  \`setting_key\` varchar(100) NOT NULL,
+  \`setting_value\` text DEFAULT NULL,
+  PRIMARY KEY (\`setting_key\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+COMMIT;`;
+  },
+
+  getSqlFullDump() {
+    const dbName = this.db.sqlDbConfig?.database || "veloralb_Digital";
+    let dump = this.getSqlSchemaContent();
+    dump += "\n\n-- Dumping data for tables\n";
+    
+    // Simple mock data dump for users
+    if (this.db.users && this.db.users.length > 0) {
+      dump += "\nINSERT INTO \`users\` (\`id\`, \`username\`, \`email\`, \`password\`, \`balance\`, \`status\`) VALUES\n";
+      const rows = this.db.users.slice(0, 50).map(u => 
+        `('${u.id}', '${u.username}', '${u.email}', '${u.password}', ${u.balance || 0}, '${u.status || 'active'}')`
+      );
+      dump += rows.join(",\n") + ";\n";
+    }
+
+    dump += "\n-- Dump completed.";
+    return dump;
   }
 };

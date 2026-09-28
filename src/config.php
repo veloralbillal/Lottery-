@@ -19,12 +19,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Database Connection constants (fallback inputs matching standard defaults)
+// Database Connection constants (configured with user credentials)
 if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
 if (!defined('DB_PORT')) define('DB_PORT', '3306');
-if (!defined('DB_NAME')) define('DB_NAME', 'lottery_winner_db');
-if (!defined('DB_USER')) define('DB_USER', 'root');
-if (!defined('DB_PASS')) define('DB_PASS', '');
+if (!defined('DB_NAME')) define('DB_NAME', 'veloralb_Digital');
+if (!defined('DB_USER')) define('DB_USER', 'veloralb_Digital');
+if (!defined('DB_PASS')) define('DB_PASS', 'UcWg.75@wv+Ijzh#');
 
 try {
     // Shared global PDO connection resource ($conn)

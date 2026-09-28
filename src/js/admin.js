@@ -2298,6 +2298,11 @@ export const AdminModule = {
   },
 
   showToastHub(msg) {
+    const isError = typeof msg === "string" && (msg.toLowerCase().includes("error") || msg.toLowerCase().includes("taken") || msg.toLowerCase().includes("fill") || msg.toLowerCase().includes("failed"));
+    if (typeof this.showToast === "function") {
+      this.showToast(msg, isError ? "error" : "success");
+      return;
+    }
     const toast = document.getElementById("toast-notification");
     const toastMsg = document.getElementById("toast-msg");
     if (toast && toastMsg) {
@@ -2309,7 +2314,7 @@ export const AdminModule = {
         toast.classList.add("translate-y-20", "opacity-0", "pointer-events-none");
       }, 3000);
     } else {
-      alert(msg);
+      console.log("[Hub Notice]", msg);
     }
   },
 
