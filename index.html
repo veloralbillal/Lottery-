@@ -31,6 +31,44 @@
           );
         }
       }());
+
+      /**
+       * Early Core UI Handlers
+       * Defined immediately so inline HTML onclick handlers never throw ReferenceError
+       */
+      window.switchTab = function(tab) {
+        var formContainer = document.getElementById("formContainer");
+        var signInTab = document.getElementById("signInTab");
+        var registerTab = document.getElementById("registerTab");
+
+        if (tab === 'register') {
+          if (formContainer) formContainer.classList.add("show-register");
+          if (registerTab) registerTab.classList.add("active");
+          if (signInTab) signInTab.classList.remove("active");
+        } else {
+          if (formContainer) formContainer.classList.remove("show-register");
+          if (signInTab) signInTab.classList.add("active");
+          if (registerTab) registerTab.classList.remove("active");
+        }
+        if (typeof window.generateMathCaptcha === 'function') {
+          try { window.generateMathCaptcha(); } catch(e) {}
+        }
+      };
+      window.switchAuthTab = function(mode) {
+        window.switchTab(mode === 'login' ? 'signin' : 'register');
+      };
+      window.openBypass = function() {
+        var splash = document.getElementById('splash-screen');
+        var auth = document.getElementById('screen-auth');
+        if (splash) splash.classList.add('hidden');
+        if (auth) auth.classList.remove('hidden');
+      };
+      window.closeModal = function(id) {
+        if (id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        }
+      };
     </script>
     <script>
       // Emergency Error Logger for Production
@@ -120,7 +158,7 @@
     <meta property="og:url" id="og-url" content="" />
     <meta property="og:title" id="og-title" content="Lottery Winner" />
     <meta property="og:description" id="og-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
-    <meta property="og:image" id="og-image" content="/assets/logo-6pkLbpS6.jpg" />
+    <meta property="og:image" id="og-image" content="./assets/logo-6pkLbpS6.jpg" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
@@ -132,10 +170,10 @@
     <link rel="canonical" id="canonical-url" href="" />
 
     <!-- Web App Manifest & Mobile PWA Integration -->
-    <link rel="manifest" href="/assets/manifest-DWSsnWBk.json" />
+    <link rel="manifest" href="./assets/manifest-DWSsnWBk.json" />
     <meta name="theme-color" content="#030712" />
-    <link rel="apple-touch-icon" id="apple-icon" href="/assets/logo-6pkLbpS6.jpg" />
-    <link rel="icon" id="dynamic-favicon" href="/assets/logo-6pkLbpS6.jpg" />
+    <link rel="apple-touch-icon" id="apple-icon" href="./assets/logo-6pkLbpS6.jpg" />
+    <link rel="icon" id="dynamic-favicon" href="./assets/logo-6pkLbpS6.jpg" />
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
@@ -344,9 +382,9 @@
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
     </style>
-    <script type="module" crossorigin src="/assets/main-BeKjomC0.js"></script>
-    <link rel="modulepreload" crossorigin href="/assets/vendor-firebase-DACRapYG.js">
-    <link rel="stylesheet" crossorigin href="/assets/main-D--1105y.css">
+    <script type="module" crossorigin src="./assets/main-BeKjomC0.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-DACRapYG.js">
+    <link rel="stylesheet" crossorigin href="./assets/main-D--1105y.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
     <div id="debug-error-box" class="hidden fixed top-0 left-0 right-0 z-[10000] bg-rose-900/90 text-white p-4 text-[10px] font-mono break-words whitespace-pre-wrap max-h-[300px] overflow-y-auto border-b-2 border-rose-500 shadow-2xl">
@@ -3954,7 +3992,7 @@
             <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center space-y-3">
               <span class="text-[9px] text-slate-500 uppercase font-bold">Current Active Icon</span>
               <div class="w-16 h-16 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden">
-                <img id="admin-current-favicon-preview" src="/assets/logo-6pkLbpS6.jpg" class="w-full h-full object-cover" />
+                <img id="admin-current-favicon-preview" src="./assets/logo-6pkLbpS6.jpg" class="w-full h-full object-cover" />
               </div>
               <button id="btn-reset-favicon" class="text-[9px] text-rose-400 font-bold hover:underline">Reset to Default</button>
             </div>
@@ -3985,7 +4023,7 @@
             <div class="bg-slate-950 border border-slate-800 p-4 rounded-2xl flex flex-col items-center justify-center space-y-3">
               <span class="text-[9px] text-slate-500 uppercase font-bold">Current Active Logo</span>
               <div class="w-16 h-16 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-center overflow-hidden">
-                <img id="admin-current-logo-preview" src="/assets/logo-6pkLbpS6.jpg" class="w-full h-full object-cover" />
+                <img id="admin-current-logo-preview" src="./assets/logo-6pkLbpS6.jpg" class="w-full h-full object-cover" />
               </div>
               <button id="btn-reset-app-logo" class="text-[9px] text-rose-400 font-bold hover:underline cursor-pointer">Reset to Default Icon</button>
             </div>
@@ -5364,7 +5402,7 @@
               
               <div class="bg-slate-950 border border-slate-800 rounded-2xl p-4 flex flex-col items-center text-center space-y-3 relative overflow-hidden shadow-inner">
                 <div class="absolute top-2 right-3 text-[9px] text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-800 font-bold">Auto-Close in 5s</div>
-                <img src="/assets/logo-6pkLbpS6.jpg" class="w-12 h-12 rounded-2xl border-2 border-rose-500/50 shadow-lg object-cover mt-1" alt="App Logo" />
+                <img src="./assets/logo-6pkLbpS6.jpg" class="w-12 h-12 rounded-2xl border-2 border-rose-500/50 shadow-lg object-cover mt-1" alt="App Logo" />
                 <h4 id="sim-splash-title-preview" class="text-xs font-black text-white font-sans max-w-[260px] leading-snug">🏆 CONGRATULATIONS TO OUR TOP WINNER!</h4>
                 <div class="w-full bg-slate-900 border border-slate-800 p-3 rounded-xl flex items-center justify-between text-left text-[10px]">
                   <div class="flex items-center gap-2">
@@ -7846,5 +7884,23 @@
     </script>
 
     <!-- Application script bundle -->
+    <script>
+      // Static Hosting Fallback: if /src/main.ts was not compiled (e.g. uploaded root folder to Apache/cPanel/Nginx host)
+      window.addEventListener('load', function() {
+        if (!window.appInstance && !window.app) {
+          var base = window.APP_BASE || './';
+          var s = document.createElement('script');
+          s.type = 'module';
+          s.src = base + 'assets/main.js';
+          s.onerror = function() {
+            var s2 = document.createElement('script');
+            s2.type = 'module';
+            s2.src = './main.js';
+            document.body.appendChild(s2);
+          };
+          document.body.appendChild(s);
+        }
+      });
+    </script>
   </body>
 </html>
