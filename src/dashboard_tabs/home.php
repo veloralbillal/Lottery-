@@ -159,6 +159,15 @@
       <span class="text-[7px] text-cyan-400 font-mono font-bold mt-0.5 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/20">Lucky Shop</span>
     </button>
 
+    <!-- System Admin Button (Hidden by default, shown for admins in HomeTab.render) -->
+    <button id="home-admin-sub-btn" class="hidden flex flex-col items-center justify-center bg-gradient-to-b from-rose-900/30 via-[#0d1224] to-[#090d1a] border border-rose-500/20 hover:border-rose-500/50 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-600 via-pink-600 to-rose-400 text-white flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(225,29,72,0.45)] border border-rose-200/60 group-hover:scale-110 transition duration-200">
+        <i class="fa-solid fa-user-shield text-[11px]"></i>
+      </div>
+      <span class="text-[9.5px] font-black text-white block truncate group-hover:text-rose-300 transition">System Admin</span>
+      <span class="text-[7px] text-rose-400 font-mono font-bold mt-0.5 bg-rose-950/60 px-1.5 py-0.2 rounded border border-rose-500/20">Control</span>
+    </button>
+
     <!-- Coming Soon 2 -->
     <button id="home-coming-soon-2-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#0e1220] to-[#080a14] border border-slate-800/60 p-2 sm:p-2.5 rounded-2xl opacity-60 text-center group transition active:scale-95 shadow-md">
       <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-700/60 text-slate-400 flex items-center justify-center mb-1.5">

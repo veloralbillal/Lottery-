@@ -5,6 +5,9 @@ import { handleSendResetEmail } from './src/js/apiEmailSender.js';
 import { handleUddoktaPayCheckout, handleUddoktaPayVerify } from './src/js/apiUddoktaPay.js';
 import { handleZiniPayCheckout, handleZiniPayVerify, handleZiniPayWebhook, getBackendFirestore } from './src/js/apiZiniPay.js';
 import { getDefaultLegalPages, sanitizeHTML } from './src/js/legalPolicies.js';
+import multer from 'multer';
+import JSZip from 'jszip';
+import fs from 'fs';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -13,6 +16,42 @@ const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
 // Express middleware to parse json bodies
 app.use(express.json());
+
+const upload = multer({ storage: multer.memoryStorage() });
+
+// Plugin upload route
+app.post('/api/plugins/upload', upload.single('pluginFile'), async (req: Request, res: Response) => {
+    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    
+    try {
+        const zip = new JSZip();
+        const content = await zip.loadAsync(req.file.buffer);
+        const pluginDir = path.join(currentDir, 'public', 'plugins', req.file.originalname.replace('.zip', ''));
+        
+        if (!fs.existsSync(pluginDir)) fs.mkdirSync(pluginDir, { recursive: true });
+        
+        let filesCount = 0;
+        for (const [filename, file] of Object.entries(content.files)) {
+            if (file.dir) continue;
+            const dest = path.join(pluginDir, filename);
+            const parentDir = path.dirname(dest);
+            if (!fs.existsSync(parentDir)) fs.mkdirSync(parentDir, { recursive: true });
+            const data = await file.async('nodebuffer');
+            fs.writeFileSync(dest, data);
+            filesCount++;
+        }
+        
+        return res.json({ 
+            success: true, 
+            message: 'Plugin uploaded and extracted successfully.',
+            pluginName: req.file.originalname.replace('.zip', ''),
+            filesCount
+        });
+    } catch (err: any) {
+        console.error('[Plugin Upload Error]', err);
+        return res.status(500).json({ success: false, message: err.message });
+    }
+});
 
 // API Endpoints
 app.post('/api/send-reset-email', (req: Request, res: Response) => {

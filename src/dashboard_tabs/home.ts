@@ -11,6 +11,15 @@ export class HomeTab {
   static init(appInstance) {
     console.log("Home Tab Module initialized securely.");
     HomeExtensions.init(appInstance);
+
+    // Bind Shop button
+    const shopBtn = document.getElementById("home-shop-sub-btn");
+    if (shopBtn) {
+      shopBtn.onclick = () => {
+        appInstance.currentTab = "store";
+        appInstance.render();
+      };
+    }
   }
 
   static render(appInstance) {

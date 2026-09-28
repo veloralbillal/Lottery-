@@ -673,7 +673,7 @@ export class PaymentGateways {
       }
       if (app?.currentTab) {
         app.currentTab = "profile";
-        app.render?.();
+        if (typeof app.render === "function") app.render();
       }
       return;
     }
@@ -817,7 +817,7 @@ export class PaymentGateways {
       }
       if (app?.currentTab) {
         app.currentTab = "profile";
-        app.render?.();
+        if (typeof app.render === "function") app.render();
       }
       return;
     }
@@ -944,7 +944,7 @@ export class PaymentGateways {
       }
       if (app?.currentTab) {
         app.currentTab = "profile";
-        app.render?.();
+        if (typeof app.render === "function") app.render();
       }
       return;
     }
@@ -1149,10 +1149,12 @@ export class PaymentGateways {
         }
         
         // Refresh local user's balance and reload
-        await app.syncCloud?.loadFromCloud?.();
+        if (app.syncCloud && typeof app.syncCloud.loadFromCloud === "function") {
+          await app.syncCloud.loadFromCloud();
+        }
         this.closeZiniPayModal();
         app.currentTab = "wallet";
-        app.render();
+        if (typeof app.render === "function") app.render();
       } else {
         if (app.showToast) {
           app.showToast("Payment is still pending or not completed yet. Please complete it on the checkout page.", "warning");

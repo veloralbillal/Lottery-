@@ -244,6 +244,53 @@ export function getDefaultDB() {
         date: new Date(Date.now() - 3600000 * 24).toISOString()
       }
     ],
+    products: [
+      {
+        id: "prod-1",
+        title: "Premium Admin Dashboard WordPress Theme",
+        description: "A fully premium, high-speed dashboard theme featuring custom charts, responsive widgets, lottery manager modules, and advanced user roles management.",
+        price: 450.00,
+        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        filePath: "premium_admin_theme_v2.zip",
+        stars: 4.9,
+        sales: 128,
+        productType: "digital",
+        paymentMode: "advance",
+        sizes: "",
+        colors: ""
+      },
+      {
+        id: "prod-2",
+        title: "Elite Excel Automated Accounting Ledger",
+        description: "Advanced accounting sheet for automated ledger inputs, double-entry tracking, real-time profit and loss calculations, and bKash/Nagad reconciliation.",
+        price: 180.00,
+        image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&q=80",
+        category: "sheets-trackers",
+        filePath: "elite_accounting_ledger_2026.xlsx",
+        stars: 4.8,
+        sales: 342,
+        productType: "digital",
+        paymentMode: "advance",
+        sizes: "",
+        colors: ""
+      },
+      {
+        id: "prod-5",
+        title: "Premium Cotton Casual T-Shirt",
+        description: "High quality 100% cotton premium casual t-shirt with stylish print. Available in multiple sizes and colors.",
+        price: 490.00,
+        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=400&q=80",
+        category: "design-assets",
+        filePath: "tshirt_standard",
+        stars: 4.9,
+        sales: 85,
+        productType: "physical",
+        paymentMode: "cod",
+        sizes: "S, M, L, XL, XXL",
+        colors: "Black, Navy, White, Grey"
+      }
+    ],
     settings: {
       mobileAgentBkash: "01799228833",
       mobileAgentNagad: "01855221144",
@@ -263,7 +310,8 @@ export function getDefaultDB() {
       forceUpdateLink: "https://example.com/download/LotteryWinner_v5.2.apk",
       adminPass: "Admin123",
       signupBonusEnabled: true,
-      signupBonus: 50
+      signupBonus: 50,
+      shopEnabled: true
     }
   };
 }

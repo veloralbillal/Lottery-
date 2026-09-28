@@ -17,7 +17,6 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-agent", file: "src/dashboard_tabs/agent.php" },
       { id: "tab-profile", file: "src/dashboard_tabs/profile.php" },
       { id: "tab-edit-profile", file: "src/dashboard_tabs/edit_profile.php" },
-      { id: "tab-store", file: "src/dashboard_tabs/store.php" },
       { id: "tab-settings", file: "src/dashboard_tabs/settings.php" },
       { id: "tab-badge-request", file: "src/dashboard_tabs/badge_request.php" },
       { id: "tab-refer", file: "src/dashboard_tabs/share_earn.php" },
@@ -77,6 +76,22 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
     // 1. Dev mode: Serve .php files and config JSONs
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
+        if (req.url && req.url.startsWith('/api/plugins/upload')) {
+          if (req.method === 'POST') {
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', () => {
+              res.statusCode = 200;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ 
+                success: true, 
+                message: 'Plugin archive received and extracted successfully.' 
+              }));
+            });
+            return;
+          }
+        }
+
         if (req.url && req.url.startsWith('/api/send-reset-email')) {
           if (req.method === 'POST') {
             let body = '';

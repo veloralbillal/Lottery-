@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>LuckyBox Shop - Premium Digital Assets</title>
+    
+    <!-- Dynamic Path Resolver -->
+    <script>
+      (function() {
+        const l = window.location;
+        const isGitHub = l.hostname.includes('github.io');
+        const segments = l.pathname.split('/').filter(Boolean);
+        
+        let base = '/';
+        if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
+          // If on GitHub Pages, we might be at /repo/shop/
+          // We need to determine the base
+          if (segments[segments.length - 1] === 'shop') {
+             base = '/' + segments.slice(0, -1).join('/') + '/';
+          } else {
+             base = '/' + segments[0] + '/';
+          }
+        }
+        window.APP_BASE = base;
+      }());
+    </script>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    
+    <!-- Vite will inject CSS -->
+  </head>
+  <body class="bg-[#0a0a0c] text-slate-100 antialiased overflow-x-hidden select-none">
+    
+    <!-- Mount Point for the Shop -->
+    <div id="screen-store" class="min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col overflow-x-hidden font-sans">
+        <!-- Loader / Initial State -->
+        <div class="flex-grow flex flex-col items-center justify-center space-y-4 animate-pulse">
+            <div class="w-16 h-16 rounded-3xl bg-cyan-500/20 flex items-center justify-center">
+                <i class="fa-solid fa-store text-cyan-400 text-2xl"></i>
+            </div>
+            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Opening LuckyBox Shop...</p>
+        </div>
+    </div>
+
+    <!-- Error Box -->
+    <div id="debug-error-box" class="hidden fixed top-4 left-4 right-4 z-[9999] bg-rose-950/90 border border-rose-500/50 p-4 rounded-2xl shadow-2xl backdrop-blur-md">
+      <div class="flex items-start gap-3">
+        <i class="fa-solid fa-triangle-exclamation text-rose-500 text-lg mt-0.5"></i>
+        <div class="space-y-1">
+          <h3 class="text-xs font-black text-white uppercase tracking-wider">Store Initialization Error</h3>
+          <p id="debug-error-msg" class="text-[10px] text-rose-200 font-mono leading-relaxed"></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Entry Point -->
+    <script type="module" src="/src/store/main-store.ts"></script>
+  </body>
+</html>
