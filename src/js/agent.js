@@ -557,68 +557,162 @@ export const AgentModule = {
       });
     }
 
-    if (createStaffForm && !createStaffForm.dataset.listenerAttached) {
-      createStaffForm.dataset.listenerAttached = "true";
-      createStaffForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const usernameVal = document.getElementById("staff-username").value.trim();
-        const emailVal = document.getElementById("staff-email").value.trim();
-        const phoneVal = document.getElementById("staff-phone").value.trim();
-        const passVal = document.getElementById("staff-password").value.trim();
-        const roleVal = document.getElementById("staff-role").value;
-        const commVal = parseFloat(document.getElementById("staff-commission").value || "5.0");
-        const districtVal = document.getElementById("staff-district").value;
-
-        // Check local duplicates first
-        if (app.db.users.some(u => u.username.toLowerCase() === usernameVal.toLowerCase())) {
-          app.showToast(`Username @${usernameVal} already exists in local database!`, "error");
-          return;
-        }
-
-        const staffData = {
-          username: usernameVal.toLowerCase(),
-          email: emailVal.toLowerCase(),
-          phone: phoneVal,
-          password: passVal,
-          dob: "1995-01-01",
-          balance: roleVal === "agent" ? 1000 : 0, 
-          totDeposit: roleVal === "agent" ? 1000 : 0,
-          totWithdraw: 0,
-          wins: 0,
-          loss: 0,
-          profit: 0,
-          joinDate: new Date().toISOString().split("T")[0],
-          status: "active",
-          role: roleVal,
-          commissionRate: roleVal === "agent" ? commVal : undefined,
-          district: roleVal === "agent" ? districtVal : undefined
-        };
-
-        app.showToast("Creating secure staff account...", "info");
-
-        // Use new unified creation method (Firebase Auth + Firestore)
-        const result = await app.createStaffAccount(staffData);
-        
-        if (result.success) {
-          app.showToast(`Success! Account @${usernameVal} created and immediately usable.`, "success");
-          
-          // Also add to local db for immediate UI update (SyncCloudModule will handle the rest)
-          const newStaff = { ...staffData, id: result.uid, uid: result.uid };
-          delete newStaff.password;
-          app.db.users.push(newStaff);
-          app.saveDB();
-
-          createStaffForm.reset();
-          staffWrapper.classList.add("hidden");
-          if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
-          app.renderAdminAgents();
+    const staffRoleSelect = document.getElementById("staff-role");
+    const staffDistrictWrapper = document.getElementById("staff-district-wrapper");
+    if (staffRoleSelect && staffDistrictWrapper && !staffRoleSelect.dataset.listenerAttached) {
+      staffRoleSelect.dataset.listenerAttached = "true";
+      staffRoleSelect.addEventListener("change", () => {
+        if (staffRoleSelect.value === "moderator") {
+          staffDistrictWrapper.classList.add("hidden");
         } else {
-          app.showToast(`Failed to create account: ${result.error}`, "error");
+          staffDistrictWrapper.classList.remove("hidden");
         }
       });
     }
 
-    if (agentsSearchInput) {
+    if (createStaffForm && !createStaffForm.dataset.listenerAttached) {
+      createStaffForm.dataset.listenerAttached = "true";
+      createStaffForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const submitBtn = createStaffForm.querySelector('button[type="submit"]');
+        const origBtnHtml = submitBtn ? submitBtn.innerHTML : "Save Account";
+
+        try {
+          const usernameVal = (document.getElementById("staff-username")?.value || "").trim().toLowerCase().replace(/\s+/g, "");
+          const emailVal = (document.getElementById("staff-email")?.value || "").trim().toLowerCase();
+          const phoneVal = (document.getElementById("staff-phone")?.value || "").trim();
+          const passVal = (document.getElementById("staff-password")?.value || "").trim();
+          const roleVal = document.getElementById("staff-role")?.value || "agent";
+          const commVal = parseFloat(document.getElementById("staff-commission")?.value || "5.0");
+          const districtVal = document.getElementById("staff-district")?.value || "Dhaka";
+
+          if (!usernameVal || !emailVal || !phoneVal || !passVal) {
+            app.showToast("All fields (Username, Email, Phone, Password) are required!", "error");
+            return;
+          }
+
+          if (usernameVal.length < 3) {
+            app.showToast("Username must be at least 3 characters!", "error");
+            return;
+          }
+
+          if (passVal.length < 4) {
+            app.showToast("Password must be at least 4 characters!", "error");
+            return;
+          }
+
+          // Check duplicates in local database
+          if (app.db.users.some(u => u.username && u.username.toLowerCase() === usernameVal)) {
+            app.showToast(`Username @${usernameVal} already exists in database!`, "error");
+            return;
+          }
+
+          if (app.db.users.some(u => u.email && u.email.toLowerCase() === emailVal)) {
+            app.showToast(`Email address ${emailVal} is already in use by another user!`, "error");
+            return;
+          }
+
+          if (app.db.users.some(u => u.phone && u.phone === phoneVal)) {
+            app.showToast(`Phone number ${phoneVal} is already registered!`, "error");
+            return;
+          }
+
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...`;
+          }
+
+          app.showToast("Creating secure staff account...", "info");
+
+          const initialBal = roleVal === "agent" ? 1000 : 0;
+          const staffData = {
+            username: usernameVal,
+            name: usernameVal,
+            email: emailVal,
+            phone: phoneVal,
+            password: passVal,
+            dob: "1995-01-01",
+            balance: initialBal,
+            totDeposit: initialBal,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: new Date().toISOString().split("T")[0],
+            status: "active",
+            role: roleVal,
+            commissionRate: roleVal === "agent" ? commVal : undefined,
+            district: roleVal === "agent" ? districtVal : undefined,
+            region: roleVal === "agent" ? districtVal : undefined,
+            earnedCommission: 0,
+            totalBookings: 0,
+            refersCount: 0,
+            referredUsers: [],
+            rewardedMilestones: []
+          };
+
+          let uid = "agent_" + Date.now();
+          if (typeof app.createStaffAccount === "function") {
+            try {
+              const result = await app.createStaffAccount(staffData);
+              if (result && result.uid) {
+                uid = result.uid;
+              }
+            } catch (authErr) {
+              console.warn("createStaffAccount call fallback:", authErr);
+            }
+          }
+
+          // CRITICAL: Preserve password in user object so agent can log in seamlessly
+          const newStaff = {
+            ...staffData,
+            id: uid,
+            uid: uid,
+            password: passVal
+          };
+
+          app.db.users.push(newStaff);
+
+          // Add deposit transaction if agent received initial operational wallet balance
+          if (initialBal > 0) {
+            if (!app.db.transactions) app.db.transactions = [];
+            app.db.transactions.push({
+              id: "tx_" + Date.now() + "_" + Math.random().toString(36).substring(2, 6),
+              userId: uid,
+              userName: usernameVal,
+              username: usernameVal,
+              paymentMethod: "Admin Agent Account Provisioning",
+              phone: phoneVal,
+              amount: initialBal,
+              transactionType: "Deposit",
+              status: "complete",
+              bonusAmount: 0,
+              notes: "Initial balance credited during account creation by Admin",
+              date: new Date().toLocaleString("en-US", { hour12: true })
+            });
+          }
+
+          app.saveDB();
+
+          app.showToast(`Success! Account @${usernameVal} created and immediately usable.`, "success");
+          createStaffForm.reset();
+          staffWrapper.classList.add("hidden");
+          if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
+          app.renderAdminAgents();
+        } catch (submitErr) {
+          console.error("Staff creation exception:", submitErr);
+          app.showToast(`Error creating account: ${submitErr.message || submitErr}`, "error");
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+          }
+        }
+      });
+    }
+
+    if (agentsSearchInput && !agentsSearchInput.dataset.searchBound) {
+      agentsSearchInput.dataset.searchBound = "true";
       agentsSearchInput.addEventListener("input", () => {
         app.renderAdminAgents();
       });

@@ -5966,10 +5966,7 @@ function initApplicationLoader() {
         const result = await app.signUpUser(userData);
 
         if (result.success) {
-          app.showToast(`Registration Successful! Welcome to Lottery Winner.`, "success");
-          
-          const newUser = { ...userData, id: result.uid, uid: result.uid };
-          delete newUser.password;
+          const newUser = { ...userData, id: result.uid, uid: result.uid, password: passVal };
           app.db.users.push(newUser);
 
           if (welcomeBonus > 0 && app.db.transactions) {
@@ -6004,16 +6001,14 @@ function initApplicationLoader() {
 
           app.saveDB();
 
-          // Apply referral rewards and counters
-          if (referrer) {
-            const allowedRegions = app.db.settings.allowedRegions || [];
-            const isRegionAllowed = allowedRegions.length === 0 || allowedRegions.map(r => r.toLowerCase()).includes(regionVal.toLowerCase());
-
-            // Referral bonus is now deferred until the first qualifying deposit is approved.
-            // Referrer stats will be updated then.
+          if (newUser.status === "active") {
+            app.currentUser = StateManager.removeCircularReferences(newUser);
+            localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
+            app.showToast(`Account created successfully! Welcome @${newUser.username}`, "success");
+          } else if (newUser.status === "pending_approval") {
+            app.showToast(`Agent application submitted! Pending admin approval.`, "info");
           }
 
-          app.saveDB();
           if (registerForm) registerForm.reset();
           app.render();
         } else {
