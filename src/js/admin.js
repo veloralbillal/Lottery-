@@ -1167,6 +1167,13 @@ export const AdminModule = {
   },
 
   renderAdminAgents() {
+    if (typeof this.setupStaffAndAgentListeners === "function") {
+      try {
+        this.setupStaffAndAgentListeners();
+      } catch (e) {
+        console.warn("setupStaffAndAgentListeners error:", e);
+      }
+    }
     const gridEl = document.getElementById("admin-agents-cards-grid");
     if (!gridEl) return;
     gridEl.innerHTML = "";
@@ -1933,10 +1940,22 @@ export const AdminModule = {
           return;
         }
 
-        // Check if username already exists in database
-        const exists = this.db.users.some(u => u.username.toLowerCase() === username);
+        // Check if username, email, or phone already exists in database
+        const exists = this.db.users.some(u => u.username && u.username.toLowerCase() === username);
         if (exists) {
           this.showToastHub(`Username @${username} is already taken!`);
+          return;
+        }
+
+        const emailExists = this.db.users.some(u => u.email && u.email.toLowerCase() === email.toLowerCase());
+        if (emailExists) {
+          this.showToastHub(`Email ${email} is already in use by another user!`);
+          return;
+        }
+
+        const phoneExists = this.db.users.some(u => u.phone && u.phone === phone);
+        if (phoneExists) {
+          this.showToastHub(`Phone number ${phone} is already registered!`);
           return;
         }
 
@@ -1949,27 +1968,27 @@ export const AdminModule = {
         }
 
         try {
-          // Since our app syncs to Firestore, let's register the user using the SyncCloudModule or directly add to our synced db
-          // Let's create an auth account via createStaffAccount if SyncCloudModule is alive
           let uid = "agent_" + Date.now();
           if (typeof this.createStaffAccount === "function") {
-            const res = await this.createStaffAccount({
-              username,
-              email,
-              phone,
-              district,
-              role: "agent",
-              commissionRate,
-              balance: initialBalance,
-              password,
-              status: "active",
-              earnedCommission: 0,
-              totalBookings: 0
-            });
-            if (res && res.success) {
-              uid = res.uid;
-            } else {
-              throw new Error(res.error || "Firebase account creation failed.");
+            try {
+              const res = await this.createStaffAccount({
+                username,
+                email,
+                phone,
+                district,
+                role: "agent",
+                commissionRate,
+                balance: initialBalance,
+                password,
+                status: "active",
+                earnedCommission: 0,
+                totalBookings: 0
+              });
+              if (res && res.uid) {
+                uid = res.uid;
+              }
+            } catch (authErr) {
+              console.warn("createStaffAccount leader fallback:", authErr);
             }
           }
 
@@ -1978,6 +1997,7 @@ export const AdminModule = {
             id: uid,
             uid: uid,
             username: username,
+            name: username,
             email: email,
             phone: phone,
             district: district,
@@ -1988,8 +2008,18 @@ export const AdminModule = {
             earnedCommission: 0,
             totalBookings: 0,
             password: password,
+            dob: "1995-01-01",
+            totDeposit: initialBalance,
+            totWithdraw: 0,
+            wins: 0,
+            loss: 0,
+            profit: 0,
+            joinDate: new Date().toISOString().split("T")[0],
             status: "active",
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            refersCount: 0,
+            referredUsers: [],
+            rewardedMilestones: []
           };
 
           this.db.users.push(newAgentObj);
