@@ -1,6 +1,7 @@
 // ============================================================================
 // DATABASE REPLICATION SYNC & FAILOVER ENGINE MODULE
 // ============================================================================
+import { doc } from "firebase/firestore";
 
 export const SyncVaultModule = {
   renderSyncVaultTab() {

@@ -197,6 +197,7 @@ export const SyncCloudModule = {
           status: "active"
         };
 
+        // Don't wait forever for Firestore if we're in a hurry or offline
         const setUsersPromise = setDoc(doc(this.firestore, "users", uid), profile, { merge: true });
         const setUsernamesPromise = setDoc(doc(this.firestore, "usernames", staffData.username.toLowerCase()), {
           uid: uid,
