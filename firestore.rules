@@ -146,11 +146,10 @@ service cloud.firestore {
       allow read, write: if true;
     }
 
-    // USERNAMES MAPPING (Public read-only for login resolution)
+    // USERNAMES MAPPING (Public for login resolution)
     match /usernames/{username} {
-      allow get: if true; // Allow anyone to resolve a username to an email for login
-      allow list: if isAdmin();
-      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == request.resource.data.uid);
+      allow get, list: if true; // Allow anyone to resolve a username to an email for login
+      allow write: if true;
     }
 
     // ADMINS COLLECTION

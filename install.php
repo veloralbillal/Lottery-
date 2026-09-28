@@ -363,17 +363,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
                     <div class="space-y-1.5 text-xs">
                         <label class="block uppercase font-mono text-slate-500">Database Engine Name</label>
-                        <input type="text" name="db_name" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="lottery_winner_db" value="lottery_winner_db">
+                        <input type="text" name="db_name" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="veloralb_Digital" value="veloralb_Digital">
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 text-xs">
                         <div class="space-y-1.5">
                             <label class="block uppercase font-mono text-slate-500">Database User</label>
-                            <input type="text" name="db_user" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="root" value="root">
+                            <input type="text" name="db_user" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="veloralb_Digital" value="veloralb_Digital">
                         </div>
                         <div class="space-y-1.5">
                             <label class="block uppercase font-mono text-slate-500">User Passphrase</label>
-                            <input type="password" name="db_pass" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="••••••••">
+                            <input type="password" name="db_pass" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3.5 text-white outline-none focus:border-cyan-500 font-mono placeholder-slate-700" placeholder="••••••••" value="UcWg.75@wv+Ijzh#">
                         </div>
                     </div>
 

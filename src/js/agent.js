@@ -548,7 +548,8 @@ export const AgentModule = {
       });
     }
 
-    if (cancelStaffBtn && staffWrapper) {
+    if (cancelStaffBtn && staffWrapper && !cancelStaffBtn.dataset.listenerAttached) {
+      cancelStaffBtn.dataset.listenerAttached = "true";
       cancelStaffBtn.addEventListener("click", () => {
         staffWrapper.classList.add("hidden");
         if (createStaffBtn) {
