@@ -900,12 +900,18 @@ export class StateManager {
     } catch (e) {
       console.error("Failed to safely serialize database:", e);
     }
-    if (this.firestoreDocRef) {
-      if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
-      this.cloudSyncTimeout = setTimeout(() => {
-        this.syncToCloud();
-      }, 800);
-    }
+    
+    // Always trigger cloud synchronization automatically on database saves
+    if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
+    this.cloudSyncTimeout = setTimeout(() => {
+      try {
+        if (typeof this.syncToCloud === "function") {
+          this.syncToCloud();
+        }
+      } catch (err) {
+        console.warn("Cloud sync attempt during saveDB:", err);
+      }
+    }, 400);
   }
 
   ensureTabLoaded(tabId: string) {
@@ -4452,6 +4458,22 @@ export class StateManager {
 
     const appleEl = document.getElementById("apple-icon") as HTMLLinkElement;
     if (appleEl) appleEl.href = favUrl;
+
+    // Update Header Custom App Logo
+    const appLogoUrl = s.appLogoUrl || "";
+    const headerLogoImg = document.getElementById("header-logo-img") as HTMLImageElement | null;
+    const headerLogoIcon = document.getElementById("header-logo-icon") as HTMLElement | null;
+
+    if (headerLogoImg) {
+      if (appLogoUrl) {
+        headerLogoImg.src = appLogoUrl;
+        headerLogoImg.classList.remove("hidden");
+        if (headerLogoIcon) headerLogoIcon.classList.add("hidden");
+      } else {
+        headerLogoImg.classList.add("hidden");
+        if (headerLogoIcon) headerLogoIcon.classList.remove("hidden");
+      }
+    }
   }
 
   awardReferralBonus(referredUser) {
@@ -6079,6 +6101,16 @@ function initApplicationLoader() {
 
   // Dynamic click event delegation for robust handling of dynamically loaded tabs
   document.addEventListener("click", (e) => {
+    // 0. Header Logo Click -> Safely navigate to home (No admin bypass popup)
+    const logoClick = (e.target as HTMLElement)?.closest("#header-logo-container") || (e.target as HTMLElement)?.closest(".brand-site-name");
+    if (logoClick) {
+      e.preventDefault();
+      e.stopPropagation();
+      app.currentTab = "home";
+      app.render();
+      return;
+    }
+
     // 1. Log out action
     const logoutBtn = e.target.closest("#profile-logout-btn");
     if (logoutBtn) {
