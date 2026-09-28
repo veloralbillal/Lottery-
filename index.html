@@ -31,6 +31,44 @@
           );
         }
       }());
+
+      /**
+       * Early Core UI Handlers
+       * Defined immediately so inline HTML onclick handlers never throw ReferenceError
+       */
+      window.switchTab = function(tab) {
+        var formContainer = document.getElementById("formContainer");
+        var signInTab = document.getElementById("signInTab");
+        var registerTab = document.getElementById("registerTab");
+
+        if (tab === 'register') {
+          if (formContainer) formContainer.classList.add("show-register");
+          if (registerTab) registerTab.classList.add("active");
+          if (signInTab) signInTab.classList.remove("active");
+        } else {
+          if (formContainer) formContainer.classList.remove("show-register");
+          if (signInTab) signInTab.classList.add("active");
+          if (registerTab) registerTab.classList.remove("active");
+        }
+        if (typeof window.generateMathCaptcha === 'function') {
+          try { window.generateMathCaptcha(); } catch(e) {}
+        }
+      };
+      window.switchAuthTab = function(mode) {
+        window.switchTab(mode === 'login' ? 'signin' : 'register');
+      };
+      window.openBypass = function() {
+        var splash = document.getElementById('splash-screen');
+        var auth = document.getElementById('screen-auth');
+        if (splash) splash.classList.add('hidden');
+        if (auth) auth.classList.remove('hidden');
+      };
+      window.closeModal = function(id) {
+        if (id) {
+          var el = document.getElementById(id);
+          if (el) el.classList.add('hidden');
+        }
+      };
     </script>
     <script>
       // Emergency Error Logger for Production
@@ -7845,5 +7883,23 @@
 
     <!-- Application script bundle -->
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Static Hosting Fallback: if /src/main.ts was not compiled (e.g. uploaded root folder to Apache/cPanel/Nginx host)
+      window.addEventListener('load', function() {
+        if (!window.appInstance && !window.app) {
+          var base = window.APP_BASE || './';
+          var s = document.createElement('script');
+          s.type = 'module';
+          s.src = base + 'assets/main.js';
+          s.onerror = function() {
+            var s2 = document.createElement('script');
+            s2.type = 'module';
+            s2.src = './main.js';
+            document.body.appendChild(s2);
+          };
+          document.body.appendChild(s);
+        }
+      });
+    </script>
   </body>
 </html>

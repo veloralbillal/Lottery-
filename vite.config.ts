@@ -504,9 +504,13 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
           fs.copyFileSync(srcJsPath, path.join(distAssetsDir, 'main.js'));
           // Ensure root assets/main.js exists
           fs.copyFileSync(srcJsPath, path.join(rootAssetsDir, 'main.js'));
+          // Ensure root main.js exists
+          fs.copyFileSync(srcJsPath, path.resolve(process.cwd(), 'main.js'));
+          // Ensure dist/main.js exists
+          fs.copyFileSync(srcJsPath, path.join(distDir, 'main.js'));
           // Sync to src/main.js
           fs.copyFileSync(srcJsPath, path.resolve(process.cwd(), 'src/main.js'));
-          console.log(`Synced JS (${primaryJs}) to main.js and src/main.js`);
+          console.log(`Synced JS (${primaryJs}) to main.js, assets/main.js, and src/main.js`);
         }
       }
     }
@@ -515,7 +519,7 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
 
 export default defineConfig(({ mode }) => {
   return {
-    base: '/',
+    base: './',
     plugins: [
       tailwindcss(),
       serveAndCopyAssetsPlugin()
