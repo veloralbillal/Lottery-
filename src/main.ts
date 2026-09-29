@@ -8851,6 +8851,7 @@ function initApplicationLoader() {
     } catch (e) {}
 
     (window as any).app = app;
+    (window as any).AffiliateAgentSystem = AffiliateAgentSystem;
     (window as any).openLotteryDetailsPop = (id: string) => app.openLotteryDetailsPop(id);
     (window as any).openLotteryDetails = (id: string) => app.openLotteryDetailsPop(id);
     (window as any).openUserProfile = (username: string) => app.openUserProfile(username);
