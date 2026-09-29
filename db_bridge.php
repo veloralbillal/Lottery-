@@ -1,21 +1,17 @@
 <?php
-// API Bridge for remote MySQL access - POST ONLY
+// API Bridge for remote MySQL access - Accepts GET and POST
 // Set a secret token for security
 define('SECRET_TOKEN', 'my_app_secret_!@#_987'); 
 
-// Database configuration (local to your server)
+// Database configuration
 $host = 'localhost';
 $db   = 'veloralb_Digital';
-$user = 'veloralb_Digital'; // cPanel-এর ইউজারনেম
-$pass = 'YOUR_CPANEL_DB_PASSWORD'; // cPanel-এর ডাটাবেজ পাসওয়ার্ড
+$user = 'veloralb_Digital';
+$pass = 'YOUR_CPANEL_DB_PASSWORD';
 
-// শুধুমাত্র POST রিকোয়েস্ট গ্রহণ করুন
-if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    die(json_encode(['success' => false, 'message' => 'Only POST requests are allowed']));
-}
-
-// টোকেন যাচাই করুন
-if (!isset($_POST['token']) || $_POST['token'] !== SECRET_TOKEN) {
+// টোকেন যাচাই করুন (GET বা POST উভয় থেকেই নেয়া যাবে)
+$token = $_POST['token'] ?? $_GET['token'] ?? '';
+if ($token !== SECRET_TOKEN) {
     die(json_encode(['success' => false, 'message' => 'Unauthorized']));
 }
 
@@ -25,10 +21,12 @@ if ($conn->connect_error) {
     die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
 }
 
-$action = $_POST['action'] ?? '';
+// অ্যাকশন (GET বা POST থেকে)
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 if ($action === 'query') {
-    $sql = $_POST['sql'] ?? '';
+    // এসকিউএল কুয়েরি (GET বা POST থেকে)
+    $sql = $_POST['sql'] ?? $_GET['sql'] ?? '';
     
     if (empty($sql)) {
         echo json_encode(['success' => false, 'message' => 'Empty query']);
