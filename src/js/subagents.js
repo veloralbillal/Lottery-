@@ -420,7 +420,7 @@ export const SubAgentModule = {
       const newSubRegForm = subRegForm.cloneNode(true);
       subRegForm.parentNode.replaceChild(newSubRegForm, subRegForm);
 
-      newSubRegForm.addEventListener("submit", (e) => {
+      newSubRegForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const usernameVal = newSubRegForm.querySelector("#agent-sub-username").value.trim();
@@ -510,7 +510,8 @@ export const SubAgentModule = {
         // Add subagent to system DB
         app.db.users.push(newSubUser);
         
-        app.saveDB();
+        // Show loader/spinner if UI supports it, but at least do a synchronous immediate save!
+        await app.saveDB(true);
         app.showToast(`Sub-Agent @${usernameVal} registered successfully! Added ৳${referBonus} referral bonus to your agent wallet.`, "success");
         newSubRegForm.reset();
         app.renderAgentWorkspace();

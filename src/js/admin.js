@@ -2056,7 +2056,7 @@ export const AdminModule = {
             });
           }
 
-          this.saveDB();
+          await this.saveDB(true);
           this.showToastHub(`Successfully onboarded @${username} with ৳${initialBalance} initial balance!`);
           addLeaderForm.reset();
           closeAddModal();
@@ -5519,23 +5519,31 @@ export const AdminModule = {
         }
 
         try {
-          const dataUrl = await compressImage(file, 256, 0.9);
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("type", "favicon");
+
+          const res = await fetch("/api/upload/logo", {
+            method: "POST",
+            body: formData
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message || "Upload failed");
+
           const app = window.app || this;
           if (!app.db.settings) app.db.settings = {};
-          app.db.settings.faviconUrl = dataUrl;
+          app.db.settings.faviconUrl = data.fileUrl;
+          app.db.settings.faviconUpdatedAt = data.lastUpdated;
           this.db.settings = app.db.settings;
 
-          app.saveDB();
-          if (typeof app.syncToCloud === "function") {
-            app.syncToCloud();
-          }
+          app.saveDB(true);
 
           this.renderSEOAndFaviconSettings();
           if (favStatus) {
-            favStatus.textContent = "✅ Favicon uploaded & synced live to cloud!";
-            favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+            favStatus.innerHTML = `✅ Favicon Persisted<br><span class="text-[8px] text-slate-300">Storage: ${data.storage} | DB: ${data.database} | Status: ${data.status} | Path: ${data.fileUrl} | Updated: ${data.lastUpdated}</span>`;
+            favStatus.className = "text-[9px] text-center font-bold text-emerald-400 block mt-1";
           }
-          this.showToast("Favicon uploaded and synced to user panels!", "success");
+          this.showToast("Favicon permanently stored on server & persisted in SQL!", "success");
 
           if (typeof app.applyDynamicSEO === "function") {
             app.applyDynamicSEO();
@@ -5599,23 +5607,31 @@ export const AdminModule = {
         }
 
         try {
-          const dataUrl = await compressImage(file, 512, 0.9);
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("type", "header_logo");
+
+          const res = await fetch("/api/upload/logo", {
+            method: "POST",
+            body: formData
+          });
+          const data = await res.json();
+          if (!data.success) throw new Error(data.message || "Upload failed");
+
           const app = window.app || this;
           if (!app.db.settings) app.db.settings = {};
-          app.db.settings.appLogoUrl = dataUrl;
+          app.db.settings.appLogoUrl = data.fileUrl;
+          app.db.settings.headerLogoUpdatedAt = data.lastUpdated;
           this.db.settings = app.db.settings;
 
-          app.saveDB();
-          if (typeof app.syncToCloud === "function") {
-            app.syncToCloud();
-          }
+          app.saveDB(true);
 
           this.renderSEOAndFaviconSettings();
           if (logoStatus) {
-            logoStatus.textContent = "✅ Custom App Logo updated & synced!";
-            logoStatus.className = "text-[9px] text-center font-bold text-emerald-400 block";
+            logoStatus.innerHTML = `✅ Header Logo Persisted<br><span class="text-[8px] text-slate-300">Storage: ${data.storage} | DB: ${data.database} | Status: ${data.status} | Path: ${data.fileUrl} | Updated: ${data.lastUpdated}</span>`;
+            logoStatus.className = "text-[9px] text-center font-bold text-emerald-400 block mt-1";
           }
-          this.showToast("Custom App Logo uploaded & synced to all user panels!", "success");
+          this.showToast("Header Logo permanently stored on server & persisted in SQL!", "success");
 
           if (typeof app.applyDynamicSEO === "function") {
             app.applyDynamicSEO();

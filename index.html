@@ -374,9 +374,9 @@
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
     </style>
-    <script type="module" crossorigin src="./assets/main-D12K5PnZ.js"></script>
+    <script type="module" crossorigin src="./assets/main-DlkjWT3F.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-DACRapYG.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-Bl6y_U28.css">
+    <link rel="stylesheet" crossorigin href="./assets/main-oT4R3IcZ.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
 
@@ -3208,49 +3208,49 @@
               </span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 w-full max-w-full">
               <!-- Switch to Firebase Cluster 1 -->
-              <button id="switch-btn-fb1" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]" data-target="node-1">
+              <button id="switch-btn-fb1" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] w-full max-w-full overflow-hidden" data-target="node-1">
                 <div class="w-9 h-9 rounded-xl bg-slate-900 border border-emerald-500/40 flex items-center justify-center text-amber-400 text-base shrink-0">
                   <i class="fa-solid fa-cloud"></i>
                 </div>
-                <div class="space-y-0.5 min-w-0 flex-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-black text-white truncate">Firebase Cluster 1</span>
-                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase">ACTIVE</span>
+                <div class="space-y-0.5 min-w-0 flex-1 w-full">
+                  <div class="flex items-center justify-between flex-wrap gap-1.5">
+                    <span class="text-[11px] font-black text-white truncate max-w-full">Firebase Cluster 1</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase shrink-0">ACTIVE</span>
                   </div>
-                  <span class="text-[9px] text-slate-400 block font-mono truncate">app_data/lottery_winner_db</span>
-                  <span class="text-[8.5px] text-emerald-400 font-sans block">Primary Cloud NoSQL Database</span>
+                  <span class="text-[9px] text-slate-400 block font-mono break-all">app_data/lottery_winner_db</span>
+                  <span class="text-[8.5px] text-emerald-400 font-sans block break-words">Primary Cloud NoSQL Database</span>
                 </div>
               </button>
 
               <!-- Switch to Firebase Cluster 2 -->
-              <button id="switch-btn-fb2" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700" data-target="node-2">
+              <button id="switch-btn-fb2" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden" data-target="node-2">
                 <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-amber-400/80 text-base shrink-0">
                   <i class="fa-solid fa-shield-halved"></i>
                 </div>
-                <div class="space-y-0.5 min-w-0 flex-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-black text-slate-300 truncate">Firebase Cluster 2</span>
-                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase">STANDBY</span>
+                <div class="space-y-0.5 min-w-0 flex-1 w-full">
+                  <div class="flex items-center justify-between flex-wrap gap-1.5">
+                    <span class="text-[11px] font-black text-slate-300 truncate max-w-full">Firebase Cluster 2</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase shrink-0">STANDBY</span>
                   </div>
-                  <span class="text-[9px] text-slate-500 block font-mono truncate">app_data/lottery_winner_db_backup</span>
-                  <span class="text-[8.5px] text-slate-400 font-sans block">Auto-Sync Secondary Backup Node</span>
+                  <span class="text-[9px] text-slate-500 block font-mono break-all">app_data/lottery_winner_db_backup</span>
+                  <span class="text-[8.5px] text-slate-400 font-sans block break-words">Auto-Sync Secondary Backup Node</span>
                 </div>
               </button>
 
               <!-- Switch to MySQL Database (veloralb_Digital) -->
-              <button id="switch-btn-sql" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700" data-target="node-sql">
+              <button id="switch-btn-sql" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden" data-target="node-sql">
                 <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-blue-400 text-base shrink-0">
                   <i class="fa-solid fa-database"></i>
                 </div>
-                <div class="space-y-0.5 min-w-0 flex-1">
-                  <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-black text-slate-300 truncate">MySQL Database</span>
-                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase">STANDBY</span>
+                <div class="space-y-0.5 min-w-0 flex-1 w-full">
+                  <div class="flex items-center justify-between flex-wrap gap-1.5">
+                    <span class="text-[11px] font-black text-slate-300 truncate max-w-full">MySQL Database</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase shrink-0">STANDBY</span>
                   </div>
-                  <span class="text-[9px] text-slate-500 block font-mono truncate">veloralb_Digital@localhost:3306</span>
-                  <span class="text-[8.5px] text-cyan-400 font-sans block">Dedicated cPanel / Localhost Relational DB</span>
+                  <span class="text-[9px] text-slate-500 block font-mono break-all">veloralb_Digital@localhost:3306</span>
+                  <span class="text-[8.5px] text-cyan-400 font-sans block break-words">Dedicated cPanel / Localhost Relational DB</span>
                 </div>
               </button>
             </div>
