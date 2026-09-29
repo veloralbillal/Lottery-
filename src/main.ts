@@ -800,28 +800,10 @@ export class StateManager {
           node2.tier = "premium";
           node2.status = "connected";
         }
-        if (!this.db.syncNodes.some(n => n.id === "node-sql")) {
-          this.db.syncNodes.push({
-            id: "node-sql",
-            name: "MySQL Database (veloralb_Digital)",
-            type: "sql",
-            endpoint: "mysql://veloralb_Digital:••••••••@localhost:3306/veloralb_Digital",
-            sqlHost: "localhost",
-            sqlPort: "3306",
-            sqlUser: "veloralb_Digital",
-            sqlDb: "veloralb_Digital",
-            priority: 3,
-            status: "connected",
-            latency: 6,
-            active: false,
-            mode: "hybrid_sql",
-            description: "Dedicated MySQL relational database on localhost (DB: veloralb_Digital, User: veloralb_Digital).",
-            tier: "premium"
-          });
-        }
+        // node-sql removed
         this.db.syncNodes.forEach(node => {
           if (!node.tier) {
-            node.tier = (node.name.includes("Main") || node.name.includes("Primary") || node.name.includes("Secondary") || node.id === "node-1" || node.id === "node-2" || node.id === "node-sql") ? "premium" : "free";
+            node.tier = (node.name.includes("Main") || node.name.includes("Primary") || node.name.includes("Secondary") || node.id === "node-1" || node.id === "node-2") ? "premium" : "free";
           }
         });
 
