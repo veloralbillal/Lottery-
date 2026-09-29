@@ -770,7 +770,7 @@ export const AgentModule = {
     // Agent-assisted player quick registration
     const agentRegForm = document.getElementById("agent-player-quick-register-form");
     if (agentRegForm) {
-      agentRegForm.addEventListener("submit", (e) => {
+      agentRegForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         
         const usernameVal = document.getElementById("agent-reg-username").value.trim();
@@ -856,7 +856,7 @@ export const AgentModule = {
         // Add player to system DB
         app.db.users.push(newUser);
         
-        app.saveDB();
+        await app.saveDB(true);
         app.showToast(`Player @${usernameVal} registered successfully! Creation commission of ৳${creationComm.toFixed(2)} is pending until player deposits min ৳100.`, "info");
         agentRegForm.reset();
         app.renderAgentWorkspace();

@@ -1,0 +1,11 @@
+src/js/apiZiniPay
+src/js/bundledTabs
+src/js/legalPolicies
+src/js/legalPoliciesManager
+src/js/liveDrawRevealEngine
+src/js/pathHelper
+src/js/payment_gateways
+src/js/performanceOptimizer
+src/js/pluginManager
+src/js/splashScreenManager
+src/js/syncCloud

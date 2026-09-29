@@ -931,7 +931,11 @@ export class StateManager {
     }
   }
 
-  saveDB() {
+  saveDB(forceImmediate = false) {
+    this.lastLocalWriteTime = Date.now();
+    if ((this as any).syncCloud) {
+      (this as any).syncCloud.lastLocalWriteTime = Date.now();
+    }
     try {
       if (this.db) {
         if (this.currentUser && this.db.users) {
@@ -959,16 +963,32 @@ export class StateManager {
     }
     
     // Always trigger cloud synchronization automatically on database saves
-    if (this.cloudSyncTimeout) clearTimeout(this.cloudSyncTimeout);
-    this.cloudSyncTimeout = setTimeout(() => {
+    if (this.cloudSyncTimeout) {
+      clearTimeout(this.cloudSyncTimeout);
+      this.cloudSyncTimeout = null;
+    }
+
+    if (forceImmediate) {
       try {
         if (typeof this.syncToCloud === "function") {
-          this.syncToCloud();
+          return this.syncToCloud();
         }
       } catch (err) {
-        console.warn("Cloud sync attempt during saveDB:", err);
+        console.warn("Immediate cloud sync attempt during saveDB:", err);
       }
-    }, 400);
+    } else {
+      this.cloudSyncTimeout = setTimeout(() => {
+        this.cloudSyncTimeout = null;
+        try {
+          if (typeof this.syncToCloud === "function") {
+            this.syncToCloud();
+          }
+        } catch (err) {
+          console.warn("Cloud sync attempt during saveDB:", err);
+        }
+      }, 400);
+    }
+    return Promise.resolve();
   }
 
   ensureTabLoaded(tabId: string) {
@@ -6083,7 +6103,7 @@ function initApplicationLoader() {
             console.log(`Referral count updated for recruiter @${referrer.username}: Total ${referrer.refersCount}`);
           }
 
-          app.saveDB();
+          await app.saveDB(true);
 
           if (newUser.status === "active") {
             app.currentUser = StateManager.removeCircularReferences(newUser);

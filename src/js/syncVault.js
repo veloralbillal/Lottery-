@@ -100,29 +100,29 @@ export const SyncVaultModule = {
           }
 
           const card = document.createElement("div");
-          card.className = `p-4 border ${activeClass} rounded-2xl flex flex-col md:flex-row justify-between gap-4 items-start md:items-center transition duration-200 hover:border-slate-700 mb-2.5`;
+          card.className = `p-4 border ${activeClass} rounded-2xl flex flex-col lg:flex-row justify-between gap-4 items-start lg:items-center transition duration-200 hover:border-slate-700 mb-2.5 w-full max-w-full overflow-hidden`;
           card.innerHTML = `
-            <div class="space-y-1.5 max-w-full md:max-w-md">
-              <div class="flex items-center gap-2 flex-wrap">
-                <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-xs">
+            <div class="space-y-1.5 w-full lg:max-w-md min-w-0">
+              <div class="flex items-start sm:items-center gap-2 flex-wrap w-full min-w-0">
+                <div class="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-xs shrink-0">
                   ${iconHtml}
                 </div>
-                <div>
-                  <h5 class="text-[12px] font-black text-white leading-tight">${node.name}</h5>
-                  <span class="text-[8.5px] font-mono text-slate-500 uppercase font-bold">DRIVER: ${node.type.toUpperCase()} • Priority: ${node.priority}</span>
+                <div class="min-w-0 flex-1">
+                  <h5 class="text-[12px] font-black text-white leading-tight truncate max-w-full">${node.name}</h5>
+                  <span class="text-[8.5px] font-mono text-slate-500 uppercase font-bold truncate block">DRIVER: ${node.type.toUpperCase()} • Priority: ${node.priority}</span>
                 </div>
-                <div class="flex gap-1.5 items-center flex-wrap">
+                <div class="flex gap-1.5 items-center flex-wrap shrink-0">
                   ${statusBadge}
-                  <span class="text-[9px] text-[#f59e0b] font-mono">⚡ ${node.latency} ms</span>
+                  <span class="text-[9px] text-[#f59e0b] font-mono whitespace-nowrap">⚡ ${node.latency} ms</span>
                 </div>
               </div>
-              <p class="text-[10px] text-slate-400/80 font-sans leading-relaxed">${node.description}</p>
-              <div class="text-[8.5px] text-slate-600 font-mono select-all break-all overflow-x-auto truncate max-w-xs md:max-w-md block bg-slate-950 px-2 py-1 rounded">
+              <p class="text-[10px] text-slate-400/80 font-sans leading-relaxed break-words">${node.description}</p>
+              <div class="text-[8.5px] text-slate-600 font-mono select-all break-all bg-slate-950 px-2 py-1 rounded w-full overflow-x-auto">
                 Connection Address: ${node.endpoint}
               </div>
             </div>
 
-            <div class="flex flex-wrap gap-1.5 w-full md:w-auto shrink-0 border-t border-slate-850 pt-2.5 md:pt-0 md:border-0 justify-end">
+            <div class="flex flex-wrap gap-1.5 w-full lg:w-auto shrink-0 border-t border-slate-850 pt-2.5 lg:pt-0 lg:border-0 justify-start lg:justify-end items-center">
               <!-- Simulated failure toggle -->
               <button class="action-toggle-outage text-[9.5px] font-mono font-bold px-2.5 py-1.5 rounded-lg border transition cursor-pointer select-none ${node.status === "outage" ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-400 hover:bg-emerald-900' : 'bg-rose-950/20 border-rose-900/30 text-rose-400 hover:bg-rose-900/45'}" data-id="${node.id}">
                 ${node.status === "outage" ? '<i class="fa-solid fa-play-circle"></i> Clear Fault' : '<i class="fa-solid fa-heart-crack animate-pulse"></i> Outage'}
@@ -382,7 +382,20 @@ export const SyncVaultModule = {
           if (typeof this.listenToCloud === "function") this.listenToCloud();
         }
 
-        this.saveDB();
+        // Inform server about the active database engine switch
+        const isSqlTarget = node.id === "node-sql";
+        fetch("/api/sql/config", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ activeEngine: isSqlTarget ? "mysql" : "firebase" })
+        }).catch(err => console.warn("Failed to notify server of engine switch:", err));
+
+        this.saveDB(true).then(() => {
+          if (isSqlTarget && typeof this.loadFromCloud === "function") {
+            this.addConsoleLog(`[DATABASE SWITCH] Aligning local state with "${node.name}" master records...`, "info");
+            this.loadFromCloud();
+          }
+        });
         this.renderSyncVaultTab();
       });
     });
@@ -778,6 +791,13 @@ export const SyncVaultModule = {
 
             this.addConsoleLog(`[DUAL SYNC] Active database switched to "${node.name}". Both databases remain fully mirrored and synced.`, "success");
             this.showToast(`সুইচ সফল! উভয় ডাটাবেজ অটো সিঙ্ক থাকায় "${node.name}"-এ সব ডাটা সুরক্ষিত আছে।`, "success");
+            // Inform server about the active database engine switch
+            fetch("/api/sql/config", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ activeEngine: node.id === "node-sql" ? "mysql" : "firebase" })
+            }).catch(() => {});
+
             this.saveDB();
             if (typeof this.syncToCloud === "function") {
               this.syncToCloud();

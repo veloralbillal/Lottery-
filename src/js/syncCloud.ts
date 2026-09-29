@@ -60,6 +60,13 @@ export const SyncCloudModule = {
       // Start subscribing to live Firestore updates
       this.listenToCloud();
       this.initAuthListener();
+
+      // 🐬 SQL INITIAL LOAD: If SQL is the master node, force an immediate pull from MySQL to align client state
+      const activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
+      if (activeNode && activeNode.id === "node-sql") {
+        console.log("SyncCloudModule: SQL is active master. Triggering initial loadFromCloud()...");
+        await this.loadFromCloud().catch(err => console.warn("Initial SQL load failed:", err));
+      }
     } catch (e) {
       console.error("Failed to initialize Firebase Sync:", e.message || e);
       this.setSyncState("error");
@@ -83,8 +90,8 @@ export const SyncCloudModule = {
       if (this.db && this.db.users && Array.isArray(this.db.users)) {
         const localUser = this.db.users.find(u => u.id === uid || u.uid === uid);
         if (localUser) {
-          this.currentUser = this.constructor.removeCircularReferences(localUser);
-          localStorage.setItem(this.sessionKey, this.constructor.safeStringify(this.currentUser));
+          this.currentUser = StateManager.removeCircularReferences(localUser);
+          localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
           console.log("User profile hydrated from active database:", localUser.username);
           this.render();
         }
@@ -95,8 +102,8 @@ export const SyncCloudModule = {
         const userDoc = await getDoc(doc(this.firestore, "users", uid)).catch(() => null);
         if (userDoc && userDoc.exists && userDoc.exists()) {
           const profile = userDoc.data();
-          this.currentUser = this.constructor.removeCircularReferences({ ...(this.currentUser || {}), ...profile });
-          localStorage.setItem(this.sessionKey, this.constructor.safeStringify(this.currentUser));
+          this.currentUser = StateManager.removeCircularReferences({ ...(this.currentUser || {}), ...profile });
+          localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
           console.log("User profile updated from Firestore:", profile.username);
           this.render();
         }
@@ -111,7 +118,7 @@ export const SyncCloudModule = {
     try {
       const uid = this.currentUser.id;
       const profileDoc = doc(this.firestore, "users", uid);
-      const cleanedProfile = this.constructor.removeCircularReferences(this.currentUser);
+      const cleanedProfile = StateManager.removeCircularReferences(this.currentUser);
       await setDoc(profileDoc, {
         ...cleanedProfile,
         updatedAt: new Date().toISOString()
@@ -264,6 +271,48 @@ export const SyncCloudModule = {
     console.log("User registered successfully (Auth created:", authCreated, ", UID:", uid, ")");
     return { success: true, uid, authCreated };
   },
+
+  lastLocalWriteTime: 0,
+
+  mergeParsedDb(parsed) {
+    if (!parsed) return;
+    if (Date.now() - (this.lastLocalWriteTime || 0) < 4000) {
+      console.log("[SyncEngine] Recent local write detected. Skipping incoming database overwrite.");
+      return;
+    }
+    if (this.db && this.db.users && parsed.users) {
+      const cloudUserMap = new Map(parsed.users.map((u: any) => [u.username?.toLowerCase() || u.id, u]));
+      for (const localUser of this.db.users) {
+        const key = localUser.username?.toLowerCase() || localUser.id;
+        if (!cloudUserMap.has(key)) {
+          parsed.users.push(localUser);
+        }
+      }
+    }
+    if (this.db && this.db.transactions && parsed.transactions) {
+      const cloudTxIds = new Set(parsed.transactions.map((t: any) => t.id));
+      for (const localTx of this.db.transactions) {
+        if (!cloudTxIds.has(localTx.id)) {
+          parsed.transactions.push(localTx);
+        }
+      }
+    }
+    if (this.db && this.db.agentLedger && parsed.agentLedger) {
+      const cloudLedgerIds = new Set(parsed.agentLedger.map((l: any) => l.id));
+      for (const localLedger of this.db.agentLedger) {
+        if (!cloudLedgerIds.has(localLedger.id)) {
+          parsed.agentLedger.push(localLedger);
+        }
+      }
+    }
+    const syncNodes = this.db && this.db.syncNodes ? this.db.syncNodes : parsed.syncNodes;
+    const sqlDbConfig = this.db && this.db.sqlDbConfig ? this.db.sqlDbConfig : parsed.sqlDbConfig;
+
+    this.db = parsed;
+    if (syncNodes) this.db.syncNodes = syncNodes;
+    if (sqlDbConfig) this.db.sqlDbConfig = sqlDbConfig;
+  },
+
   unsubscribeFromCloud() {
     if (this.firestoreUnsubscribe) {
       try {
@@ -287,8 +336,9 @@ export const SyncCloudModule = {
     this.firestoreUnsubscribe = onSnapshot(this.firestoreDocRef, (docSnap) => {
       try {
         if (docSnap.exists()) {
-          // If we are currently uploading a write operation, ignore our immediate echoing snapshot to avoid write/read loops
-          if (this.syncState === "syncing") {
+          // If we are currently uploading a write operation or have pending local writes, ignore incoming cloud snapshots to prevent race conditions
+          if (this.syncState === "syncing" || this.cloudSyncTimeout != null) {
+            console.log("[SyncEngine] Local write in progress or queued. Ignoring incoming snapshot to prevent overwriting unsaved changes.");
             return;
           }
 
@@ -296,18 +346,18 @@ export const SyncCloudModule = {
           if (cloudData) {
             let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
             if (parsed) {
-              parsed = this.constructor.removeCircularReferences(parsed);
+              parsed = StateManager.removeCircularReferences(parsed);
             }
-            this.db = parsed;
+            this.mergeParsedDb(parsed);
             
             if (this.currentUser) {
               const freshUser = this.db.users.find(u => u.username === this.currentUser.username);
               if (freshUser) {
-                this.currentUser = this.constructor.removeCircularReferences(freshUser);
-                localStorage.setItem(this.sessionKey, this.constructor.safeStringify(freshUser));
+                this.currentUser = StateManager.removeCircularReferences(freshUser);
+                localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
               }
             }
-            localStorage.setItem(this.dbKey, this.constructor.safeStringify(this.db));
+            localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
             
             // Re-render everything immediately across all screens/tabs
             this.render();
@@ -350,16 +400,47 @@ export const SyncCloudModule = {
       return;
     }
 
-    if (!this.firestore) {
-      this.setSyncState("offline");
-      return;
-    }
-
     // Resolve what the live active node is
     let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
     if (!activeNode && this.db && this.db.syncNodes && this.db.syncNodes.length > 0) {
       activeNode = this.db.syncNodes[0];
     }
+
+    // 🐬 SQL DIRECT LOAD: If the active database engine is SQL, fetch and synchronize state from MySQL server instead of Firestore
+    if (activeNode && activeNode.id === "node-sql") {
+      this.setSyncState("loading");
+      try {
+        const sqlRes = await fetch("/api/sql/db");
+        if (sqlRes.ok) {
+          const sqlData = await sqlRes.json();
+          if (sqlData.success && sqlData.db) {
+            this.mergeParsedDb(sqlData.db);
+
+            if (this.currentUser) {
+              const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
+              if (freshUser) {
+                this.currentUser = StateManager.removeCircularReferences(freshUser);
+                localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
+              }
+            }
+            localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
+            localStorage.setItem("lottery_winner_db_backup", StateManager.safeStringify(this.db));
+            this.render();
+            this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
+            this.setSyncState("synced");
+            return;
+          }
+        }
+      } catch (sqlErr: any) {
+        console.warn("Failed to load DB from server SQL database, falling back to Firestore:", sqlErr);
+      }
+    }
+
+    if (!this.firestore) {
+      this.setSyncState("offline");
+      return;
+    }
+
     const isSecondary = activeNode && (activeNode.id === "node-2" || activeNode.name?.includes("Backup") || activeNode.name?.includes("Secondary"));
     const primaryPath = isSecondary ? "lottery_winner_db_backup" : "lottery_winner_db";
     const fallbackPath = isSecondary ? "lottery_winner_db" : "lottery_winner_db_backup";
@@ -393,18 +474,18 @@ export const SyncCloudModule = {
         if (cloudData) {
           let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
           if (parsed) {
-            parsed = this.constructor.removeCircularReferences(parsed);
+            parsed = StateManager.removeCircularReferences(parsed);
           }
-          this.db = parsed;
+          this.mergeParsedDb(parsed);
           if (this.currentUser) {
             const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
             if (freshUser) {
-              this.currentUser = this.constructor.removeCircularReferences(freshUser);
-              localStorage.setItem(this.sessionKey, this.constructor.safeStringify(freshUser));
+              this.currentUser = StateManager.removeCircularReferences(freshUser);
+              localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
             }
           }
-          localStorage.setItem(this.dbKey, this.constructor.safeStringify(this.db));
-          localStorage.setItem("lottery_winner_db_backup", this.constructor.safeStringify(this.db));
+          localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
+          localStorage.setItem("lottery_winner_db_backup", StateManager.safeStringify(this.db));
           this.render();
           console.log(`Database successfully synced with Firebase cloud (Loaded from ${primaryPath}).`);
           this.addConsoleLog(`[DUAL REPLICATION] Aligned live state from active cluster (${primaryPath}).`, "success");
@@ -431,8 +512,8 @@ export const SyncCloudModule = {
 
     // 1. Always mirror to BOTH local storage instances immediately
     try {
-      const cleaned = this.constructor.removeCircularReferences(this.db);
-      const serialized = this.constructor.safeStringify(cleaned);
+      const cleaned = StateManager.removeCircularReferences(this.db);
+      const serialized = StateManager.safeStringify(cleaned);
       localStorage.setItem(this.dbKey, serialized);
       localStorage.setItem("lottery_winner_db_backup", serialized);
     } catch (storageErr) {
@@ -460,7 +541,7 @@ export const SyncCloudModule = {
 
     try {
       if (this.firestore) {
-        const dbSerialized = this.constructor.safeStringify(this.db);
+        const dbSerialized = StateManager.safeStringify(this.db);
         const payload = {
           db: dbSerialized,
           updatedAt: new Date().toISOString(),
@@ -485,26 +566,55 @@ export const SyncCloudModule = {
         this.addConsoleLog(`[DUAL SYNC ACTIVE] Automatically committed write transaction to BOTH Database 1 (Primary) & Database 2 (Backup Replica)! Zero data loss on switch.`, "success");
 
         // DUAL DATABASE WRITING TO SQL DB (veloralb_Digital)
-        if (this.db.sqlDbConfig && this.db.sqlDbConfig.autoSync !== false) {
-          const sqlConfig = this.db.sqlDbConfig;
-          this.db.sqlDbConfig.lastSyncTime = new Date().toISOString();
-          this.db.sqlDbConfig.syncStatus = "synced";
+        const isSqlActive = activeNode && activeNode.id === "node-sql";
+        const sqlConfig = this.db.sqlDbConfig || {
+          host: 'localhost',
+          port: '3306',
+          database: 'veloralb_Digital',
+          username: 'veloralb_Digital',
+          password: 'UcWg.75@wv+Ijzh#',
+          activeEngine: isSqlActive ? 'mysql' : 'firebase',
+          autoSync: true
+        };
+
+        if (isSqlActive || (sqlConfig && sqlConfig.autoSync !== false)) {
+          sqlConfig.lastSyncTime = new Date().toISOString();
+          sqlConfig.syncStatus = "synced";
+          if (!this.db.sqlDbConfig) this.db.sqlDbConfig = sqlConfig;
           
           // Replicate payload to server-side SQL sync endpoint
           try {
-            fetch("/api/sql/sync", {
+            const response = await fetch("/api/sql/sync", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ db: dbSerialized, config: sqlConfig })
-            }).catch(() => {});
-          } catch (netErr) {}
-
-          const sqlNode = (this.db.syncNodes || []).find((n: any) => n.id === "node-sql");
-          if (sqlNode) {
-            sqlNode.lastSync = new Date().toLocaleTimeString();
-            sqlNode.status = "connected";
+              body: JSON.stringify({ 
+                db: dbSerialized, 
+                config: { ...sqlConfig, activeEngine: isSqlActive ? "mysql" : "firebase" } 
+              })
+            });
+            
+            if (response.ok) {
+              const resData = await response.json();
+              if (resData.success) {
+                const sqlNode = (this.db.syncNodes || []).find((n: any) => n.id === "node-sql");
+                if (sqlNode) {
+                  sqlNode.lastSync = new Date().toLocaleTimeString();
+                  sqlNode.status = "connected";
+                }
+                this.addConsoleLog(`[DUAL SYNC ACTIVE] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) & Google Firebase aligned. 100% data mirrored!`, "success");
+              } else {
+                throw new Error(resData.error || "Server rejected SQL sync");
+              }
+            } else {
+              throw new Error(`HTTP ${response.status}`);
+            }
+          } catch (netErr: any) {
+            this.addConsoleLog(`[DUAL SYNC ERROR] SQL Mirroring failed: ${netErr.message || netErr}`, "error");
+            const sqlNode = (this.db.syncNodes || []).find((n: any) => n.id === "node-sql");
+            if (sqlNode && !sqlNode.name?.includes("Simulated")) {
+              sqlNode.status = "error";
+            }
           }
-          this.addConsoleLog(`[DUAL SYNC ACTIVE] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) & Google Firebase aligned. 100% data mirrored!`, "success");
         }
       }
 

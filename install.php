@@ -58,7 +58,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     profit DECIMAL(15, 2) DEFAULT 0.00,
                     joinDate DATE DEFAULT CURRENT_DATE(),
                     status VARCHAR(30) DEFAULT 'active',
-                    blockedUntil DATETIME NULL
+                    blockedUntil DATETIME NULL,
+                    role VARCHAR(50) DEFAULT 'user',
+                    commissionRate DECIMAL(15, 2) DEFAULT 0.00,
+                    earnedCommission DECIMAL(15, 2) DEFAULT 0.00,
+                    totalBookings INT DEFAULT 0,
+                    district VARCHAR(100) NULL,
+                    region VARCHAR(100) NULL,
+                    refersCount INT DEFAULT 0,
+                    referredBy VARCHAR(100) NULL
                 ) ENGINE=InnoDB;",
 
                 'lotteries' => "CREATE TABLE IF NOT EXISTS lotteries (
@@ -111,6 +119,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 'settings' => "CREATE TABLE IF NOT EXISTS settings (
                     setting_key VARCHAR(100) PRIMARY KEY,
                     setting_value TEXT NULL
+                ) ENGINE=InnoDB;",
+
+                'transactions' => "CREATE TABLE IF NOT EXISTS transactions (
+                    id VARCHAR(50) PRIMARY KEY,
+                    userId VARCHAR(50) NOT NULL,
+                    userName VARCHAR(100) NULL,
+                    username VARCHAR(100) NULL,
+                    paymentMethod VARCHAR(100) NULL,
+                    phone VARCHAR(30) NULL,
+                    amount DECIMAL(15, 2) NOT NULL,
+                    transactionType VARCHAR(50) NOT NULL,
+                    status VARCHAR(30) DEFAULT 'pending',
+                    bonusAmount DECIMAL(15, 2) DEFAULT 0.00,
+                    notes TEXT NULL,
+                    date VARCHAR(100) NULL
+                ) ENGINE=InnoDB;",
+
+                'agentLedger' => "CREATE TABLE IF NOT EXISTS agentLedger (
+                    id VARCHAR(50) PRIMARY KEY,
+                    agentId VARCHAR(50) NOT NULL,
+                    agentUsername VARCHAR(100) NOT NULL,
+                    timestamp VARCHAR(100) NOT NULL,
+                    targetUser VARCHAR(100) NULL,
+                    description TEXT NULL,
+                    amount DECIMAL(15, 2) DEFAULT 0.00,
+                    commission DECIMAL(15, 2) DEFAULT 0.00,
+                    status VARCHAR(30) DEFAULT 'pending'
                 ) ENGINE=InnoDB;"
             ];
 

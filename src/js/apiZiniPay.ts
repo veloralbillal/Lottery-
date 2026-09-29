@@ -12,7 +12,9 @@ export function getBackendFirestore() {
     const apps = getApps();
     let app;
     const configPath = path.resolve(process.cwd(), "firebase-applet-config.json");
+    if (!fs.existsSync(configPath)) return null;
     const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    if (!firebaseConfig || !firebaseConfig.apiKey) return null;
     
     if (apps.length > 0) {
       app = apps[0];
@@ -22,8 +24,8 @@ export function getBackendFirestore() {
     firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
     return firestoreDb;
   } catch (err: any) {
-    console.error("[ZiniPay Backend] Firebase Initialization Error:", err.message);
-    throw err;
+    console.warn("[Backend Firebase] Initialization Notice:", err.message);
+    return null;
   }
 }
 
