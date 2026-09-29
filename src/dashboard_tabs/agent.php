@@ -114,126 +114,18 @@
 
   <!-- Dynamic Agent Desk Cards List -->
   <div class="space-y-2.5" id="agent-list-container">
-    
-    <!-- Verified Agent 1: Dhaka Central -->
-    <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="Dhaka" data-name="agent_dhaka" data-phone="01700000001">
-      <div class="flex items-start justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg font-black shadow-sm shrink-0">
-            <i class="fa-solid fa-user-tie"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h3 class="text-xs font-black text-white font-mono">@agent_dhaka</h3>
-              <span class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
-                <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
-              </span>
-            </div>
-            <p class="text-[10px] text-slate-400 font-sans">Dhaka Central • Motijheel Commercial Area #4</p>
-            <span class="text-[9px] text-slate-500 font-mono">Counter Code: DHK-01 • Cash In/Out Active</span>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
-        </span>
-      </div>
-
-      <!-- Action Buttons for this Agent Desk -->
-      <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
-        <a href="tel:01700000001" class="flex-1 bg-slate-950 hover:bg-slate-850 text-slate-200 border border-slate-800 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-solid fa-phone text-emerald-400"></i>
-          <span>Call Desk</span>
-        </a>
-        <a href="https://wa.me/8801700000001" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-brands fa-whatsapp text-emerald-400"></i>
-          <span>WhatsApp</span>
-        </a>
-        <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-          <i class="fa-solid fa-money-bill-transfer"></i>
-          <span>Cashout</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Verified Agent 2: Chittagong Port -->
-    <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="Chittagong" data-name="agent_ctg_port" data-phone="01800000002">
-      <div class="flex items-start justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-cyan-500/15 border border-cyan-500/40 flex items-center justify-center text-cyan-400 text-lg font-black shadow-sm shrink-0">
-            <i class="fa-solid fa-user-tie"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h3 class="text-xs font-black text-white font-mono">@agent_ctg_port</h3>
-              <span class="inline-flex items-center gap-1 bg-cyan-500/15 text-cyan-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-cyan-500/30">
-                <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
-              </span>
-            </div>
-            <p class="text-[10px] text-slate-400 font-sans">Chittagong District • Agrabad Commercial Plaza #12</p>
-            <span class="text-[9px] text-slate-500 font-mono">Counter Code: CTG-01 • Cash In/Out Active</span>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
-        </span>
-      </div>
-
-      <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
-        <a href="tel:01800000002" class="flex-1 bg-slate-950 hover:bg-slate-850 text-slate-200 border border-slate-800 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-solid fa-phone text-emerald-400"></i>
-          <span>Call Desk</span>
-        </a>
-        <a href="https://wa.me/8801800000002" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-brands fa-whatsapp text-emerald-400"></i>
-          <span>WhatsApp</span>
-        </a>
-        <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-          <i class="fa-solid fa-money-bill-transfer"></i>
-          <span>Cashout</span>
-        </button>
-      </div>
-    </div>
-
-    <!-- Verified Agent 3: Sylhet Central -->
-    <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="Sylhet" data-name="agent_sylhet" data-phone="01900000005">
-      <div class="flex items-start justify-between">
-        <div class="flex items-center gap-3">
-          <div class="w-11 h-11 rounded-2xl bg-purple-500/15 border border-purple-500/40 flex items-center justify-center text-purple-400 text-lg font-black shadow-sm shrink-0">
-            <i class="fa-solid fa-user-tie"></i>
-          </div>
-          <div>
-            <div class="flex items-center gap-1.5">
-              <h3 class="text-xs font-black text-white font-mono">@agent_sylhet</h3>
-              <span class="inline-flex items-center gap-1 bg-purple-500/15 text-purple-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-purple-500/30">
-                <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
-              </span>
-            </div>
-            <p class="text-[10px] text-slate-400 font-sans">Sylhet District • Zindabazar Point #08</p>
-            <span class="text-[9px] text-slate-500 font-mono">Counter Code: SYL-01 • Cash In/Out Active</span>
-          </div>
-        </div>
-        <span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50">
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
-        </span>
-      </div>
-
-      <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
-        <a href="tel:01900000005" class="flex-1 bg-slate-950 hover:bg-slate-850 text-slate-200 border border-slate-800 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-solid fa-phone text-emerald-400"></i>
-          <span>Call Desk</span>
-        </a>
-        <a href="https://wa.me/8801900000005" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-          <i class="fa-brands fa-whatsapp text-emerald-400"></i>
-          <span>WhatsApp</span>
-        </a>
-        <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-          <i class="fa-solid fa-money-bill-transfer"></i>
-          <span>Cashout</span>
-        </button>
-      </div>
-    </div>
-
+    <!-- Agents will be loaded dynamically by AffiliateAgentSystem -->
   </div>
+  
+  <script>
+    setTimeout(() => {
+      if (window.AffiliateAgentSystem && window.app) {
+        window.AffiliateAgentSystem.renderAgents(window.app);
+      } else {
+        console.error("AffiliateAgentSystem or app not ready");
+      }
+    }, 500);
+  </script>
 
   <!-- Become an Agent / Dealership Banner -->
   <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-[#19150d] to-slate-950 p-4 border border-amber-500/30 shadow-xl space-y-2.5">

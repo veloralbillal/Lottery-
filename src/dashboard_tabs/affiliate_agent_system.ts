@@ -509,4 +509,55 @@ export class AffiliateAgentSystem {
     appInstance.saveDB();
     appInstance.render();
   }
+
+  static renderAgents(appInstance) {
+    console.log("renderAgents called, db users:", appInstance.db.users ? appInstance.db.users.length : "no users");
+    const listContainer = document.getElementById("agent-list-container");
+    if (!listContainer) {
+      console.error("agent-list-container not found");
+      return;
+    }
+
+    const agents = (appInstance.db.users || []).filter(u => u.role === "agent");
+    console.log("Found agents:", agents);
+    
+    listContainer.innerHTML = agents.map(agent => `
+      <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="${appInstance.escapeHTML(agent.district || '')}" data-name="${appInstance.escapeHTML(agent.username)}" data-phone="${appInstance.escapeHTML(agent.phone || '')}">
+        <div class="flex items-start justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg font-black shadow-sm shrink-0">
+              <i class="fa-solid fa-user-tie"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <h3 class="text-xs font-black text-white font-mono">@${appInstance.escapeHTML(agent.username)}</h3>
+                <span class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
+                  <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
+                </span>
+              </div>
+              <p class="text-[10px] text-slate-400 font-sans">${appInstance.escapeHTML(agent.district || 'Unknown District')} • ${appInstance.escapeHTML(agent.username)}</p>
+              <span class="text-[9px] text-slate-500 font-mono">Counter Code: ${appInstance.escapeHTML(agent.id.toUpperCase().slice(-6))} • Cash In/Out Active</span>
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
+          </span>
+        </div>
+        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
+          <a href="tel:${appInstance.escapeHTML(agent.phone || '')}" class="flex-1 bg-slate-950 hover:bg-slate-850 text-slate-200 border border-slate-800 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
+            <i class="fa-solid fa-phone text-emerald-400"></i>
+            <span>Call Desk</span>
+          </a>
+          <a href="https://wa.me/${appInstance.escapeHTML(agent.phone || '')}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
+            <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+            <span>WhatsApp</span>
+          </a>
+          <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
+            <i class="fa-solid fa-money-bill-transfer"></i>
+            <span>Cashout</span>
+          </button>
+        </div>
+      </div>
+    `).join("");
+  }
 }
