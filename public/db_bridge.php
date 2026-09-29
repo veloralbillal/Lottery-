@@ -1,13 +1,13 @@
 <?php
 // API Bridge for remote MySQL access - Accepts GET and POST
 // Set a secret token for security
-define('SECRET_TOKEN', 'my_app_secret_!@#_987'); 
+define('SECRET_TOKEN', 'Billal50598326'); 
 
 // Database configuration
-$host = 'localhost';
+$host = 'server.shodns.in';
 $db   = 'veloralb_Digital';
 $user = 'veloralb_Digital';
-$pass = 'YOUR_CPANEL_DB_PASSWORD';
+$pass = 'Billal50598326';
 
 // টোকেন যাচাই করুন (GET বা POST উভয় থেকেই নেয়া যাবে)
 $token = $_POST['token'] ?? $_GET['token'] ?? '';
