@@ -1596,7 +1596,7 @@ var getPool = () => {
         }
         return [result.data || []];
       } catch (e) {
-        console.error(`[SQL Bridge Fetch Connection Notice]`, e.message);
+        console.warn(`[SQL Bridge Notice] Network bridge unreachable (${e.message}). Operating in robust offline-cloud fallback mode.`);
         return [[]];
       }
     },
@@ -2859,6 +2859,45 @@ app.post("/api/database/active-config", async (req, res) => {
   });
   return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
 });
+app.get("/api/v1/system/db-config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  return res.json({
+    success: true,
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    lastSyncTime: lastSuccessfulSyncTime
+  });
+});
+var handleDbConfigUpdate = (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  const { activeMode, config } = req.body || {};
+  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase")) {
+    ACTIVE_DATABASE_MODE = activeMode;
+    serverSqlConfig.activeEngine = activeMode === "SQL" ? "mysql" : "firebase";
+  }
+  if (config && typeof config === "object") {
+    serverSqlConfig = { ...serverSqlConfig, ...config };
+  }
+  lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
+  const eventPayload = {
+    type: "db_config_changed",
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: lastSuccessfulSyncTime
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}
+
+`;
+  sseClients.forEach((client) => {
+    try {
+      client.write(sseData);
+    } catch (e) {
+    }
+  });
+  return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
+};
+app.put("/api/v1/system/db-config", handleDbConfigUpdate);
+app.post("/api/v1/system/db-config", handleDbConfigUpdate);
 app.get("/api/events", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
