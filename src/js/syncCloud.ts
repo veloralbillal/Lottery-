@@ -155,6 +155,29 @@ export const SyncCloudModule = {
     } catch (err) {
       console.warn("Firestore username lookup failed:", err);
     }
+
+    // 3. Tertiary: Query backend server /api/auth/lookup-user
+    try {
+      const serverRes = await fetch("/api/auth/lookup-user", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: cleanUser })
+      });
+      if (serverRes.ok) {
+        const data = await serverRes.json();
+        if (data.success && data.user) {
+          return {
+            uid: data.user.id || data.user.uid,
+            email: data.user.email,
+            username: data.user.username,
+            role: data.user.role
+          };
+        }
+      }
+    } catch (netErr) {
+      // offline fallback
+    }
+
     return null;
   },
 
