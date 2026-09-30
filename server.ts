@@ -1651,20 +1651,81 @@ app.post('/api/database/switch', async (req: Request, res: Response) => {
   ACTIVE_DATABASE_MODE = targetMode;
   serverSqlConfig.activeEngine = targetMode === 'SQL' ? 'mysql' : 'firebase';
 
-  try {
-    const pool = getPool();
-    await pool.execute(
-      `INSERT INTO admin_database_switch_log (admin_id, old_database, new_database, reason, ip, status, timestamp) VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?)`,
-      [adminId || 'admin', oldMode, targetMode, reason || 'Admin requested database switch', req.ip || '127.0.0.1', new Date().toISOString()]
-    );
-  } catch (e) {}
-
-  await recordAdminLog('DATABASE_SWITCH', `Admin switched database mode from ${oldMode} to ${targetMode}`, 'system', adminId || 'admin', targetMode, 'SUCCESS', req.ip || '127.0.0.1');
+  const eventPayload = {
+    type: 'database_switched',
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: new Date().toISOString()
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(sseData);
+    } catch (e) {}
+  });
 
   return res.json({
     success: true,
     message: `Database successfully switched from ${oldMode} to ${targetMode}.`,
     activeMode: ACTIVE_DATABASE_MODE
+  });
+});
+
+// Centralized Server-Side Database Active Config Endpoint
+app.get('/api/database/active-config', (_req: Request, res: Response) => {
+  return res.json({
+    success: true,
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    lastSyncTime: lastSuccessfulSyncTime
+  });
+});
+
+app.post('/api/database/active-config', async (req: Request, res: Response) => {
+  const { activeMode, config } = req.body || {};
+  if (activeMode && (activeMode === 'SQL' || activeMode === 'Firebase')) {
+    ACTIVE_DATABASE_MODE = activeMode;
+    serverSqlConfig.activeEngine = activeMode === 'SQL' ? 'mysql' : 'firebase';
+  }
+  if (config && typeof config === 'object') {
+    serverSqlConfig = { ...serverSqlConfig, ...config };
+  }
+  lastSuccessfulSyncTime = new Date().toISOString();
+
+  // Broadcast to all clients
+  const eventPayload = {
+    type: 'database_switched',
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: lastSuccessfulSyncTime
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(sseData);
+    } catch (e) {}
+  });
+
+  return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
+});
+
+// Global Real-Time Events Stream (SSE) for Database Sync & Switches across Browsers
+app.get('/api/events', (req: Request, res: Response) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  sseClients.push(res);
+
+  // Send initial active config event
+  try {
+    res.write(`data: ${JSON.stringify({ type: 'init', activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig })}\n\n`);
+  } catch (e) {}
+
+  req.on('close', () => {
+    const idx = sseClients.indexOf(res);
+    if (idx >= 0) sseClients.splice(idx, 1);
   });
 });
 
