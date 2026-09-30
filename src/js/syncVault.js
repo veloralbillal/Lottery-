@@ -203,6 +203,10 @@ export const SyncVaultModule = {
     if (!this.db || !this.db.sqlDbConfig) return;
     const cfg = this.db.sqlDbConfig;
 
+    // Initialize switches if undefined
+    if (cfg.firebaseEnabled === undefined) cfg.firebaseEnabled = true;
+    if (cfg.sqlEnabled === undefined) cfg.sqlEnabled = true;
+
     // Populate form fields
     const hostEl = document.getElementById("sql-cfg-host");
     const portEl = document.getElementById("sql-cfg-port");
@@ -217,6 +221,28 @@ export const SyncVaultModule = {
     if (userEl) userEl.value = cfg.username || "veloralb_Digital";
     if (passEl) passEl.value = cfg.password || "UcWg.75@wv+Ijzh#";
     if (autoSyncEl) autoSyncEl.checked = cfg.autoSync !== false;
+
+    // Update master toggles
+    const fbToggle = document.getElementById("toggle-firebase-db");
+    const sqlToggle = document.getElementById("toggle-sql-db");
+    const fbStatusLbl = document.getElementById("fb-engine-status-lbl");
+    const sqlStatusLbl = document.getElementById("sql-engine-status-lbl");
+
+    if (fbToggle) fbToggle.checked = cfg.firebaseEnabled;
+    if (fbStatusLbl) {
+      fbStatusLbl.innerText = cfg.firebaseEnabled ? "ENABLED" : "DISABLED";
+      fbStatusLbl.className = cfg.firebaseEnabled
+        ? "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[8.5px] font-mono text-amber-400 font-bold"
+        : "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[8.5px] font-mono text-slate-500 font-bold";
+    }
+
+    if (sqlToggle) sqlToggle.checked = cfg.sqlEnabled;
+    if (sqlStatusLbl) {
+      sqlStatusLbl.innerText = cfg.sqlEnabled ? "ENABLED" : "DISABLED";
+      sqlStatusLbl.className = cfg.sqlEnabled
+        ? "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[8.5px] font-mono text-blue-400 font-bold"
+        : "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-800 border border-slate-700 text-[8.5px] font-mono text-slate-500 font-bold";
+    }
 
     // Update active database badge
     const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-1", name: "Firebase Cluster 1" };
@@ -236,7 +262,21 @@ export const SyncVaultModule = {
       const isTargetActive = activeNode.id === target;
       const statusInd = btn.querySelector(".switch-status-indicator");
       
-      if (isTargetActive) {
+      // Determine if this target engine is enabled
+      let isEngineEnabled = true;
+      if (target === "node-1" || target === "node-2") {
+        isEngineEnabled = cfg.firebaseEnabled;
+      } else if (target === "node-sql") {
+        isEngineEnabled = cfg.sqlEnabled;
+      }
+
+      if (!isEngineEnabled) {
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-not-allowed bg-slate-950/40 border-slate-900/50 opacity-40";
+        if (statusInd) {
+          statusInd.innerText = "DISABLED";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-600 font-bold uppercase";
+        }
+      } else if (isTargetActive) {
         btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
         if (statusInd) {
           statusInd.innerText = "ACTIVE";
@@ -354,10 +394,83 @@ export const SyncVaultModule = {
       });
     }
 
+    // ================= SWITCHBOARD ENGINE TOGGLES =================
+    const fbToggle = document.getElementById("toggle-firebase-db");
+    if (fbToggle) {
+      fbToggle.addEventListener("change", (e) => {
+        const isChecked = e.target.checked;
+        this.db.sqlDbConfig.firebaseEnabled = isChecked;
+        this.addConsoleLog(`[SWITCHBOARD] Google Firebase Engine set to ${isChecked ? "ENABLED" : "DISABLED"}`, isChecked ? "info" : "warning");
+        this.showToast(`Firebase storage engine has been ${isChecked ? "enabled" : "disabled"}.`, isChecked ? "success" : "warning");
+        
+        // Auto failover if active engine was disabled
+        const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-1" };
+        if (!isChecked && (activeNode.id === "node-1" || activeNode.id === "node-2")) {
+          if (this.db.sqlDbConfig.sqlEnabled) {
+            const sqlNode = this.db.syncNodes?.find(n => n.id === "node-sql");
+            if (sqlNode) {
+              this.db.syncNodes.forEach(n => n.active = false);
+              sqlNode.active = true;
+              this.addConsoleLog("[AUTOMATIC SWITCH] Firebase disabled. Failover routed traffic to MySQL.", "success");
+              this.showToast("Firebase নিষ্ক্রিয় হওয়ায় অটোমেটিকভাবে MySQL ডাটাবেজে ট্রাফিক রুট করা হয়েছে।", "success");
+            }
+          } else {
+            this.addConsoleLog("[CRITICAL] Both Firebase and MySQL database engines are now DISABLED!", "error");
+            this.showToast("সতর্কতা: উভয় ডাটাবেজ ইঞ্জিন নিষ্ক্রিয় করা হয়েছে!", "error");
+          }
+        }
+        this.saveDB();
+        this.renderSyncVaultTab();
+      });
+    }
+
+    const sqlToggle = document.getElementById("toggle-sql-db");
+    if (sqlToggle) {
+      sqlToggle.addEventListener("change", (e) => {
+        const isChecked = e.target.checked;
+        this.db.sqlDbConfig.sqlEnabled = isChecked;
+        this.addConsoleLog(`[SWITCHBOARD] MySQL Relational Engine set to ${isChecked ? "ENABLED" : "DISABLED"}`, isChecked ? "info" : "warning");
+        this.showToast(`MySQL relational engine has been ${isChecked ? "enabled" : "disabled"}.`, isChecked ? "success" : "warning");
+
+        // Auto failover if active engine was disabled
+        const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-1" };
+        if (!isChecked && activeNode.id === "node-sql") {
+          if (this.db.sqlDbConfig.firebaseEnabled) {
+            const fbNode = this.db.syncNodes?.find(n => n.id === "node-1");
+            if (fbNode) {
+              this.db.syncNodes.forEach(n => n.active = false);
+              fbNode.active = true;
+              this.addConsoleLog("[AUTOMATIC SWITCH] MySQL disabled. Failover routed traffic to Firebase.", "success");
+              this.showToast("MySQL নিষ্ক্রিয় হওয়ায় অটোমেটিকভাবে Firebase ডাটাবেজে ট্রাফিক রুট করা হয়েছে।", "success");
+            }
+          } else {
+            this.addConsoleLog("[CRITICAL] Both Firebase and MySQL database engines are now DISABLED!", "error");
+            this.showToast("সতর্কতা: উভয় ডাটাবেজ ইঞ্জিন নিষ্ক্রিয় করা হয়েছে!", "error");
+          }
+        }
+        this.saveDB();
+        this.renderSyncVaultTab();
+      });
+    }
+
     // Active Database Switcher
     document.querySelectorAll(".active-db-switch-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const targetId = btn.getAttribute("data-target");
+        
+        // Ensure the engine is enabled before allowing switch
+        if (targetId === "node-1" || targetId === "node-2") {
+          if (!this.db.sqlDbConfig.firebaseEnabled) {
+            this.showToast("Google Firebase স্টোরেজ ইঞ্জিন বর্তমানে নিষ্ক্রিয় রয়েছে! প্রথমে এটি সক্রিয় করুন।", "error");
+            return;
+          }
+        } else if (targetId === "node-sql") {
+          if (!this.db.sqlDbConfig.sqlEnabled) {
+            this.showToast("MySQL ডাটাবেজ ইঞ্জিন বর্তমানে নিষ্ক্রিয় রয়েছে! প্রথমে এটি সক্রিয় করুন।", "error");
+            return;
+          }
+        }
+
         const node = this.db.syncNodes?.find(n => n.id === targetId);
         if (!node) return;
 
@@ -460,7 +573,8 @@ export const SyncVaultModule = {
 
           if (data.success) {
             this.addConsoleLog(`[SQL TEST] 🟢 Connection established! Latency: ${data.latency}ms. Engine: ${data.engine}`, "success");
-            this.addConsoleLog(`[SQL TEST] 📑 Tables verified: ${data.tablesVerified.join(", ")}`, "success");
+            const tablesStr = Array.isArray(data.tablesVerified) ? data.tablesVerified.join(", ") : "Main system tables online.";
+            this.addConsoleLog(`[SQL TEST] 📑 Tables status: ${tablesStr}`, "success");
             this.showCongratsSplash("SQL Connected!", data.message);
           } else {
             throw new Error(data.message || "Connection refused");

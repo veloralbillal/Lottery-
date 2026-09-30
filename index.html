@@ -374,9 +374,9 @@
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
     </style>
-    <script type="module" crossorigin src="./assets/main-DpY41jmZ.js"></script>
+    <script type="module" crossorigin src="./assets/main-BEBT8ghM.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-DACRapYG.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-oT4R3IcZ.css">
+    <link rel="stylesheet" crossorigin href="./assets/main-DnPBGSFQ.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
 
@@ -3087,71 +3087,73 @@
         </div>
       </div>
       <!-- ================= ADMIN TAB: CLOUD FAILOVER VAULT ================= -->
-      <div id="admin-tab-sync-vault" class="hidden space-y-6">
+      <div id="admin-tab-sync-vault" class="hidden space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
         <!-- Top network status header -->
         <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-slate-800 p-6 rounded-3xl relative overflow-hidden shadow-2xl">
-          <div class="absolute inset-0 bg-radial-gradient from-cyan-500/10 via-transparent to-transparent opacity-60"></div>
+          <div class="absolute -right-16 -top-16 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
           <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div class="space-y-1">
-              <span class="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-block">High-Availability Cloud Console</span>
+              <span class="bg-cyan-500/15 text-cyan-400 border border-cyan-500/20 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-block">Database High-Availability Console</span>
               <h3 class="text-xl font-black text-white font-sans tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-cloud-arrow-up text-cyan-400 animate-pulse"></i> Multi-Database Standby & Failover Manager
+                <i class="fa-solid fa-network-wired text-cyan-400 animate-pulse"></i> Cloud Failover & Database Sync Hub
               </h3>
               <p class="text-xs text-slate-400 font-sans max-w-xl">
-                আপনার সিস্টেমটি রিয়েল-টাইমে মাল্টি-ক্লাউড ফেইলওভার সাপোর্ট করে। যদি কোনো মূল সার্ভারে বা ফায়ারবেসে সমস্যা হয়, তবে ব্যাকআপ ডাটাবেস সম্পূর্ণ স্বয়ংক্রিয়ভাবে চালু হয়ে যাবে কোনো ডাটা লস ছাড়াই।
+                আপনার সিস্টেমের Firebase Firestore এবং MySQL রিলেশনাল ডাটাবেজের মধ্যে স্বয়ংক্রিয় ডুয়াল-সিঙ্ক এবং ওয়ান-ক্লিক ট্রাফিক সুইচিং পরিচালনা করুন।
               </p>
             </div>
-            <div class="shrink-0 bg-slate-950/80 border border-slate-800 p-3 rounded-2xl flex items-center gap-3 font-mono">
-              <span class="w-3 h-3 rounded-full bg-emerald-500 animate-ping shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
+            
+            <div class="shrink-0 bg-slate-950/80 border border-slate-800 p-3.5 rounded-2xl flex items-center gap-3 font-mono">
+              <span class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-ping shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span>
               <div class="text-[10px]">
-                <span class="text-slate-500 block uppercase font-bold">Active Primary link</span>
-                <span class="text-emerald-400 font-black" id="failover-live-active-nodename">Firebase Production Node</span>
+                <span class="text-slate-500 block uppercase font-bold">Active Routing Link</span>
+                <span class="text-emerald-400 font-black text-xs" id="failover-live-active-nodename">Firebase Production</span>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Network Flow Diagram Visualizer -->
-          <div class="mt-6 bg-slate-950/70 border border-slate-850 rounded-2xl p-4 relative">
-            <h4 class="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-4">Database Traffic & Heartbeat Loop (রিয়েল-টাইম কানেকশন ম্যাপ)</h4>
-            
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
-              <!-- Client Browser node -->
-              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
-                <div class="w-10 h-10 rounded-full bg-cyan-950/60 border border-cyan-800/40 flex items-center justify-center text-cyan-400">
-                  <i class="fa-solid fa-desktop"></i>
-                </div>
-                <div>
-                  <span class="text-[10px] font-bold text-white block">Client Portal</span>
-                  <span class="text-[9px] text-slate-500 block font-mono">Web Application</span>
-                </div>
-                <div class="px-2 py-0.5 rounded-full bg-cyan-950 text-[8px] text-cyan-400 font-mono tracking-wider">ONLINE</div>
-              </div>
+        <!-- Master Switches Board -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+          <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-toggle-on text-cyan-400"></i>
+            <h4 class="text-xs font-black tracking-wider uppercase text-slate-200">Database Engine Master Switches (ডাটাবেজ সক্ষম / নিষ্ক্রিয়করণ)</h4>
+          </div>
 
-              <!-- Switch load Balancer / Fallback gateway -->
-              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
-                <!-- Glowing Pulsing effect for active routing -->
-                <div class="absolute -inset-0.5 bg-gradient-to-r from-cyan-500 to-rose-600 rounded-xl blur opacity-15 animate-pulse"></div>
-                <div class="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center text-rose-500 relative z-10">
-                  <i class="fa-solid fa-network-wired" id="cluster-balancer-icon"></i>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <!-- Firebase Switch Card -->
+            <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex items-center justify-between gap-4 transition duration-200 hover:border-slate-700">
+              <div class="space-y-1 min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                  <h5 class="text-[12px] font-black text-white leading-tight">Google Firebase Firestore</h5>
                 </div>
-                <div class="relative z-10">
-                  <span class="text-[10px] font-bold text-white block">Router Sync Engine</span>
-                  <span class="text-[9px] text-rose-400 block font-mono" id="cluster-active-router-mode">Autopilot High-Availability</span>
+                <p class="text-[10px] text-slate-400">Continuous cloud sync with standard security rules integration.</p>
+                <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-[8.5px] font-mono text-amber-400" id="fb-engine-status-lbl">
+                  ENABLED
                 </div>
-                <div class="px-2 py-0.5 rounded-full bg-rose-950/50 text-[8px] text-rose-400 font-mono tracking-wider relative z-10">FAILOVER STANDBY ACTIVE</div>
               </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0 select-none">
+                <input type="checkbox" id="toggle-firebase-db" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-teal-500"></div>
+              </label>
+            </div>
 
-              <!-- Database Clusters -->
-              <div class="bg-slate-900/90 border border-slate-800 p-3 rounded-xl flex flex-col items-center justify-center text-center space-y-2 z-10 relative">
-                <div class="w-10 h-10 rounded-full bg-emerald-950/60 border border-emerald-800/40 flex items-center justify-center text-emerald-400" id="cluster-db-visual-icon">
-                  <i class="fa-solid fa-database"></i>
+            <!-- MySQL Database Switch Card -->
+            <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-2xl flex items-center justify-between gap-4 transition duration-200 hover:border-slate-700">
+              <div class="space-y-1 min-w-0 flex-1">
+                <div class="flex items-center gap-2">
+                  <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                  <h5 class="text-[12px] font-black text-white leading-tight">MySQL Relational Database</h5>
                 </div>
-                <div>
-                  <span class="text-[10px] font-bold text-white block">Configured Storage Pool</span>
-                  <span class="text-[9px] text-slate-500 block font-mono" id="cluster-backends-count-txt">3 Database Nodes registered</span>
+                <p class="text-[10px] text-slate-400">Dedicated remote cPanel/Localhost hosting database synchronization.</p>
+                <div class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-blue-500/10 border border-blue-500/20 text-[8.5px] font-mono text-blue-400" id="sql-engine-status-lbl">
+                  ENABLED
                 </div>
-                <div class="px-2 py-0.5 rounded-full bg-emerald-950 text-[8px] text-emerald-400 font-mono tracking-wider" id="cluster-db-visual-status">HEALTHY</div>
               </div>
+              <label class="relative inline-flex items-center cursor-pointer shrink-0 select-none">
+                <input type="checkbox" id="toggle-sql-db" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 rounded-full peer peer-focus:ring-2 peer-focus:ring-cyan-500/20 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-slate-300 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-cyan-500 peer-checked:to-teal-500"></div>
+              </label>
             </div>
           </div>
         </div>
@@ -3165,17 +3167,17 @@
             <div class="space-y-1">
               <div class="flex items-center gap-2 flex-wrap">
                 <span class="bg-blue-500/15 text-blue-400 border border-blue-500/25 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-flex items-center gap-1.5">
-                  <i class="fa-solid fa-database"></i> MySQL 8.0 / MariaDB PDO & Cloud Firebase
+                  <i class="fa-solid fa-arrows-split-up-and-left text-amber-400"></i> Active Database Routing Controller
                 </span>
                 <span id="sql-sync-badge-status" class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black inline-flex items-center gap-1.5 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Dual-Sync Mirror Active (100% In Sync)
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Failover Dual-Sync Status: Active & Synced
                 </span>
               </div>
               <h3 class="text-lg font-black text-white font-sans tracking-tight flex items-center gap-2">
-                <i class="fa-solid fa-server text-cyan-400"></i> Relational SQL DB Configuration, Switcher & Dual Sync
+                <i class="fa-solid fa-server text-cyan-400"></i> Active Database Switcher & Live Logs
               </h3>
               <p class="text-xs text-slate-400 font-sans max-w-2xl leading-relaxed">
-                আপনার সিস্টেমের Firebase (Cluster 1 ও 2) এবং MySQL Relational Database (<code class="text-cyan-300 font-mono">veloralb_Digital</code>)-এর মধ্যে ওয়ান-ক্লিক সুইচিং এবং স্বয়ংক্রিয় রিয়েল-টাইম ডুয়াল সিঙ্ক পরিচালনা করুন।
+                আপনার সিস্টেমের এক্টিভ ডাটাবেজ পরিবর্তন করতে নিচের অপশনগুলো ব্যবহার করুন। ডুয়াল সিঙ্ক সক্রিয় থাকায় রিয়েল-টাইমে যেকোনো ডাটা লস ছাড়া সুইচিং সম্ভব।
               </p>
             </div>
 
@@ -3185,8 +3187,8 @@
                 <span class="text-slate-500 block uppercase font-bold">Dual Sync Status</span>
                 <span class="text-emerald-400 font-black" id="sql-last-sync-time">Just Now (Firebase ⇄ SQL)</span>
               </div>
-              <button id="sql-btn-manual-sync" type="button" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-emerald-950/50">
-                <i class="fa-solid fa-rotate" id="sql-sync-icon"></i>
+              <button id="sql-btn-manual-sync" type="button" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-emerald-950/50">
+                <i class="fa-solid fa-rotate animate-spin" id="sql-sync-icon"></i>
                 <span>Sync Now</span>
               </button>
             </div>
@@ -8075,19 +8077,22 @@
     <script>
       // Static Hosting Fallback: if /src/main.ts was not compiled (e.g. uploaded root folder to Apache/cPanel/Nginx host)
       window.addEventListener('load', function() {
-        if (!window.appInstance && !window.app) {
-          var base = window.APP_BASE || './';
-          var s = document.createElement('script');
-          s.type = 'module';
-          s.src = base + 'assets/main.js';
-          s.onerror = function() {
-            var s2 = document.createElement('script');
-            s2.type = 'module';
-            s2.src = './main.js';
-            document.body.appendChild(s2);
-          };
-          document.body.appendChild(s);
-        }
+        setTimeout(function() {
+          if (!window.appInstance && !window.app) {
+            console.log("Fallback script loader triggered as main application did not initialize within timeout.");
+            var base = window.APP_BASE || './';
+            var s = document.createElement('script');
+            s.type = 'module';
+            s.src = base + 'assets/main.js';
+            s.onerror = function() {
+              var s2 = document.createElement('script');
+              s2.type = 'module';
+              s2.src = './main.js';
+              document.body.appendChild(s2);
+            };
+            document.body.appendChild(s);
+          }
+        }, 2500);
       });
     </script>
   </body>

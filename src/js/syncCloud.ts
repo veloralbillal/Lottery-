@@ -2,7 +2,7 @@ import { initializeApp, getApps, deleteApp } from "firebase/app";
 import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs, limit } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
-import { StateManager } from "../main.js"; // In case standard serialization helper reference is needed
+import { removeCircularReferences, safeStringify } from "./serialization.js";
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
 export const SyncCloudModule = {
@@ -90,8 +90,8 @@ export const SyncCloudModule = {
       if (this.db && this.db.users && Array.isArray(this.db.users)) {
         const localUser = this.db.users.find(u => u.id === uid || u.uid === uid);
         if (localUser) {
-          this.currentUser = StateManager.removeCircularReferences(localUser);
-          localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+          this.currentUser = removeCircularReferences(localUser);
+          localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
           console.log("User profile hydrated from active database:", localUser.username);
           this.render();
         }
@@ -102,8 +102,8 @@ export const SyncCloudModule = {
         const userDoc = await getDoc(doc(this.firestore, "users", uid)).catch(() => null);
         if (userDoc && userDoc.exists && userDoc.exists()) {
           const profile = userDoc.data();
-          this.currentUser = StateManager.removeCircularReferences({ ...(this.currentUser || {}), ...profile });
-          localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+          this.currentUser = removeCircularReferences({ ...(this.currentUser || {}), ...profile });
+          localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
           console.log("User profile updated from Firestore:", profile.username);
           this.render();
         }
@@ -118,7 +118,7 @@ export const SyncCloudModule = {
     try {
       const uid = this.currentUser.id;
       const profileDoc = doc(this.firestore, "users", uid);
-      const cleanedProfile = StateManager.removeCircularReferences(this.currentUser);
+      const cleanedProfile = removeCircularReferences(this.currentUser);
       await setDoc(profileDoc, {
         ...cleanedProfile,
         updatedAt: new Date().toISOString()
@@ -346,18 +346,18 @@ export const SyncCloudModule = {
           if (cloudData) {
             let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
             if (parsed) {
-              parsed = StateManager.removeCircularReferences(parsed);
+              parsed = removeCircularReferences(parsed);
             }
             this.mergeParsedDb(parsed);
             
             if (this.currentUser) {
               const freshUser = this.db.users.find(u => u.username === this.currentUser.username);
               if (freshUser) {
-                this.currentUser = StateManager.removeCircularReferences(freshUser);
-                localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
+                this.currentUser = removeCircularReferences(freshUser);
+                localStorage.setItem(this.sessionKey, safeStringify(freshUser));
               }
             }
-            localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
+            localStorage.setItem(this.dbKey, safeStringify(this.db));
             
             // Re-render everything immediately across all screens/tabs
             this.render();
@@ -419,12 +419,12 @@ export const SyncCloudModule = {
             if (this.currentUser) {
               const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
               if (freshUser) {
-                this.currentUser = StateManager.removeCircularReferences(freshUser);
-                localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
+                this.currentUser = removeCircularReferences(freshUser);
+                localStorage.setItem(this.sessionKey, safeStringify(freshUser));
               }
             }
-            localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
-            localStorage.setItem("lottery_winner_db_backup", StateManager.safeStringify(this.db));
+            localStorage.setItem(this.dbKey, safeStringify(this.db));
+            localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
             this.render();
             this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
             this.setSyncState("synced");
@@ -432,7 +432,8 @@ export const SyncCloudModule = {
           }
         }
       } catch (sqlErr: any) {
-        console.warn("Failed to load DB from server SQL database, falling back to Firestore:", sqlErr);
+        console.error("Failed to load DB from server SQL database. Error:", sqlErr);
+        this.addConsoleLog("[SQL DB LOAD] Failed to reach SQL database. Falling back to Firestore...", "error");
       }
     }
 
@@ -474,18 +475,18 @@ export const SyncCloudModule = {
         if (cloudData) {
           let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
           if (parsed) {
-            parsed = StateManager.removeCircularReferences(parsed);
+            parsed = removeCircularReferences(parsed);
           }
           this.mergeParsedDb(parsed);
           if (this.currentUser) {
             const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
             if (freshUser) {
-              this.currentUser = StateManager.removeCircularReferences(freshUser);
-              localStorage.setItem(this.sessionKey, StateManager.safeStringify(freshUser));
+              this.currentUser = removeCircularReferences(freshUser);
+              localStorage.setItem(this.sessionKey, safeStringify(freshUser));
             }
           }
-          localStorage.setItem(this.dbKey, StateManager.safeStringify(this.db));
-          localStorage.setItem("lottery_winner_db_backup", StateManager.safeStringify(this.db));
+          localStorage.setItem(this.dbKey, safeStringify(this.db));
+          localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
           this.render();
           console.log(`Database successfully synced with Firebase cloud (Loaded from ${primaryPath}).`);
           this.addConsoleLog(`[DUAL REPLICATION] Aligned live state from active cluster (${primaryPath}).`, "success");
@@ -512,8 +513,8 @@ export const SyncCloudModule = {
 
     // 1. Always mirror to BOTH local storage instances immediately
     try {
-      const cleaned = StateManager.removeCircularReferences(this.db);
-      const serialized = StateManager.safeStringify(cleaned);
+      const cleaned = removeCircularReferences(this.db);
+      const serialized = safeStringify(cleaned);
       localStorage.setItem(this.dbKey, serialized);
       localStorage.setItem("lottery_winner_db_backup", serialized);
     } catch (storageErr) {
@@ -541,7 +542,7 @@ export const SyncCloudModule = {
 
     try {
       if (this.firestore) {
-        const dbSerialized = StateManager.safeStringify(this.db);
+        const dbSerialized = safeStringify(this.db);
         const payload = {
           db: dbSerialized,
           updatedAt: new Date().toISOString(),
