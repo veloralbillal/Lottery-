@@ -2629,18 +2629,6 @@ async function recordSystemLog(options) {
   }
   broadcastAdminLog(logEntry);
 }
-async function recordAdminLog(event_type, description, user_id = "system", admin_id = "admin", entity_id = "", status = "SUCCESS", ip = "127.0.0.1") {
-  await recordSystemLog({
-    event_type,
-    severity: status === "SUCCESS" ? "SUCCESS" : "ERROR",
-    message: description,
-    user_id,
-    admin_id,
-    entity_id,
-    status,
-    ip_address: ip
-  });
-}
 app.get("/api/admin/logs", async (req, res) => {
   try {
     const { filter, search, limit = "100", offset = "0" } = req.query;
@@ -2815,19 +2803,77 @@ app.post("/api/database/switch", async (req, res) => {
   const oldMode = ACTIVE_DATABASE_MODE;
   ACTIVE_DATABASE_MODE = targetMode;
   serverSqlConfig.activeEngine = targetMode === "SQL" ? "mysql" : "firebase";
-  try {
-    const pool2 = getPool();
-    await pool2.execute(
-      `INSERT INTO admin_database_switch_log (admin_id, old_database, new_database, reason, ip, status, timestamp) VALUES (?, ?, ?, ?, ?, 'SUCCESS', ?)`,
-      [adminId || "admin", oldMode, targetMode, reason || "Admin requested database switch", req.ip || "127.0.0.1", (/* @__PURE__ */ new Date()).toISOString()]
-    );
-  } catch (e) {
-  }
-  await recordAdminLog("DATABASE_SWITCH", `Admin switched database mode from ${oldMode} to ${targetMode}`, "system", adminId || "admin", targetMode, "SUCCESS", req.ip || "127.0.0.1");
+  const eventPayload = {
+    type: "database_switched",
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}
+
+`;
+  sseClients.forEach((client) => {
+    try {
+      client.write(sseData);
+    } catch (e) {
+    }
+  });
   return res.json({
     success: true,
     message: `Database successfully switched from ${oldMode} to ${targetMode}.`,
     activeMode: ACTIVE_DATABASE_MODE
+  });
+});
+app.get("/api/database/active-config", (_req, res) => {
+  return res.json({
+    success: true,
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    lastSyncTime: lastSuccessfulSyncTime
+  });
+});
+app.post("/api/database/active-config", async (req, res) => {
+  const { activeMode, config } = req.body || {};
+  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase")) {
+    ACTIVE_DATABASE_MODE = activeMode;
+    serverSqlConfig.activeEngine = activeMode === "SQL" ? "mysql" : "firebase";
+  }
+  if (config && typeof config === "object") {
+    serverSqlConfig = { ...serverSqlConfig, ...config };
+  }
+  lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
+  const eventPayload = {
+    type: "database_switched",
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: lastSuccessfulSyncTime
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}
+
+`;
+  sseClients.forEach((client) => {
+    try {
+      client.write(sseData);
+    } catch (e) {
+    }
+  });
+  return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
+});
+app.get("/api/events", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.flushHeaders();
+  sseClients.push(res);
+  try {
+    res.write(`data: ${JSON.stringify({ type: "init", activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig })}
+
+`);
+  } catch (e) {
+  }
+  req.on("close", () => {
+    const idx = sseClients.indexOf(res);
+    if (idx >= 0) sseClients.splice(idx, 1);
   });
 });
 app.get("/api/admin/logs/stream", (req, res) => {

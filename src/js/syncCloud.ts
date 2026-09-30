@@ -60,6 +60,7 @@ export const SyncCloudModule = {
       // Start subscribing to live Firestore updates and pull latest cloud state immediately
       this.listenToCloud();
       this.initAuthListener();
+      this.initRealtimeEventStream();
       await this.loadFromCloud().catch(err => console.warn("Initial cloud load failed:", err));
     } catch (e) {
       console.error("Failed to initialize Firebase Sync:", e.message || e);
@@ -789,6 +790,48 @@ export const SyncCloudModule = {
           if (modalIconContainer) modalIconContainer.classList.add("bg-red-950/40", "border-red-800/30", "text-red-500");
           break;
       }
+    }
+  },
+
+  initRealtimeEventStream() {
+    if ((this as any)._sseEventSource) return;
+    try {
+      const es = new EventSource("/api/events");
+      (this as any)._sseEventSource = es;
+      es.onmessage = async (event) => {
+        try {
+          const payload = JSON.parse(event.data);
+          if (payload && payload.type === "database_switched") {
+            console.log("[SSE Realtime Broadcaster] Database engine switched across browsers:", payload.activeMode);
+            if (payload.config && this.db) {
+              if (!this.db.sqlDbConfig) this.db.sqlDbConfig = {};
+              this.db.sqlDbConfig = { ...this.db.sqlDbConfig, ...payload.config };
+              if (this.db.syncNodes && this.db.syncNodes.length > 0) {
+                this.db.syncNodes.forEach((n: any) => {
+                  if (payload.activeMode === "SQL") {
+                    n.active = (n.id === "node-sql");
+                  } else {
+                    n.active = (n.id === "node-1" || n.id === "node-firebase");
+                  }
+                });
+              }
+            }
+            localStorage.removeItem("lottery_winner_db_backup");
+            await this.loadFromCloud();
+            if (typeof (this as any).showToast === "function") {
+              (this as any).showToast(`Database synchronized to ${payload.activeMode} across all sessions!`, "info");
+            }
+            this.render();
+          }
+        } catch (err) {
+          console.warn("Error parsing SSE event payload:", err);
+        }
+      };
+      es.onerror = () => {
+        // EventSource will auto-reconnect
+      };
+    } catch (e) {
+      console.warn("Failed to initialize SSE EventSource:", e);
     }
   },
 
