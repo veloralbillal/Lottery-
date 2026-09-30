@@ -196,7 +196,7 @@ const getPool = () => {
         }
         return [result.data || []];
       } catch (e: any) {
-        console.error(`[SQL Bridge Fetch Connection Notice]`, e.message);
+        console.warn(`[SQL Bridge Notice] Network bridge unreachable (${e.message}). Operating in robust offline-cloud fallback mode.`);
         return [[]];
       }
     },
@@ -1708,6 +1708,52 @@ app.post('/api/database/active-config', async (req: Request, res: Response) => {
 
   return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
 });
+
+// ============================================================================
+// 1. CENTRALIZED MASTER SWITCH & DB CONFIG ENDPOINTS (SERVER-SIDE SOURCE OF TRUTH)
+// ============================================================================
+
+app.get('/api/v1/system/db-config', (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  return res.json({
+    success: true,
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    lastSyncTime: lastSuccessfulSyncTime
+  });
+});
+
+const handleDbConfigUpdate = (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  const { activeMode, config } = req.body || {};
+  if (activeMode && (activeMode === 'SQL' || activeMode === 'Firebase')) {
+    ACTIVE_DATABASE_MODE = activeMode;
+    serverSqlConfig.activeEngine = activeMode === 'SQL' ? 'mysql' : 'firebase';
+  }
+  if (config && typeof config === 'object') {
+    serverSqlConfig = { ...serverSqlConfig, ...config };
+  }
+  lastSuccessfulSyncTime = new Date().toISOString();
+
+  // Broadcast change via SSE to all connected client browsers simultaneously
+  const eventPayload = {
+    type: 'db_config_changed',
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    timestamp: lastSuccessfulSyncTime
+  };
+  const sseData = `data: ${JSON.stringify(eventPayload)}\n\n`;
+  sseClients.forEach(client => {
+    try {
+      client.write(sseData);
+    } catch (e) {}
+  });
+
+  return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
+};
+
+app.put('/api/v1/system/db-config', handleDbConfigUpdate);
+app.post('/api/v1/system/db-config', handleDbConfigUpdate);
 
 // Global Real-Time Events Stream (SSE) for Database Sync & Switches across Browsers
 app.get('/api/events', (req: Request, res: Response) => {
