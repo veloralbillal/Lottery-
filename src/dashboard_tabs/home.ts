@@ -186,10 +186,10 @@ export class HomeTab {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Render pending lobby items -->
-              ${(appInstance.db.syndicates || []).filter(s => s.status === 'pending').map(s => {
-                const targetLottery = appInstance.db.lotteries.find(l => l.id === s.lotteryId);
-                const percentFilled = Math.round((s.joinedUserIds.length / s.size) * 100);
-                const isMember = s.joinedUserIds.includes(appInstance.currentUser?.id);
+              ${(appInstance.db.syndicates || []).filter((s: any) => s.status === 'pending').map((s: any) => {
+                const targetLottery = appInstance.db.lotteries.find((l: any) => l.id === s.lotteryId);
+                const percentFilled = Math.round(((s.joinedUserIds || []).length / s.size) * 100);
+                const isMember = (s.joinedUserIds || []).includes(appInstance.currentUser?.id);
 
                 return `
                   <div class="bg-slate-900 border border-slate-800/80 hover:border-slate-700 p-4 rounded-2xl space-y-3 relative overflow-hidden transition">
@@ -212,7 +212,7 @@ export class HomeTab {
                     <!-- Progress bar -->
                     <div class="space-y-1">
                       <div class="flex justify-between text-[9px] font-mono text-slate-400">
-                        <span>Members (${s.joinedUserIds.length}/${s.size})</span>
+                        <span>Members (${(s.joinedUserIds || []).length}/${s.size})</span>
                         <span>${percentFilled}% Filled</span>
                       </div>
                       <div class="w-full h-1.5 bg-slate-950 rounded-full overflow-hidden">
@@ -223,7 +223,7 @@ export class HomeTab {
                     <!-- Joined users list -->
                     <div class="flex flex-wrap gap-1 items-center pt-1 text-[10px] text-slate-400">
                       <span class="text-[9px] text-slate-500">Joined:</span>
-                      ${s.joinedUsernames.map(name => `
+                      ${(s.joinedUsernames || []).map((name: any) => `
                         <span class="bg-slate-950 text-slate-300 px-2 py-0.5 rounded-full border border-slate-800/60 font-mono text-[9px]">
                           @${name}
                         </span>
@@ -270,13 +270,13 @@ export class HomeTab {
                   </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-800/60">
-                  ${(appInstance.db.syndicates || []).filter(s => s.joinedUserIds.includes(appInstance.currentUser?.id)).map(s => {
-                    const targetLottery = appInstance.db.lotteries.find(l => l.id === s.lotteryId);
+                  ${(appInstance.db.syndicates || []).filter((s: any) => (s.joinedUserIds || []).includes(appInstance.currentUser?.id)).map((s: any) => {
+                    const targetLottery = appInstance.db.lotteries.find((l: any) => l.id === s.lotteryId);
                     let statusLabel = "";
                     let resultLabel = "";
 
                     if (s.status === "pending") {
-                      statusLabel = `<span class="bg-amber-950 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded text-[9px]">Waiting (${s.joinedUserIds.length}/${s.size})</span>`;
+                      statusLabel = `<span class="bg-amber-950 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded text-[9px]">Waiting (${(s.joinedUserIds || []).length}/${s.size})</span>`;
                       resultLabel = `<span class="text-slate-500">Pending Code: ${s.code}</span>`;
                     } else if (s.status === "active") {
                       statusLabel = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded text-[9px]">Active (Fully Funded)</span>`;
@@ -325,7 +325,7 @@ export class HomeTab {
                     `;
                   }).join("")}
 
-                  ${(appInstance.db.syndicates || []).filter(s => s.joinedUserIds.includes(appInstance.currentUser?.id)).length === 0 ? `
+                  ${(appInstance.db.syndicates || []).filter((s: any) => (s.joinedUserIds || []).includes(appInstance.currentUser?.id)).length === 0 ? `
                     <tr>
                       <td colspan="4" class="p-8 text-center text-slate-500 font-mono text-xs">
                         You have not joined any group syndicates yet. Create or join one above!

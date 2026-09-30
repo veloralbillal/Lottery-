@@ -689,7 +689,7 @@ export const GameHubModule = {
 
     // Get lists of syndicates and user syndicates
     const pendingSyndicates = (appInstance.db.syndicates || []).filter(s => s.status === "pending");
-    const mySyndicates = (appInstance.db.syndicates || []).filter(s => s.joinedUserIds.includes(appInstance.currentUser?.id));
+    const mySyndicates = (appInstance.db.syndicates || []).filter(s => (s.joinedUserIds || []).includes(appInstance.currentUser?.id));
 
     container.innerHTML = `
       <div class="space-y-4">
@@ -764,7 +764,7 @@ export const GameHubModule = {
             ${pendingSyndicates.map(s => {
               const lot = appInstance.db.lotteries.find(l => l.id === s.lotteryId);
               if (!lot) return "";
-              const seatsLeft = s.size - s.joinedUserIds.length;
+              const seatsLeft = s.size - (s.joinedUserIds || []).length;
               const costPerMember = Math.round((lot.entryFee / s.size) * 100) / 100;
 
               return `
@@ -784,7 +784,7 @@ export const GameHubModule = {
                     </div>
                     <div>
                       <span class="block text-[7.5px] text-slate-500">Seats Taken</span>
-                      <strong class="text-emerald-400">${s.joinedUserIds.length} / ${s.size}</strong>
+                      <strong class="text-emerald-400">${(s.joinedUserIds || []).length} / ${s.size}</strong>
                     </div>
                     <div>
                       <span class="block text-[7.5px] text-slate-500">Draw Prize</span>
@@ -847,7 +847,7 @@ export const GameHubModule = {
                   </div>
                   <div class="text-right flex flex-col items-end gap-1">
                     <span class="px-2 py-0.5 rounded-lg border text-[8.5px] font-bold ${statusColor}">${statusLabel}</span>
-                    <span class="text-[7.5px] text-slate-500">Seats: ${s.joinedUserIds.length}/${s.size} members</span>
+                    <span class="text-[7.5px] text-slate-500">Seats: ${(s.joinedUserIds || []).length}/${s.size} members</span>
                   </div>
                 </div>
               `;

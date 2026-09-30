@@ -94,7 +94,7 @@ import mysql from 'mysql2/promise';
 
 // SQL Database Configuration & Dual Sync API Endpoints
 let serverSqlConfig = {
-  host: 'server.shodns.in',
+  host: 'https://api.veloralbillal.top/db_bridge.php',
   port: '3306',
   database: 'veloralb_Digital',
   username: 'veloralb_Digital',
@@ -109,6 +109,83 @@ let serverSqlConfig = {
 let pool: mysql.Pool | null = null;
 
 const getPool = () => {
+  let host = serverSqlConfig.host || 'localhost';
+  if (host.includes('db_bridge.php') && !host.startsWith('http://') && !host.startsWith('https://')) {
+    host = 'https://' + host;
+  }
+  const isBridge = host.startsWith('http://') || host.startsWith('https://') || host.includes('db_bridge.php');
+
+  if (isBridge) {
+    const mockConnection = {
+      beginTransaction: async () => {},
+      commit: async () => {},
+      rollback: async () => {},
+      release: () => {},
+      ping: async () => [ { status: 'OK' } ],
+      execute: async (sql: string, params: any[] = []) => {
+        let formattedSql = sql;
+        if (params && params.length > 0) {
+          let paramIndex = 0;
+          formattedSql = sql.replace(/\?/g, () => {
+            const val = params[paramIndex++];
+            if (typeof val === 'number') return String(val);
+            if (val === null || val === undefined) return 'NULL';
+            const escaped = String(val).replace(/'/g, "''");
+            return `'${escaped}'`;
+          });
+        }
+
+        console.log(`[SQL Bridge Executor] Query: ${formattedSql.substring(0, 150)}...`);
+        try {
+          // Construct URL with query parameters to survive redirects
+          const urlObj = new URL(host);
+          urlObj.searchParams.set('token', 'my_app_secret_!@#_987');
+          urlObj.searchParams.set('action', 'query');
+          urlObj.searchParams.set('db_host', 'localhost');
+          urlObj.searchParams.set('db_name', serverSqlConfig.database || 'veloralb_Digital');
+          urlObj.searchParams.set('db_user', serverSqlConfig.username || 'veloralb_Digital');
+          urlObj.searchParams.set('db_pass', serverSqlConfig.password || '');
+
+          const response = await fetch(urlObj.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              token: 'my_app_secret_!@#_987',
+              action: 'query',
+              db_host: 'localhost',
+              db_name: serverSqlConfig.database || 'veloralb_Digital',
+              db_user: serverSqlConfig.username || 'veloralb_Digital',
+              db_pass: serverSqlConfig.password || '',
+              sql: formattedSql
+            })
+          });
+          const result: any = await response.json();
+          if (!result.success) {
+            console.error(`[SQL Bridge Query Error]`, result.message);
+            throw new Error(result.message || 'Bridge Query failed');
+          }
+          return [result.data || []];
+        } catch (e: any) {
+          console.error(`[SQL Bridge Fetch Connection Error]`, e.message);
+          throw e;
+        }
+      },
+      query: async (sql: string, params: any[] = []) => {
+        return mockConnection.execute(sql, params);
+      }
+    };
+
+    const mockPool = {
+      getConnection: async () => mockConnection,
+      execute: async (sql: string, params: any[] = []) => mockConnection.execute(sql, params),
+      query: async (sql: string, params: any[] = []) => mockConnection.execute(sql, params),
+      end: async () => {},
+      on: () => {}
+    };
+
+    return mockPool as any;
+  }
+
   if (!pool) {
     pool = mysql.createPool({
       host: serverSqlConfig.host,
@@ -151,7 +228,10 @@ app.post('/api/sql/config', (req: Request, res: Response) => {
 });
 
 app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
-  const host = req.body?.host || serverSqlConfig.host;
+  let host = req.body?.host || serverSqlConfig.host;
+  if (host.includes('db_bridge.php') && !host.startsWith('http://') && !host.startsWith('https://')) {
+    host = 'https://' + host;
+  }
   const port = req.body?.port || serverSqlConfig.port;
   const database = req.body?.database || serverSqlConfig.database;
   const username = req.body?.username || serverSqlConfig.username;
@@ -161,63 +241,54 @@ app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
   console.log(`[SQL Diagnostic Test] Testing connection to ${username}@${host}:${port}/${database}...`);
   
   try {
-    const connection = await mysql.createConnection({
-      host,
-      port: Number(port),
-      user: username,
-      password,
-      database,
-      connectTimeout: 5000
+    const urlObj = new URL(host);
+    urlObj.searchParams.set('token', 'my_app_secret_!@#_987');
+    urlObj.searchParams.set('action', 'query');
+    urlObj.searchParams.set('db_host', 'localhost');
+    urlObj.searchParams.set('db_name', database);
+    urlObj.searchParams.set('db_user', username);
+    urlObj.searchParams.set('db_pass', password);
+
+    const response = await fetch(urlObj.toString(), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        token: 'my_app_secret_!@#_987',
+        action: 'query',
+        db_host: 'localhost',
+        db_name: database,
+        db_user: username,
+        db_pass: password,
+        sql: 'SHOW TABLES'
+      })
     });
     
+    const result: any = await response.json();
+    
+    if (!result.success) throw new Error(result.message);
+
     const latency = Date.now() - start;
     
-    // Verify tables exist
-    const [rows]: any = await connection.execute('SHOW TABLES');
-    const tableNames = rows.map((r: any) => Object.values(r)[0]);
-    
-    await connection.end();
+    // Parse tablesVerified from result data
+    let tablesVerified: string[] = [];
+    if (result.success && Array.isArray(result.data)) {
+      tablesVerified = result.data.map((row: any) => Object.values(row)[0] as string);
+    }
     
     return res.json({
       success: true,
       latency,
       host,
-      port,
-      database,
-      username,
       status: 'connected',
-      engine: 'MySQL 8.0 / MariaDB',
-      tablesVerified: tableNames,
-      message: `Connected successfully to MySQL Database "${database}" on ${host}:${port}! Credentials authenticated.`
+      engine: 'MySQL 8.0 / MariaDB (via Bridge API)',
+      tablesVerified,
+      message: `Connected successfully to MySQL via Bridge API at ${host}!`
     });
   } catch (err: any) {
-    const errMsg = (err.message || '').toUpperCase();
-    const errCode = (err.code || '').toUpperCase();
-    const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '::1';
-    const isConnRefused = errCode.includes('CONNREFUSED') || errCode.includes('TIMEDOUT') || 
-                          errMsg.includes('ECONNREFUSED') || errMsg.includes('ETIMEDOUT') || 
-                          errMsg.includes('REFUSED') || errMsg.includes('TIMEOUT');
-
-    if (isConnRefused && isLocal) {
-      console.log(`[SQL Test Connection] Localhost MySQL is unreachable in this environment (Google Cloud Run Sandbox). Returning simulated sandbox response.`);
-      return res.json({
-        success: true,
-        latency: Math.floor(Math.random() * 8) + 3,
-        host,
-        port,
-        database,
-        username,
-        status: 'connected',
-        engine: 'MySQL 8.0 (Simulated Sandbox)',
-        tablesVerified: ['users', 'lotteries', 'tickets', 'deposits', 'withdrawals', 'settings', 'transactions'],
-        message: `⚠️ NOTICE: Simulated Cloud Sandbox Mode active. 'localhost' is unreachable from the cloud server. For real database activity, please provide a REMOTE SQL host (IP or Domain) instead of 'localhost'. (Simulated connection successful for testing UI)`
-      });
-    }
-
-    console.error('[SQL Test Connection Error] Real connection failure on host:', host, err.message);
+    console.error('[SQL Test Connection Error] Bridge API failure:', host, err.message);
     return res.json({ 
       success: false, 
-      message: `MySQL Connection Failed: ${err.message}`,
+      message: `Bridge API Connection Failed: ${err.message}`,
       error: err.message
     });
   }
@@ -434,6 +505,7 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         await runMigrationsIfNeeded();
 
         // Helper to sync table data
+        // Helper to sync table data
         const syncTable = async (tableName: string, dataArray: any[]) => {
           if (!Array.isArray(dataArray) || dataArray.length === 0) return;
           
@@ -446,20 +518,43 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
 
              await connection.execute(`DELETE FROM ${tableName}`);
              
-             for (const item of dataArray) {
-               // Only include keys that exist in the database table
-               const validKeys = Object.keys(item).filter(k => columns.includes(k) && typeof item[k] !== 'object' && item[k] !== undefined && item[k] !== null);
-               
-               if (validKeys.length === 0) continue;
-
-               const values = validKeys.map(k => item[k]);
-               const placeholders = validKeys.map(() => '?').join(',');
-               const sql = `INSERT INTO ${tableName} (${validKeys.join(',')}) VALUES (${placeholders})`;
-               await connection.execute(sql, values);
+             // Identify the keys that exist in both the item and the database table columns
+             const sampleItem = dataArray[0];
+             const validKeys = Object.keys(sampleItem).filter(k => columns.includes(k));
+             
+             if (validKeys.length === 0) {
+               console.warn(`[SQL Sync] No valid columns found to sync for ${tableName}`);
+               return;
              }
-             console.log(`[SQL Sync] Synced ${dataArray.length} rows to ${tableName}`);
+
+             // We chunk data to prevent hitting max_allowed_packet or query length limitations
+             const chunkSize = 100;
+             for (let i = 0; i < dataArray.length; i += chunkSize) {
+               const chunk = dataArray.slice(i, i + chunkSize);
+               const valueRows: string[] = [];
+               const flatValues: any[] = [];
+
+               for (const item of chunk) {
+                 const rowPlaceholders: string[] = [];
+                 for (const key of validKeys) {
+                   const val = item[key];
+                   if (typeof val === 'object' && val !== null) {
+                     flatValues.push(JSON.stringify(val));
+                   } else {
+                     flatValues.push(val !== undefined ? val : null);
+                   }
+                   rowPlaceholders.push('?');
+                 }
+                 valueRows.push(`(${rowPlaceholders.join(',')})`);
+               }
+
+               const sql = `INSERT INTO ${tableName} (${validKeys.join(',')}) VALUES ${valueRows.join(',')}`;
+               await connection.execute(sql, flatValues);
+             }
+             
+             console.log(`[SQL Sync] Bulk-synced ${dataArray.length} rows to ${tableName}`);
           } catch (tblErr: any) {
-            console.warn(`[SQL Sync Warning] Failed to sync table ${tableName}:`, tblErr.message);
+            console.warn(`[SQL Sync Warning] Failed to bulk-sync table ${tableName}:`, tblErr.message);
           }
         };
 

@@ -4,6 +4,7 @@ import { UIEffectsModule } from "./js/uiEffects.js";
 import { initializeApp, getApps } from "firebase/app";
 import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "firebase/firestore";
 import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+import { getCircularReplacer, removeCircularReferences, safeStringify } from "./js/serialization.js";
 import { ChatProfileSystem } from "./chat-profile-system.js";
 import { OfflineQueueManager } from "./js/syncQueue.js";
 import { AdminModule } from "./js/admin.js";
@@ -72,119 +73,15 @@ if (typeof window !== "undefined") {
 // Main client-side database and router state for the Mobile Lottery Portal
 export class StateManager {
   static getCircularReplacer() {
-    const seen = new WeakSet();
-    return (key, value) => {
-      try {
-        if (typeof value === "object" && value !== null) {
-          const cname = (value.constructor && typeof value.constructor.name === "string") ? value.constructor.name : "";
-          if (
-            cname.startsWith("Firestore") ||
-            cname.startsWith("Document") ||
-            cname.startsWith("Query") ||
-            cname.startsWith("Collection") ||
-            cname.startsWith("Firebase") ||
-            cname.startsWith("HTML") ||
-            cname === "Window" ||
-            cname === "Sa" ||
-            cname === "Q$1" ||
-            (value.constructor && value.constructor !== Object && value.constructor !== Array && value.constructor !== Date && value.constructor !== RegExp)
-          ) {
-            return undefined;
-          }
-          if (seen.has(value)) {
-            return undefined; // Discard circular references
-          }
-          seen.add(value);
-        }
-        return value;
-      } catch (err) {
-        return undefined;
-      }
-    };
+    return getCircularReplacer();
   }
 
   static removeCircularReferences(obj, seen = new WeakSet()) {
-    try {
-      if (obj === null || typeof obj !== "object") {
-        return obj;
-      }
-      const cname = (obj.constructor && typeof obj.constructor.name === "string") ? obj.constructor.name : "";
-      if (
-        cname.startsWith("Firestore") ||
-        cname.startsWith("Document") ||
-        cname.startsWith("Query") ||
-        cname.startsWith("Collection") ||
-        cname.startsWith("Firebase") ||
-        cname.startsWith("HTML") ||
-        cname === "Window" ||
-        cname === "Sa" ||
-        cname === "Q$1" ||
-        (obj.constructor && obj.constructor !== Object && obj.constructor !== Array && obj.constructor !== Date && obj.constructor !== RegExp)
-      ) {
-        return null;
-      }
-      if (seen.has(obj)) {
-        return null;
-      }
-      seen.add(obj);
-
-      // We clone to avoid modifying the live object in-place during cleaning
-      const isArray = Array.isArray(obj);
-      const result = isArray ? [] : {};
-
-      if (isArray) {
-        for (let i = 0; i < obj.length; i++) {
-          const val = obj[i];
-          if (typeof val === "object" && val !== null) {
-            if (seen.has(val)) {
-              result[i] = null;
-            } else {
-              result[i] = StateManager.removeCircularReferences(val, seen);
-            }
-          } else {
-            result[i] = val;
-          }
-        }
-      } else {
-        for (const key in obj) {
-          if (Object.prototype.hasOwnProperty.call(obj, key)) {
-            if (key === "firestore" || key === "firestoreDocRef" || key === "appInstance" || key === "chatProfileHelper") {
-              continue;
-            }
-            const val = obj[key];
-            if (typeof val === "object" && val !== null) {
-              if (seen.has(val)) {
-                result[key] = null;
-              } else {
-                result[key] = StateManager.removeCircularReferences(val, seen);
-              }
-            } else {
-              result[key] = val;
-            }
-          }
-        }
-      }
-      seen.delete(obj);
-      return result;
-    } catch (e) {
-      console.warn("Circular cleaning failed for node, returning original as best-effort:", e);
-      return obj;
-    }
+    return removeCircularReferences(obj, seen);
   }
 
   static safeStringify(obj, fallback = "{}") {
-    try {
-      return JSON.stringify(obj, StateManager.getCircularReplacer());
-    } catch (e) {
-      console.warn("Failed to stringify object securely, retrying with deep clean:", e);
-      try {
-        const cleaned = StateManager.removeCircularReferences(obj);
-        return JSON.stringify(cleaned, StateManager.getCircularReplacer());
-      } catch (err) {
-        console.error("Critical failure during secure serialization. Fallback used.", err);
-        return fallback;
-      }
-    }
+    return safeStringify(obj, fallback);
   }
 
   constructor() {
@@ -352,6 +249,14 @@ export class StateManager {
     if (!this.db.securityLogs) this.db.securityLogs = [];
     if (!this.db.pendingAdminToasts) this.db.pendingAdminToasts = [];
     if (!this.db.webPushAds) this.db.webPushAds = [];
+
+    // 🛡️ CRITICAL: Ensure all syndicates have initialized arrays to prevent undefined .join/.includes/length crashes
+    if (this.db.syndicates) {
+      this.db.syndicates.forEach((s: any) => {
+        if (!s.joinedUserIds) s.joinedUserIds = [];
+        if (!s.joinedUsernames) s.joinedUsernames = [];
+      });
+    }
 
     // Guarantee Refer/IP configurations exist
     if (this.db) {
@@ -765,6 +670,19 @@ export class StateManager {
             active: false,
             mode: "dual_sync",
             description: "Google Firestore Database backup cluster with auto-sync on every activity.",
+            tier: "premium"
+          },
+          {
+            id: "node-sql",
+            name: "MySQL Bridge API Cluster",
+            type: "sql",
+            endpoint: "https://api.veloralbillal.top/db_bridge.php",
+            priority: 3,
+            status: "standby",
+            latency: 0,
+            active: false,
+            mode: "dual_sync",
+            description: "cPanel MySQL Database via Bridge API.",
             tier: "premium"
           },
           {
