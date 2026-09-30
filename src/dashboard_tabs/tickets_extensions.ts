@@ -120,13 +120,13 @@ export class TicketsExtensions {
           
           <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-850/50 space-y-0.5">
             <span class="text-[8px] text-slate-500 uppercase font-bold block">Total Investment</span>
-            <span class="text-xs font-black text-rose-400">৳${totalInvested.toLocaleString()}</span>
+            <span class="text-xs font-black text-rose-400">৳${(totalInvested || 0).toLocaleString()}</span>
             <span class="text-[8px] text-slate-600 block">Funds placed in draws</span>
           </div>
 
           <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-850/50 space-y-0.5">
             <span class="text-[8px] text-slate-500 uppercase font-bold block">Prize Revenue</span>
-            <span class="text-xs font-black text-emerald-400">৳${totalWonPrize.toLocaleString()}</span>
+            <span class="text-xs font-black text-emerald-400">৳${(totalWonPrize || 0).toLocaleString()}</span>
             <span class="text-[8px] text-emerald-500/70 block">${wonCount} Winning Tickets</span>
           </div>
 
@@ -169,7 +169,7 @@ export class TicketsExtensions {
         const prizeVal = l.prizeAmount ?? l.prizePool ?? 0;
         optionsHTML += `
           <option value="${l.id}">
-            🎰 ${l.name} (৳${l.entryFee || 0} Fee | Prize: ৳${Number(prizeVal).toLocaleString()})
+            🎰 ${l.name} (৳${l.entryFee || 0} Fee | Prize: ৳${(Number(prizeVal) || 0).toLocaleString()})
           </option>
         `;
       });

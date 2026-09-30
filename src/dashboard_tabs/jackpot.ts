@@ -18,12 +18,12 @@ export class JackpotTab {
     // 1. Primary pool displays
     const poolAmountEl = document.getElementById("tab-jackpot-pool-amount");
     if (poolAmountEl) {
-      poolAmountEl.innerText = `৳${poolVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      poolAmountEl.innerText = `৳${(poolVal || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
 
     const totalPoolStatEl = document.getElementById("tab-jackpot-total-pool-stat");
     if (totalPoolStatEl) {
-      totalPoolStatEl.innerText = `৳${Math.floor(poolVal).toLocaleString('en-US')}`;
+      totalPoolStatEl.innerText = `৳${Math.floor(poolVal || 0).toLocaleString('en-US')}`;
     }
 
     // 2. User Stats & Odds calculations

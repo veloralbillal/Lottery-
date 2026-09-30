@@ -234,10 +234,10 @@ export const AdminModule = {
     const flaggedEl = document.getElementById("admin-users-stat-flagged");
     const balanceEl = document.getElementById("admin-users-stat-balance");
 
-    if (totalEl) totalEl.innerText = totalUsers.toLocaleString();
-    if (onlineEl) onlineEl.innerText = onlineSimulated.toLocaleString();
-    if (flaggedEl) flaggedEl.innerText = flaggedFraud.toLocaleString();
-    if (balanceEl) balanceEl.innerText = "৳" + totalWalletPool.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (totalEl) totalEl.innerText = (totalUsers || 0).toLocaleString();
+    if (onlineEl) onlineEl.innerText = (onlineSimulated || 0).toLocaleString();
+    if (flaggedEl) flaggedEl.innerText = (flaggedFraud || 0).toLocaleString();
+    if (balanceEl) balanceEl.innerText = "৳" + (totalWalletPool || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     // 2. Active Search Clear button handler
     const clearBtn = document.getElementById("admin-players-clear-search-btn");
@@ -443,14 +443,17 @@ export const AdminModule = {
     const limitLabel = document.getElementById("limit-label");
     const saveBtn = document.getElementById("save-rules-btn");
 
-    if (otpToggle) otpToggle.checked = this.db.securityRules.enforceOtp;
-    if (freezeToggle) freezeToggle.checked = this.db.securityRules.autoFreeze;
+    const secRules = (this.db && this.db.securityRules) ? this.db.securityRules : { enforceOtp: true, autoFreeze: true, maxDailySpend: 50000 };
+    if (otpToggle) otpToggle.checked = !!secRules.enforceOtp;
+    if (freezeToggle) freezeToggle.checked = !!secRules.autoFreeze;
     if (spendSlider) {
-      spendSlider.value = this.db.securityRules.maxDailySpend;
-      if (limitLabel) limitLabel.innerText = "৳" + parseInt(spendSlider.value).toLocaleString();
+      spendSlider.value = secRules.maxDailySpend || 50000;
+      const parsedVal = parseInt(spendSlider.value, 10) || 50000;
+      if (limitLabel) limitLabel.innerText = "৳" + parsedVal.toLocaleString();
       
       spendSlider.oninput = (e) => {
-        if (limitLabel) limitLabel.innerText = "৳" + parseInt(e.target.value).toLocaleString();
+        const inputVal = parseInt(e.target.value, 10) || 0;
+        if (limitLabel) limitLabel.innerText = "৳" + inputVal.toLocaleString();
       };
     }
 
@@ -1198,7 +1201,7 @@ export const AdminModule = {
 
     if (statCountEl) statCountEl.innerText = `${agentsCount} Agents`;
     if (modCountEl) modCountEl.innerText = `${modsCount} Mods`;
-    if (commissionEl) commissionEl.innerText = "৳" + (totalComms + initialSeedComms).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (commissionEl) commissionEl.innerText = "৳" + ((totalComms || 0) + (initialSeedComms || 0)).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     // Filter Chips Rendering
     if (!this.adminAgentsActiveFilter) {
@@ -1571,7 +1574,7 @@ export const AdminModule = {
     if (subagentsStat) subagentsStat.textContent = subagentsCount;
 
     const leadersBalStat = document.getElementById("hub-leaders-balance-stat");
-    if (leadersBalStat) leadersBalStat.textContent = `৳${totalLeadersBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (leadersBalStat) leadersBalStat.textContent = `৳${(totalLeadersBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
 
     const pendingStat = document.getElementById("hub-pending-count-stat");
     if (pendingStat) pendingStat.textContent = pendingCount;
@@ -1632,9 +1635,9 @@ export const AdminModule = {
       if (distEl) distEl.textContent = leader.district || leader.region || "Dhaka Zone";
       if (phoneEl) phoneEl.textContent = `Phone: ${leader.phone || "N/A"}`;
       const curBal = leader.balance || 0;
-      if (curBalEl) curBalEl.textContent = `৳${curBal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (curBalEl) curBalEl.textContent = `৳${(curBal || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
       const proj = curBal + (isNaN(enteredAmt) ? 0 : Math.max(0, enteredAmt));
-      if (projBalEl) projBalEl.textContent = `৳${proj.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+      if (projBalEl) projBalEl.textContent = `৳${(proj || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     } else {
       if (nameEl) nameEl.textContent = "No agent selected";
       if (curBalEl) curBalEl.textContent = "৳0.00";
@@ -1790,7 +1793,7 @@ export const AdminModule = {
     if (targetUserEl) targetUserEl.value = username;
     if (nameEl) nameEl.innerText = `@${username}`;
     if (distEl) distEl.innerText = district || "Dhaka";
-    if (balEl) balEl.innerText = `৳${currentBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+    if (balEl) balEl.innerText = `৳${(currentBalance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     if (subEl) subEl.innerText = `Refilling wallet purse for @${username}`;
     if (amtEl) amtEl.value = "";
 
@@ -2118,7 +2121,7 @@ export const AdminModule = {
     });
 
     this.saveDB();
-    this.showToastHub(`Successfully loaded ৳${amount.toLocaleString()} into @${leader.username}'s wallet!`);
+    this.showToastHub(`Successfully loaded ৳${(amount || 0).toLocaleString()} into @${leader.username}'s wallet!`);
     
     // Refresh all displays
     this.updateAgentHubStats();
@@ -2692,7 +2695,7 @@ export const AdminModule = {
     if (countEl) countEl.innerText = `${totalSubsCount} Sub-agent${totalSubsCount !== 1 ? 's' : ''}`;
 
     const salesEl = document.getElementById("subagents-list-stat-sales");
-    if (salesEl) salesEl.innerText = "৳" + totalSalesVol.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+    if (salesEl) salesEl.innerText = "৳" + (totalSalesVol || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
     const playersEl = document.getElementById("subagents-list-stat-players");
     if (playersEl) playersEl.innerText = `${totalPlayersReferred} Player${totalPlayersReferred !== 1 ? 's' : ''}`;
@@ -4634,7 +4637,7 @@ export const AdminModule = {
     if (approvedCountEl) approvedCountEl.innerText = `${approvedCount} claims`;
 
     const totalPayoutEl = document.getElementById("admin-bounty-total-payout");
-    if (totalPayoutEl) totalPayoutEl.innerText = `৳${totalPayout.toLocaleString()}`;
+    if (totalPayoutEl) totalPayoutEl.innerText = `৳${(totalPayout || 0).toLocaleString()}`;
 
     const subStatEl = document.getElementById("admin-bounties-sub-stats");
     if (subStatEl) subStatEl.innerText = `${pendingCount} pending reviews`;
@@ -4706,7 +4709,7 @@ export const AdminModule = {
               </div>
               <div>
                 <span class="text-slate-500 block uppercase text-[8px]">Views Claimed</span>
-                <span class="text-cyan-400 font-bold">${b.views.toLocaleString()}</span>
+                <span class="text-cyan-400 font-bold">${(b.views || 0).toLocaleString()}</span>
               </div>
             </div>
 

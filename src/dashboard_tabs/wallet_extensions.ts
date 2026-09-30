@@ -56,7 +56,7 @@ export class WalletExtensions {
           // Add visual active state
           document.querySelectorAll(".quick-dep-preset-btn").forEach(b => b.classList.remove("border-rose-500", "text-rose-400"));
           presetBtn.classList.add("border-rose-500", "text-rose-400");
-          appInstance.showToast(`Autofilled amount: ৳${val.toLocaleString()}`, "info");
+          appInstance.showToast(`Autofilled amount: ৳${(val || 0).toLocaleString()}`, "info");
         }
         return;
       }
@@ -92,7 +92,7 @@ export class WalletExtensions {
         user.xp = (user.xp || 0) + 15;
         appInstance.saveDB();
 
-        appInstance.showToast(`৳${val.toLocaleString()} successfully locked in Vault! +15 XP rewarded.`, "success");
+        appInstance.showToast(`৳${(val || 0).toLocaleString()} successfully locked in Vault! +15 XP rewarded.`, "success");
         if (amtInput) amtInput.value = "";
         
         // Check level up & reload
@@ -131,7 +131,7 @@ export class WalletExtensions {
         });
 
         appInstance.saveDB();
-        appInstance.showToast(`৳${val.toLocaleString()} unlocked back to your main wallet!`, "success");
+        appInstance.showToast(`৳${(val || 0).toLocaleString()} unlocked back to your main wallet!`, "success");
         if (amtInput) amtInput.value = "";
 
         appInstance.render();
@@ -333,12 +333,12 @@ export class WalletExtensions {
         <div class="grid grid-cols-2 gap-3.5">
           <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-850/50 space-y-0.5">
             <span class="text-[8px] text-slate-500 uppercase font-bold block">Lifetime Deposits</span>
-            <span class="text-xs font-extrabold text-emerald-400">৳${totalDep.toLocaleString()}</span>
+            <span class="text-xs font-extrabold text-emerald-400">৳${(totalDep || 0).toLocaleString()}</span>
             <span class="text-[8px] text-slate-600 block">${depos.length} Approved Loads</span>
           </div>
           <div class="bg-slate-950/60 p-3 rounded-2xl border border-slate-850/50 space-y-0.5">
             <span class="text-[8px] text-slate-500 uppercase font-bold block">Lifetime Cashouts</span>
-            <span class="text-xs font-extrabold text-rose-400">৳${totalWd.toLocaleString()}</span>
+            <span class="text-xs font-extrabold text-rose-400">৳${(totalWd || 0).toLocaleString()}</span>
             <span class="text-[8px] text-slate-600 block">${wds.length} Cleared Requests</span>
           </div>
         </div>
@@ -347,7 +347,7 @@ export class WalletExtensions {
         <div class="space-y-1.5 pt-0.5">
           <div class="flex justify-between items-center text-[9px]">
             <span class="text-slate-500 uppercase font-bold">24h Transaction Limit Allowance</span>
-            <span class="text-slate-300 font-bold">৳${(totalDep + totalWd).toLocaleString()} / ৳100,000 max</span>
+            <span class="text-slate-300 font-bold">৳${((totalDep || 0) + (totalWd || 0)).toLocaleString()} / ৳100,000 max</span>
           </div>
           <div class="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-850">
             <div class="bg-gradient-to-r from-red-600 to-rose-500 h-full rounded-full transition-all duration-500" style="width: ${Math.min(100, (((totalDep + totalWd) / 100000) * 100))}%"></div>
@@ -455,7 +455,7 @@ export class WalletExtensions {
           <span class="text-emerald-400">${formattedCrypto} ${cryptoName}</span>
         </div>
         <div class="text-[8px] text-slate-500 text-right">
-          Exchange rate: 1 ${cryptoName} = ৳${conversionRate.toLocaleString()} BDT
+          Exchange rate: 1 ${cryptoName} = ৳${(conversionRate || 0).toLocaleString()} BDT
         </div>
       </div>
     `;

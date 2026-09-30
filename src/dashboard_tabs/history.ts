@@ -225,10 +225,10 @@ Status: SECURED & VERIFIED
     const pendingCount = allOps.filter(op => op.status === "pending").length;
 
     const statDepEl = document.getElementById("ledger-stats-deposit");
-    if (statDepEl) statDepEl.innerText = `৳${creditSum.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+    if (statDepEl) statDepEl.innerText = `৳${(creditSum || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
 
     const statWithEl = document.getElementById("ledger-stats-withdraw");
-    if (statWithEl) statWithEl.innerText = `৳${debitSum.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
+    if (statWithEl) statWithEl.innerText = `৳${(debitSum || 0).toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 2})}`;
 
     const statPendEl = document.getElementById("ledger-stats-pending");
     if (statPendEl) statPendEl.innerText = `${pendingCount} ${pendingCount === 1 ? 'Req' : 'Reqs'}`;

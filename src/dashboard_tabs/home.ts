@@ -603,7 +603,7 @@ export class HomeTab {
         </div>
         <div class="overflow-hidden whitespace-nowrap flex-1">
           <div class="animate-lotto-ticker flex items-center gap-6 text-[10px] font-mono text-amber-200">
-            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${jackpotPoolVal.toLocaleString()}</strong></span>
+            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${(Number(jackpotPoolVal) || 0).toLocaleString()}</strong></span>
             <span>•</span>
             <span class="flex items-center gap-1">🎟️ লাকি ৭ ড্র লাইভ রানিং!</span>
             <span>•</span>
@@ -611,7 +611,7 @@ export class HomeTab {
             <span>•</span>
             <span class="flex items-center gap-1">⚡ ১ ক্লিকে বিকাশ / নগদ / ক্রিপ্টো ডিপোজিট</span>
             <span>•</span>
-            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${jackpotPoolVal.toLocaleString()}</strong></span>
+            <span class="font-bold flex items-center gap-1">💰 গ্র্যান্ড জ্যাকপট পুল: <strong class="text-amber-300 font-black">৳${(Number(jackpotPoolVal) || 0).toLocaleString()}</strong></span>
             <span>•</span>
             <span class="flex items-center gap-1">🎟️ লাকি ৭ ড্র লাইভ রানিং!</span>
             <span>•</span>

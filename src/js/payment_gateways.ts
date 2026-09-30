@@ -235,7 +235,7 @@ export class PaymentGateways {
             depInput.dispatchEvent(new Event("input", { bubbles: true }));
           }
           if (app?.showToast) {
-            app.showToast(`Selected ${gateway} manual deposit for ৳${amount.toLocaleString()}. Please complete transfer & submit TrxID below.`, "success");
+            app.showToast(`Selected ${gateway} manual deposit for ৳${(amount || 0).toLocaleString()}. Please complete transfer & submit TrxID below.`, "success");
           }
           const form = document.getElementById("wallet-deposit-form");
           if (form) form.scrollIntoView({ behavior: "smooth" });
@@ -447,7 +447,7 @@ export class PaymentGateways {
     if (orderEl) orderEl.innerText = orderId;
 
     const bdtEl = document.getElementById("cryptomus-bdt-display");
-    if (bdtEl) bdtEl.innerText = `৳${bdtAmount.toLocaleString()} BDT`;
+    if (bdtEl) bdtEl.innerText = `৳${(bdtAmount || 0).toLocaleString()} BDT`;
 
     const usdEl = document.getElementById("cryptomus-usd-display");
     if (usdEl) usdEl.innerText = `$${usdAmount.toFixed(2)} USD`;
@@ -624,7 +624,7 @@ export class PaymentGateways {
     }
     const statusText = document.getElementById("cryptomus-status-text");
     if (statusText) {
-      statusText.innerHTML = `<span class="text-emerald-400 font-bold">Successfully credited ৳${depositAmount.toLocaleString()} to @${app.currentUser.username}!</span>`;
+      statusText.innerHTML = `<span class="text-emerald-400 font-bold">Successfully credited ৳${(depositAmount || 0).toLocaleString()} to @${app.currentUser.username}!</span>`;
     }
 
     if (this.cryptomusTimer) clearInterval(this.cryptomusTimer);
@@ -634,7 +634,7 @@ export class PaymentGateways {
 
     // Show toast
     if (app.showToast) {
-      app.showToast(`💎 Cryptomus payment of ৳${depositAmount.toLocaleString()} received and added to wallet!`, "success");
+      app.showToast(`💎 Cryptomus payment of ৳${(depositAmount || 0).toLocaleString()} received and added to wallet!`, "success");
     }
 
     // Auto-close modal after 2.5 seconds
@@ -686,7 +686,7 @@ export class PaymentGateways {
     }
 
     const amtEl = document.getElementById("uddokta-amount-display");
-    if (amtEl) amtEl.innerText = `৳${bdtAmount.toLocaleString()}`;
+    if (amtEl) amtEl.innerText = `৳${(bdtAmount || 0).toLocaleString()}`;
 
     const invEl = document.getElementById("uddokta-invoice-id");
     if (invEl) invEl.innerText = "UP-" + Date.now().toString(36).toUpperCase();
@@ -802,7 +802,7 @@ export class PaymentGateways {
       app.render();
 
       if (app.showToast) {
-        app.showToast(`⚡ UddoktaPay: ৳${depositAmount.toLocaleString()} credited successfully via ${channelName}!`, "success");
+        app.showToast(`⚡ UddoktaPay: ৳${(depositAmount || 0).toLocaleString()} credited successfully via ${channelName}!`, "success");
       }
 
       this.closeUddoktaPayModal();
@@ -954,7 +954,7 @@ export class PaymentGateways {
     const modal = document.getElementById("zinipay-checkout-modal");
 
     const amtEl = document.getElementById("zinipay-amount-display");
-    if (amtEl) amtEl.innerText = `৳${bdtAmount.toLocaleString()}`;
+    if (amtEl) amtEl.innerText = `৳${(bdtAmount || 0).toLocaleString()}`;
 
     const invEl = document.getElementById("zinipay-invoice-id");
     if (invEl) invEl.innerText = this.activeZiniPayInvoiceId;

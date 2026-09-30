@@ -125,7 +125,7 @@ export class VideoBountyTab {
             <span class="px-1.5 py-0.5 rounded text-[8px] font-bold ${statusClass}">${b.status.toUpperCase()}</span>
           </div>
           <div class="text-[9px] text-slate-500 mt-1 flex flex-wrap gap-x-2">
-            <span>Views Claimed: <strong class="text-slate-300">${b.views.toLocaleString()}</strong></span>
+            <span>Views Claimed: <strong class="text-slate-300">${(b.views || 0).toLocaleString()}</strong></span>
             <span>•</span>
             <span>Date: ${new Date(b.date).toLocaleDateString()}</span>
           </div>
