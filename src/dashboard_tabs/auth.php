@@ -170,6 +170,14 @@
         </button>
       </form>
 
+      <!-- Agent / Dealer Portal Login Trigger -->
+      <div class="pt-1">
+        <button type="button" onclick="document.getElementById('auth-login-box').classList.add('hidden'); document.getElementById('auth-agent-login-box').classList.remove('hidden');" class="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 hover:text-cyan-200 font-mono font-bold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow">
+          <i class="fa-solid fa-user-tie text-xs"></i>
+          <span>Agent / Dealer Portal Login (এজেন্ট লগইন)</span>
+        </button>
+      </div>
+
       <!-- Alternative Web Portal Link -->
       <div class="border-t border-slate-800/80 pt-3 flex items-center justify-between text-[10px] font-mono text-slate-400">
         <span>PHP Server Portal:</span>
@@ -179,6 +187,67 @@
         </a>
       </div>
     </div>
+  </div>
+
+  <!-- Agent Login Container block (Separate Page View) -->
+  <div id="auth-agent-login-box" class="hidden z-10 max-w-sm w-full mx-auto my-auto py-4">
+    <div class="interactive-tilt-card bg-slate-900/95 border border-cyan-500/30 rounded-3xl p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.8)] backdrop-blur-2xl space-y-5 relative overflow-hidden">
+      <!-- Cyan accent line -->
+      <div class="absolute inset-x-0 top-0 h-[2px] bg-gradient-to-r from-cyan-500 via-teal-400 to-indigo-500"></div>
+      
+      <!-- Agent Logo / Brand Header -->
+      <div class="text-center pb-2 flex flex-col items-center">
+        <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mb-2 shadow-lg ring-1 ring-white/10">
+          <i class="fa-solid fa-user-tie text-white text-xl"></i>
+        </div>
+        <h2 class="text-xs font-black uppercase tracking-wider text-white font-display">Agent Portal Login</h2>
+        <p class="text-[9px] font-mono text-cyan-400 leading-none mt-1">District Agent & Dealer Access Portal</p>
+      </div>
+
+      <div class="flex justify-between items-center border-b border-slate-800/80 pb-3.5">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]"></span>
+          <span class="text-[10px] font-mono text-slate-400 uppercase">Secure Gateway v5.2</span>
+        </div>
+        <button type="button" onclick="document.getElementById('auth-agent-login-box').classList.add('hidden'); document.getElementById('auth-login-box').classList.remove('hidden');" class="text-[10px] font-bold text-slate-400 font-mono hover:text-white transition duration-200 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-xl cursor-pointer active:scale-95">
+          ← Back
+        </button>
+      </div>
+
+      <form id="auth-agent-login-form" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="block text-[9.5px] uppercase font-mono tracking-wider text-slate-400 font-semibold flex items-center justify-between">
+            <span class="flex items-center gap-1.5"><i class="fa-solid fa-user-tie text-cyan-400/80 text-xs"></i> Username, Gmail or Phone</span>
+            <span class="text-slate-500 text-[8.5px] font-normal font-mono">Required</span>
+          </label>
+          <div class="relative group">
+            <i class="fa-solid fa-id-badge absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition group-focus-within:text-cyan-400"></i>
+            <input id="agent-login-user" type="text" required autocomplete="username" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-4 text-xs font-mono text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition placeholder:text-slate-600" placeholder="Username, email or phone" />
+          </div>
+        </div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-[9.5px] uppercase font-mono tracking-wider text-slate-400 font-semibold flex items-center gap-1.5">
+              <i class="fa-solid fa-lock text-cyan-400/80 text-xs"></i> Agent Passphrase
+            </label>
+          </div>
+          <div class="relative group">
+            <i class="fa-solid fa-shield-halved absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-xs transition group-focus-within:text-cyan-400"></i>
+            <input id="agent-login-pass" type="password" required autocomplete="current-password" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 pl-11 pr-11 text-xs font-mono text-white outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/30 transition placeholder:text-slate-600" placeholder="••••••••••••" />
+            <button type="button" onclick="const p = document.getElementById('agent-login-pass'); p.type = p.type === 'password' ? 'text' : 'password'; this.querySelector('i').classList.toggle('fa-eye'); this.querySelector('i').classList.toggle('fa-eye-slash');" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition cursor-pointer p-1" title="Show or hide password">
+              <i class="fa-solid fa-eye-slash text-xs"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-600 hover:brightness-110 active:scale-[0.99] text-slate-950 font-black text-xs py-3.5 rounded-xl shadow-[0_10px_25px_rgba(6,182,212,0.25)] transition duration-200 cursor-pointer flex items-center justify-center gap-2 tracking-wider uppercase font-display">
+          <span>Access Agent Portal</span>
+          <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
+        </button>
+      </form>
+    </div>
+  </div>
 
     <!-- Trust Badges Underneath Card -->
     <div class="grid grid-cols-3 gap-2 mt-4 text-center">

@@ -374,9 +374,9 @@
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
     </style>
-    <script type="module" crossorigin src="./assets/main-BEBT8ghM.js"></script>
+    <script type="module" crossorigin src="./assets/main-BlqWTNNb.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/vendor-firebase-DACRapYG.js">
-    <link rel="stylesheet" crossorigin href="./assets/main-DnPBGSFQ.css">
+    <link rel="stylesheet" crossorigin href="./assets/main-DOjf5gXe.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
 
@@ -897,6 +897,45 @@
                 </div>
 
                 <button type="submit" class="btn-submit">SIGN IN NOW</button>
+              </form>
+
+              <!-- Agent Portal Login Trigger -->
+              <div class="pt-2">
+                <button type="button" onclick="document.getElementById('auth-login-box').classList.add('hidden'); document.getElementById('auth-agent-login-box').classList.remove('hidden');" class="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-mono font-bold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer text-xs shadow">
+                  <i class="fa-solid fa-user-tie text-xs"></i>
+                  <span>Agent / Dealer Portal Login (এজেন্ট লগইন)</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- AGENT LOGIN FORM VIEW -->
+            <div class="form-box hidden" id="auth-agent-login-box">
+              <div class="text-center pb-3 flex flex-col items-center">
+                <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mb-2 shadow-lg ring-1 ring-white/10">
+                  <i class="fa-solid fa-user-tie text-white text-xl"></i>
+                </div>
+                <h3 class="text-xs font-black uppercase tracking-wider text-white font-display">Agent Portal Login</h3>
+                <p class="text-[9px] font-mono text-cyan-400 leading-none mt-1">District Agent & Dealer Access</p>
+              </div>
+
+              <form id="auth-agent-login-form">
+                <div class="input-group">
+                  <label>Username, Gmail or Phone</label>
+                  <input type="text" id="agent-login-user" class="input-field" placeholder="Enter username, email or phone" required autocomplete="username">
+                </div>
+
+                <div class="input-group">
+                  <label>Agent Passphrase</label>
+                  <input type="password" id="agent-login-pass" class="input-field" placeholder="••••••••" required autocomplete="current-password">
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-600 hover:brightness-110 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg transition cursor-pointer uppercase font-display mt-2">
+                  Access Agent Portal
+                </button>
+
+                <button type="button" onclick="document.getElementById('auth-agent-login-box').classList.add('hidden'); document.getElementById('auth-login-box').classList.remove('hidden');" class="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono py-2.5 rounded-xl transition cursor-pointer">
+                  ← Back to Player Sign In
+                </button>
               </form>
             </div>
 

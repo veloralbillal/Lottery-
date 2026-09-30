@@ -1547,7 +1547,7 @@ var getPool = () => {
         console.log(`[SQL Bridge Executor] Query: ${formattedSql.substring(0, 150)}...`);
         try {
           const urlObj = new URL(host);
-          urlObj.searchParams.set("token", "my_app_secret_!@#_987");
+          urlObj.searchParams.set("token", "Billal50598326");
           urlObj.searchParams.set("action", "query");
           urlObj.searchParams.set("db_host", "localhost");
           urlObj.searchParams.set("db_name", serverSqlConfig.database || "veloralb_Digital");
@@ -1557,7 +1557,7 @@ var getPool = () => {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
-              token: "my_app_secret_!@#_987",
+              token: "Billal50598326",
               action: "query",
               db_host: "localhost",
               db_name: serverSqlConfig.database || "veloralb_Digital",
@@ -1640,7 +1640,7 @@ app.post("/api/sql/test-connection", async (req, res) => {
   console.log(`[SQL Diagnostic Test] Testing connection to ${username}@${host}:${port}/${database}...`);
   try {
     const urlObj = new URL(host);
-    urlObj.searchParams.set("token", "my_app_secret_!@#_987");
+    urlObj.searchParams.set("token", "Billal50598326");
     urlObj.searchParams.set("action", "query");
     urlObj.searchParams.set("db_host", "localhost");
     urlObj.searchParams.set("db_name", database);
@@ -1650,7 +1650,7 @@ app.post("/api/sql/test-connection", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
-        token: "my_app_secret_!@#_987",
+        token: "Billal50598326",
         action: "query",
         db_host: "localhost",
         db_name: database,
