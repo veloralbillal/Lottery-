@@ -57,16 +57,10 @@ export const SyncCloudModule = {
       
       console.log("Firebase sync engine initialized successfully.");
       
-      // Start subscribing to live Firestore updates
+      // Start subscribing to live Firestore updates and pull latest cloud state immediately
       this.listenToCloud();
       this.initAuthListener();
-
-      // 🐬 SQL INITIAL LOAD: If SQL is the master node, force an immediate pull from MySQL to align client state
-      const activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
-      if (activeNode && activeNode.id === "node-sql") {
-        console.log("SyncCloudModule: SQL is active master. Triggering initial loadFromCloud()...");
-        await this.loadFromCloud().catch(err => console.warn("Initial SQL load failed:", err));
-      }
+      await this.loadFromCloud().catch(err => console.warn("Initial cloud load failed:", err));
     } catch (e) {
       console.error("Failed to initialize Firebase Sync:", e.message || e);
       this.setSyncState("error");
@@ -219,9 +213,15 @@ export const SyncCloudModule = {
           console.warn("Direct Firestore staff profile creation bypassed (synced via app_data):", err?.message || err);
         });
       }
+      if (typeof (this as any).saveDB === "function") {
+        (this as any).saveDB(true);
+      }
       return { success: true, uid };
     } catch (err: any) {
       console.warn("Staff account Firestore sync bypassed:", err);
+      if (typeof (this as any).saveDB === "function") {
+        (this as any).saveDB(true);
+      }
       return { success: true, uid };
     }
   },
@@ -276,10 +276,6 @@ export const SyncCloudModule = {
 
   mergeParsedDb(parsed) {
     if (!parsed) return;
-    if (Date.now() - (this.lastLocalWriteTime || 0) < 4000) {
-      console.log("[SyncEngine] Recent local write detected. Skipping incoming database overwrite.");
-      return;
-    }
     if (this.db && this.db.users && parsed.users) {
       const cloudUserMap = new Map(parsed.users.map((u: any) => [u.username?.toLowerCase() || u.id, u]));
       for (const localUser of this.db.users) {
