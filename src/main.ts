@@ -2584,7 +2584,7 @@ export class StateManager {
 
               <div class="space-y-1">
                 <span class="text-[9px] text-emerald-400 font-bold tracking-widest uppercase font-mono bg-emerald-950/60 border border-emerald-900/30 py-1 px-3 rounded-full">Payment Successful</span>
-                <h2 class="text-xl font-black text-white font-mono">৳${inv.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h2>
+                <h2 class="text-xl font-black text-white font-mono">৳${(inv?.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</h2>
                 <p class="text-[10px] text-slate-500">Wallet balance credited successfully.</p>
               </div>
 
@@ -2599,14 +2599,14 @@ export class StateManager {
                 </div>
 
                 <div class="text-[10px] space-y-2">
-                  <div class="flex justify-between"><span class="text-slate-500">ZiniPay Invoice:</span><span class="text-white font-bold select-all">${inv.invoice_id}</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Transaction ID:</span><span class="text-slate-300 select-all">${inv.transaction_id}</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Customer Name:</span><span class="text-slate-300">${inv.cus_name}</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Customer Email:</span><span class="text-slate-300">${inv.cus_email}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">ZiniPay Invoice:</span><span class="text-white font-bold select-all">${inv?.invoice_id || 'N/A'}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Transaction ID:</span><span class="text-slate-300 select-all">${inv?.transaction_id || 'N/A'}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Customer Name:</span><span class="text-slate-300">${inv?.cus_name || 'N/A'}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Customer Email:</span><span class="text-slate-300">${inv?.cus_email || 'N/A'}</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Payment Gateway:</span><span class="text-cyan-400 font-bold">ZiniPay Hosted</span></div>
-                  <div class="flex justify-between border-t border-slate-850 pt-2"><span class="text-slate-500">Credited Balance:</span><span class="text-emerald-400 font-bold">+৳${inv.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+                  <div class="flex justify-between border-t border-slate-850 pt-2"><span class="text-slate-500">Credited Balance:</span><span class="text-emerald-400 font-bold">+৳${(inv?.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Verification Status:</span><span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-lock text-[8px]"></i> VERIFIED SECURE</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span><span class="text-slate-400 text-[9px]">${new Date(inv.verified_at || inv.created_at).toLocaleString()}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span><span class="text-slate-400 text-[9px]">${inv?.verified_at || inv?.created_at ? new Date(inv.verified_at || inv.created_at).toLocaleString() : 'Just now'}</span></div>
                 </div>
               </div>
 

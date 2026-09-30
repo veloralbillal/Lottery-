@@ -409,7 +409,8 @@ export const UIEffectsModule = {
       // Update the user interface with the current actual pool size
       const poolAmountEl = document.getElementById("jackpot-pool-amount");
       if (poolAmountEl) {
-        poolAmountEl.innerText = "৳" + this.db.settings.jackpotPool.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const poolVal = parseFloat(this.db?.settings?.jackpotPool ?? 0) || 0;
+        poolAmountEl.innerText = "৳" + poolVal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       }
 
       // Update countdown dynamic timer

@@ -596,7 +596,7 @@ export class NotificationEngine {
         if (this.appInstance && this.appInstance.currentUser) {
           // If it's a jackpot alert, fetch live jackpot pool if possible
           if (rand.icon === "jackpot" && this.appInstance.db.settings) {
-            const poolVal = parseFloat(this.appInstance.db.settings.jackpotPool || 84250);
+            const poolVal = parseFloat(this.appInstance?.db?.settings?.jackpotPool ?? 84250) || 84250;
             rand.message = `The Grand Jackpot pool has reached ৳${Math.floor(poolVal).toLocaleString()}! Secure your ticket now.`;
           }
           this.trigger(rand.title, rand.message, rand.icon, rand.tab);

@@ -1,5 +1,10 @@
 <?php
 // API Bridge for remote MySQL access - Accepts GET and POST
+mysqli_report(MYSQLI_REPORT_OFF);
+ini_set('display_errors', '0');
+error_reporting(0);
+header('Content-Type: application/json; charset=UTF-8');
+
 define('SECRET_TOKEN', 'Billal50598326'); 
 
 $token = $_POST['token'] ?? $_GET['token'] ?? '';
@@ -8,7 +13,7 @@ if ($token !== SECRET_TOKEN && $token !== '') {
 }
 
 // Database configuration with fallback to POST/GET parameters
-$host = $_POST['db_host'] ?? $_GET['db_host'] ?? 'server.shodns.in';
+$host = $_POST['db_host'] ?? $_GET['db_host'] ?? 'localhost';
 $db   = $_POST['db_name'] ?? $_GET['db_name'] ?? 'veloralb_Digital';
 $user = $_POST['db_user'] ?? $_GET['db_user'] ?? 'veloralb_Digital';
 $pass = $_POST['db_pass'] ?? $_GET['db_pass'] ?? 'UcWg.75@wv+Ijzh#';
@@ -20,7 +25,11 @@ if ($conn->connect_error) {
     $pass_fallback = 'Billal50598326';
     $conn = @new mysqli($host, $user, $pass_fallback, $db);
     if ($conn->connect_error) {
-        die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
+        // Try server.shodns.in if localhost failed
+        $conn = @new mysqli('server.shodns.in', $user, $pass, $db);
+        if ($conn->connect_error) {
+            die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
+        }
     }
 }
 

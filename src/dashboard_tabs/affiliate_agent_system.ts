@@ -262,10 +262,10 @@ export class AffiliateAgentSystem {
     const paidEl = document.getElementById("affiliate-payouts-total");
     const purseEl = document.getElementById("affiliate-available-purse");
 
-    if (sizeEl) sizeEl.innerText = `${data.totalNetworkSize} Player${data.totalNetworkSize !== 1 ? 's' : ''}`;
-    if (earnedEl) earnedEl.innerText = "৳" + data.totalComm.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (paidEl) paidEl.innerText = "৳" + data.totalPayoutsApproved.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    if (purseEl) purseEl.innerText = "৳" + data.availableWallet.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (sizeEl) sizeEl.innerText = `${data?.totalNetworkSize || 0} Player${(data?.totalNetworkSize || 0) !== 1 ? 's' : ''}`;
+    if (earnedEl) earnedEl.innerText = "৳" + (data?.totalComm || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (paidEl) paidEl.innerText = "৳" + (data?.totalPayoutsApproved || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (purseEl) purseEl.innerText = "৳" + (data?.availableWallet || 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     // Render tree nodes
     const treeRoot = document.getElementById("affiliate-tree-root");
