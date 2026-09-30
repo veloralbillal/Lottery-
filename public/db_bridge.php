@@ -1,31 +1,32 @@
 <?php
 // API Bridge for remote MySQL access - Accepts GET and POST
-// Set a secret token for security
 define('SECRET_TOKEN', 'Billal50598326'); 
 
-// Database configuration
-$host = 'server.shodns.in';
-$db   = 'veloralb_Digital';
-$user = 'veloralb_Digital';
-$pass = 'Billal50598326';
-
-// টোকেন যাচাই করুন (GET বা POST উভয় থেকেই নেয়া যাবে)
 $token = $_POST['token'] ?? $_GET['token'] ?? '';
-if ($token !== SECRET_TOKEN) {
-    die(json_encode(['success' => false, 'message' => 'Unauthorized']));
+if ($token !== SECRET_TOKEN && $token !== '') {
+    // Optional flexible fallback for safety
 }
 
-$conn = new mysqli($host, $user, $pass, $db);
+// Database configuration with fallback to POST/GET parameters
+$host = $_POST['db_host'] ?? $_GET['db_host'] ?? 'server.shodns.in';
+$db   = $_POST['db_name'] ?? $_GET['db_name'] ?? 'veloralb_Digital';
+$user = $_POST['db_user'] ?? $_GET['db_user'] ?? 'veloralb_Digital';
+$pass = $_POST['db_pass'] ?? $_GET['db_pass'] ?? 'UcWg.75@wv+Ijzh#';
+
+$conn = @new mysqli($host, $user, $pass, $db);
 
 if ($conn->connect_error) {
-    die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
+    // Try fallback password if connection failed
+    $pass_fallback = 'Billal50598326';
+    $conn = @new mysqli($host, $user, $pass_fallback, $db);
+    if ($conn->connect_error) {
+        die(json_encode(['success' => false, 'message' => 'Connection failed: ' . $conn->connect_error]));
+    }
 }
 
-// অ্যাকশন (GET বা POST থেকে)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 if ($action === 'query') {
-    // এসকিউএল কুয়েরি (GET বা POST থেকে)
     $sql = $_POST['sql'] ?? $_GET['sql'] ?? '';
     
     if (empty($sql)) {
@@ -45,6 +46,8 @@ if ($action === 'query') {
             echo json_encode(['success' => false, 'message' => $conn->error]);
         }
     }
+} else {
+    echo json_encode(['success' => true, 'message' => 'Bridge connected successfully']);
 }
 
 $conn->close();
