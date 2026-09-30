@@ -1566,7 +1566,14 @@ var getPool = () => {
               sql: formattedSql
             })
           });
-          const result = await response.json();
+          const responseText = await response.text();
+          let result;
+          try {
+            result = JSON.parse(responseText);
+          } catch (jsonErr) {
+            console.error("[SQL Bridge Response Parse Error] Non-JSON response:", responseText);
+            throw new Error(`Invalid server response: ${responseText.substring(0, 100) || "Empty response"}`);
+          }
           if (!result.success) {
             console.error(`[SQL Bridge Query Error]`, result.message);
             throw new Error(result.message || "Bridge Query failed");
@@ -1659,7 +1666,14 @@ app.post("/api/sql/test-connection", async (req, res) => {
         sql: "SHOW TABLES"
       })
     });
-    const result = await response.json();
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (jsonErr) {
+      console.error("[SQL Test Connection Response Parse Error] Non-JSON response:", responseText);
+      throw new Error(`Invalid server response: ${responseText.substring(0, 100) || "Empty response"}`);
+    }
     if (!result.success) throw new Error(result.message);
     const latency = Date.now() - start;
     let tablesVerified = [];

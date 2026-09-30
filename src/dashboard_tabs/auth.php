@@ -108,20 +108,6 @@
         </button>
       </div>
 
-      <!-- Quick Credential Assist Bar -->
-      <div class="bg-slate-950/80 border border-slate-850 rounded-2xl p-2.5 flex items-center justify-between gap-2">
-        <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
-          <i class="fa-solid fa-bolt text-amber-400 text-xs"></i> 1-Click:
-        </span>
-        <div class="flex items-center gap-1.5">
-          <button type="button" onclick="document.getElementById('auth-user').value='Admin'; document.getElementById('auth-pass').value='Admin123'; app.showToast('Admin credentials filled', 'info');" class="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold transition active:scale-95 cursor-pointer">
-            Admin
-          </button>
-          <button type="button" onclick="const p = (app.db.users && app.db.users[0]) ? app.db.users[0].username : 'player1'; document.getElementById('auth-user').value=p; document.getElementById('auth-pass').value='pass123'; app.showToast('Demo credentials filled', 'info');" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-[10px] font-mono font-bold transition active:scale-95 cursor-pointer">
-            Player
-          </button>
-        </div>
-      </div>
 
       <form id="auth-login-form" class="space-y-4">
         <div class="space-y-1.5">
