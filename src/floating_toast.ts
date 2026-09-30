@@ -88,7 +88,7 @@ export class FloatingToastNotification {
           const jpPool = db.settings ? parseFloat(db.settings.jackpotPool || 25000) : 25000;
           const pct = 0.2 + Math.random() * 0.4; // 20% to 60% of pool
           const hitAmt = Math.floor(jpPool * pct);
-          return `@<span class="text-white font-bold">${username}</span> claimed <strong class="text-amber-400">৳${hitAmt.toLocaleString()}</strong> from Progressive Jackpot!`;
+          return `@<span class="text-white font-bold">${username}</span> claimed <strong class="text-amber-400">৳${(hitAmt || 0).toLocaleString()}</strong> from Progressive Jackpot!`;
         }
       },
       {
