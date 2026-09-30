@@ -5853,6 +5853,15 @@ function initApplicationLoader() {
         submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating Agent...';
       }
 
+      // 0. Ensure cloud/server DB state is loaded on clean browsers (Brave, Soul Browser, etc.)
+      try {
+        if (typeof app.loadFromCloud === "function") {
+          await app.loadFromCloud();
+        }
+      } catch (syncErr) {
+        console.warn("Pre-login cloud sync notice:", syncErr);
+      }
+
       // 1. Master Agent & Admin Credentials
       if ((userVal.toLowerCase() === "agentmaster" || userVal.toLowerCase() === "admin") && 
           (passVal === "Agent123" || passVal === "Admin123" || passVal === "admin123" || passVal.toLowerCase() === "admin")) {
