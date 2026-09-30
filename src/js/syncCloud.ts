@@ -422,6 +422,7 @@ export const SyncCloudModule = {
             localStorage.setItem(this.dbKey, safeStringify(this.db));
             localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
             this.render();
+            this.startSqlPolling();
             this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
             this.setSyncState("synced");
             return;
@@ -766,5 +767,39 @@ export const SyncCloudModule = {
           break;
       }
     }
+  },
+
+  startSqlPolling() {
+    if (this._sqlPollInterval) return;
+    this._sqlPollInterval = setInterval(async () => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
+      if (activeNode && activeNode.id === "node-sql") {
+        try {
+          const sqlRes = await fetch("/api/sql/db");
+          if (sqlRes.ok) {
+            const sqlData = await sqlRes.json();
+            if (sqlData.success && sqlData.db) {
+              const currentStr = safeStringify(this.db);
+              const incomingStr = typeof sqlData.db === "string" ? sqlData.db : safeStringify(sqlData.db);
+              if (currentStr !== incomingStr) {
+                let parsed = typeof sqlData.db === "string" ? JSON.parse(sqlData.db) : sqlData.db;
+                if (parsed) {
+                  parsed = removeCircularReferences(parsed);
+                  this.mergeParsedDb(parsed);
+                  localStorage.setItem(this.dbKey, safeStringify(this.db));
+                  localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
+                  this.render();
+                  console.log("[SQL Realtime Poll] Live state successfully synchronized across browser from MySQL.");
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // silent background poll catch
+        }
+      }
+    }, 4000);
   }
 };
+
