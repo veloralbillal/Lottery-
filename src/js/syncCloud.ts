@@ -453,8 +453,8 @@ export const SyncCloudModule = {
           }
         }
       } catch (sqlErr: any) {
-        console.error("Failed to load DB from server SQL database. Error:", sqlErr);
-        this.addConsoleLog("[SQL DB LOAD] Failed to reach SQL database. Falling back to Firestore...", "error");
+        console.warn("SQL database load notice (falling back to Firestore):", sqlErr?.message || sqlErr);
+        this.addConsoleLog("[SQL DB LOAD] External SQL unreachable. Operating on Firestore / offline cloud fallback mode.", "warning");
       }
     }
 
