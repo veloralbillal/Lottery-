@@ -420,6 +420,38 @@ export const SyncCloudModule = {
       return;
     }
 
+    // Fetch the globally active database from server-side source of truth
+    let serverActiveDb = 'mysql';
+    try {
+      const activeDbRes = await fetch("/api/system/active-database");
+      if (activeDbRes.ok) {
+        const activeDbData = await activeDbRes.json();
+        if (activeDbData.success && activeDbData.active_database) {
+          serverActiveDb = activeDbData.active_database.toLowerCase();
+          console.log("[loadFromCloud] Central active database configured as:", serverActiveDb);
+        }
+      }
+    } catch (err) {
+      console.warn("[loadFromCloud] Could not determine global server active database, using default:", err);
+    }
+
+    // Set syncNodes active state to align with the server-side source of truth
+    if (this.db) {
+      if (!this.db.syncNodes) {
+        this.db.syncNodes = [
+          { id: "node-1", name: "Primary Database (Cluster 1)", active: true, type: "firebase", status: "connected" },
+          { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: false, type: "sql", status: "connected" }
+        ];
+      }
+      this.db.syncNodes.forEach((n: any) => {
+        if (serverActiveDb === 'mysql') {
+          n.active = (n.id === "node-sql");
+        } else {
+          n.active = (n.id === "node-1" || n.id === "node-firebase");
+        }
+      });
+    }
+
     // Resolve what the live active node is
     let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
     if (!activeNode && this.db && this.db.syncNodes && this.db.syncNodes.length > 0) {

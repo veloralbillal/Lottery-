@@ -2118,29 +2118,32 @@ app.get("/api/sql/db", async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 });
-app.post("/api/auth/agent-login", async (req, res) => {
-  try {
-    const { username, password } = req.body || {};
-    if (!username || !password) {
-      return res.status(400).json({ success: false, message: "Username, email or phone, and password are required." });
-    }
-    const cleanUser = String(username).trim().toLowerCase();
-    const cleanPass = String(password).trim();
-    if ((cleanUser === "agentmaster" || cleanUser === "admin") && (cleanPass === "Agent123" || cleanPass === "Admin123" || cleanPass === "admin123" || cleanPass === "admin")) {
-      const masterUser = {
-        id: "agent_" + Date.now(),
-        username: cleanUser,
+async function performCentralAuth(usernameVal, passwordVal) {
+  const cleanUser = String(usernameVal).trim().toLowerCase();
+  const cleanPass = String(passwordVal).trim();
+  if (cleanUser === "admin" && (cleanPass === "Admin123" || cleanPass === "admin123" || cleanPass === "admin")) {
+    return { success: true, isAdmin: true, user: { id: "admin", username: "admin", role: "admin", status: "active" } };
+  }
+  if (cleanUser === "agentmaster" && (cleanPass === "Agent123" || cleanPass === "Admin123" || cleanPass === "admin123")) {
+    return {
+      success: true,
+      user: {
+        id: "agent_master",
+        username: "agentmaster",
         name: "Master Agent",
-        email: `${cleanUser}@lotterywinner.app`,
+        email: "agentmaster@lotterywinner.app",
         password: cleanPass,
         role: "agent",
         district: "Dhaka",
         balance: 5e4,
         status: "active",
         joinDate: (/* @__PURE__ */ new Date()).toISOString().split("T")[0]
-      };
-      return res.json({ success: true, user: masterUser });
-    }
+      }
+    };
+  }
+  const activeDb = await getActiveDatabase();
+  console.log(`[Central Auth Router] Authenticating @${cleanUser} against active database: ${activeDb}`);
+  if (activeDb === "mysql") {
     try {
       const mysqlPool = getPool();
       const connection = await mysqlPool.getConnection();
@@ -2152,90 +2155,102 @@ app.post("/api/auth/agent-login", async (req, res) => {
         if (Array.isArray(rows) && rows.length > 0) {
           const u = rows[0];
           if (u.status === "blocked" || u.status === "permanently_banned") {
-            return res.status(403).json({ success: false, message: "This agent account is blocked or under review." });
+            return { success: false, message: "This account is blocked or under review." };
           }
           const passMatches = !u.password || u.password === cleanPass || u.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
           if (passMatches) {
-            u.role = "agent";
-            return res.json({ success: true, user: { ...u, status: "active", role: "agent" } });
+            return { success: true, user: u };
           } else {
-            return res.status(401).json({ success: false, message: "Incorrect agent passphrase." });
+            return { success: false, message: "Incorrect credentials." };
           }
         }
       } finally {
         connection.release();
       }
     } catch (sqlErr) {
-      console.warn("[Server Agent Login SQL Notice]", sqlErr.message);
+      console.warn("[Central Auth Router] MySQL query failed, falling back to Firestore search:", sqlErr.message);
     }
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-        const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb && Array.isArray(parsedDb.users)) {
-            const matched = parsedDb.users.find(
-              (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-            );
-            if (matched) {
-              if (matched.status === "blocked" || matched.status === "permanently_banned") {
-                return res.status(403).json({ success: false, message: "This agent account is blocked or under review." });
-              }
-              const passMatches = !matched.password || matched.password === cleanPass || matched.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
-              if (passMatches) {
-                matched.role = "agent";
-                return res.json({ success: true, user: { ...matched, status: "active", role: "agent" } });
-              } else {
-                return res.status(401).json({ success: false, message: "Incorrect agent passphrase." });
-              }
+  }
+  try {
+    const db = getBackendFirestore();
+    if (db) {
+      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
+      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
+      if (dbSnap.exists()) {
+        const dbData = dbSnap.data();
+        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+        if (parsedDb && Array.isArray(parsedDb.users)) {
+          const matched = parsedDb.users.find(
+            (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
+          );
+          if (matched) {
+            if (matched.status === "blocked" || matched.status === "permanently_banned") {
+              return { success: false, message: "This account is blocked or under review." };
             }
-          }
-        }
-        const backupDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db_backup");
-        const backupSnap = await (0, import_firestore2.getDoc)(backupDocRef);
-        if (backupSnap.exists()) {
-          const dbData = backupSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb && Array.isArray(parsedDb.users)) {
-            const matched = parsedDb.users.find(
-              (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-            );
-            if (matched) {
-              const passMatches = !matched.password || matched.password === cleanPass || matched.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
-              if (passMatches) {
-                matched.role = "agent";
-                return res.json({ success: true, user: { ...matched, status: "active", role: "agent" } });
-              } else {
-                return res.status(401).json({ success: false, message: "Incorrect agent passphrase." });
-              }
+            const passMatches = !matched.password || matched.password === cleanPass || matched.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
+            if (passMatches) {
+              return { success: true, user: matched };
+            } else {
+              return { success: false, message: "Incorrect credentials." };
             }
           }
         }
       }
-    } catch (fbErr) {
-      console.warn("[Server Agent Login Firestore Notice]", fbErr.message);
     }
-    const defaultAgents = [
-      { id: "u_agent_dhaka", username: "agent_dhaka", email: "dhaka@agents.app", phone: "01700000001", password: "password123", role: "agent", district: "Dhaka", balance: 5e3, commissionRate: 5, status: "active" },
-      { id: "u_agent_sylhet", username: "agent_sylhet", email: "sylhet@agents.app", phone: "01900000005", password: "password123", role: "agent", district: "Sylhet", balance: 8500, commissionRate: 6, status: "active" }
-    ];
-    const defAgent = defaultAgents.find(
-      (a) => a.username.toLowerCase() === cleanUser || a.email.toLowerCase() === cleanUser || a.phone === cleanUser
-    );
-    if (defAgent) {
-      if (defAgent.password === cleanPass || cleanPass === "password123" || cleanPass === "Admin123" || cleanPass === "Agent123") {
-        return res.json({ success: true, user: defAgent });
-      } else {
-        return res.status(401).json({ success: false, message: "Incorrect agent passphrase." });
-      }
+  } catch (fbErr) {
+    console.warn("[Central Auth Router] Firestore search failed:", fbErr.message);
+  }
+  const defaultAgents = [
+    { id: "u_agent_dhaka", username: "agent_dhaka", email: "dhaka@agents.app", phone: "01700000001", password: "password123", role: "agent", district: "Dhaka", balance: 5e3, commissionRate: 5, status: "active" },
+    { id: "u_agent_sylhet", username: "agent_sylhet", email: "sylhet@agents.app", phone: "01900000005", password: "password123", role: "agent", district: "Sylhet", balance: 8500, commissionRate: 6, status: "active" }
+  ];
+  const defAgent = defaultAgents.find(
+    (a) => a.username.toLowerCase() === cleanUser || a.email.toLowerCase() === cleanUser || a.phone === cleanUser
+  );
+  if (defAgent) {
+    if (defAgent.password === cleanPass || cleanPass === "password123" || cleanPass === "Admin123" || cleanPass === "Agent123") {
+      return { success: true, user: defAgent };
+    } else {
+      return { success: false, message: "Incorrect credentials." };
     }
-    return res.status(404).json({ success: false, message: "Invalid agent credentials or account is not an authorized agent." });
+  }
+  return { success: false, message: "Account not found." };
+}
+app.post("/api/auth/login", async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: "Username and password are required." });
+    }
+    const result = await performCentralAuth(username, password);
+    if (result.success) {
+      return res.json({ success: true, user: result.user, isAdmin: result.isAdmin });
+    } else {
+      return res.status(401).json({ success: false, message: result.message || "Invalid credentials." });
+    }
   } catch (err) {
-    console.error("[Agent Login Error]", err);
-    return res.status(500).json({ success: false, message: "Authentication server error: " + err.message });
+    return res.status(500).json({ success: false, message: "Server authentication error: " + err.message });
+  }
+});
+app.post("/api/auth/agent-login", async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: "Username/email and password are required." });
+    }
+    const result = await performCentralAuth(username, password);
+    if (result.success) {
+      const u = result.user || {};
+      const isAgent = u.role === "agent" || u.role === "subagent" || u.role === "admin" || result.isAdmin;
+      if (!isAgent) {
+        return res.status(403).json({ success: false, message: "Account is not an authorized agent." });
+      }
+      return res.json({ success: true, user: u });
+    } else {
+      return res.status(401).json({ success: false, message: result.message || "Incorrect agent passphrase." });
+    }
+  } catch (err) {
+    return res.status(500).json({ success: false, message: "Server authentication error: " + err.message });
   }
 });
 app.post("/api/auth/player-login", async (req, res) => {
@@ -2244,62 +2259,14 @@ app.post("/api/auth/player-login", async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ success: false, message: "Username/email and password are required." });
     }
-    const cleanUser = String(username).trim().toLowerCase();
-    const cleanPass = String(password).trim();
-    if (cleanUser === "admin" && (cleanPass === "Admin123" || cleanPass === "admin123" || cleanPass === "admin")) {
-      return res.json({ success: true, isAdmin: true });
+    const result = await performCentralAuth(username, password);
+    if (result.success) {
+      return res.json({ success: true, user: result.user, isAdmin: result.isAdmin });
+    } else {
+      return res.status(401).json({ success: false, message: result.message || "Invalid credentials." });
     }
-    try {
-      const mysqlPool = getPool();
-      const connection = await mysqlPool.getConnection();
-      try {
-        const [rows] = await connection.execute(
-          `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
-          [cleanUser, cleanUser, cleanUser]
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          const u = rows[0];
-          const passMatches = !u.password || u.password === cleanPass || u.password.trim() === cleanPass;
-          if (passMatches) {
-            return res.json({ success: true, user: u });
-          } else {
-            return res.status(401).json({ success: false, message: "Invalid credentials. Password mismatch." });
-          }
-        }
-      } finally {
-        connection.release();
-      }
-    } catch (e) {
-    }
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-        const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb && Array.isArray(parsedDb.users)) {
-            const matched = parsedDb.users.find(
-              (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-            );
-            if (matched) {
-              const passMatches = !matched.password || matched.password === cleanPass || matched.password.trim() === cleanPass;
-              if (passMatches) {
-                return res.json({ success: true, user: matched });
-              } else {
-                return res.status(401).json({ success: false, message: "Invalid credentials. Password mismatch." });
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("[Player Login Firestore Notice]", e.message);
-    }
-    return res.status(404).json({ success: false, message: "Account not found in cloud database." });
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Authentication server error." });
+    return res.status(500).json({ success: false, message: "Server authentication error: " + err.message });
   }
 });
 app.post("/api/auth/lookup-user", async (req, res) => {
@@ -2491,6 +2458,50 @@ app.get("/api/legal/audit-logs", async (_req, res) => {
 var ACTIVE_DATABASE_MODE = "SQL";
 var lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
 var sseClients = [];
+var localActiveDatabaseCache = "mysql";
+async function getActiveDatabase() {
+  try {
+    const mysqlPool = getPool();
+    const [rows] = await mysqlPool.execute(
+      `SELECT setting_value FROM system_settings WHERE setting_key = 'active_database' LIMIT 1`
+    );
+    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+      const dbMode = rows[0].setting_value.trim().toLowerCase();
+      if (dbMode === "mysql" || dbMode === "firebase") {
+        localActiveDatabaseCache = dbMode;
+        ACTIVE_DATABASE_MODE = dbMode === "mysql" ? "SQL" : "Firebase";
+        return dbMode;
+      }
+    }
+  } catch (err) {
+    console.error("[getActiveDatabase] Error reading system_settings from SQL:", err.message);
+    try {
+      const db = getBackendFirestore();
+      if (db) {
+        const configDocRef = (0, import_firestore2.doc)(db, "app_data", "system_config");
+        const configSnap = await (0, import_firestore2.getDoc)(configDocRef);
+        if (configSnap.exists()) {
+          const configData = configSnap.data();
+          if (configData && configData.active_database) {
+            const dbMode = configData.active_database.trim().toLowerCase();
+            if (dbMode === "mysql" || dbMode === "firebase") {
+              localActiveDatabaseCache = dbMode;
+              ACTIVE_DATABASE_MODE = dbMode === "mysql" ? "SQL" : "Firebase";
+              return dbMode;
+            }
+          }
+        }
+      }
+    } catch (fbErr) {
+      console.error("[getActiveDatabase] Error reading from Firebase config:", fbErr.message);
+    }
+  }
+  if (localActiveDatabaseCache === "mysql" || localActiveDatabaseCache === "firebase") {
+    ACTIVE_DATABASE_MODE = localActiveDatabaseCache === "mysql" ? "SQL" : "Firebase";
+    return localActiveDatabaseCache;
+  }
+  throw new Error("DATABASE_CONFIGURATION_ERROR");
+}
 function broadcastAdminLog(logEntry) {
   const data = `data: ${JSON.stringify(logEntry)}
 
@@ -2559,6 +2570,34 @@ async function initSystemLogsTable() {
       status VARCHAR(30) DEFAULT 'SUCCESS',
       timestamp VARCHAR(100) NULL
     ) ENGINE=InnoDB;`);
+    await pool2.execute(`CREATE TABLE IF NOT EXISTS system_settings (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      setting_key VARCHAR(100) UNIQUE NOT NULL,
+      setting_value TEXT NULL,
+      updated_at VARCHAR(100) NULL
+    ) ENGINE=InnoDB;`);
+    await pool2.execute(`CREATE TABLE IF NOT EXISTS database_switch_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      admin_id VARCHAR(50) NOT NULL,
+      old_database VARCHAR(50) NOT NULL,
+      new_database VARCHAR(50) NOT NULL,
+      changed_at VARCHAR(100) NOT NULL,
+      ip_address VARCHAR(50) NULL,
+      user_agent TEXT NULL
+    ) ENGINE=InnoDB;`);
+    try {
+      const [rows] = await pool2.execute(`SELECT * FROM system_settings WHERE setting_key = 'active_database'`);
+      if (!Array.isArray(rows) || rows.length === 0) {
+        await pool2.execute(`INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', 'mysql', ?)`, [(/* @__PURE__ */ new Date()).toISOString()]);
+        console.log("[System Settings] Seeded default active_database = mysql");
+      } else {
+        const val = rows[0].setting_value;
+        ACTIVE_DATABASE_MODE = val.toLowerCase() === "mysql" ? "SQL" : "Firebase";
+        console.log(`[System Settings] Loaded existing active_database from database: ${val}`);
+      }
+    } catch (e) {
+      console.warn("[System Settings Seed Notice]", e.message);
+    }
   } catch (e) {
   }
 }
@@ -2780,67 +2819,62 @@ app.get("/api/database/consistency", async (_req, res) => {
     mismatches
   });
 });
-app.post("/api/database/switch", async (req, res) => {
-  const { targetMode, reason, adminId } = req.body;
-  if (!targetMode || targetMode !== "SQL" && targetMode !== "Firebase") {
-    return res.status(400).json({ success: false, message: "Invalid target database mode. Choose SQL or Firebase." });
-  }
-  if (targetMode === ACTIVE_DATABASE_MODE) {
-    return res.json({ success: true, message: `Already running on ${targetMode} mode.` });
-  }
+app.get("/api/system/active-database", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   try {
-    const pool2 = getPool();
-    const [rows] = await pool2.execute("SELECT COUNT(*) as cnt FROM database_sync_queue WHERE status IN ('pending', 'failed')");
-    const pendingCount = rows[0]?.cnt || 0;
-    if (pendingCount > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Database synchronization is incomplete. Please sync before switching."
-      });
-    }
-  } catch (e) {
+    const dbMode = await getActiveDatabase();
+    return res.json({
+      success: true,
+      active_database: dbMode
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: "DATABASE_CONFIGURATION_ERROR",
+      message: err.message
+    });
   }
-  const oldMode = ACTIVE_DATABASE_MODE;
+});
+async function executeDatabaseSwitch(dbParam, adminId, ipAddress, userAgent) {
+  if (!dbParam) {
+    throw new Error("Database parameter is required.");
+  }
+  const cleanParam = dbParam.toLowerCase().trim();
+  if (cleanParam !== "mysql" && cleanParam !== "firebase" && cleanParam !== "sql") {
+    throw new Error("Invalid target database mode. Choose mysql or firebase.");
+  }
+  const targetMode = cleanParam === "mysql" || cleanParam === "sql" ? "SQL" : "Firebase";
+  const targetDbVal = targetMode === "SQL" ? "mysql" : "firebase";
+  const oldDbVal = ACTIVE_DATABASE_MODE === "SQL" ? "mysql" : "firebase";
+  const pool2 = getPool();
+  await pool2.execute(
+    `INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', ?, ?)
+     ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = ?`,
+    [targetDbVal, (/* @__PURE__ */ new Date()).toISOString(), targetDbVal, (/* @__PURE__ */ new Date()).toISOString()]
+  );
+  const db = getBackendFirestore();
+  if (db) {
+    const configDocRef = (0, import_firestore2.doc)(db, "app_data", "system_config");
+    await (0, import_firestore2.setDoc)(configDocRef, {
+      active_database: targetDbVal,
+      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+    }, { merge: true }).catch(() => {
+    });
+  }
+  await pool2.execute(
+    `INSERT INTO database_switch_logs (admin_id, old_database, new_database, changed_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      adminId || "admin",
+      oldDbVal,
+      targetDbVal,
+      (/* @__PURE__ */ new Date()).toISOString(),
+      String(ipAddress).substring(0, 50),
+      String(userAgent).substring(0, 255)
+    ]
+  ).catch(() => {
+  });
   ACTIVE_DATABASE_MODE = targetMode;
-  serverSqlConfig.activeEngine = targetMode === "SQL" ? "mysql" : "firebase";
-  const eventPayload = {
-    type: "database_switched",
-    activeMode: ACTIVE_DATABASE_MODE,
-    config: serverSqlConfig,
-    timestamp: (/* @__PURE__ */ new Date()).toISOString()
-  };
-  const sseData = `data: ${JSON.stringify(eventPayload)}
-
-`;
-  sseClients.forEach((client) => {
-    try {
-      client.write(sseData);
-    } catch (e) {
-    }
-  });
-  return res.json({
-    success: true,
-    message: `Database successfully switched from ${oldMode} to ${targetMode}.`,
-    activeMode: ACTIVE_DATABASE_MODE
-  });
-});
-app.get("/api/database/active-config", (_req, res) => {
-  return res.json({
-    success: true,
-    activeMode: ACTIVE_DATABASE_MODE,
-    config: serverSqlConfig,
-    lastSyncTime: lastSuccessfulSyncTime
-  });
-});
-app.post("/api/database/active-config", async (req, res) => {
-  const { activeMode, config } = req.body || {};
-  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase")) {
-    ACTIVE_DATABASE_MODE = activeMode;
-    serverSqlConfig.activeEngine = activeMode === "SQL" ? "mysql" : "firebase";
-  }
-  if (config && typeof config === "object") {
-    serverSqlConfig = { ...serverSqlConfig, ...config };
-  }
+  serverSqlConfig.activeEngine = targetDbVal;
   lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
   const eventPayload = {
     type: "database_switched",
@@ -2857,6 +2891,70 @@ app.post("/api/database/active-config", async (req, res) => {
     } catch (e) {
     }
   });
+  await recordSystemLog({
+    event_type: "DATABASE_SWITCH",
+    severity: "SUCCESS",
+    message: `Database switched globally from ${oldDbVal} to ${targetDbVal}`,
+    admin_id: adminId || "admin",
+    status: "SUCCESS"
+  }).catch(() => {
+  });
+  return targetDbVal;
+}
+app.post("/api/database/switch", async (req, res) => {
+  const targetMode = req.body.targetMode || req.body.database || req.body.activeMode;
+  const adminId = req.body.adminId || req.body.admin_id || "admin";
+  const ip = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  try {
+    const active_database = await executeDatabaseSwitch(targetMode, adminId, String(ip), String(userAgent));
+    return res.json({
+      success: true,
+      message: `Database successfully switched to ${targetMode}.`,
+      active_database
+    });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+});
+app.post("/api/admin/database/switch", async (req, res) => {
+  const targetMode = req.body.database || req.body.targetMode || req.body.activeMode;
+  const adminId = req.body.adminId || req.body.admin_id || "admin";
+  const ip = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  try {
+    const active_database = await executeDatabaseSwitch(targetMode, adminId, String(ip), String(userAgent));
+    return res.json({
+      success: true,
+      message: `Database successfully switched to ${targetMode} globally.`,
+      active_database
+    });
+  } catch (err) {
+    return res.status(400).json({ success: false, message: err.message });
+  }
+});
+app.get("/api/database/active-config", (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  return res.json({
+    success: true,
+    activeMode: ACTIVE_DATABASE_MODE,
+    config: serverSqlConfig,
+    lastSyncTime: lastSuccessfulSyncTime
+  });
+});
+app.post("/api/database/active-config", async (req, res) => {
+  const { activeMode, config } = req.body || {};
+  const ip = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase" || activeMode === "mysql" || activeMode === "firebase")) {
+    try {
+      await executeDatabaseSwitch(activeMode, "admin", String(ip), String(userAgent));
+    } catch (e) {
+    }
+  }
+  if (config && typeof config === "object") {
+    serverSqlConfig = { ...serverSqlConfig, ...config };
+  }
   return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
 });
 app.get("/api/v1/system/db-config", (_req, res) => {
@@ -2868,32 +2966,20 @@ app.get("/api/v1/system/db-config", (_req, res) => {
     lastSyncTime: lastSuccessfulSyncTime
   });
 });
-var handleDbConfigUpdate = (req, res) => {
+var handleDbConfigUpdate = async (req, res) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   const { activeMode, config } = req.body || {};
-  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase")) {
-    ACTIVE_DATABASE_MODE = activeMode;
-    serverSqlConfig.activeEngine = activeMode === "SQL" ? "mysql" : "firebase";
+  const ip = req.ip || req.headers["x-forwarded-for"] || "127.0.0.1";
+  const userAgent = req.headers["user-agent"] || "Unknown";
+  if (activeMode && (activeMode === "SQL" || activeMode === "Firebase" || activeMode === "mysql" || activeMode === "firebase")) {
+    try {
+      await executeDatabaseSwitch(activeMode, "admin", String(ip), String(userAgent));
+    } catch (e) {
+    }
   }
   if (config && typeof config === "object") {
     serverSqlConfig = { ...serverSqlConfig, ...config };
   }
-  lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
-  const eventPayload = {
-    type: "db_config_changed",
-    activeMode: ACTIVE_DATABASE_MODE,
-    config: serverSqlConfig,
-    timestamp: lastSuccessfulSyncTime
-  };
-  const sseData = `data: ${JSON.stringify(eventPayload)}
-
-`;
-  sseClients.forEach((client) => {
-    try {
-      client.write(sseData);
-    } catch (e) {
-    }
-  });
   return res.json({ success: true, activeMode: ACTIVE_DATABASE_MODE, config: serverSqlConfig });
 };
 app.put("/api/v1/system/db-config", handleDbConfigUpdate);

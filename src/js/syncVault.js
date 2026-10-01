@@ -497,10 +497,10 @@ export const SyncVaultModule = {
 
         // Inform server about the active database engine switch
         const isSqlTarget = node.id === "node-sql";
-        fetch("/api/sql/config", {
+        fetch("/api/admin/database/switch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ activeEngine: isSqlTarget ? "mysql" : "firebase" })
+          body: JSON.stringify({ database: isSqlTarget ? "mysql" : "firebase", admin_id: "admin" })
         }).catch(err => console.warn("Failed to notify server of engine switch:", err));
 
         this.saveDB(true).then(() => {
@@ -906,10 +906,10 @@ export const SyncVaultModule = {
             this.addConsoleLog(`[DUAL SYNC] Active database switched to "${node.name}". Both databases remain fully mirrored and synced.`, "success");
             this.showToast(`সুইচ সফল! উভয় ডাটাবেজ অটো সিঙ্ক থাকায় "${node.name}"-এ সব ডাটা সুরক্ষিত আছে।`, "success");
             // Inform server about the active database engine switch
-            fetch("/api/sql/config", {
+            fetch("/api/admin/database/switch", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ activeEngine: node.id === "node-sql" ? "mysql" : "firebase" })
+              body: JSON.stringify({ database: node.id === "node-sql" ? "mysql" : "firebase", admin_id: "admin" })
             }).catch(() => {});
 
             this.saveDB();
