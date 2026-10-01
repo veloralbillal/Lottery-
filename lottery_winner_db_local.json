@@ -1,0 +1,20 @@
+{
+  "users": [],
+  "lotteries": [],
+  "tickets": [],
+  "deposits": [],
+  "withdrawals": [],
+  "transactions": [],
+  "agentLedger": [],
+  "settings": {
+    "payMasterEnabled": "true",
+    "payUddoktapayEnabled": "true",
+    "payZinipayEnabled": "true",
+    "payCryptomusEnabled": "true",
+    "payBkashEnabled": "false",
+    "payNagadEnabled": "false",
+    "payRocketEnabled": "false",
+    "payUsdtEnabled": "false",
+    "payAgentDepositEnabled": "false"
+  }
+}

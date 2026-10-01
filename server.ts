@@ -112,18 +112,18 @@ let pool: mysql.Pool | null = null;
 const resolveBridgeAndDbHost = (configuredHost: string = '') => {
   let rawHost = (configuredHost || serverSqlConfig.host || '').trim();
   let bridgeUrl = 'https://api.veloralbillal.top/db_bridge.php';
-  let dbHost = 'localhost';
+  let dbHost = 'server.shodns.in';
 
   if (rawHost.startsWith('http://') || rawHost.startsWith('https://') || rawHost.includes('db_bridge.php') || rawHost.includes('.php')) {
     bridgeUrl = rawHost.startsWith('http') ? rawHost : 'https://' + rawHost;
-    dbHost = 'localhost';
+    dbHost = 'server.shodns.in';
   } else if (rawHost && rawHost !== 'localhost' && rawHost !== '127.0.0.1') {
     dbHost = rawHost;
     bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
       ? serverSqlConfig.host 
       : 'https://api.veloralbillal.top/db_bridge.php';
   } else {
-    dbHost = 'localhost';
+    dbHost = 'server.shodns.in';
     bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
       ? serverSqlConfig.host 
       : 'https://api.veloralbillal.top/db_bridge.php';

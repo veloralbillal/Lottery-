@@ -443,7 +443,7 @@ export const SyncCloudModule = {
           { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: false, type: "sql", status: "connected" }
         ];
       }
-      this.db.syncNodes.forEach((n: any) => {
+      this.db.syncNodes?.forEach((n: any) => {
         if (serverActiveDb === 'mysql') {
           n.active = (n.id === "node-sql");
         } else {
@@ -838,15 +838,13 @@ export const SyncCloudModule = {
             if (payload.config && this.db) {
               if (!this.db.sqlDbConfig) this.db.sqlDbConfig = {};
               this.db.sqlDbConfig = { ...this.db.sqlDbConfig, ...payload.config };
-              if (this.db.syncNodes && this.db.syncNodes.length > 0) {
-                this.db.syncNodes.forEach((n: any) => {
+                this.db.syncNodes?.forEach((n: any) => {
                   if (payload.activeMode === "SQL") {
                     n.active = (n.id === "node-sql");
                   } else {
                     n.active = (n.id === "node-1" || n.id === "node-firebase");
                   }
                 });
-              }
             }
             localStorage.removeItem("lottery_winner_db_backup");
             await this.loadFromCloud();
