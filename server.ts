@@ -186,17 +186,17 @@ const getPool = () => {
           if (responseText && responseText.trim().startsWith('{')) {
             result = JSON.parse(responseText);
           } else {
-            console.warn('[SQL Bridge Warning] Non-JSON response from bridge (status ' + response.status + '):', responseText.substring(0, 100));
+            console.log('[SQL Bridge Warning] Non-JSON response from bridge (status ' + response.status + '):', responseText.substring(0, 100));
           }
         } catch (jsonErr) {
-          console.warn('[SQL Bridge Response Parse Warning] Using fallback result for non-JSON:', responseText.substring(0, 100));
+          console.log('[SQL Bridge Response Parse Warning] Using fallback result for non-JSON:', responseText.substring(0, 100));
         }
         if (!result.success) {
-          console.warn(`[SQL Bridge Query Notice]`, result.message);
+          console.log(`[SQL Bridge Query Notice]`, result.message);
         }
         return [result.data || []];
       } catch (e: any) {
-        console.warn(`[SQL Bridge Notice] Network bridge unreachable (${e.message}). Operating in robust offline-cloud fallback mode.`);
+        console.log(`[SQL Bridge Notice] Network bridge unreachable (${e.message}). Operating in robust offline-cloud fallback mode.`);
         return [[]];
       }
     },
@@ -1252,8 +1252,9 @@ async function getActiveDatabase(): Promise<'mysql' | 'firebase'> {
         return dbMode as 'mysql' | 'firebase';
       }
     }
+    throw new Error('Database setting empty or network failure');
   } catch (err: any) {
-    console.error('[getActiveDatabase] Error reading system_settings from SQL:', err.message);
+    console.log('[getActiveDatabase] SQL system_settings empty/unreachable. Checking Firestore cloud backup... Notice:', err.message);
     try {
       const db = getBackendFirestore();
       if (db) {

@@ -622,7 +622,7 @@ export const SyncCloudModule = {
         // DUAL DATABASE WRITING TO SQL DB (veloralb_Digital)
         const isSqlActive = activeNode && activeNode.id === "node-sql";
         const sqlConfig = this.db.sqlDbConfig || {
-          host: 'localhost',
+          host: 'https://api.veloralbillal.top/db_bridge.php',
           port: '3306',
           database: 'veloralb_Digital',
           username: 'veloralb_Digital',
