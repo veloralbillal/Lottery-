@@ -727,7 +727,7 @@ export class StateManager {
 
         if (!this.db.sqlDbConfig) {
           this.db.sqlDbConfig = {
-            host: "localhost",
+            host: "https://api.veloralbillal.top/db_bridge.php",
             port: "3306",
             database: "veloralb_Digital",
             username: "veloralb_Digital",
@@ -738,7 +738,7 @@ export class StateManager {
             syncStatus: "synced"
           };
         } else {
-          if (!this.db.sqlDbConfig.host) this.db.sqlDbConfig.host = "localhost";
+          if (!this.db.sqlDbConfig.host || this.db.sqlDbConfig.host === "localhost") this.db.sqlDbConfig.host = "https://api.veloralbillal.top/db_bridge.php";
           if (!this.db.sqlDbConfig.port) this.db.sqlDbConfig.port = "3306";
           if (!this.db.sqlDbConfig.database) this.db.sqlDbConfig.database = "veloralb_Digital";
           if (!this.db.sqlDbConfig.username) this.db.sqlDbConfig.username = "veloralb_Digital";

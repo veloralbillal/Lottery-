@@ -990,7 +990,8 @@ export const SyncVaultModule = {
   },
 
   addConsoleLog(message, type = "info") {
-    if (!this.db || !this.db.syncLogs) return;
+    if (!this.db) return;
+    if (!this.db.syncLogs) this.db.syncLogs = [];
     const time = new Date().toLocaleTimeString();
     this.db.syncLogs.push({ time, type, message });
     if (this.db.syncLogs.length > 50) {
