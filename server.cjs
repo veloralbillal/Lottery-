@@ -1439,6 +1439,320 @@ function getDefaultLegalPages(settings) {
   ];
 }
 
+// src/js/defaultDB.js
+function getDefaultDB() {
+  return {
+    users: [
+      {
+        id: "u1",
+        username: "lottery_pro",
+        email: "pro@lotterywinner.app",
+        password: "password123",
+        phone: "01712345678",
+        dob: "1997-05-12",
+        balance: 1540,
+        totDeposit: 2500,
+        totWithdraw: 800,
+        wins: 3,
+        loss: 15,
+        profit: 640,
+        joinDate: "2026-01-01",
+        status: "active",
+        blockedUntil: null
+      },
+      {
+        id: "u2",
+        username: "lucky_player",
+        email: "lucky@quickdraw.net",
+        password: "password123",
+        phone: "01988776655",
+        dob: "2000-11-20",
+        balance: 75,
+        totDeposit: 100,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 5,
+        profit: -25,
+        joinDate: "2026-05-15",
+        status: "active",
+        blockedUntil: null
+      },
+      {
+        id: "u3",
+        username: "blocked_user",
+        email: "suspended@cheater.com",
+        password: "password123",
+        phone: "01822114433",
+        dob: "1994-08-01",
+        balance: 500,
+        totDeposit: 500,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-10",
+        status: "blocked",
+        blockedUntil: new Date(Date.now() + 864e5).toISOString()
+      },
+      {
+        id: "u_agent_dhaka",
+        username: "agent_dhaka",
+        email: "dhaka@agents.app",
+        password: "password123",
+        phone: "01700000001",
+        dob: "1990-01-01",
+        balance: 5e3,
+        totDeposit: 5e3,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-20",
+        status: "active",
+        blockedUntil: null,
+        role: "agent",
+        commissionRate: 5,
+        earnedCommission: 120,
+        totalBookings: 24,
+        district: "Dhaka"
+      },
+      {
+        id: "u_agent_sylhet",
+        username: "agent_sylhet",
+        email: "sylhet@agents.app",
+        password: "password123",
+        phone: "01900000005",
+        dob: "1992-05-18",
+        balance: 8500,
+        totDeposit: 8500,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-21",
+        status: "active",
+        blockedUntil: null,
+        role: "agent",
+        commissionRate: 6,
+        earnedCommission: 310,
+        totalBookings: 43,
+        district: "Sylhet"
+      },
+      {
+        id: "u_mod_support",
+        username: "mod_support",
+        email: "support@lotterywinner.app",
+        password: "password123",
+        phone: "01700000002",
+        dob: "1993-02-15",
+        balance: 0,
+        totDeposit: 0,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-21",
+        status: "active",
+        blockedUntil: null,
+        role: "moderator"
+      }
+    ],
+    lotteries: [
+      {
+        id: "l1",
+        name: "\u26A1 10-Taka Fast Cash Daily",
+        details: "Buy tickets for only 10 Taka and win massive rewards instantly! Grand Prize is 500 Taka.",
+        entryFee: 10,
+        totalTickets: 1e3,
+        soldTickets: 684,
+        category: "10 Taka Banner",
+        drawTime: new Date(Date.now() + 45 * 60 * 1e3).toISOString(),
+        status: "active",
+        prizeAmount: 500
+      },
+      {
+        id: "l2",
+        name: "\u{1F48E} 20-Taka Premium Super Pool",
+        details: "Exclusive 20 Taka lottery with active multipliers. First place gets an incredible 1200 Taka!",
+        entryFee: 20,
+        totalTickets: 500,
+        soldTickets: 412,
+        category: "20 Taka Banner",
+        drawTime: new Date(Date.now() + 120 * 60 * 1e3).toISOString(),
+        status: "active",
+        prizeAmount: 1200
+      },
+      {
+        id: "l3",
+        name: "\u{1F451} 50-Taka Mega Event Jackpot",
+        details: "A legendary pool for highest payouts! Ticket price is 50 Taka. Prize is 5000 Taka.",
+        entryFee: 50,
+        totalTickets: 200,
+        soldTickets: 85,
+        category: "Mega Jackpot",
+        drawTime: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
+        status: "active",
+        prizeAmount: 5e3
+      }
+    ],
+    tickets: [
+      {
+        id: "t1",
+        userId: "u1",
+        lotteryId: "l1",
+        code: "LW-784013",
+        purchaseDate: "2026-06-14T10:00:00Z",
+        status: "won",
+        prizeAmount: 500
+      },
+      {
+        id: "t2",
+        userId: "u1",
+        lotteryId: "l2",
+        code: "LW-312954",
+        purchaseDate: "2026-06-15T08:30:00Z",
+        status: "lost",
+        prizeAmount: 0
+      },
+      {
+        id: "t3",
+        userId: "u2",
+        lotteryId: "l1",
+        code: "LW-904254",
+        purchaseDate: "2026-06-15T19:40:00Z",
+        status: "lost",
+        prizeAmount: 0
+      }
+    ],
+    deposits: [
+      {
+        id: "d1",
+        username: "lottery_pro",
+        amount: 2500,
+        method: "bKash",
+        trxId: "TRX88394821",
+        status: "approved",
+        date: "2026-06-10T12:00:00Z"
+      },
+      {
+        id: "d2",
+        username: "lucky_player",
+        amount: 100,
+        method: "Nagad",
+        trxId: "TRX49102844",
+        status: "approved",
+        date: "2026-06-12T14:22:00Z"
+      }
+    ],
+    withdrawals: [
+      {
+        id: "w1",
+        username: "lottery_pro",
+        amount: 800,
+        method: "Rocket",
+        targetAccount: "017294820120",
+        status: "approved",
+        date: "2026-06-13T16:00:00Z"
+      }
+    ],
+    webPushAds: [
+      {
+        id: "ad_101",
+        title: "\u{1F525} \u09EB\u09E6% \u09A1\u09BF\u09AA\u09CB\u099C\u09BF\u099F \u0995\u09CD\u09AF\u09BE\u09B6\u09AC\u09CD\u09AF\u09BE\u0995 \u09AC\u09CB\u09A8\u09BE\u09B8!",
+        message: "\u0986\u099C\u0987 \u09AC\u09BF\u0995\u09BE\u09B6 \u09AC\u09BE \u09A8\u0997\u09A6\u09C7 \u09EB\u09E6\u09E6 \u099F\u09BE\u0995\u09BE \u09A1\u09BF\u09AA\u09CB\u099C\u09BF\u099F \u0995\u09B0\u09C7 \u09EB\u09E6\u09E6 \u099F\u09BE\u0995\u09BE \u0985\u09A4\u09BF\u09B0\u09BF\u0995\u09CD\u09A4 \u09AC\u09CB\u09A8\u09BE\u09B8 \u0997\u09CD\u09B0\u09B9\u09A3 \u0995\u09B0\u09C1\u09A8\u0964",
+        imageUrl: "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800",
+        ctaText: "\u{1F449} Claim Bonus Now",
+        iconType: "bkash",
+        targetTab: "tab-wallet",
+        targetAudience: "all",
+        clicks: 42,
+        date: new Date(Date.now() - 36e5 * 5).toISOString()
+      },
+      {
+        id: "ad_102",
+        title: "\u{1F3B0} \u09F3\u09E7,\u09E6\u09E6,\u09E6\u09E6\u09E6 \u09AE\u09C7\u0997\u09BE \u09B2\u099F\u09BE\u09B0\u09BF \u09A1\u09CD\u09B0 \u09B8\u09CD\u099F\u09BE\u09B0\u09CD\u099F!",
+        message: "\u0986\u099C \u09B0\u09BE\u09A4\u09C7\u09B0 \u09AE\u09C7\u0997\u09BE \u099C\u09CD\u09AF\u09BE\u0995\u09AA\u099F \u099F\u09BF\u0995\u09BF\u099F\u09C7\u09B0 \u09A1\u09CD\u09B0 \u09B9\u09A4\u09C7 \u0986\u09B0 \u09AE\u09BE\u09A4\u09CD\u09B0 \u09E9\u09E6 \u09AE\u09BF\u09A8\u09BF\u099F \u09AC\u09BE\u0995\u09BF! \u098F\u0996\u09A8\u0987 \u099F\u09BF\u0995\u09BF\u099F \u09A8\u09BF\u09B6\u09CD\u099A\u09BF\u09A4 \u0995\u09B0\u09C1\u09A8\u0964",
+        imageUrl: "https://images.unsplash.com/photo-1511193311914-0346f16efe90?w=800",
+        ctaText: "\u{1F39F}\uFE0F Buy Ticket \u09F310",
+        iconType: "jackpot",
+        targetTab: "tab-jackpot",
+        targetAudience: "all",
+        clicks: 89,
+        date: new Date(Date.now() - 36e5 * 24).toISOString()
+      }
+    ],
+    products: [
+      {
+        id: "prod-1",
+        title: "Premium Admin Dashboard WordPress Theme",
+        description: "A fully premium, high-speed dashboard theme featuring custom charts, responsive widgets, lottery manager modules, and advanced user roles management.",
+        price: 450,
+        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        filePath: "premium_admin_theme_v2.zip",
+        stars: 4.9,
+        sales: 128,
+        productType: "digital",
+        paymentMode: "advance",
+        sizes: "",
+        colors: ""
+      },
+      {
+        id: "prod-2",
+        title: "Elite Excel Automated Accounting Ledger",
+        description: "Advanced accounting sheet for automated ledger inputs, double-entry tracking, real-time profit and loss calculations, and bKash/Nagad reconciliation.",
+        price: 180,
+        image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&q=80",
+        category: "sheets-trackers",
+        filePath: "elite_accounting_ledger_2026.xlsx",
+        stars: 4.8,
+        sales: 342,
+        productType: "digital",
+        paymentMode: "advance",
+        sizes: "",
+        colors: ""
+      },
+      {
+        id: "prod-5",
+        title: "Premium Cotton Casual T-Shirt",
+        description: "High quality 100% cotton premium casual t-shirt with stylish print. Available in multiple sizes and colors.",
+        price: 490,
+        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=400&q=80",
+        category: "design-assets",
+        filePath: "tshirt_standard",
+        stars: 4.9,
+        sales: 85,
+        productType: "physical",
+        paymentMode: "cod",
+        sizes: "S, M, L, XL, XXL",
+        colors: "Black, Navy, White, Grey"
+      }
+    ],
+    settings: {
+      mobileAgentBkash: "01799228833",
+      mobileAgentNagad: "01855221144",
+      mobileAgentRocket: "01688554422",
+      mobileAgentUpay: "01922334455",
+      dbblDetails: "Rocket Wallet Agent route system. Input account numbers directly.",
+      cryptoAddress: "TY6yZ9b8uB26Z962sM8aYjWqpzTx9K9n9X",
+      payZinipayEnabled: true,
+      payZiniPayEnabled: true,
+      zinipayApiKey: "zp_live_948275910284729104",
+      zinipayMode: "live",
+      zinipayBaseUrl: "https://api.zinipay.com/v1/payment/create",
+      zinipayInstruction: "Pay instantly with bKash, Nagad, Rocket or Cards through ZiniPay automated gateway.",
+      maintenanceMode: false,
+      maintenanceMessage: "Internal server hardware upgrade and database syncing in progress. Please try again soon.",
+      appVersion: "5.2.0",
+      forceUpdateLink: "https://example.com/download/LotteryWinner_v5.2.apk",
+      adminPass: "Admin123",
+      signupBonusEnabled: true,
+      signupBonus: 50,
+      shopEnabled: true
+    }
+  };
+}
+
 // server.ts
 var import_multer = __toESM(require("multer"), 1);
 var import_jszip = __toESM(require("jszip"), 1);
@@ -1555,6 +1869,9 @@ var getPool = () => {
         });
       }
       console.log(`[SQL Bridge Executor] Query: ${formattedSql.substring(0, 150)}...`);
+      let response = null;
+      let lastErr = null;
+      const maxRetries = 3;
       try {
         const urlObj = new URL(bridgeUrl);
         urlObj.searchParams.set("token", "Billal50598326");
@@ -1563,23 +1880,39 @@ var getPool = () => {
         urlObj.searchParams.set("db_name", serverSqlConfig.database || "veloralb_Digital");
         urlObj.searchParams.set("db_user", serverSqlConfig.username || "veloralb_Digital");
         urlObj.searchParams.set("db_pass", serverSqlConfig.password || "");
-        const response = await fetch(urlObj.toString(), {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Accept": "application/json, text/plain, */*",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-          },
-          body: new URLSearchParams({
-            token: "Billal50598326",
-            action: "query",
-            db_host: dbHost,
-            db_name: serverSqlConfig.database || "veloralb_Digital",
-            db_user: serverSqlConfig.username || "veloralb_Digital",
-            db_pass: serverSqlConfig.password || "",
-            sql: formattedSql
-          })
-        });
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            response = await fetch(urlObj.toString(), {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Accept": "application/json, text/plain, */*",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+              },
+              body: new URLSearchParams({
+                token: "Billal50598326",
+                action: "query",
+                db_host: dbHost,
+                db_name: serverSqlConfig.database || "veloralb_Digital",
+                db_user: serverSqlConfig.username || "veloralb_Digital",
+                db_pass: serverSqlConfig.password || "",
+                sql: formattedSql
+              })
+            });
+            if (response.ok) {
+              break;
+            }
+          } catch (err) {
+            lastErr = err;
+            if (attempt < maxRetries) {
+              const backoff = attempt * 500;
+              await new Promise((resolve) => setTimeout(resolve, backoff));
+            }
+          }
+        }
+        if (!response) {
+          throw lastErr || new Error("Connection failed after " + maxRetries + " attempts");
+        }
         const responseText = await response.text();
         let result = { success: true, data: [] };
         try {
@@ -1738,6 +2071,7 @@ app.post("/api/sql/sync", async (req, res) => {
     }
     const parsedDb = typeof dbPayload === "string" ? JSON.parse(dbPayload) : dbPayload;
     if (parsedDb) {
+      saveLocalDbBackup(parsedDb);
       const db = getBackendFirestore();
       if (db) {
         const primaryDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
@@ -2074,50 +2408,163 @@ app.get("/api/sql/db", async (req, res) => {
         }
       }
       const finalSettings = { ...defaultSettings, ...settings };
+      const responseDb = {
+        users,
+        lotteries,
+        tickets,
+        deposits,
+        withdrawals,
+        transactions,
+        agentLedger,
+        settings: finalSettings
+      };
+      saveLocalDbBackup(responseDb);
       return res.json({
         success: true,
-        db: {
-          users,
-          lotteries,
-          tickets,
-          deposits,
-          withdrawals,
-          transactions,
-          agentLedger,
-          settings: finalSettings
-        }
+        db: responseDb
       });
     } finally {
       connection.release();
     }
   } catch (err) {
-    const errMsg = (err.message || "").toUpperCase();
-    const errCode = (err.code || "").toUpperCase();
-    const isLocal = serverSqlConfig.host === "localhost" || serverSqlConfig.host === "127.0.0.1" || serverSqlConfig.host === "::1";
-    const isConnRefused = errCode.includes("CONNREFUSED") || errCode.includes("TIMEDOUT") || errMsg.includes("ECONNREFUSED") || errMsg.includes("ETIMEDOUT") || errMsg.includes("REFUSED") || errMsg.includes("TIMEOUT");
-    if (isConnRefused && isLocal) {
-      console.log("[SQL Fetch DB] Localhost MySQL unreachable (Cloud Run Sandbox). Falling back to Firestore DB state.");
-      try {
-        const db = getBackendFirestore();
-        if (db) {
-          const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-          const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-          if (dbSnap.exists()) {
-            const dbData = dbSnap.data();
-            const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-            if (parsedDb) {
-              return res.json({ success: true, db: parsedDb, notice: "Local MySQL unreachable; served via Firestore fallback." });
-            }
+    console.warn("[SQL Fetch DB Connection Notice]:", err.message);
+    try {
+      const db = getBackendFirestore();
+      if (db) {
+        const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
+        const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
+        if (dbSnap.exists()) {
+          const dbData = dbSnap.data();
+          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+          if (parsedDb) {
+            console.log("[SQL Fetch DB Fallback] Successfully served via Firestore.");
+            saveLocalDbBackup(parsedDb);
+            return res.json({ success: true, db: parsedDb, notice: "MySQL unreachable; served via Firestore fallback." });
           }
         }
-      } catch (fbErr) {
-        console.warn("[SQL Fetch DB Fallback Warning]", fbErr.message);
       }
+    } catch (fbErr) {
+      console.warn("[SQL Fetch DB Firestore Fallback Notice]:", fbErr.message);
     }
-    console.error("[SQL Fetch DB Error]", err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    try {
+      const localDb = loadLocalDbBackup();
+      if (localDb) {
+        console.log("[SQL Fetch DB Fallback] Successfully served via local Server File Backup.");
+        return res.json({ success: true, db: localDb, notice: "MySQL and Firestore unreachable; served via server-side local cache fallback." });
+      }
+    } catch (diskErr) {
+      console.warn("[SQL Fetch DB Server Disk Fallback Failed]:", diskErr.message);
+    }
+    const finalBackup = loadLocalDbBackup() || {
+      users: [],
+      lotteries: [],
+      tickets: [],
+      deposits: [],
+      withdrawals: [],
+      transactions: [],
+      agentLedger: []
+    };
+    return res.json({ success: true, db: finalBackup, notice: "Offline cloud recovery mode activated." });
   }
 });
+async function lookupUserInMySQL(cleanUser) {
+  try {
+    const mysqlPool = getPool();
+    const connection = await mysqlPool.getConnection();
+    try {
+      const [rows] = await connection.execute(
+        `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
+        [cleanUser, cleanUser, cleanUser]
+      );
+      if (Array.isArray(rows) && rows.length > 0) {
+        return rows[0];
+      }
+    } finally {
+      connection.release();
+    }
+  } catch (sqlErr) {
+    console.log("[lookupUserInMySQL] Notice:", sqlErr.message);
+  }
+  return null;
+}
+async function lookupUserInFirebase(cleanUser) {
+  try {
+    const db = getBackendFirestore();
+    if (db) {
+      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
+      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
+      if (dbSnap.exists()) {
+        const dbData = dbSnap.data();
+        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+        if (parsedDb && Array.isArray(parsedDb.users)) {
+          const matched = parsedDb.users.find(
+            (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
+          );
+          if (matched) return matched;
+        }
+      }
+    }
+  } catch (fbErr) {
+    console.log("[lookupUserInFirebase] Notice:", fbErr.message);
+  }
+  return null;
+}
+async function insertUserIntoMySQL(user) {
+  try {
+    const mysqlPool = getPool();
+    await mysqlPool.execute(
+      `INSERT INTO users (id, username, email, password, phone, balance, role, status, joinDate) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE username = ?, email = ?, password = ?, phone = ?, balance = ?, role = ?, status = ?`,
+      [
+        user.id || "u_" + Date.now(),
+        user.username,
+        user.email || "",
+        user.password || "",
+        user.phone || "",
+        user.balance || 0,
+        user.role || "user",
+        user.status || "active",
+        user.joinDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        user.username,
+        user.email || "",
+        user.password || "",
+        user.phone || "",
+        user.balance || 0,
+        user.role || "user",
+        user.status || "active"
+      ]
+    );
+    console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to MySQL.`);
+  } catch (e) {
+    console.warn("[insertUserIntoMySQL] Failed:", e.message);
+  }
+}
+async function insertUserIntoFirebase(user) {
+  try {
+    const db = getBackendFirestore();
+    if (db) {
+      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
+      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
+      if (dbSnap.exists()) {
+        const dbData = dbSnap.data();
+        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+        if (parsedDb && Array.isArray(parsedDb.users)) {
+          const existingIdx = parsedDb.users.findIndex((u) => u.username === user.username || u.id === user.id);
+          if (existingIdx >= 0) {
+            parsedDb.users[existingIdx] = { ...parsedDb.users[existingIdx], ...user };
+          } else {
+            parsedDb.users.push(user);
+          }
+          await (0, import_firestore2.setDoc)(dbDocRef, { db: JSON.stringify(parsedDb) }, { merge: true });
+          console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to Firestore.`);
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("[insertUserIntoFirebase] Failed:", e.message);
+  }
+}
 async function performCentralAuth(usernameVal, passwordVal) {
   const cleanUser = String(usernameVal).trim().toLowerCase();
   const cleanPass = String(passwordVal).trim();
@@ -2143,62 +2590,60 @@ async function performCentralAuth(usernameVal, passwordVal) {
   }
   const activeDb = await getActiveDatabase();
   console.log(`[Central Auth Router] Authenticating @${cleanUser} against active database: ${activeDb}`);
+  let primaryMatch = null;
+  let secondaryMatch = null;
+  const primaryDbSource = activeDb;
   if (activeDb === "mysql") {
-    try {
-      const mysqlPool = getPool();
-      const connection = await mysqlPool.getConnection();
-      try {
-        const [rows] = await connection.execute(
-          `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
-          [cleanUser, cleanUser, cleanUser]
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          const u = rows[0];
-          if (u.status === "blocked" || u.status === "permanently_banned") {
-            return { success: false, message: "This account is blocked or under review." };
-          }
-          const passMatches = !u.password || u.password === cleanPass || u.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
-          if (passMatches) {
-            return { success: true, user: u };
-          } else {
-            return { success: false, message: "Incorrect credentials." };
-          }
-        }
-      } finally {
-        connection.release();
-      }
-    } catch (sqlErr) {
-      console.warn("[Central Auth Router] MySQL query failed, falling back to Firestore search:", sqlErr.message);
+    primaryMatch = await lookupUserInMySQL(cleanUser);
+    if (!primaryMatch) {
+      secondaryMatch = await lookupUserInFirebase(cleanUser);
+    }
+  } else {
+    primaryMatch = await lookupUserInFirebase(cleanUser);
+    if (!primaryMatch) {
+      secondaryMatch = await lookupUserInMySQL(cleanUser);
     }
   }
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && Array.isArray(parsedDb.users)) {
-          const matched = parsedDb.users.find(
-            (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-          );
-          if (matched) {
-            if (matched.status === "blocked" || matched.status === "permanently_banned") {
-              return { success: false, message: "This account is blocked or under review." };
-            }
-            const passMatches = !matched.password || matched.password === cleanPass || matched.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
-            if (passMatches) {
-              return { success: true, user: matched };
-            } else {
-              return { success: false, message: "Incorrect credentials." };
-            }
-          }
+  let matchedUser = primaryMatch || secondaryMatch;
+  if (!matchedUser) {
+    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL or Firebase. Checking local server backup...`);
+    try {
+      const localDb = loadLocalDbBackup();
+      if (localDb && Array.isArray(localDb.users)) {
+        const localMatch = localDb.users.find(
+          (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
+        );
+        if (localMatch) {
+          console.log(`[Central Auth Router] User @${cleanUser} found in Server Local Disk fallback.`);
+          matchedUser = localMatch;
         }
       }
+    } catch (diskErr) {
+      console.warn("[Central Auth Router] Local server backup lookup error:", diskErr.message);
     }
-  } catch (fbErr) {
-    console.warn("[Central Auth Router] Firestore search failed:", fbErr.message);
+  }
+  if (matchedUser) {
+    if (matchedUser.status === "blocked" || matchedUser.status === "permanently_banned") {
+      return { success: false, message: "This account is blocked or under review." };
+    }
+    const passMatches = !matchedUser.password || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
+    if (passMatches) {
+      if (!primaryMatch) {
+        console.log(`[Central Auth Router] User @${matchedUser.username} exists in secondary but missing in active DB (${primaryDbSource}). Replicating now.`);
+        try {
+          if (primaryDbSource === "mysql") {
+            await insertUserIntoMySQL(matchedUser);
+          } else {
+            await insertUserIntoFirebase(matchedUser);
+          }
+        } catch (healErr) {
+          console.warn("[Central Auth Router] Healing execution notice:", healErr.message);
+        }
+      }
+      return { success: true, user: matchedUser };
+    } else {
+      return { success: false, message: "Incorrect credentials." };
+    }
   }
   const defaultAgents = [
     { id: "u_agent_dhaka", username: "agent_dhaka", email: "dhaka@agents.app", phone: "01700000001", password: "password123", role: "agent", district: "Dhaka", balance: 5e3, commissionRate: 5, status: "active" },
@@ -2459,7 +2904,88 @@ var ACTIVE_DATABASE_MODE = "SQL";
 var lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
 var sseClients = [];
 var localActiveDatabaseCache = "mysql";
+var localDbPath = import_path2.default.join(process.cwd(), "lottery_winner_db_local.json");
+var localSettingsPath = import_path2.default.join(process.cwd(), "system_settings_local.json");
+function saveLocalDbBackup(dbObj) {
+  try {
+    const serialized = typeof dbObj === "string" ? dbObj : JSON.stringify(dbObj, null, 2);
+    import_fs2.default.writeFileSync(localDbPath, serialized, "utf8");
+    console.log("[Local DB Backup] Successfully saved central DB state to server filesystem.");
+  } catch (err) {
+    console.error("[Local DB Backup Error] Failed to write fallback file:", err.message);
+  }
+}
+function loadLocalDbBackup() {
+  try {
+    if (import_fs2.default.existsSync(localDbPath)) {
+      const content = import_fs2.default.readFileSync(localDbPath, "utf8");
+      if (content && content.trim()) {
+        const parsed = JSON.parse(content);
+        if (parsed && (parsed.users || parsed.db)) {
+          return parsed.db ? typeof parsed.db === "string" ? JSON.parse(parsed.db) : parsed.db : parsed;
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Local DB Backup Read Error] Failed to read fallback file:", err.message);
+  }
+  try {
+    const def = getDefaultDB();
+    if (def) return def;
+  } catch {
+  }
+  return {
+    users: [
+      { id: "admin", username: "admin", role: "admin", status: "active", password: "password123" },
+      { id: "u_agent_dhaka", username: "agent_dhaka", email: "dhaka@agents.app", phone: "01700000001", password: "password123", role: "agent", district: "Dhaka", balance: 5e3, status: "active" },
+      { id: "u_agent_sylhet", username: "agent_sylhet", email: "sylhet@agents.app", phone: "01900000005", password: "password123", role: "agent", district: "Sylhet", balance: 8500, status: "active" }
+    ],
+    settings: {
+      payMasterEnabled: "true",
+      payUddoktapayEnabled: "true",
+      payZinipayEnabled: "true",
+      payCryptomusEnabled: "true"
+    },
+    lotteries: [],
+    tickets: [],
+    deposits: [],
+    withdrawals: [],
+    transactions: [],
+    agentLedger: []
+  };
+}
+function saveLocalActiveDatabase(dbMode) {
+  try {
+    import_fs2.default.writeFileSync(
+      localSettingsPath,
+      JSON.stringify({ active_database: dbMode, updated_at: (/* @__PURE__ */ new Date()).toISOString() }, null, 2),
+      "utf8"
+    );
+    console.log(`[Local System Settings] Saved active database locally: ${dbMode}`);
+  } catch (err) {
+    console.error("[saveLocalActiveDatabase Error]:", err.message);
+  }
+}
+function loadLocalActiveDatabase() {
+  try {
+    if (import_fs2.default.existsSync(localSettingsPath)) {
+      const content = import_fs2.default.readFileSync(localSettingsPath, "utf8");
+      const parsed = JSON.parse(content);
+      if (parsed && (parsed.active_database === "mysql" || parsed.active_database === "firebase")) {
+        return parsed.active_database;
+      }
+    }
+  } catch {
+  }
+  return null;
+}
 async function getActiveDatabase() {
+  const localDbVal = loadLocalActiveDatabase();
+  if (localDbVal === "mysql" || localDbVal === "firebase") {
+    localActiveDatabaseCache = localDbVal;
+    ACTIVE_DATABASE_MODE = localDbVal === "mysql" ? "SQL" : "Firebase";
+    return localDbVal;
+  }
   try {
     const mysqlPool = getPool();
     const [rows] = await mysqlPool.execute(
@@ -2470,6 +2996,7 @@ async function getActiveDatabase() {
       if (dbMode === "mysql" || dbMode === "firebase") {
         localActiveDatabaseCache = dbMode;
         ACTIVE_DATABASE_MODE = dbMode === "mysql" ? "SQL" : "Firebase";
+        saveLocalActiveDatabase(localActiveDatabaseCache);
         return dbMode;
       }
     }
@@ -2488,6 +3015,7 @@ async function getActiveDatabase() {
             if (dbMode === "mysql" || dbMode === "firebase") {
               localActiveDatabaseCache = dbMode;
               ACTIVE_DATABASE_MODE = dbMode === "mysql" ? "SQL" : "Firebase";
+              saveLocalActiveDatabase(localActiveDatabaseCache);
               return dbMode;
             }
           }
@@ -2847,33 +3375,43 @@ async function executeDatabaseSwitch(dbParam, adminId, ipAddress, userAgent) {
   const targetMode = cleanParam === "mysql" || cleanParam === "sql" ? "SQL" : "Firebase";
   const targetDbVal = targetMode === "SQL" ? "mysql" : "firebase";
   const oldDbVal = ACTIVE_DATABASE_MODE === "SQL" ? "mysql" : "firebase";
-  const pool2 = getPool();
-  await pool2.execute(
-    `INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', ?, ?)
-     ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = ?`,
-    [targetDbVal, (/* @__PURE__ */ new Date()).toISOString(), targetDbVal, (/* @__PURE__ */ new Date()).toISOString()]
-  );
+  try {
+    const pool2 = getPool();
+    await pool2.execute(
+      `INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', ?, ?)
+       ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = ?`,
+      [targetDbVal, (/* @__PURE__ */ new Date()).toISOString(), targetDbVal, (/* @__PURE__ */ new Date()).toISOString()]
+    );
+  } catch (sqlErr) {
+    console.warn("[executeDatabaseSwitch] SQL system_settings write failed (using fallback):", sqlErr.message);
+  }
   const db = getBackendFirestore();
   if (db) {
     const configDocRef = (0, import_firestore2.doc)(db, "app_data", "system_config");
     await (0, import_firestore2.setDoc)(configDocRef, {
       active_database: targetDbVal,
       updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }, { merge: true }).catch(() => {
+    }, { merge: true }).catch((fbErr) => {
+      console.warn("[executeDatabaseSwitch] Firebase write failed:", fbErr.message);
     });
   }
-  await pool2.execute(
-    `INSERT INTO database_switch_logs (admin_id, old_database, new_database, changed_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)`,
-    [
-      adminId || "admin",
-      oldDbVal,
-      targetDbVal,
-      (/* @__PURE__ */ new Date()).toISOString(),
-      String(ipAddress).substring(0, 50),
-      String(userAgent).substring(0, 255)
-    ]
-  ).catch(() => {
-  });
+  saveLocalActiveDatabase(targetDbVal);
+  try {
+    const pool2 = getPool();
+    await pool2.execute(
+      `INSERT INTO database_switch_logs (admin_id, old_database, new_database, changed_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        adminId || "admin",
+        oldDbVal,
+        targetDbVal,
+        (/* @__PURE__ */ new Date()).toISOString(),
+        String(ipAddress).substring(0, 50),
+        String(userAgent).substring(0, 255)
+      ]
+    ).catch(() => {
+    });
+  } catch {
+  }
   ACTIVE_DATABASE_MODE = targetMode;
   serverSqlConfig.activeEngine = targetDbVal;
   lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
