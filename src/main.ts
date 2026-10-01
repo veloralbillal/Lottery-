@@ -702,6 +702,50 @@ export class StateManager {
       }
 
       // Automatically migrate nodes to guarantee Dual-Database architecture
+      if (!this.db.syncNodes) {
+        this.db.syncNodes = [
+          {
+            id: "node-1",
+            name: "Primary Database (Cluster 1)",
+            type: "firebase",
+            endpoint: "app_data/lottery_winner_db",
+            priority: 1,
+            status: "connected",
+            latency: 14,
+            active: true,
+            mode: "dual_sync",
+            description: "Google Firestore Database primary cluster with continuous active syncing.",
+            tier: "premium"
+          },
+          {
+            id: "node-2",
+            name: "Secondary Database (Cluster 2)",
+            type: "firebase",
+            endpoint: "app_data/lottery_winner_db_backup",
+            priority: 2,
+            status: "connected",
+            latency: 18,
+            active: false,
+            mode: "dual_sync",
+            description: "Google Firestore Database backup cluster with auto-sync on every activity.",
+            tier: "premium"
+          },
+          {
+            id: "node-sql",
+            name: "MySQL Bridge API Cluster",
+            type: "sql",
+            endpoint: "https://api.veloralbillal.top/db_bridge.php",
+            priority: 3,
+            status: "standby",
+            latency: 0,
+            active: false,
+            mode: "dual_sync",
+            description: "cPanel MySQL Database via Bridge API.",
+            tier: "premium"
+          }
+        ];
+      }
+
       if (this.db.syncNodes) {
         const node1 = this.db.syncNodes.find(n => n.id === "node-1");
         if (node1) {
@@ -719,7 +763,7 @@ export class StateManager {
           node2.status = "connected";
         }
         // node-sql removed
-        this.db.syncNodes.forEach(node => {
+        this.db.syncNodes?.forEach(node => {
           if (!node.tier) {
             node.tier = (node.name.includes("Main") || node.name.includes("Primary") || node.name.includes("Secondary") || node.id === "node-1" || node.id === "node-2") ? "premium" : "free";
           }

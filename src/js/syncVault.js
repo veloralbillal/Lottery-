@@ -409,7 +409,7 @@ export const SyncVaultModule = {
           if (this.db.sqlDbConfig.sqlEnabled) {
             const sqlNode = this.db.syncNodes?.find(n => n.id === "node-sql");
             if (sqlNode) {
-              this.db.syncNodes.forEach(n => n.active = false);
+              this.db.syncNodes?.forEach(n => n.active = false);
               sqlNode.active = true;
               this.addConsoleLog("[AUTOMATIC SWITCH] Firebase disabled. Failover routed traffic to MySQL.", "success");
               this.showToast("Firebase নিষ্ক্রিয় হওয়ায় অটোমেটিকভাবে MySQL ডাটাবেজে ট্রাফিক রুট করা হয়েছে।", "success");
@@ -438,7 +438,7 @@ export const SyncVaultModule = {
           if (this.db.sqlDbConfig.firebaseEnabled) {
             const fbNode = this.db.syncNodes?.find(n => n.id === "node-1");
             if (fbNode) {
-              this.db.syncNodes.forEach(n => n.active = false);
+              this.db.syncNodes?.forEach(n => n.active = false);
               fbNode.active = true;
               this.addConsoleLog("[AUTOMATIC SWITCH] MySQL disabled. Failover routed traffic to Firebase.", "success");
               this.showToast("MySQL নিষ্ক্রিয় হওয়ায় অটোমেটিকভাবে Firebase ডাটাবেজে ট্রাফিক রুট করা হয়েছে।", "success");
@@ -479,7 +479,7 @@ export const SyncVaultModule = {
           return;
         }
 
-        this.db.syncNodes.forEach(n => n.active = false);
+        this.db.syncNodes?.forEach(n => n.active = false);
         node.active = true;
         if (node.status === "standby") node.status = "connected";
 
@@ -858,7 +858,7 @@ export const SyncVaultModule = {
               }
 
               // Set active database context to this node to confirm failover switching works!
-              this.db.syncNodes.forEach(n => n.active = false);
+              this.db.syncNodes?.forEach(n => n.active = false);
               node.active = true;
               if (node.status === "standby") node.status = "connected";
 
@@ -888,7 +888,7 @@ export const SyncVaultModule = {
               this.showToast(`Cannot switch to "${node.name}" while under an active outage condition!`, "error");
               return;
             }
-            this.db.syncNodes.forEach(n => n.active = false);
+            this.db.syncNodes?.forEach(n => n.active = false);
             node.active = true;
             if (node.status === "standby") node.status = "connected";
 
@@ -1003,9 +1003,9 @@ export const SyncVaultModule = {
     this.addConsoleLog(`[HA FAILOVER ENGINE] Commencing automated recovery algorithm...`, "info");
     
     // Find next non-outage standby node
-    const nextNode = this.db.syncNodes.find(n => n.status !== "outage" && n.status !== "error");
+    const nextNode = this.db.syncNodes?.find(n => n.status !== "outage" && n.status !== "error");
     if (nextNode) {
-      this.db.syncNodes.forEach(n => n.active = false);
+      this.db.syncNodes?.forEach(n => n.active = false);
       nextNode.active = true;
       if (nextNode.status === "standby") nextNode.status = "connected";
 
