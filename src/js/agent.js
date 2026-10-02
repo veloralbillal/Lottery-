@@ -102,7 +102,7 @@ export const AgentModule = {
     if (bookingsOverview) bookingsOverview.innerText = `${this.currentUser.totalBookings || 0}`;
 
     const rateOverview = document.getElementById("agent-overview-commission-rate");
-    if (rateOverview) rateOverview.innerText = `${(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
+    if (rateOverview) rateOverview.innerText = `${parseFloat(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
 
     // Render dynamic Monthly Sales Target
     const monthlyTargetContainer = document.getElementById("agent-monthly-target-container");

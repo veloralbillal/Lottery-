@@ -1,32 +1,29 @@
-import { initializeApp, getApps } from "firebase/app";
-import { getFirestore, doc, runTransaction, getDoc } from "firebase/firestore";
 import fs from "fs";
 import path from "path";
 
-let firestoreDb: any = null;
+const localDbPath = path.resolve(process.cwd(), "lottery_winner_db_local.json");
 
-// Initialize Firebase for the backend securely
-export function getBackendFirestore() {
-  if (firestoreDb) return firestoreDb;
+function readLocalDb() {
   try {
-    const apps = getApps();
-    let app;
-    const configPath = path.resolve(process.cwd(), "firebase-applet-config.json");
-    if (!fs.existsSync(configPath)) return null;
-    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    if (!firebaseConfig || !firebaseConfig.apiKey) return null;
-    
-    if (apps.length > 0) {
-      app = apps[0];
-    } else {
-      app = initializeApp(firebaseConfig);
+    if (fs.existsSync(localDbPath)) {
+      const content = fs.readFileSync(localDbPath, "utf8");
+      if (content && content.trim()) {
+        const parsed = JSON.parse(content);
+        return parsed.db ? (typeof parsed.db === 'string' ? JSON.parse(parsed.db) : parsed.db) : parsed;
+      }
     }
-    firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-    return firestoreDb;
-  } catch (err: any) {
-    console.warn("[Backend Firebase] Initialization Notice:", err.message);
-    return null;
-  }
+  } catch {}
+  return { users: [], deposits: [], zinipayInvoices: [] };
+}
+
+function writeLocalDb(db: any) {
+  try {
+    fs.writeFileSync(localDbPath, JSON.stringify({ db }, null, 2), "utf8");
+  } catch {}
+}
+
+export function getBackendFirestore() {
+  return null;
 }
 
 /**
@@ -37,72 +34,57 @@ export async function createPendingInvoiceTransaction(
   amount: number,
   paymentDetails: { cus_name: string; cus_email: string }
 ) {
-  const db = getBackendFirestore();
   const transactionId = "ZP_TX_" + Date.now() + Math.floor(Math.random() * 1000);
-  const dbDocRef = doc(db, "app_data", "lottery_winner_db");
+  const parsedDb = readLocalDb();
 
-  const result = await runTransaction(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) {
-      throw new Error("Monolithic database document not found in Firestore!");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+  if (!parsedDb.users) parsedDb.users = [];
+  if (!parsedDb.deposits) parsedDb.deposits = [];
+  if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
 
-    if (!parsedDb.users) parsedDb.users = [];
-    if (!parsedDb.deposits) parsedDb.deposits = [];
-    if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
+  const dbUser = parsedDb.users.find((u: any) => u.id === userId);
+  if (!dbUser) {
+    throw new Error(`User with ID ${userId} not found in database!`);
+  }
 
-    const dbUser = parsedDb.users.find((u: any) => u.id === userId);
-    if (!dbUser) {
-      throw new Error(`User with ID ${userId} not found in database!`);
-    }
+  // Create pending deposit log
+  const pendingDep = {
+    id: "dep_" + Date.now() + Math.floor(Math.random() * 1000),
+    username: dbUser.username,
+    amount: amount,
+    method: "ZiniPay",
+    gateway: "ZiniPay",
+    trxId: transactionId,
+    status: "pending",
+    date: new Date().toISOString(),
+    notes: "ZiniPay invoice pending creation..."
+  };
+  parsedDb.deposits.unshift(pendingDep);
 
-    // Create pending deposit log
-    const pendingDep = {
-      id: "dep_" + Date.now() + Math.floor(Math.random() * 1000),
-      username: dbUser.username,
-      amount: amount,
-      method: "ZiniPay",
-      gateway: "ZiniPay",
-      trxId: transactionId,
-      status: "pending",
-      date: new Date().toISOString(),
-      notes: "ZiniPay invoice pending creation..."
-    };
-    parsedDb.deposits.unshift(pendingDep);
-
-    // Create pending ZiniPay invoice log
-    const pendingInvoice = {
-      id: "zinv_" + Date.now() + Math.floor(Math.random() * 1000),
+  // Create pending ZiniPay invoice log
+  const pendingInvoice = {
+    id: "zinv_" + Date.now() + Math.floor(Math.random() * 1000),
+    user_id: userId,
+    transaction_id: transactionId,
+    invoice_id: "", // filled after API call
+    internal_order_id: transactionId,
+    amount: amount,
+    status: "PENDING",
+    payment_url: "", // filled after API call
+    cus_name: paymentDetails.cus_name || dbUser.username,
+    cus_email: paymentDetails.cus_email || dbUser.email,
+    metadata: {
       user_id: userId,
-      transaction_id: transactionId,
-      invoice_id: "", // filled after API call
-      internal_order_id: transactionId,
-      amount: amount,
-      status: "PENDING",
-      payment_url: "", // filled after API call
-      cus_name: paymentDetails.cus_name || dbUser.username,
-      cus_email: paymentDetails.cus_email || dbUser.email,
-      metadata: {
-        user_id: userId,
-        order_id: transactionId,
-        purpose: "wallet_deposit"
-      },
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-    parsedDb.zinipayInvoices.unshift(pendingInvoice);
+      order_id: transactionId,
+      purpose: "wallet_deposit"
+    },
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  parsedDb.zinipayInvoices.unshift(pendingInvoice);
 
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: new Date().toISOString()
-    });
+  writeLocalDb(parsedDb);
 
-    return { transactionId, pendingInvoiceId: pendingInvoice.id, username: dbUser.username, email: dbUser.email };
-  });
-
-  return result;
+  return { transactionId, pendingInvoiceId: pendingInvoice.id, username: dbUser.username, email: dbUser.email };
 }
 
 /**
@@ -115,35 +97,24 @@ export async function updatePendingInvoiceWithDetails(
   paymentUrlFromApi: string,
   extraDetails: any
 ) {
-  const db = getBackendFirestore();
-  const dbDocRef = doc(db, "app_data", "lottery_winner_db");
+  const parsedDb = readLocalDb();
 
-  await runTransaction(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) return;
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+  const invIndex = parsedDb.zinipayInvoices ? parsedDb.zinipayInvoices.findIndex((i: any) => i.id === pendingInvoiceId) : -1;
+  if (invIndex !== -1) {
+    parsedDb.zinipayInvoices[invIndex].invoice_id = invoiceIdFromApi;
+    parsedDb.zinipayInvoices[invIndex].payment_url = paymentUrlFromApi;
+    parsedDb.zinipayInvoices[invIndex].redirect_url = extraDetails.redirect_url || "";
+    parsedDb.zinipayInvoices[invIndex].cancel_url = extraDetails.cancel_url || "";
+    parsedDb.zinipayInvoices[invIndex].webhook_url = extraDetails.webhook_url || "";
+    parsedDb.zinipayInvoices[invIndex].updated_at = new Date().toISOString();
+  }
 
-    const invIndex = parsedDb.zinipayInvoices.findIndex((i: any) => i.id === pendingInvoiceId);
-    if (invIndex !== -1) {
-      parsedDb.zinipayInvoices[invIndex].invoice_id = invoiceIdFromApi;
-      parsedDb.zinipayInvoices[invIndex].payment_url = paymentUrlFromApi;
-      parsedDb.zinipayInvoices[invIndex].redirect_url = extraDetails.redirect_url || "";
-      parsedDb.zinipayInvoices[invIndex].cancel_url = extraDetails.cancel_url || "";
-      parsedDb.zinipayInvoices[invIndex].webhook_url = extraDetails.webhook_url || "";
-      parsedDb.zinipayInvoices[invIndex].updated_at = new Date().toISOString();
-    }
+  const depIndex = parsedDb.deposits ? parsedDb.deposits.findIndex((d: any) => d.trxId === transactionId) : -1;
+  if (depIndex !== -1) {
+    parsedDb.deposits[depIndex].notes = `ZiniPay invoice created. ID: ${invoiceIdFromApi}`;
+  }
 
-    const depIndex = parsedDb.deposits.findIndex((d: any) => d.trxId === transactionId);
-    if (depIndex !== -1) {
-      parsedDb.deposits[depIndex].notes = `ZiniPay invoice created. ID: ${invoiceIdFromApi}`;
-    }
-
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: new Date().toISOString()
-    });
-  });
+  writeLocalDb(parsedDb);
 }
 
 /**
@@ -154,32 +125,21 @@ export async function markInvoiceAndTransactionFailed(
   transactionId: string,
   reason: string
 ) {
-  const db = getBackendFirestore();
-  const dbDocRef = doc(db, "app_data", "lottery_winner_db");
+  const parsedDb = readLocalDb();
 
-  await runTransaction(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) return;
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+  const invIndex = parsedDb.zinipayInvoices ? parsedDb.zinipayInvoices.findIndex((i: any) => i.id === pendingInvoiceId) : -1;
+  if (invIndex !== -1) {
+    parsedDb.zinipayInvoices[invIndex].status = "FAILED";
+    parsedDb.zinipayInvoices[invIndex].updated_at = new Date().toISOString();
+  }
 
-    const invIndex = parsedDb.zinipayInvoices.findIndex((i: any) => i.id === pendingInvoiceId);
-    if (invIndex !== -1) {
-      parsedDb.zinipayInvoices[invIndex].status = "FAILED";
-      parsedDb.zinipayInvoices[invIndex].updated_at = new Date().toISOString();
-    }
+  const depIndex = parsedDb.deposits ? parsedDb.deposits.findIndex((d: any) => d.trxId === transactionId) : -1;
+  if (depIndex !== -1) {
+    parsedDb.deposits[depIndex].status = "rejected";
+    parsedDb.deposits[depIndex].notes = `ZiniPay invoice creation failed: ${reason}`;
+  }
 
-    const depIndex = parsedDb.deposits.findIndex((d: any) => d.trxId === transactionId);
-    if (depIndex !== -1) {
-      parsedDb.deposits[depIndex].status = "rejected";
-      parsedDb.deposits[depIndex].notes = `ZiniPay invoice creation failed: ${reason}`;
-    }
-
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: new Date().toISOString()
-    });
-  });
+  writeLocalDb(parsedDb);
 }
 
 /**
@@ -193,125 +153,100 @@ export async function executeWalletCreditTransaction(
   transactionId: string,
   paymentDetails: any
 ) {
-  const db = getBackendFirestore();
-  const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-  const userDocRef = doc(db, "users", userId);
+  const parsedDb = readLocalDb();
 
-  return await runTransaction(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) {
-      throw new Error("Monolithic database document not found in Firestore!");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+  if (!parsedDb.users) parsedDb.users = [];
+  if (!parsedDb.deposits) parsedDb.deposits = [];
+  if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
 
-    if (!parsedDb.users) parsedDb.users = [];
-    if (!parsedDb.deposits) parsedDb.deposits = [];
-    if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
+  // Duplicate Check 1: Check if this invoice is already marked as COMPLETED
+  const existingInvoice = parsedDb.zinipayInvoices.find((inv: any) => inv.invoice_id === invoiceId);
+  if (existingInvoice && existingInvoice.status === "COMPLETED") {
+    console.log(`[ZiniPay] Duplicate protection: Invoice ${invoiceId} already completed.`);
+    return { success: false, reason: "ALREADY_COMPLETED", invoice: existingInvoice };
+  }
 
-    // Duplicate Check 1: Check if this invoice is already marked as COMPLETED
-    const existingInvoice = parsedDb.zinipayInvoices.find((inv: any) => inv.invoice_id === invoiceId);
-    if (existingInvoice && existingInvoice.status === "COMPLETED") {
-      console.log(`[ZiniPay] Duplicate protection: Invoice ${invoiceId} already completed.`);
-      return { success: false, reason: "ALREADY_COMPLETED", invoice: existingInvoice };
-    }
+  const matchedUserIndex = parsedDb.users.findIndex((u: any) => u.id === userId);
+  if (matchedUserIndex === -1) {
+    throw new Error(`User with ID ${userId} not found in database!`);
+  }
 
-    const matchedUserIndex = parsedDb.users.findIndex((u: any) => u.id === userId);
-    if (matchedUserIndex === -1) {
-      throw new Error(`User with ID ${userId} not found in database!`);
-    }
+  const dbUser = parsedDb.users[matchedUserIndex];
+  const username = dbUser.username;
 
-    const dbUser = parsedDb.users[matchedUserIndex];
-    const username = dbUser.username;
+  // Duplicate Check 2: Check if this transaction is already approved
+  const existingDepositIndex = parsedDb.deposits.findIndex((dep: any) => dep.trxId === transactionId);
+  if (existingDepositIndex !== -1 && parsedDb.deposits[existingDepositIndex].status === "approved") {
+    console.log(`[ZiniPay] Duplicate protection: Deposit ${transactionId} already approved.`);
+    return { success: false, reason: "ALREADY_COMPLETED" };
+  }
 
-    // Duplicate Check 2: Check if this transaction is already approved
-    const existingDepositIndex = parsedDb.deposits.findIndex((dep: any) => dep.trxId === transactionId);
-    if (existingDepositIndex !== -1 && parsedDb.deposits[existingDepositIndex].status === "approved") {
-      console.log(`[ZiniPay] Duplicate protection: Deposit ${transactionId} already approved.`);
-      return { success: false, reason: "ALREADY_COMPLETED" };
-    }
+  // Atomic Balance Credit
+  const oldBalance = parseFloat(dbUser.balance || 0);
+  const creditAmount = parseFloat(amount);
+  const newBalance = Number((oldBalance + creditAmount).toFixed(2));
+  dbUser.balance = newBalance;
+  dbUser.totDeposit = Number(((dbUser.totDeposit || 0) + creditAmount).toFixed(2));
 
-    // Atomic Balance Credit
-    const oldBalance = parseFloat(dbUser.balance || 0);
-    const creditAmount = parseFloat(amount);
-    const newBalance = Number((oldBalance + creditAmount).toFixed(2));
-    dbUser.balance = newBalance;
-    dbUser.totDeposit = Number(((dbUser.totDeposit || 0) + creditAmount).toFixed(2));
+  // Update or insert transaction record
+  if (existingDepositIndex !== -1) {
+    parsedDb.deposits[existingDepositIndex].status = "approved";
+    parsedDb.deposits[existingDepositIndex].notes = `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`;
+    parsedDb.deposits[existingDepositIndex].amount = creditAmount; // Ensure correct amount is set
+    parsedDb.deposits[existingDepositIndex].date = new Date().toISOString();
+  } else {
+    const newDepositRecord = {
+      id: "dep_" + Date.now() + Math.floor(Math.random() * 1000),
+      username: username,
+      amount: creditAmount,
+      method: "ZiniPay",
+      gateway: "ZiniPay",
+      trxId: transactionId,
+      status: "approved",
+      date: new Date().toISOString(),
+      notes: `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`
+    };
+    parsedDb.deposits.unshift(newDepositRecord);
+  }
 
-    // Update or insert transaction record
-    if (existingDepositIndex !== -1) {
-      parsedDb.deposits[existingDepositIndex].status = "approved";
-      parsedDb.deposits[existingDepositIndex].notes = `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`;
-      parsedDb.deposits[existingDepositIndex].amount = creditAmount; // Ensure correct amount is set
-      parsedDb.deposits[existingDepositIndex].date = new Date().toISOString();
-    } else {
-      const newDepositRecord = {
-        id: "dep_" + Date.now() + Math.floor(Math.random() * 1000),
-        username: username,
-        amount: creditAmount,
-        method: "ZiniPay",
-        gateway: "ZiniPay",
-        trxId: transactionId,
-        status: "approved",
-        date: new Date().toISOString(),
-        notes: `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`
-      };
-      parsedDb.deposits.unshift(newDepositRecord);
-    }
-
-    // Update or insert invoice record
-    if (existingInvoice) {
-      existingInvoice.status = "COMPLETED";
-      existingInvoice.updated_at = new Date().toISOString();
-      existingInvoice.verified_at = new Date().toISOString();
-      existingInvoice.transaction_id = transactionId;
-      existingInvoice.amount = creditAmount;
-    } else {
-      const newInvoice = {
-        id: "zinv_" + Date.now(),
+  // Update or insert invoice record
+  if (existingInvoice) {
+    existingInvoice.status = "COMPLETED";
+    existingInvoice.updated_at = new Date().toISOString();
+    existingInvoice.verified_at = new Date().toISOString();
+    existingInvoice.transaction_id = transactionId;
+    existingInvoice.amount = creditAmount;
+  } else {
+    const newInvoice = {
+      id: "zinv_" + Date.now(),
+      user_id: userId,
+      transaction_id: transactionId,
+      invoice_id: invoiceId,
+      internal_order_id: transactionId,
+      amount: creditAmount,
+      status: "COMPLETED",
+      payment_url: paymentDetails.payment_url || "",
+      cus_name: paymentDetails.cus_name || username,
+      cus_email: paymentDetails.cus_email || dbUser.email,
+      metadata: {
         user_id: userId,
-        transaction_id: transactionId,
-        invoice_id: invoiceId,
-        internal_order_id: transactionId,
-        amount: creditAmount,
-        status: "COMPLETED",
-        payment_url: paymentDetails.payment_url || "",
-        cus_name: paymentDetails.cus_name || username,
-        cus_email: paymentDetails.cus_email || dbUser.email,
-        metadata: {
-          user_id: userId,
-          order_id: transactionId,
-          purpose: "wallet_deposit"
-        },
-        redirect_url: paymentDetails.redirect_url || "",
-        cancel_url: paymentDetails.cancel_url || "",
-        webhook_url: paymentDetails.webhook_url || "",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        verified_at: new Date().toISOString()
-      };
-      parsedDb.zinipayInvoices.unshift(newInvoice);
-    }
+        order_id: transactionId,
+        purpose: "wallet_deposit"
+      },
+      redirect_url: paymentDetails.redirect_url || "",
+      cancel_url: paymentDetails.cancel_url || "",
+      webhook_url: paymentDetails.webhook_url || "",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      verified_at: new Date().toISOString()
+    };
+    parsedDb.zinipayInvoices.unshift(newInvoice);
+  }
 
-    // Write monolithic database updates
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: new Date().toISOString()
-    });
+  writeLocalDb(parsedDb);
 
-    // Write direct User Profile document updates
-    const userSnap = await transaction.get(userDocRef);
-    if (userSnap.exists()) {
-      transaction.update(userDocRef, {
-        balance: newBalance,
-        totDeposit: dbUser.totDeposit,
-        updatedAt: new Date().toISOString()
-      });
-    }
-
-    console.log(`[ZiniPay Ledger Committed] User ${username} balance +৳${creditAmount}. Balance is now: ৳${newBalance}`);
-    return { success: true, newBalance, invoice: existingInvoice || parsedDb.zinipayInvoices[0] };
-  });
+  console.log(`[ZiniPay Ledger Committed] User ${username} balance +৳${creditAmount}. Balance is now: ৳${newBalance}`);
+  return { success: true, newBalance, invoice: existingInvoice || parsedDb.zinipayInvoices[0] };
 }
 
 /**
@@ -457,16 +392,8 @@ export async function handleZiniPayVerify(req: any, res: any) {
       return res.status(400).json({ status: false, message: "Missing order_id or invoice_id parameter." });
     }
 
-    const db = getBackendFirestore();
-    const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-
     // Load monolithic database state to identify transaction
-    const dbSnap = await getDoc(dbDocRef);
-    if (!dbSnap.exists()) {
-      return res.status(500).json({ status: false, message: "Internal Database Store is uninitialized." });
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+    const parsedDb = readLocalDb();
 
     // Find local invoice matching either order_id or invoice_id
     const localInvoice = (parsedDb.zinipayInvoices || []).find((inv: any) => 
@@ -570,16 +497,8 @@ export async function handleZiniPayWebhook(req: any, res: any) {
       return res.status(400).send("Bad Request: Missing invoice identifier.");
     }
 
-    const db = getBackendFirestore();
-    const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-
     // Load database and locate the local invoice
-    const dbSnap = await getDoc(dbDocRef);
-    if (!dbSnap.exists()) {
-      return res.status(500).send("Database not configured.");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+    const parsedDb = readLocalDb();
 
     const localInvoice = (parsedDb.zinipayInvoices || []).find((inv: any) => inv.invoice_id === invoiceId);
     if (!localInvoice) {

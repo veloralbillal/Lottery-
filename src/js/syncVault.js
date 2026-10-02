@@ -1,7 +1,7 @@
 // ============================================================================
 // DATABASE REPLICATION SYNC & FAILOVER ENGINE MODULE
 // ============================================================================
-import { doc } from "firebase/firestore";
+// Firebase Firestore removed
 
 export const SyncVaultModule = {
   renderSyncVaultTab() {
@@ -486,14 +486,7 @@ export const SyncVaultModule = {
         this.addConsoleLog(`[DATABASE SWITCH] Traffic routed to "${node.name}". Zero-downtime transition executed.`, "success");
         this.showToast(`ডাটাবেজ সুইচ সফল! এখন "${node.name}" এক্টিভ আছে।`, "success");
         
-        // Update Firebase reference if needed
-        if (this.firestore) {
-          const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
-            ? "lottery_winner_db_backup"
-            : "lottery_winner_db";
-          this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
-          if (typeof this.listenToCloud === "function") this.listenToCloud();
-        }
+        // Firebase references removed
 
         // Inform server about the active database engine switch
         const isSqlTarget = node.id === "node-sql";
@@ -867,7 +860,7 @@ export const SyncVaultModule = {
                 const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
                   ? "lottery_winner_db_backup"
                   : "lottery_winner_db";
-                this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
+                // Firestore doc reference removed
               }
 
               this.addConsoleLog(`[FAILOVER TEST] 🚀 Traffic routed successfully to "${node.name}" context. Dual-Database sync active: 100% data preserved.`, "success");
@@ -892,16 +885,7 @@ export const SyncVaultModule = {
             node.active = true;
             if (node.status === "standby") node.status = "connected";
 
-            // Update firestoreDocRef matching active node and reconnect realtime listener
-            if (this.firestore) {
-              const targetDocId = (node.id === "node-2" || node.name?.includes("Backup") || node.name?.includes("Secondary"))
-                ? "lottery_winner_db_backup"
-                : "lottery_winner_db";
-              this.firestoreDocRef = doc(this.firestore, "app_data", targetDocId);
-              if (typeof this.listenToCloud === "function") {
-                this.listenToCloud();
-              }
-            }
+            // Firebase reference update removed
 
             this.addConsoleLog(`[DUAL SYNC] Active database switched to "${node.name}". Both databases remain fully mirrored and synced.`, "success");
             this.showToast(`সুইচ সফল! উভয় ডাটাবেজ অটো সিঙ্ক থাকায় "${node.name}"-এ সব ডাটা সুরক্ষিত আছে।`, "success");

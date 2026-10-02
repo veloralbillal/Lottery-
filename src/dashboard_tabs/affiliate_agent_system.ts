@@ -518,8 +518,8 @@ export class AffiliateAgentSystem {
       return;
     }
 
-    const agents = (appInstance.db.users || []).filter(u => u.role === "agent");
-    console.log("Found agents:", agents);
+    const agents = (appInstance.db.staff || []);
+    console.log("[AffiliateAgentSystem] Found agents for display:", agents.length);
     
     listContainer.innerHTML = agents.map(agent => `
       <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="${appInstance.escapeHTML(agent.district || '')}" data-name="${appInstance.escapeHTML(agent.username)}" data-phone="${appInstance.escapeHTML(agent.phone || '')}">

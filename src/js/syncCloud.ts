@@ -1,7 +1,4 @@
-import { initializeApp, getApps, deleteApp } from "firebase/app";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel, onSnapshot, collection, query, where, getDocs, limit } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+// Firebase removed per user request for SQL-only bridge architecture.
 import { removeCircularReferences, safeStringify } from "./serialization.js";
 import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
@@ -33,25 +30,13 @@ export const SyncCloudModule = {
 
   async loadUserProfile(uid) {
     try {
-      // 1. Instant check in current active local database array
+      // Hydrate from active database (synced with MySQL)
       if (this.db && this.db.users && Array.isArray(this.db.users)) {
         const localUser = this.db.users.find(u => u.id === uid || u.uid === uid);
         if (localUser) {
           this.currentUser = removeCircularReferences(localUser);
           localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
           console.log("User profile hydrated from active database:", localUser.username);
-          this.render();
-        }
-      }
-
-      // 2. Fetch from Firestore if connected
-      if (this.firestore) {
-        const userDoc = await getDoc(doc(this.firestore, "users", uid)).catch(() => null);
-        if (userDoc && userDoc.exists && userDoc.exists()) {
-          const profile = userDoc.data();
-          this.currentUser = removeCircularReferences({ ...(this.currentUser || {}), ...profile });
-          localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
-          console.log("User profile updated from Firestore:", profile.username);
           this.render();
         }
       }
@@ -63,14 +48,9 @@ export const SyncCloudModule = {
   async syncUserProfile() {
     if (!this.currentUser || !this.currentUser.id) return;
     try {
-      const uid = this.currentUser.id;
-      const profileDoc = doc(this.firestore, "users", uid);
-      const cleanedProfile = removeCircularReferences(this.currentUser);
-      await setDoc(profileDoc, {
-        ...cleanedProfile,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-      console.log("User profile synced to Firestore.");
+      // In SQL mode, user profiles are synced as part of the monolithic database payload
+      this.syncToCloud();
+      console.log("User profile sync requested via SQL bridge.");
     } catch (err) {
       console.error("Failed to sync user profile:", err);
     }
@@ -80,7 +60,7 @@ export const SyncCloudModule = {
     if (!username) return null;
     const cleanUser = username.toLowerCase().trim();
 
-    // 1. Primary: Check local monolithic DB first for immediate and offline-safe resolution
+    // 1. Primary: Check local monolithic DB (synced from MySQL)
     if (this.db && this.db.users && Array.isArray(this.db.users)) {
       const localUser = this.db.users.find(u => u.username && u.username.toLowerCase() === cleanUser);
       if (localUser) {
@@ -92,24 +72,7 @@ export const SyncCloudModule = {
       }
     }
 
-    // 2. Secondary: Query public usernames collection in Firestore with timeout
-    try {
-      if (this.firestore) {
-        const usernamePromise = getDoc(doc(this.firestore, "usernames", cleanUser));
-        const usernameDoc: any = await Promise.race([
-          usernamePromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
-        ]).catch(() => null);
-
-        if (usernameDoc && usernameDoc.exists && usernameDoc.exists()) {
-          return usernameDoc.data();
-        }
-      }
-    } catch (err) {
-      console.warn("Firestore username lookup failed:", err);
-    }
-
-    // 3. Tertiary: Query backend server /api/auth/lookup-user
+    // 2. Secondary: Query backend server /api/auth/lookup-user
     try {
       const serverRes = await fetch("/api/auth/lookup-user", {
         method: "POST",
@@ -135,117 +98,24 @@ export const SyncCloudModule = {
   },
 
   async createStaffAccount(staffData) {
+    // Generate a unique ID for the new staff account
     let uid = "agent_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
-    let secondaryApp: any;
-
-    try {
-      if (this.firebaseConfig && this.firebaseConfig.apiKey) {
-        const authPromise = (async () => {
-          secondaryApp = initializeApp(this.firebaseConfig, "Secondary_" + Date.now());
-          const secondaryAuth = getAuth(secondaryApp);
-          const userCredential = await createUserWithEmailAndPassword(secondaryAuth, staffData.email, staffData.password);
-          if (userCredential && userCredential.user) {
-            uid = userCredential.user.uid;
-          }
-          await signOut(secondaryAuth).catch(() => {});
-          await deleteApp(secondaryApp).catch(() => {});
-        })();
-
-        await Promise.race([
-          authPromise,
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Auth creation timeout")), 3000))
-        ]).catch(err => {
-          console.warn("Firebase Auth secondary creation bypassed:", err?.code || err?.message || err);
-          if (secondaryApp) try { deleteApp(secondaryApp); } catch (e) {}
-        });
-      }
-    } catch (err: any) {
-      console.warn("Firebase Auth staff creation fallback:", err?.code || err?.message);
-      if (secondaryApp) try { await deleteApp(secondaryApp); } catch (e) {}
+    
+    // In SQL-only mode, we add to the local DB which will sync to MySQL.
+    console.log("Creating staff account in SQL-only mode for:", staffData.username);
+    
+    if (typeof (this as any).saveDB === "function") {
+      (this as any).saveDB(true);
     }
-
-    try {
-      if (this.firestore) {
-        const profile = {
-          ...staffData,
-          id: uid,
-          uid: uid,
-          createdAt: new Date().toISOString(),
-          status: "active"
-        };
-
-        // Don't wait forever for Firestore if we're in a hurry or offline
-        const setUsersPromise = setDoc(doc(this.firestore, "users", uid), profile, { merge: true });
-        const setUsernamesPromise = setDoc(doc(this.firestore, "usernames", staffData.username.toLowerCase()), {
-          uid: uid,
-          email: staffData.email.toLowerCase(),
-          username: staffData.username.toLowerCase()
-        }, { merge: true });
-
-        await Promise.race([
-          Promise.all([setUsersPromise, setUsernamesPromise]),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Firestore write timeout")), 2500))
-        ]).catch(err => {
-          console.warn("Direct Firestore staff profile creation bypassed (synced via app_data):", err?.message || err);
-        });
-      }
-      if (typeof (this as any).saveDB === "function") {
-        (this as any).saveDB(true);
-      }
-      return { success: true, uid };
-    } catch (err: any) {
-      console.warn("Staff account Firestore sync bypassed:", err);
-      if (typeof (this as any).saveDB === "function") {
-        (this as any).saveDB(true);
-      }
-      return { success: true, uid };
-    }
+    return { success: true, uid, authCreated: false };
   },
 
   async signUpUser(userData) {
+    // Generate a unique ID for the new user
     let uid = "u_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
-    let authCreated = false;
-
-    try {
-      if (this.auth) {
-        const userCredential = await createUserWithEmailAndPassword(this.auth, userData.email, userData.password);
-        if (userCredential && userCredential.user) {
-          uid = userCredential.user.uid;
-          authCreated = true;
-        }
-      }
-    } catch (err: any) {
-      console.warn("Firebase Auth signup fallback:", err?.code || err?.message);
-      if (err?.code === "auth/email-already-in-use") {
-        return { success: false, error: "This email address is already registered. Please sign in instead." };
-      }
-    }
-
-    try {
-      if (this.firestore) {
-        const profile = {
-          ...userData,
-          id: uid,
-          uid: uid,
-          createdAt: new Date().toISOString(),
-          status: "active"
-        };
-        delete profile.password;
-
-        await setDoc(doc(this.firestore, "users", uid), profile, { merge: true });
-
-        await setDoc(doc(this.firestore, "usernames", userData.username.toLowerCase()), {
-          uid: uid,
-          email: userData.email.toLowerCase(),
-          username: userData.username.toLowerCase()
-        }, { merge: true });
-      }
-    } catch (fsErr) {
-      console.warn("Firestore profile save warning (continuing with local registration):", fsErr);
-    }
-
-    console.log("User registered successfully (Auth created:", authCreated, ", UID:", uid, ")");
-    return { success: true, uid, authCreated };
+    
+    console.log("User registration completed for SQL-only environment.");
+    return { success: true, uid, authCreated: false };
   },
 
   lastLocalWriteTime: 0,
@@ -281,23 +151,25 @@ export const SyncCloudModule = {
     const sqlDbConfig = this.db && this.db.sqlDbConfig ? this.db.sqlDbConfig : parsed.sqlDbConfig;
 
     this.db = parsed;
-    if (this.db && this.db.users) {
-      this.db.users.forEach((u: any) => {
-        if (!u.role || u.role === 'user') {
-          const idLower = (u.id || '').toLowerCase();
-          const nameLower = (u.username || '').toLowerCase();
-          if (idLower === 'admin' || nameLower === 'admin') {
-            u.role = 'admin';
-          } else if (idLower.startsWith('agent_') || idLower.startsWith('u_agent_') || nameLower.includes('agent')) {
-            u.role = 'agent';
-          } else if (idLower.startsWith('u_mod_') || nameLower.includes('mod_') || nameLower.includes('moderator')) {
-            u.role = 'moderator';
-          } else if (idLower.startsWith('u_staff_') || nameLower.includes('staff')) {
-            u.role = 'agent';
+    
+    // Ensure strict table separation: migrate any staff/agents from users to staff
+    if (!this.db.staff) this.db.staff = [];
+    if (this.db.users && Array.isArray(this.db.users)) {
+      const genuineUsers = [];
+      for (const u of this.db.users) {
+        const role = (u.role || "").toLowerCase();
+        if (role === "agent" || role === "subagent" || role === "moderator") {
+          if (!this.db.staff.some(s => s.id === u.id || (s.username && u.username && s.username.toLowerCase() === u.username.toLowerCase()))) {
+            this.db.staff.push(u);
           }
+        } else {
+          genuineUsers.push(u);
         }
-      });
+      }
+      this.db.users = genuineUsers;
     }
+
+    // Role self-healing completely removed per user request.
     if (syncNodes) this.db.syncNodes = syncNodes;
     if (sqlDbConfig) this.db.sqlDbConfig = sqlDbConfig;
   },

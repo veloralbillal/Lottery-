@@ -34,7 +34,6 @@ __export(server_exports, {
 module.exports = __toCommonJS(server_exports);
 var import_express = __toESM(require("express"), 1);
 var import_path2 = __toESM(require("path"), 1);
-var import_firestore2 = require("firebase/firestore");
 
 // src/js/apiEmailSender.js
 var import_nodemailer = __toESM(require("nodemailer"), 1);
@@ -370,244 +369,186 @@ async function handleUddoktaPayVerify(req, res) {
 }
 
 // src/js/apiZiniPay.ts
-var import_app = require("firebase/app");
-var import_firestore = require("firebase/firestore");
 var import_fs = __toESM(require("fs"), 1);
 var import_path = __toESM(require("path"), 1);
-var firestoreDb = null;
-function getBackendFirestore() {
-  if (firestoreDb) return firestoreDb;
+var localDbPath = import_path.default.resolve(process.cwd(), "lottery_winner_db_local.json");
+function readLocalDb() {
   try {
-    const apps = (0, import_app.getApps)();
-    let app2;
-    const configPath = import_path.default.resolve(process.cwd(), "firebase-applet-config.json");
-    if (!import_fs.default.existsSync(configPath)) return null;
-    const firebaseConfig = JSON.parse(import_fs.default.readFileSync(configPath, "utf8"));
-    if (!firebaseConfig || !firebaseConfig.apiKey) return null;
-    if (apps.length > 0) {
-      app2 = apps[0];
-    } else {
-      app2 = (0, import_app.initializeApp)(firebaseConfig);
+    if (import_fs.default.existsSync(localDbPath)) {
+      const content = import_fs.default.readFileSync(localDbPath, "utf8");
+      if (content && content.trim()) {
+        const parsed = JSON.parse(content);
+        return parsed.db ? typeof parsed.db === "string" ? JSON.parse(parsed.db) : parsed.db : parsed;
+      }
     }
-    firestoreDb = (0, import_firestore.getFirestore)(app2, firebaseConfig.firestoreDatabaseId);
-    return firestoreDb;
-  } catch (err) {
-    console.warn("[Backend Firebase] Initialization Notice:", err.message);
-    return null;
+  } catch {
+  }
+  return { users: [], deposits: [], zinipayInvoices: [] };
+}
+function writeLocalDb(db) {
+  try {
+    import_fs.default.writeFileSync(localDbPath, JSON.stringify({ db }, null, 2), "utf8");
+  } catch {
   }
 }
 async function createPendingInvoiceTransaction(userId, amount, paymentDetails) {
-  const db = getBackendFirestore();
   const transactionId = "ZP_TX_" + Date.now() + Math.floor(Math.random() * 1e3);
-  const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-  const result = await (0, import_firestore.runTransaction)(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) {
-      throw new Error("Monolithic database document not found in Firestore!");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-    if (!parsedDb.users) parsedDb.users = [];
-    if (!parsedDb.deposits) parsedDb.deposits = [];
-    if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
-    const dbUser = parsedDb.users.find((u) => u.id === userId);
-    if (!dbUser) {
-      throw new Error(`User with ID ${userId} not found in database!`);
-    }
-    const pendingDep = {
+  const parsedDb = readLocalDb();
+  if (!parsedDb.users) parsedDb.users = [];
+  if (!parsedDb.deposits) parsedDb.deposits = [];
+  if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
+  const dbUser = parsedDb.users.find((u) => u.id === userId);
+  if (!dbUser) {
+    throw new Error(`User with ID ${userId} not found in database!`);
+  }
+  const pendingDep = {
+    id: "dep_" + Date.now() + Math.floor(Math.random() * 1e3),
+    username: dbUser.username,
+    amount,
+    method: "ZiniPay",
+    gateway: "ZiniPay",
+    trxId: transactionId,
+    status: "pending",
+    date: (/* @__PURE__ */ new Date()).toISOString(),
+    notes: "ZiniPay invoice pending creation..."
+  };
+  parsedDb.deposits.unshift(pendingDep);
+  const pendingInvoice = {
+    id: "zinv_" + Date.now() + Math.floor(Math.random() * 1e3),
+    user_id: userId,
+    transaction_id: transactionId,
+    invoice_id: "",
+    // filled after API call
+    internal_order_id: transactionId,
+    amount,
+    status: "PENDING",
+    payment_url: "",
+    // filled after API call
+    cus_name: paymentDetails.cus_name || dbUser.username,
+    cus_email: paymentDetails.cus_email || dbUser.email,
+    metadata: {
+      user_id: userId,
+      order_id: transactionId,
+      purpose: "wallet_deposit"
+    },
+    created_at: (/* @__PURE__ */ new Date()).toISOString(),
+    updated_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  parsedDb.zinipayInvoices.unshift(pendingInvoice);
+  writeLocalDb(parsedDb);
+  return { transactionId, pendingInvoiceId: pendingInvoice.id, username: dbUser.username, email: dbUser.email };
+}
+async function updatePendingInvoiceWithDetails(pendingInvoiceId, transactionId, invoiceIdFromApi, paymentUrlFromApi, extraDetails) {
+  const parsedDb = readLocalDb();
+  const invIndex = parsedDb.zinipayInvoices ? parsedDb.zinipayInvoices.findIndex((i) => i.id === pendingInvoiceId) : -1;
+  if (invIndex !== -1) {
+    parsedDb.zinipayInvoices[invIndex].invoice_id = invoiceIdFromApi;
+    parsedDb.zinipayInvoices[invIndex].payment_url = paymentUrlFromApi;
+    parsedDb.zinipayInvoices[invIndex].redirect_url = extraDetails.redirect_url || "";
+    parsedDb.zinipayInvoices[invIndex].cancel_url = extraDetails.cancel_url || "";
+    parsedDb.zinipayInvoices[invIndex].webhook_url = extraDetails.webhook_url || "";
+    parsedDb.zinipayInvoices[invIndex].updated_at = (/* @__PURE__ */ new Date()).toISOString();
+  }
+  const depIndex = parsedDb.deposits ? parsedDb.deposits.findIndex((d) => d.trxId === transactionId) : -1;
+  if (depIndex !== -1) {
+    parsedDb.deposits[depIndex].notes = `ZiniPay invoice created. ID: ${invoiceIdFromApi}`;
+  }
+  writeLocalDb(parsedDb);
+}
+async function markInvoiceAndTransactionFailed(pendingInvoiceId, transactionId, reason) {
+  const parsedDb = readLocalDb();
+  const invIndex = parsedDb.zinipayInvoices ? parsedDb.zinipayInvoices.findIndex((i) => i.id === pendingInvoiceId) : -1;
+  if (invIndex !== -1) {
+    parsedDb.zinipayInvoices[invIndex].status = "FAILED";
+    parsedDb.zinipayInvoices[invIndex].updated_at = (/* @__PURE__ */ new Date()).toISOString();
+  }
+  const depIndex = parsedDb.deposits ? parsedDb.deposits.findIndex((d) => d.trxId === transactionId) : -1;
+  if (depIndex !== -1) {
+    parsedDb.deposits[depIndex].status = "rejected";
+    parsedDb.deposits[depIndex].notes = `ZiniPay invoice creation failed: ${reason}`;
+  }
+  writeLocalDb(parsedDb);
+}
+async function executeWalletCreditTransaction(userId, amount, invoiceId, transactionId, paymentDetails) {
+  const parsedDb = readLocalDb();
+  if (!parsedDb.users) parsedDb.users = [];
+  if (!parsedDb.deposits) parsedDb.deposits = [];
+  if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
+  const existingInvoice = parsedDb.zinipayInvoices.find((inv) => inv.invoice_id === invoiceId);
+  if (existingInvoice && existingInvoice.status === "COMPLETED") {
+    console.log(`[ZiniPay] Duplicate protection: Invoice ${invoiceId} already completed.`);
+    return { success: false, reason: "ALREADY_COMPLETED", invoice: existingInvoice };
+  }
+  const matchedUserIndex = parsedDb.users.findIndex((u) => u.id === userId);
+  if (matchedUserIndex === -1) {
+    throw new Error(`User with ID ${userId} not found in database!`);
+  }
+  const dbUser = parsedDb.users[matchedUserIndex];
+  const username = dbUser.username;
+  const existingDepositIndex = parsedDb.deposits.findIndex((dep) => dep.trxId === transactionId);
+  if (existingDepositIndex !== -1 && parsedDb.deposits[existingDepositIndex].status === "approved") {
+    console.log(`[ZiniPay] Duplicate protection: Deposit ${transactionId} already approved.`);
+    return { success: false, reason: "ALREADY_COMPLETED" };
+  }
+  const oldBalance = parseFloat(dbUser.balance || 0);
+  const creditAmount = parseFloat(amount);
+  const newBalance = Number((oldBalance + creditAmount).toFixed(2));
+  dbUser.balance = newBalance;
+  dbUser.totDeposit = Number(((dbUser.totDeposit || 0) + creditAmount).toFixed(2));
+  if (existingDepositIndex !== -1) {
+    parsedDb.deposits[existingDepositIndex].status = "approved";
+    parsedDb.deposits[existingDepositIndex].notes = `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`;
+    parsedDb.deposits[existingDepositIndex].amount = creditAmount;
+    parsedDb.deposits[existingDepositIndex].date = (/* @__PURE__ */ new Date()).toISOString();
+  } else {
+    const newDepositRecord = {
       id: "dep_" + Date.now() + Math.floor(Math.random() * 1e3),
-      username: dbUser.username,
-      amount,
+      username,
+      amount: creditAmount,
       method: "ZiniPay",
       gateway: "ZiniPay",
       trxId: transactionId,
-      status: "pending",
+      status: "approved",
       date: (/* @__PURE__ */ new Date()).toISOString(),
-      notes: "ZiniPay invoice pending creation..."
+      notes: `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`
     };
-    parsedDb.deposits.unshift(pendingDep);
-    const pendingInvoice = {
-      id: "zinv_" + Date.now() + Math.floor(Math.random() * 1e3),
+    parsedDb.deposits.unshift(newDepositRecord);
+  }
+  if (existingInvoice) {
+    existingInvoice.status = "COMPLETED";
+    existingInvoice.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    existingInvoice.verified_at = (/* @__PURE__ */ new Date()).toISOString();
+    existingInvoice.transaction_id = transactionId;
+    existingInvoice.amount = creditAmount;
+  } else {
+    const newInvoice = {
+      id: "zinv_" + Date.now(),
       user_id: userId,
       transaction_id: transactionId,
-      invoice_id: "",
-      // filled after API call
+      invoice_id: invoiceId,
       internal_order_id: transactionId,
-      amount,
-      status: "PENDING",
-      payment_url: "",
-      // filled after API call
-      cus_name: paymentDetails.cus_name || dbUser.username,
+      amount: creditAmount,
+      status: "COMPLETED",
+      payment_url: paymentDetails.payment_url || "",
+      cus_name: paymentDetails.cus_name || username,
       cus_email: paymentDetails.cus_email || dbUser.email,
       metadata: {
         user_id: userId,
         order_id: transactionId,
         purpose: "wallet_deposit"
       },
+      redirect_url: paymentDetails.redirect_url || "",
+      cancel_url: paymentDetails.cancel_url || "",
+      webhook_url: paymentDetails.webhook_url || "",
       created_at: (/* @__PURE__ */ new Date()).toISOString(),
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
+      updated_at: (/* @__PURE__ */ new Date()).toISOString(),
+      verified_at: (/* @__PURE__ */ new Date()).toISOString()
     };
-    parsedDb.zinipayInvoices.unshift(pendingInvoice);
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    return { transactionId, pendingInvoiceId: pendingInvoice.id, username: dbUser.username, email: dbUser.email };
-  });
-  return result;
-}
-async function updatePendingInvoiceWithDetails(pendingInvoiceId, transactionId, invoiceIdFromApi, paymentUrlFromApi, extraDetails) {
-  const db = getBackendFirestore();
-  const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-  await (0, import_firestore.runTransaction)(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) return;
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-    const invIndex = parsedDb.zinipayInvoices.findIndex((i) => i.id === pendingInvoiceId);
-    if (invIndex !== -1) {
-      parsedDb.zinipayInvoices[invIndex].invoice_id = invoiceIdFromApi;
-      parsedDb.zinipayInvoices[invIndex].payment_url = paymentUrlFromApi;
-      parsedDb.zinipayInvoices[invIndex].redirect_url = extraDetails.redirect_url || "";
-      parsedDb.zinipayInvoices[invIndex].cancel_url = extraDetails.cancel_url || "";
-      parsedDb.zinipayInvoices[invIndex].webhook_url = extraDetails.webhook_url || "";
-      parsedDb.zinipayInvoices[invIndex].updated_at = (/* @__PURE__ */ new Date()).toISOString();
-    }
-    const depIndex = parsedDb.deposits.findIndex((d) => d.trxId === transactionId);
-    if (depIndex !== -1) {
-      parsedDb.deposits[depIndex].notes = `ZiniPay invoice created. ID: ${invoiceIdFromApi}`;
-    }
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-  });
-}
-async function markInvoiceAndTransactionFailed(pendingInvoiceId, transactionId, reason) {
-  const db = getBackendFirestore();
-  const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-  await (0, import_firestore.runTransaction)(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) return;
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-    const invIndex = parsedDb.zinipayInvoices.findIndex((i) => i.id === pendingInvoiceId);
-    if (invIndex !== -1) {
-      parsedDb.zinipayInvoices[invIndex].status = "FAILED";
-      parsedDb.zinipayInvoices[invIndex].updated_at = (/* @__PURE__ */ new Date()).toISOString();
-    }
-    const depIndex = parsedDb.deposits.findIndex((d) => d.trxId === transactionId);
-    if (depIndex !== -1) {
-      parsedDb.deposits[depIndex].status = "rejected";
-      parsedDb.deposits[depIndex].notes = `ZiniPay invoice creation failed: ${reason}`;
-    }
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-  });
-}
-async function executeWalletCreditTransaction(userId, amount, invoiceId, transactionId, paymentDetails) {
-  const db = getBackendFirestore();
-  const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-  const userDocRef = (0, import_firestore.doc)(db, "users", userId);
-  return await (0, import_firestore.runTransaction)(db, async (transaction) => {
-    const dbSnap = await transaction.get(dbDocRef);
-    if (!dbSnap.exists()) {
-      throw new Error("Monolithic database document not found in Firestore!");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-    if (!parsedDb.users) parsedDb.users = [];
-    if (!parsedDb.deposits) parsedDb.deposits = [];
-    if (!parsedDb.zinipayInvoices) parsedDb.zinipayInvoices = [];
-    const existingInvoice = parsedDb.zinipayInvoices.find((inv) => inv.invoice_id === invoiceId);
-    if (existingInvoice && existingInvoice.status === "COMPLETED") {
-      console.log(`[ZiniPay] Duplicate protection: Invoice ${invoiceId} already completed.`);
-      return { success: false, reason: "ALREADY_COMPLETED", invoice: existingInvoice };
-    }
-    const matchedUserIndex = parsedDb.users.findIndex((u) => u.id === userId);
-    if (matchedUserIndex === -1) {
-      throw new Error(`User with ID ${userId} not found in database!`);
-    }
-    const dbUser = parsedDb.users[matchedUserIndex];
-    const username = dbUser.username;
-    const existingDepositIndex = parsedDb.deposits.findIndex((dep) => dep.trxId === transactionId);
-    if (existingDepositIndex !== -1 && parsedDb.deposits[existingDepositIndex].status === "approved") {
-      console.log(`[ZiniPay] Duplicate protection: Deposit ${transactionId} already approved.`);
-      return { success: false, reason: "ALREADY_COMPLETED" };
-    }
-    const oldBalance = parseFloat(dbUser.balance || 0);
-    const creditAmount = parseFloat(amount);
-    const newBalance = Number((oldBalance + creditAmount).toFixed(2));
-    dbUser.balance = newBalance;
-    dbUser.totDeposit = Number(((dbUser.totDeposit || 0) + creditAmount).toFixed(2));
-    if (existingDepositIndex !== -1) {
-      parsedDb.deposits[existingDepositIndex].status = "approved";
-      parsedDb.deposits[existingDepositIndex].notes = `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`;
-      parsedDb.deposits[existingDepositIndex].amount = creditAmount;
-      parsedDb.deposits[existingDepositIndex].date = (/* @__PURE__ */ new Date()).toISOString();
-    } else {
-      const newDepositRecord = {
-        id: "dep_" + Date.now() + Math.floor(Math.random() * 1e3),
-        username,
-        amount: creditAmount,
-        method: "ZiniPay",
-        gateway: "ZiniPay",
-        trxId: transactionId,
-        status: "approved",
-        date: (/* @__PURE__ */ new Date()).toISOString(),
-        notes: `ZiniPay Payment COMPLETED (Invoice: ${invoiceId})`
-      };
-      parsedDb.deposits.unshift(newDepositRecord);
-    }
-    if (existingInvoice) {
-      existingInvoice.status = "COMPLETED";
-      existingInvoice.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-      existingInvoice.verified_at = (/* @__PURE__ */ new Date()).toISOString();
-      existingInvoice.transaction_id = transactionId;
-      existingInvoice.amount = creditAmount;
-    } else {
-      const newInvoice = {
-        id: "zinv_" + Date.now(),
-        user_id: userId,
-        transaction_id: transactionId,
-        invoice_id: invoiceId,
-        internal_order_id: transactionId,
-        amount: creditAmount,
-        status: "COMPLETED",
-        payment_url: paymentDetails.payment_url || "",
-        cus_name: paymentDetails.cus_name || username,
-        cus_email: paymentDetails.cus_email || dbUser.email,
-        metadata: {
-          user_id: userId,
-          order_id: transactionId,
-          purpose: "wallet_deposit"
-        },
-        redirect_url: paymentDetails.redirect_url || "",
-        cancel_url: paymentDetails.cancel_url || "",
-        webhook_url: paymentDetails.webhook_url || "",
-        created_at: (/* @__PURE__ */ new Date()).toISOString(),
-        updated_at: (/* @__PURE__ */ new Date()).toISOString(),
-        verified_at: (/* @__PURE__ */ new Date()).toISOString()
-      };
-      parsedDb.zinipayInvoices.unshift(newInvoice);
-    }
-    transaction.update(dbDocRef, {
-      db: JSON.stringify(parsedDb),
-      updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-    const userSnap = await transaction.get(userDocRef);
-    if (userSnap.exists()) {
-      transaction.update(userDocRef, {
-        balance: newBalance,
-        totDeposit: dbUser.totDeposit,
-        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
-      });
-    }
-    console.log(`[ZiniPay Ledger Committed] User ${username} balance +\u09F3${creditAmount}. Balance is now: \u09F3${newBalance}`);
-    return { success: true, newBalance, invoice: existingInvoice || parsedDb.zinipayInvoices[0] };
-  });
+    parsedDb.zinipayInvoices.unshift(newInvoice);
+  }
+  writeLocalDb(parsedDb);
+  console.log(`[ZiniPay Ledger Committed] User ${username} balance +\u09F3${creditAmount}. Balance is now: \u09F3${newBalance}`);
+  return { success: true, newBalance, invoice: existingInvoice || parsedDb.zinipayInvoices[0] };
 }
 async function handleZiniPayCheckout(req, res) {
   try {
@@ -721,14 +662,7 @@ async function handleZiniPayVerify(req, res) {
     if (!order_id && !invoice_id) {
       return res.status(400).json({ status: false, message: "Missing order_id or invoice_id parameter." });
     }
-    const db = getBackendFirestore();
-    const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-    const dbSnap = await (0, import_firestore.getDoc)(dbDocRef);
-    if (!dbSnap.exists()) {
-      return res.status(500).json({ status: false, message: "Internal Database Store is uninitialized." });
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+    const parsedDb = readLocalDb();
     const localInvoice = (parsedDb.zinipayInvoices || []).find(
       (inv) => order_id && inv.internal_order_id === order_id || invoice_id && inv.invoice_id === invoice_id
     );
@@ -809,14 +743,7 @@ async function handleZiniPayWebhook(req, res) {
     if (!invoiceId) {
       return res.status(400).send("Bad Request: Missing invoice identifier.");
     }
-    const db = getBackendFirestore();
-    const dbDocRef = (0, import_firestore.doc)(db, "app_data", "lottery_winner_db");
-    const dbSnap = await (0, import_firestore.getDoc)(dbDocRef);
-    if (!dbSnap.exists()) {
-      return res.status(500).send("Database not configured.");
-    }
-    const dbData = dbSnap.data();
-    let parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
+    const parsedDb = readLocalDb();
     const localInvoice = (parsedDb.zinipayInvoices || []).find((inv) => inv.invoice_id === invoiceId);
     if (!localInvoice) {
       console.warn(`[ZiniPay Webhook Warning] Webhook received for untracked invoice: ${invoiceId}`);
@@ -866,7 +793,7 @@ async function handleZiniPayWebhook(req, res) {
 function sanitizeHTML(dirty) {
   if (!dirty) return "";
   const parser = new DOMParser();
-  const doc3 = parser.parseFromString(dirty, "text/html");
+  const doc = parser.parseFromString(dirty, "text/html");
   const forbiddenTags = [
     "script",
     "style",
@@ -884,10 +811,10 @@ function sanitizeHTML(dirty) {
     "button"
   ];
   forbiddenTags.forEach((tag) => {
-    const elements = doc3.querySelectorAll(tag);
+    const elements = doc.querySelectorAll(tag);
     elements.forEach((el) => el.remove());
   });
-  const allElements = doc3.querySelectorAll("*");
+  const allElements = doc.querySelectorAll("*");
   allElements.forEach((el) => {
     const attributes = Array.from(el.attributes);
     attributes.forEach((attr) => {
@@ -901,7 +828,7 @@ function sanitizeHTML(dirty) {
       }
     });
   });
-  return doc3.body.innerHTML;
+  return doc.body.innerHTML;
 }
 function getDefaultLegalPages(settings) {
   const siteName = settings?.siteName || "Lottery Winner";
@@ -1495,6 +1422,26 @@ function getDefaultDB() {
         blockedUntil: new Date(Date.now() + 864e5).toISOString()
       },
       {
+        id: "u_mod_support",
+        username: "mod_support",
+        email: "support@lotterywinner.app",
+        password: "password123",
+        phone: "01700000002",
+        dob: "1993-02-15",
+        balance: 0,
+        totDeposit: 0,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-21",
+        status: "active",
+        blockedUntil: null,
+        role: "moderator"
+      }
+    ],
+    staff: [
+      {
         id: "u_agent_dhaka",
         username: "agent_dhaka",
         email: "dhaka@agents.app",
@@ -1537,16 +1484,40 @@ function getDefaultDB() {
         earnedCommission: 310,
         totalBookings: 43,
         district: "Sylhet"
+      }
+    ],
+    agents: [
+      {
+        id: "u_agent_dhaka",
+        username: "agent_dhaka",
+        email: "dhaka@agents.app",
+        password: "password123",
+        phone: "01700000001",
+        dob: "1990-01-01",
+        balance: 5e3,
+        totDeposit: 5e3,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-20",
+        status: "active",
+        blockedUntil: null,
+        role: "agent",
+        commissionRate: 5,
+        earnedCommission: 120,
+        totalBookings: 24,
+        district: "Dhaka"
       },
       {
-        id: "u_mod_support",
-        username: "mod_support",
-        email: "support@lotterywinner.app",
+        id: "u_agent_sylhet",
+        username: "agent_sylhet",
+        email: "sylhet@agents.app",
         password: "password123",
-        phone: "01700000002",
-        dob: "1993-02-15",
-        balance: 0,
-        totDeposit: 0,
+        phone: "01900000005",
+        dob: "1992-05-18",
+        balance: 8500,
+        totDeposit: 8500,
         totWithdraw: 0,
         wins: 0,
         loss: 0,
@@ -1554,7 +1525,11 @@ function getDefaultDB() {
         joinDate: "2026-06-21",
         status: "active",
         blockedUntil: null,
-        role: "moderator"
+        role: "agent",
+        commissionRate: 6,
+        earnedCommission: 310,
+        totalBookings: 43,
+        district: "Sylhet"
       }
     ],
     lotteries: [
@@ -1761,6 +1736,7 @@ var app = (0, import_express.default)();
 var PORT = Number(process.env.PORT) || 3e3;
 var isDev = process.env.NODE_ENV !== "production";
 var currentDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
+var isSyncInProgress = false;
 app.use(import_express.default.json({ limit: "100mb" }));
 app.use(import_express.default.urlencoded({ limit: "100mb", extended: true }));
 var upload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage() });
@@ -2050,6 +2026,11 @@ app.post("/api/sql/test-connection", async (req, res) => {
 app.post("/api/sql/sync", async (req, res) => {
   try {
     console.log("[SQL Sync] Inbound synchronization request received.");
+    if (isSyncInProgress) {
+      console.warn("[SQL Sync] Conflict: Synchronization already in progress. Rejecting request.");
+      return res.status(429).json({ success: false, message: "Synchronization already in progress. Please wait." });
+    }
+    isSyncInProgress = true;
     const dbPayload = req.body?.db;
     const clientConfig = req.body?.config;
     const timestamp = (/* @__PURE__ */ new Date()).toISOString();
@@ -2077,22 +2058,6 @@ app.post("/api/sql/sync", async (req, res) => {
     const parsedDb = typeof dbPayload === "string" ? JSON.parse(dbPayload) : dbPayload;
     if (parsedDb) {
       saveLocalDbBackup(parsedDb);
-      const db = getBackendFirestore();
-      if (db) {
-        const primaryDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-        const secondaryDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db_backup");
-        const serialized = typeof dbPayload === "string" ? dbPayload : JSON.stringify(dbPayload);
-        const updateData = {
-          db: serialized,
-          lastUpdated: timestamp,
-          sqlSynced: true,
-          sqlDbName: serverSqlConfig.database
-        };
-        await Promise.allSettled([
-          (0, import_firestore2.setDoc)(primaryDocRef, updateData, { merge: true }),
-          (0, import_firestore2.setDoc)(secondaryDocRef, updateData, { merge: true })
-        ]);
-      }
       const mysqlPool = getPool();
       const connection = await mysqlPool.getConnection();
       try {
@@ -2114,7 +2079,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 password VARCHAR(255) NOT NULL,
                 phone VARCHAR(30) NULL,
                 dob VARCHAR(50) NULL,
-                balance DECIMAL(15, 2) DEFAULT 100.00,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
                 totDeposit DECIMAL(15, 2) DEFAULT 0.00,
                 totWithdraw DECIMAL(15, 2) DEFAULT 0.00,
                 wins INT DEFAULT 0,
@@ -2122,15 +2087,41 @@ app.post("/api/sql/sync", async (req, res) => {
                 profit DECIMAL(15, 2) DEFAULT 0.00,
                 joinDate VARCHAR(50) NULL,
                 status VARCHAR(30) DEFAULT 'active',
-                blockedUntil VARCHAR(100) NULL,
-                role VARCHAR(50) DEFAULT 'user',
-                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
+                role VARCHAR(50) DEFAULT 'user'
+            ) ENGINE=InnoDB;`);
+            await connection.execute(`CREATE TABLE IF NOT EXISTS staff (
+                id VARCHAR(50) PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(30) NULL,
+                dob VARCHAR(50) NULL,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
                 earnedCommission DECIMAL(15, 2) DEFAULT 0.00,
+                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
                 totalBookings INT DEFAULT 0,
                 district VARCHAR(100) NULL,
                 region VARCHAR(100) NULL,
-                refersCount INT DEFAULT 0,
-                referredBy VARCHAR(100) NULL
+                joinDate VARCHAR(50) NULL,
+                status VARCHAR(30) DEFAULT 'active',
+                role VARCHAR(50) DEFAULT 'agent'
+            ) ENGINE=InnoDB;`);
+            await connection.execute(`CREATE TABLE IF NOT EXISTS agents (
+                id VARCHAR(50) PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(30) NULL,
+                dob VARCHAR(50) NULL,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
+                earnedCommission DECIMAL(15, 2) DEFAULT 0.00,
+                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
+                totalBookings INT DEFAULT 0,
+                district VARCHAR(100) NULL,
+                region VARCHAR(100) NULL,
+                joinDate VARCHAR(50) NULL,
+                status VARCHAR(30) DEFAULT 'active',
+                role VARCHAR(50) DEFAULT 'agent'
             ) ENGINE=InnoDB;`);
             await connection.execute(`CREATE TABLE IF NOT EXISTS lotteries (
                 id VARCHAR(50) PRIMARY KEY,
@@ -2229,13 +2220,27 @@ app.post("/api/sql/sync", async (req, res) => {
         const syncTable = async (tableName, dataArray) => {
           if (!Array.isArray(dataArray) || dataArray.length === 0) return;
           const formatToMySqlDateTime = (val) => {
-            if (typeof val === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+            if (val === null || val === void 0 || val === "") return null;
+            if (val instanceof Date) {
               try {
-                const d = new Date(val);
-                if (!isNaN(d.getTime())) {
-                  return d.toISOString().replace("T", " ").substring(0, 19);
-                }
+                return val.toISOString().slice(0, 19).replace("T", " ");
               } catch {
+                return null;
+              }
+            }
+            if (typeof val === "string") {
+              const trimmed = val.trim().replace(/^['"]|['"]$/g, "");
+              if (trimmed.includes("T")) {
+                try {
+                  const d = new Date(trimmed);
+                  if (!isNaN(d.getTime())) {
+                    return d.toISOString().slice(0, 19).replace("T", " ");
+                  }
+                } catch {
+                }
+              }
+              if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
+                return trimmed.replace("T", " ").substring(0, 19);
               }
             }
             return val;
@@ -2262,17 +2267,17 @@ app.post("/api/sql/sync", async (req, res) => {
                 const rowPlaceholders = [];
                 for (const key of validKeys) {
                   let val = item[key];
+                  val = formatToMySqlDateTime(val);
                   if (typeof val === "object" && val !== null) {
                     flatValues.push(JSON.stringify(val));
                   } else {
-                    val = formatToMySqlDateTime(val);
                     flatValues.push(val !== void 0 ? val : null);
                   }
                   rowPlaceholders.push("?");
                 }
                 valueRows.push(`(${rowPlaceholders.join(",")})`);
               }
-              const sql = `INSERT INTO ${tableName} (${validKeys.join(",")}) VALUES ${valueRows.join(",")}`;
+              const sql = `REPLACE INTO ${tableName} (${validKeys.join(",")}) VALUES ${valueRows.join(",")}`;
               await connection.execute(sql, flatValues);
             }
             console.log(`[SQL Sync] Bulk-synced ${dataArray.length} rows to ${tableName}`);
@@ -2281,6 +2286,10 @@ app.post("/api/sql/sync", async (req, res) => {
           }
         };
         if (parsedDb.users) await syncTable("users", parsedDb.users);
+        if (parsedDb.staff) await syncTable("staff", parsedDb.staff);
+        if (parsedDb.agents) await syncTable("agents", parsedDb.agents);
+        else if (parsedDb.staff) await syncTable("agents", parsedDb.staff);
+        else if (parsedDb.users) await syncTable("agents", parsedDb.users.filter((u) => u.role === "agent" || u.role === "subagent"));
         if (parsedDb.lotteries) await syncTable("lotteries", parsedDb.lotteries);
         if (parsedDb.tickets) await syncTable("tickets", parsedDb.tickets);
         if (parsedDb.deposits) await syncTable("deposits", parsedDb.deposits);
@@ -2291,26 +2300,45 @@ app.post("/api/sql/sync", async (req, res) => {
           try {
             const columns = await getTableColumns("settings");
             if (columns.includes("setting_key") && columns.includes("setting_value")) {
-              await connection.execute(`DELETE FROM settings`);
               const insertedKeysLower = /* @__PURE__ */ new Set();
               for (const [key, value] of Object.entries(parsedDb.settings)) {
                 const keyClean = key.trim();
+                if (!keyClean) continue;
                 const keyLower = keyClean.toLowerCase();
                 if (insertedKeysLower.has(keyLower)) {
-                  console.log(`[SQL Sync Settings] Skipping duplicate case-insensitive key: ${key}`);
                   continue;
                 }
                 insertedKeysLower.add(keyLower);
                 const valStr = typeof value === "object" ? JSON.stringify(value) : String(value);
-                await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
+                try {
+                  await connection.execute(
+                    `REPLACE INTO settings (setting_key, setting_value) VALUES (?, ?)`,
+                    [keyClean, valStr]
+                  );
+                } catch (rowErr) {
+                  console.error(`[SQL Sync Settings Error] Failed for key: ${keyClean}`, rowErr.message);
+                  try {
+                    await connection.execute(`DELETE FROM settings WHERE setting_key = ?`, [keyClean]);
+                    await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
+                  } catch (lastResortErr) {
+                    console.error(`[SQL Sync Settings Critical] Last resort failed for ${keyClean}`, lastResortErr.message);
+                  }
+                }
               }
-              console.log(`[SQL Sync] Synced settings to SQL.`);
+              console.log(`[SQL Sync] Synced settings to SQL (Upsert mode).`);
             }
           } catch (setErr) {
             console.warn(`[SQL Sync Warning] Failed to sync settings:`, setErr.message);
           }
         }
         await connection.commit();
+        return res.json({
+          success: true,
+          timestamp,
+          syncStatus: "synced",
+          database: serverSqlConfig.database,
+          message: "Synchronization complete to MySQL."
+        });
       } catch (sqlErr) {
         await connection.rollback();
         console.error("[SQL Sync Transaction Failed]", sqlErr.message);
@@ -2319,31 +2347,11 @@ app.post("/api/sql/sync", async (req, res) => {
         connection.release();
       }
     }
-    console.log(`[SQL Dual-Sync] Synchronization complete between Firebase and MySQL (${serverSqlConfig.database}).`);
-    return res.json({
-      success: true,
-      timestamp,
-      syncStatus: "synced",
-      database: serverSqlConfig.database,
-      message: `Dual-Sync completed! Firebase Clusters and MySQL Database "${serverSqlConfig.database}" are 100% mirrored.`
-    });
   } catch (err) {
-    const errMsg = (err.message || "").toUpperCase();
-    const errCode = (err.code || "").toUpperCase();
-    const isLocal = serverSqlConfig.host === "localhost" || serverSqlConfig.host === "127.0.0.1" || serverSqlConfig.host === "::1";
-    const isConnRefused = errCode.includes("CONNREFUSED") || errCode.includes("TIMEDOUT") || errMsg.includes("ECONNREFUSED") || errMsg.includes("ETIMEDOUT") || errMsg.includes("REFUSED") || errMsg.includes("TIMEOUT");
-    if (isConnRefused && isLocal) {
-      console.log(`[SQL Dual-Sync] Localhost MySQL is unreachable (Cloud Run Sandbox). MySQL sync bypassed; Firestore dual-write successfully completed.`);
-      return res.json({
-        success: true,
-        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        syncStatus: "synced",
-        database: serverSqlConfig.database,
-        message: `Dual-Sync completed! Firestore is 100% synchronized. \u26A0\uFE0F WARNING: MySQL 'localhost' connection was bypassed/simulated because it is unreachable from the cloud server. Please use a REMOTE host for real SQL activity.`
-      });
-    }
-    console.error("[SQL Dual-Sync Error] Real connection failure:", err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error("[SQL Sync Error]", err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  } finally {
+    isSyncInProgress = false;
   }
 });
 var defaultSettings = {
@@ -2374,27 +2382,8 @@ var handleGetSettings = async (req, res) => {
         return res.json({ ...defaultSettings, ...settings });
       }
     } catch (sqlErr) {
-      const errMsg = (sqlErr.message || "").toUpperCase();
-      if (!errMsg.includes("ECONNREFUSED")) {
-        console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL, falling back to Firestore:", sqlErr.message);
-      }
+      console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL:", sqlErr.message);
     }
-  }
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && parsedDb.settings) {
-          return res.json(parsedDb.settings);
-        }
-      }
-    }
-  } catch (err) {
-    console.error("[Server Settings Sync] Error reading Firestore settings:", err.message);
   }
   return res.json(defaultSettings);
 };
@@ -2414,6 +2403,8 @@ app.get("/api/sql/db", async (req, res) => {
         }
       };
       const users = await fetchTable("users");
+      const staff = await fetchTable("staff");
+      const agents = await fetchTable("agents");
       const lotteries = await fetchTable("lotteries");
       const tickets = await fetchTable("tickets");
       const deposits = await fetchTable("deposits");
@@ -2436,6 +2427,8 @@ app.get("/api/sql/db", async (req, res) => {
       const finalSettings = { ...defaultSettings, ...settings };
       let responseDb = {
         users,
+        staff,
+        agents,
         lotteries,
         tickets,
         deposits,
@@ -2466,33 +2459,6 @@ app.get("/api/sql/db", async (req, res) => {
     }
   } catch (err) {
     console.warn("[SQL Fetch DB Connection Notice]:", err.message);
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-        const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb) {
-            console.log("[SQL Fetch DB Fallback] Successfully served via Firestore.");
-            saveLocalDbBackup(parsedDb);
-            return res.json({ success: true, db: parsedDb, notice: "MySQL unreachable; served via Firestore fallback." });
-          }
-        }
-      }
-    } catch (fbErr) {
-      console.warn("[SQL Fetch DB Firestore Fallback Notice]:", fbErr.message);
-    }
-    try {
-      const localDb = loadLocalDbBackup();
-      if (localDb) {
-        console.log("[SQL Fetch DB Fallback] Successfully served via local Server File Backup.");
-        return res.json({ success: true, db: localDb, notice: "MySQL and Firestore unreachable; served via server-side local cache fallback." });
-      }
-    } catch (diskErr) {
-      console.warn("[SQL Fetch DB Server Disk Fallback Failed]:", diskErr.message);
-    }
     const finalBackup = loadLocalDbBackup() || {
       users: [],
       lotteries: [],
@@ -2502,7 +2468,7 @@ app.get("/api/sql/db", async (req, res) => {
       transactions: [],
       agentLedger: []
     };
-    return res.json({ success: true, db: finalBackup, notice: "Offline cloud recovery mode activated." });
+    return res.json({ success: true, db: finalBackup, notice: "Served via local server backup fallback." });
   }
 });
 async function lookupUserInMySQL(cleanUser) {
@@ -2510,6 +2476,13 @@ async function lookupUserInMySQL(cleanUser) {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
     try {
+      const [staffRows] = await connection.execute(
+        `SELECT * FROM staff WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
+        [cleanUser, cleanUser, cleanUser]
+      );
+      if (Array.isArray(staffRows) && staffRows.length > 0) {
+        return staffRows[0];
+      }
       const [rows] = await connection.execute(
         `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
         [cleanUser, cleanUser, cleanUser]
@@ -2524,84 +2497,6 @@ async function lookupUserInMySQL(cleanUser) {
     console.log("[lookupUserInMySQL] Notice:", sqlErr.message);
   }
   return null;
-}
-async function lookupUserInFirebase(cleanUser) {
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && Array.isArray(parsedDb.users)) {
-          const matched = parsedDb.users.find(
-            (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-          );
-          if (matched) return matched;
-        }
-      }
-    }
-  } catch (fbErr) {
-    console.log("[lookupUserInFirebase] Notice:", fbErr.message);
-  }
-  return null;
-}
-async function insertUserIntoMySQL(user) {
-  try {
-    const mysqlPool = getPool();
-    await mysqlPool.execute(
-      `INSERT INTO users (id, username, email, password, phone, balance, role, status, joinDate) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE username = ?, email = ?, password = ?, phone = ?, balance = ?, role = ?, status = ?`,
-      [
-        user.id || "u_" + Date.now(),
-        user.username,
-        user.email || "",
-        user.password || "",
-        user.phone || "",
-        user.balance || 0,
-        user.role || "user",
-        user.status || "active",
-        user.joinDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-        user.username,
-        user.email || "",
-        user.password || "",
-        user.phone || "",
-        user.balance || 0,
-        user.role || "user",
-        user.status || "active"
-      ]
-    );
-    console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to MySQL.`);
-  } catch (e) {
-    console.warn("[insertUserIntoMySQL] Failed:", e.message);
-  }
-}
-async function insertUserIntoFirebase(user) {
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-      const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && Array.isArray(parsedDb.users)) {
-          const existingIdx = parsedDb.users.findIndex((u) => u.username === user.username || u.id === user.id);
-          if (existingIdx >= 0) {
-            parsedDb.users[existingIdx] = { ...parsedDb.users[existingIdx], ...user };
-          } else {
-            parsedDb.users.push(user);
-          }
-          await (0, import_firestore2.setDoc)(dbDocRef, { db: JSON.stringify(parsedDb) }, { merge: true });
-          console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to Firestore.`);
-        }
-      }
-    }
-  } catch (e) {
-    console.warn("[insertUserIntoFirebase] Failed:", e.message);
-  }
 }
 async function performCentralAuth(usernameVal, passwordVal) {
   const cleanUser = String(usernameVal).trim().toLowerCase();
@@ -2626,25 +2521,9 @@ async function performCentralAuth(usernameVal, passwordVal) {
       }
     };
   }
-  const activeDb = await getActiveDatabase();
-  console.log(`[Central Auth Router] Authenticating @${cleanUser} against active database: ${activeDb}`);
-  let primaryMatch = null;
-  let secondaryMatch = null;
-  const primaryDbSource = activeDb;
-  if (activeDb === "mysql") {
-    primaryMatch = await lookupUserInMySQL(cleanUser);
-    if (!primaryMatch) {
-      secondaryMatch = await lookupUserInFirebase(cleanUser);
-    }
-  } else {
-    primaryMatch = await lookupUserInFirebase(cleanUser);
-    if (!primaryMatch) {
-      secondaryMatch = await lookupUserInMySQL(cleanUser);
-    }
-  }
-  let matchedUser = primaryMatch || secondaryMatch;
+  let matchedUser = await lookupUserInMySQL(cleanUser);
   if (!matchedUser) {
-    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL or Firebase. Checking local server backup...`);
+    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL. Checking local server backup...`);
     try {
       const localDb = loadLocalDbBackup();
       if (localDb && Array.isArray(localDb.users)) {
@@ -2661,36 +2540,11 @@ async function performCentralAuth(usernameVal, passwordVal) {
     }
   }
   if (matchedUser) {
-    if (!matchedUser.role || matchedUser.role === "user") {
-      const idLower = (matchedUser.id || "").toLowerCase();
-      const nameLower = (matchedUser.username || "").toLowerCase();
-      if (idLower === "admin" || nameLower === "admin") {
-        matchedUser.role = "admin";
-      } else if (idLower.startsWith("agent_") || idLower.startsWith("u_agent_") || nameLower.includes("agent")) {
-        matchedUser.role = "agent";
-      } else if (idLower.startsWith("u_mod_") || nameLower.includes("mod_") || nameLower.includes("moderator")) {
-        matchedUser.role = "moderator";
-      } else if (idLower.startsWith("u_staff_") || nameLower.includes("staff")) {
-        matchedUser.role = "agent";
-      }
-    }
     if (matchedUser.status === "blocked" || matchedUser.status === "permanently_banned") {
       return { success: false, message: "This account is blocked or under review." };
     }
     const passMatches = !matchedUser.password || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
     if (passMatches) {
-      if (!primaryMatch) {
-        console.log(`[Central Auth Router] User @${matchedUser.username} exists in secondary but missing in active DB (${primaryDbSource}). Replicating now.`);
-        try {
-          if (primaryDbSource === "mysql") {
-            await insertUserIntoMySQL(matchedUser);
-          } else {
-            await insertUserIntoFirebase(matchedUser);
-          }
-        } catch (healErr) {
-          console.warn("[Central Auth Router] Healing execution notice:", healErr.message);
-        }
-      }
       return { success: true, user: matchedUser };
     } else {
       return { success: false, message: "Incorrect credentials." };
@@ -2783,35 +2637,6 @@ app.post("/api/auth/lookup-user", async (req, res) => {
         }
       } finally {
         connection.release();
-      }
-    } catch (e) {
-    }
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = (0, import_firestore2.doc)(db, "app_data", "lottery_winner_db");
-        const dbSnap = await (0, import_firestore2.getDoc)(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb && Array.isArray(parsedDb.users)) {
-            const matched = parsedDb.users.find(
-              (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-            );
-            if (matched) {
-              return res.json({
-                success: true,
-                user: {
-                  id: matched.id || matched.uid,
-                  username: matched.username,
-                  email: matched.email,
-                  phone: matched.phone,
-                  role: matched.role
-                }
-              });
-            }
-          }
-        }
       }
     } catch (e) {
     }
@@ -2951,12 +2776,12 @@ var ACTIVE_DATABASE_MODE = "SQL";
 var lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
 var sseClients = [];
 var localActiveDatabaseCache = "mysql";
-var localDbPath = import_path2.default.join(process.cwd(), "lottery_winner_db_local.json");
+var localDbPath2 = import_path2.default.join(process.cwd(), "lottery_winner_db_local.json");
 var localSettingsPath = import_path2.default.join(process.cwd(), "system_settings_local.json");
 function saveLocalDbBackup(dbObj) {
   try {
     const serialized = typeof dbObj === "string" ? dbObj : JSON.stringify(dbObj, null, 2);
-    import_fs2.default.writeFileSync(localDbPath, serialized, "utf8");
+    import_fs2.default.writeFileSync(localDbPath2, serialized, "utf8");
     console.log("[Local DB Backup] Successfully saved central DB state to server filesystem.");
   } catch (err) {
     console.error("[Local DB Backup Error] Failed to write fallback file:", err.message);
@@ -2964,8 +2789,8 @@ function saveLocalDbBackup(dbObj) {
 }
 function loadLocalDbBackup() {
   try {
-    if (import_fs2.default.existsSync(localDbPath)) {
-      const content = import_fs2.default.readFileSync(localDbPath, "utf8");
+    if (import_fs2.default.existsSync(localDbPath2)) {
+      const content = import_fs2.default.readFileSync(localDbPath2, "utf8");
       if (content && content.trim()) {
         const parsed = JSON.parse(content);
         if (parsed && (parsed.users || parsed.db)) {
@@ -3254,22 +3079,8 @@ var SQLAdapter = {
     }
   }
 };
-var FirebaseAdapter = {
-  name: "Firebase",
-  async health() {
-    try {
-      const db = getBackendFirestore();
-      if (!db) return { connected: false, error: "Firestore uninitialized", recordCount: 0 };
-      const docSnap = await (0, import_firestore2.getDoc)((0, import_firestore2.doc)(db, "app_data", "lottery_winner_db"));
-      return { connected: true, recordCount: docSnap.exists() ? 1 : 0 };
-    } catch (e) {
-      return { connected: false, error: e.message, recordCount: 0 };
-    }
-  }
-};
 app.get("/api/database/health", async (_req, res) => {
   const sqlHealth = await SQLAdapter.health();
-  const fbHealth = await FirebaseAdapter.health();
   let pendingCount = 0;
   let failedCount = 0;
   try {
@@ -3282,7 +3093,7 @@ app.get("/api/database/health", async (_req, res) => {
   }
   return res.json({
     success: true,
-    activeMode: ACTIVE_DATABASE_MODE,
+    activeMode: "SQL",
     sql: {
       connected: sqlHealth.connected,
       recordCount: sqlHealth.recordCount,
@@ -3292,47 +3103,20 @@ app.get("/api/database/health", async (_req, res) => {
       error: sqlHealth.error || null
     },
     firebase: {
-      connected: fbHealth.connected,
-      recordCount: fbHealth.recordCount,
-      lastSuccessfulSync: lastSuccessfulSyncTime,
-      pendingSync: pendingCount,
-      failedSync: failedCount,
-      error: fbHealth.error || null
+      connected: false,
+      recordCount: 0,
+      lastSuccessfulSync: null,
+      pendingSync: 0,
+      failedSync: 0,
+      error: "Firebase removed"
     }
   });
 });
 app.get("/api/database/consistency", async (_req, res) => {
-  let mismatches = [];
-  let sqlUsersCount = 0;
-  let fbUsersCount = 0;
-  try {
-    const pool2 = getPool();
-    const [uRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM users");
-    sqlUsersCount = uRows[0]?.cnt || 0;
-    const db = getBackendFirestore();
-    if (db) {
-      const snap = await (0, import_firestore2.getDoc)((0, import_firestore2.doc)(db, "app_data", "lottery_winner_db"));
-      if (snap.exists()) {
-        const parsed = JSON.parse(snap.data().db || "{}");
-        fbUsersCount = parsed.users?.length || 0;
-      }
-    }
-    if (sqlUsersCount !== fbUsersCount) {
-      mismatches.push({
-        entity: "Users",
-        id: "collection_count",
-        sqlValue: sqlUsersCount,
-        firebaseValue: fbUsersCount,
-        mismatchType: "Record Count Mismatch"
-      });
-    }
-  } catch (e) {
-    mismatches.push({ entity: "General", id: "check_error", sqlValue: "N/A", firebaseValue: "N/A", mismatchType: e.message });
-  }
   return res.json({
     success: true,
-    consistent: mismatches.length === 0,
-    mismatches
+    consistent: true,
+    mismatches: []
   });
 });
 app.get("/api/system/active-database", async (_req, res) => {
@@ -3371,16 +3155,6 @@ async function executeDatabaseSwitch(dbParam, adminId, ipAddress, userAgent) {
     );
   } catch (sqlErr) {
     console.warn("[executeDatabaseSwitch] SQL system_settings write failed (using fallback):", sqlErr.message);
-  }
-  const db = getBackendFirestore();
-  if (db) {
-    const configDocRef = (0, import_firestore2.doc)(db, "app_data", "system_config");
-    await (0, import_firestore2.setDoc)(configDocRef, {
-      active_database: targetDbVal,
-      updated_at: (/* @__PURE__ */ new Date()).toISOString()
-    }, { merge: true }).catch((fbErr) => {
-      console.warn("[executeDatabaseSwitch] Firebase write failed:", fbErr.message);
-    });
   }
   saveLocalActiveDatabase(targetDbVal);
   try {
@@ -3552,6 +3326,37 @@ if (!import_fs2.default.existsSync(permanentUploadDir)) {
   import_fs2.default.mkdirSync(permanentUploadDir, { recursive: true });
 }
 app.use("/uploads", import_express.default.static(permanentUploadDir));
+app.post("/api/upload", upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: "No file uploaded." });
+  }
+  const allowedTypes = ["image/png", "image/jpeg", "image/svg+xml", "image/x-icon", "image/webp", "image/gif"];
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    return res.status(400).json({ success: false, message: "Invalid file type." });
+  }
+  if (req.file.size > 10 * 1024 * 1024) {
+    return res.status(400).json({ success: false, message: "File too large. Max 10MB allowed." });
+  }
+  try {
+    const ext = import_path2.default.extname(req.file.originalname) || ".png";
+    const uniqueFilename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+    const targetPath = import_path2.default.join(permanentUploadDir, uniqueFilename);
+    const relativePath = `/uploads/${uniqueFilename}`;
+    import_fs2.default.writeFileSync(targetPath, req.file.buffer);
+    if (!import_fs2.default.existsSync(targetPath) || import_fs2.default.statSync(targetPath).size === 0) {
+      throw new Error("File physical write verification failed.");
+    }
+    return res.json({
+      success: true,
+      message: "Image uploaded successfully.",
+      url: relativePath,
+      fileUrl: relativePath
+    });
+  } catch (err) {
+    console.error("[Generic Upload Error]", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 app.post("/api/upload/logo", upload.single("file"), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: "No file uploaded." });

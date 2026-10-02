@@ -2,7 +2,7 @@
 // ADMIN PANEL MODULAR SYSTEM
 // ============================================================================
 import { CheckinSettingsTab } from "../admin_tabs/checkinSettings.js";
-import { getStorage, ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
+// Firebase Storage removed
 import { PathHelper } from "./pathHelper.js";
 import { AdminStoreManager } from "../store/AdminStoreManager.js";
 
@@ -222,12 +222,28 @@ export const AdminModule = {
     document.getElementById("admin-metric-withdrawn-approved").innerText = `৳${totalWdsApproved} paid out`;
   },
 
-  renderAdminUsers() {
+  async renderAdminUsers() {
+    // 0. Fetch live data from MySQL to ensure real-time accuracy
+    try {
+      const sqlRes = await fetch("/api/sql/db");
+      if (sqlRes.ok) {
+        const sqlData = await sqlRes.json();
+        if (sqlData.success && sqlData.db) {
+          if (typeof this.mergeParsedDb === "function") {
+            this.mergeParsedDb(sqlData.db);
+          } else {
+            this.db = sqlData.db;
+          }
+        }
+      }
+    } catch (e) {}
+
     // 1. Overview Analytics Calculations
-    const totalUsers = this.db.users.length;
+    const allUsers = (this.db.users || []).filter(u => !u.role || u.role === "user");
+    const totalUsers = allUsers.length;
     const onlineSimulated = Math.max(1, Math.round(totalUsers * 0.15));
-    const flaggedFraud = this.db.users.filter(u => u.status === "blocked").length;
-    const totalWalletPool = this.db.users.reduce((sum, u) => sum + (u.balance || 0), 0);
+    const flaggedFraud = allUsers.filter(u => u.status === "blocked").length;
+    const totalWalletPool = allUsers.reduce((sum, u) => sum + (u.balance || 0), 0);
 
     const totalEl = document.getElementById("admin-users-stat-total");
     const onlineEl = document.getElementById("admin-users-stat-online");
@@ -279,8 +295,8 @@ export const AdminModule = {
       });
     }
 
-    // 4. Filtering Users
-    let filteredUsers = this.db.users || [];
+    // 4. Filtering Users (Exclude Agents/Staff from players page)
+    let filteredUsers = (this.db.users || []).filter(u => !u.role || u.role === "user");
     const query = (this.adminPlayersSearchQuery || "").toLowerCase().trim();
     if (query) {
       filteredUsers = filteredUsers.filter(u => {
@@ -1041,7 +1057,9 @@ export const AdminModule = {
   },
 
   openUserEditModal(id) {
-    const u = this.db.users.find(user => user.id === id);
+    let u = (this.db.users || []).find(user => user.id === id);
+    if (!u && this.db.staff) u = this.db.staff.find(user => user.id === id);
+    if (!u && this.db.agents) u = this.db.agents.find(user => user.id === id);
     if (!u) return;
 
     document.getElementById("edit-player-modal-id").innerText = `@${u.username}`;
@@ -1115,7 +1133,16 @@ export const AdminModule = {
 
   savePlayerEditFromModal() {
     const id = document.getElementById("edit-player-id-field").value;
-    const u = this.db.users.find(user => user.id === id);
+    let u = (this.db.users || []).find(user => user.id === id);
+    let storeType = 'users';
+    if (!u && this.db.staff) {
+      u = this.db.staff.find(user => user.id === id);
+      if (u) storeType = 'staff';
+    }
+    if (!u && this.db.agents) {
+      u = this.db.agents.find(user => user.id === id);
+      if (u) storeType = 'agents';
+    }
     if (!u) return;
 
     u.balance = parseFloat(document.getElementById("edit-player-balance").value || "0");
@@ -1139,6 +1166,25 @@ export const AdminModule = {
     const districtSelectVal = document.getElementById("edit-player-district");
     if (districtSelectVal) {
       u.district = districtSelectVal.value;
+    }
+
+    const newRole = (u.role || 'user').toLowerCase();
+    const isStaffRole = newRole === 'agent' || newRole === 'subagent' || newRole === 'moderator';
+
+    // Migrate between tables if role category changed
+    if (isStaffRole && storeType === 'users') {
+      this.db.users = (this.db.users || []).filter(x => x.id !== id);
+      if (!this.db.staff) this.db.staff = [];
+      if (!this.db.staff.some(s => s.id === id)) this.db.staff.push(u);
+      if (newRole === 'agent') {
+        if (!this.db.agents) this.db.agents = [];
+        if (!this.db.agents.some(a => a.id === id)) this.db.agents.push(u);
+      }
+    } else if (!isStaffRole && (storeType === 'staff' || storeType === 'agents')) {
+      if (this.db.staff) this.db.staff = this.db.staff.filter(x => x.id !== id);
+      if (this.db.agents) this.db.agents = this.db.agents.filter(x => x.id !== id);
+      if (!this.db.users) this.db.users = [];
+      if (!this.db.users.some(us => us.id === id)) this.db.users.push(u);
     }
 
     const targetTicketsInput = document.getElementById("edit-agent-target-tickets");
@@ -1169,7 +1215,22 @@ export const AdminModule = {
     this.render();
   },
 
-  renderAdminAgents() {
+  async renderAdminAgents() {
+    // Fetch live data from MySQL
+    try {
+      const sqlRes = await fetch("/api/sql/db");
+      if (sqlRes.ok) {
+        const sqlData = await sqlRes.json();
+        if (sqlData.success && sqlData.db) {
+          if (typeof this.mergeParsedDb === "function") {
+            this.mergeParsedDb(sqlData.db);
+          } else {
+            this.db = sqlData.db;
+          }
+        }
+      }
+    } catch (e) {}
+
     if (typeof this.setupStaffAndAgentListeners === "function") {
       try {
         this.setupStaffAndAgentListeners();
@@ -1189,11 +1250,12 @@ export const AdminModule = {
     const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
     // Stats calculations
-    const agentsCount = this.db.users.filter(u => u.role === "agent").length;
-    const modsCount = this.db.users.filter(u => u.role === "moderator").length;
+    const allStaff = (this.db.staff || []);
+    const agentsCount = allStaff.filter(u => u.role === "agent" || u.role === "subagent").length;
+    const modsCount = (this.db.users || []).filter(u => u.role === "moderator").length + allStaff.filter(u => u.role === "moderator").length;
     
     const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
-    const initialSeedComms = this.db.users.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
+    const initialSeedComms = allStaff.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
 
     const statCountEl = document.getElementById("agents-stat-count");
     const modCountEl = document.getElementById("moderators-stat-count");
@@ -1232,8 +1294,14 @@ export const AdminModule = {
       });
     }
 
-    // Filtering
-    let staffAccounts = this.db.users.filter(u => u.role === "agent" || u.role === "moderator" || u.role === "subagent");
+    // Filtering - Pull from agents, staff, and users
+    const allAgents = (this.db.agents || []);
+    const staffList = (this.db.staff || []);
+    const legacyStaff = (this.db.users || []).filter(u => u.role === "agent" || u.role === "moderator" || u.role === "subagent");
+    
+    const staffMap = new Map();
+    [...allAgents, ...staffList, ...allStaff, ...legacyStaff].forEach(s => staffMap.set(s.id || s.username, s));
+    let staffAccounts = Array.from(staffMap.values());
     if (query) {
       staffAccounts = staffAccounts.filter(u => u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query));
     }
@@ -1304,7 +1372,7 @@ export const AdminModule = {
           <div class="flex flex-col">
             <span class="text-[8.5px] text-slate-500 font-bold uppercase tracking-wider">Commission</span>
             <span class="text-xs font-bold text-white mt-0.5 tabular-nums">
-              ${staff.role === "agent" ? `${(staff.commissionRate || 5.0).toFixed(1)}%` : "N/A"}
+              ${staff.role === "agent" ? `${parseFloat(staff.commissionRate || 5.0).toFixed(1)}%` : "N/A"}
             </span>
           </div>
           <div class="flex flex-col">
@@ -1352,11 +1420,15 @@ export const AdminModule = {
     gridEl.querySelectorAll(".staff-del-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-id");
-        const staff = this.db.users.find(u => u.id === id);
+        let staff = (this.db.staff || []).find(u => u.id === id);
+        if (!staff && this.db.agents) staff = this.db.agents.find(u => u.id === id);
+        if (!staff && this.db.users) staff = this.db.users.find(u => u.id === id);
         if (!staff) return;
 
         if (confirm(`Are you absolutely sure you want to permanently delete the staff account @${staff.username}?`)) {
-          this.db.users = this.db.users.filter(u => u.id !== id);
+          if (this.db.staff) this.db.staff = this.db.staff.filter(u => u.id !== id);
+          if (this.db.agents) this.db.agents = this.db.agents.filter(u => u.id !== id);
+          if (this.db.users) this.db.users = this.db.users.filter(u => u.id !== id);
           this.saveDB();
           this.showToast(`Deleted staff account @${staff.username} successfully.`, "success");
           this.renderAdminAgents();
@@ -1561,10 +1633,13 @@ export const AdminModule = {
   },
 
   updateAgentHubStats() {
-    const activeLeaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+    const allStaff = [...(this.db.users || []).filter(u => u.role === "agent" || u.role === "subagent" || u.role === "moderator"), ...(this.db.staff || [])];
+    const uniqueStaff = Array.from(new Map(allStaff.map(s => [s.id, s])).values());
+
+    const activeLeaders = uniqueStaff.filter(u => u.role === "agent" && u.status === "active");
     const activeCount = activeLeaders.length;
-    const subagentsCount = this.db.users.filter(u => u.role === "subagent").length;
-    const pendingCount = this.db.users.filter(u => u.role === "agent" && u.status === "pending_approval").length;
+    const subagentsCount = uniqueStaff.filter(u => u.role === "subagent").length;
+    const pendingCount = uniqueStaff.filter(u => u.role === "agent" && u.status === "pending_approval").length;
     const totalLeadersBalance = activeLeaders.reduce((sum, u) => sum + (u.balance || 0), 0);
 
     const activeStat = document.getElementById("hub-active-count-stat");
@@ -1586,7 +1661,9 @@ export const AdminModule = {
   renderAgentHubSelect() {
     const leaderSelect = document.getElementById("hub-leader-select");
     const quickCashSelect = document.getElementById("leader-cash-select-user");
-    const leaders = this.db.users.filter(u => u.role === "agent" && u.status === "active");
+    const allStaff = [...(this.db.users || []).filter(u => u.role === "agent"), ...(this.db.staff || [])];
+    const uniqueStaff = Array.from(new Map(allStaff.map(s => [s.id, s])).values());
+    const leaders = uniqueStaff.filter(u => u.role === "agent" && u.status === "active");
 
     const optionsHtml = leaders.length === 0
       ? `<option value="">No Active Agent Leaders Found</option>`
@@ -1657,7 +1734,11 @@ export const AdminModule = {
     }
 
     const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
-    let leaders = this.db.users.filter(u => u.role === "agent");
+    const legacyStaff = (this.db.users || []).filter(u => u.role === "agent");
+    const newStaff = (this.db.staff || []);
+    const staffMap = new Map();
+    [...legacyStaff, ...newStaff].forEach(s => staffMap.set(s.id, s));
+    let leaders = Array.from(staffMap.values()).filter(u => u.role === "agent");
 
     if (query) {
       leaders = leaders.filter(l => 
@@ -1725,7 +1806,7 @@ export const AdminModule = {
             </div>
             <div class="space-y-0.5">
               <span class="text-[9px] text-slate-400 uppercase font-bold block">Commission</span>
-              <span class="text-sm font-black text-emerald-400 block">${(l.commissionRate || 5.0).toFixed(1)}%</span>
+              <span class="text-sm font-black text-emerald-400 block">${parseFloat(l.commissionRate || 5.0).toFixed(1)}%</span>
             </div>
             <div class="space-y-0.5">
               <span class="text-[9px] text-slate-400 uppercase font-bold block">Total Earned</span>
@@ -2025,7 +2106,10 @@ export const AdminModule = {
             rewardedMilestones: []
           };
 
-          this.db.users.push(newAgentObj);
+          if (!this.db.agents) this.db.agents = [];
+          this.db.agents.push(newAgentObj);
+          if (!this.db.staff) this.db.staff = [];
+          this.db.staff.push(newAgentObj);
 
           // Add a deposit transaction if initial balance is > 0
           if (initialBalance > 0) {
@@ -2344,7 +2428,7 @@ export const AdminModule = {
     }
 
     document.getElementById("detail-leader-balance-lbl").innerText = `৳${(leader.balance || 0).toFixed(2)}`;
-    document.getElementById("detail-leader-commission-lbl").innerText = `${(leader.commissionRate || 5.0).toFixed(1)}%`;
+    document.getElementById("detail-leader-commission-lbl").innerText = `${parseFloat(leader.commissionRate || 5.0).toFixed(1)}%`;
 
     // Targets & Mission
     const target = leader.monthlyTargetTickets || 0;
@@ -2427,7 +2511,7 @@ export const AdminModule = {
               </div>
             </td>
             <td class="p-3.5 text-slate-300 font-bold font-mono tabular-nums">৳${(sub.balance || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
-            <td class="p-3.5 text-emerald-400 font-bold font-mono tabular-nums">${(sub.commissionRate || 3.0).toFixed(1)}%</td>
+            <td class="p-3.5 text-emerald-400 font-bold font-mono tabular-nums">${parseFloat(sub.commissionRate || 3.0).toFixed(1)}%</td>
             <td class="p-3.5 text-white font-bold font-mono tabular-nums">${sub.totalBookings || 0}</td>
             <td class="p-3.5 text-slate-400 font-mono tabular-nums">${sProgress} / ${sTarget}</td>
             <td class="p-3.5">
@@ -2770,7 +2854,7 @@ export const AdminModule = {
           </div>
           <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
             <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Comm. Rate</span>
-            <span class="text-[11px] font-black text-white mt-0.5">${(sub.commissionRate || 3.0).toFixed(1)}%</span>
+            <span class="text-[11px] font-black text-white mt-0.5">${parseFloat(sub.commissionRate || 3.0).toFixed(1)}%</span>
           </div>
           <div class="p-2.5 bg-slate-950/40 border border-slate-850/30 rounded-xl flex flex-col">
             <span class="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Bookings</span>
@@ -2830,7 +2914,7 @@ export const AdminModule = {
     }
 
     document.getElementById("detail-sub-balance-lbl").innerText = `৳${(sub.balance || 0).toFixed(2)}`;
-    document.getElementById("detail-sub-commission-lbl").innerText = `${(sub.commissionRate || 3.0).toFixed(1)}%`;
+    document.getElementById("detail-sub-commission-lbl").innerText = `${parseFloat(sub.commissionRate || 3.0).toFixed(1)}%`;
     document.getElementById("detail-sub-bookings-lbl").innerText = `${sub.totalBookings || 0} Sales`;
 
     // Targets & Mission

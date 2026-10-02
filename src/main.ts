@@ -1,9 +1,7 @@
 import "./index.css";
 import { SyncCloudModule } from "./js/syncCloud.js";
 import { UIEffectsModule } from "./js/uiEffects.js";
-import { initializeApp, getApps } from "firebase/app";
-import { initializeFirestore, doc, getDoc, setDoc, setLogLevel } from "firebase/firestore";
-import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
+// Firebase removed per user request
 import { getCircularReplacer, removeCircularReferences, safeStringify } from "./js/serialization.js";
 import { ChatProfileSystem } from "./chat-profile-system.js";
 import { OfflineQueueManager } from "./js/syncQueue.js";
@@ -230,22 +228,7 @@ export class StateManager {
     if (!this.db) this.db = getDefaultDB();
     if (!this.db.users) this.db.users = [];
     
-    // Autocorrect / Self-heal missing or default roles of staff and agents
-    this.db.users.forEach((u: any) => {
-      if (!u.role || u.role === 'user') {
-        const idLower = (u.id || '').toLowerCase();
-        const nameLower = (u.username || '').toLowerCase();
-        if (idLower === 'admin' || nameLower === 'admin') {
-          u.role = 'admin';
-        } else if (idLower.startsWith('agent_') || idLower.startsWith('u_agent_') || nameLower.includes('agent')) {
-          u.role = 'agent';
-        } else if (idLower.startsWith('u_mod_') || nameLower.includes('mod_') || nameLower.includes('moderator')) {
-          u.role = 'moderator';
-        } else if (idLower.startsWith('u_staff_') || nameLower.includes('staff')) {
-          u.role = 'agent';
-        }
-      }
-    });
+    // Role self-healing completely removed per user request to respect actual database roles without overriding them based on prefixes.
     if (!this.db.lotteries) this.db.lotteries = [];
     if (!this.db.tickets) this.db.tickets = [];
     if (!this.db.deposits) this.db.deposits = [];
@@ -661,128 +644,27 @@ export class StateManager {
       if (s.supportNumber === undefined) s.supportNumber = "01700000000";
       if (s.authFooterText === undefined) s.authFooterText = "© 2026 Lottery Winner Mobile Limited (Registered)";
 
-      if (!this.db.syncNodes) {
-        this.db.syncNodes = [
-          {
-            id: "node-1",
-            name: "Primary Database (Cluster 1)",
-            type: "firebase",
-            endpoint: "app_data/lottery_winner_db",
-            priority: 1,
-            status: "connected",
-            latency: 14,
-            active: true,
-            mode: "dual_sync",
-            description: "Google Firestore Database primary cluster with continuous active syncing.",
-            tier: "premium"
-          },
-          {
-            id: "node-2",
-            name: "Secondary Database (Cluster 2)",
-            type: "firebase",
-            endpoint: "app_data/lottery_winner_db_backup",
-            priority: 2,
-            status: "connected",
-            latency: 18,
-            active: false,
-            mode: "dual_sync",
-            description: "Google Firestore Database backup cluster with auto-sync on every activity.",
-            tier: "premium"
-          },
-          {
-            id: "node-sql",
-            name: "MySQL Bridge API Cluster",
-            type: "sql",
-            endpoint: "https://api.veloralbillal.top/db_bridge.php",
-            priority: 3,
-            status: "standby",
-            latency: 0,
-            active: false,
-            mode: "dual_sync",
-            description: "cPanel MySQL Database via Bridge API.",
-            tier: "premium"
-          },
-          {
-            id: "node-3",
-            name: "Custom REST Sync Webhook",
-            type: "api",
-            endpoint: "https://sync-api.lotterywinner.app/v1/vault",
-            priority: 3,
-            status: "offline",
-            latency: 110,
-            active: false,
-            mode: "failover_only",
-            description: "Fallback HTTPS JSON storage service invoked when primary links collapse.",
-            tier: "free"
-          }
-        ];
-      }
-
-      // Automatically migrate nodes to guarantee Dual-Database architecture
-      if (!this.db.syncNodes) {
-        this.db.syncNodes = [
-          {
-            id: "node-1",
-            name: "Primary Database (Cluster 1)",
-            type: "firebase",
-            endpoint: "app_data/lottery_winner_db",
-            priority: 1,
-            status: "connected",
-            latency: 14,
-            active: true,
-            mode: "dual_sync",
-            description: "Google Firestore Database primary cluster with continuous active syncing.",
-            tier: "premium"
-          },
-          {
-            id: "node-2",
-            name: "Secondary Database (Cluster 2)",
-            type: "firebase",
-            endpoint: "app_data/lottery_winner_db_backup",
-            priority: 2,
-            status: "connected",
-            latency: 18,
-            active: false,
-            mode: "dual_sync",
-            description: "Google Firestore Database backup cluster with auto-sync on every activity.",
-            tier: "premium"
-          },
-          {
-            id: "node-sql",
-            name: "MySQL Bridge API Cluster",
-            type: "sql",
-            endpoint: "https://api.veloralbillal.top/db_bridge.php",
-            priority: 3,
-            status: "standby",
-            latency: 0,
-            active: false,
-            mode: "dual_sync",
-            description: "cPanel MySQL Database via Bridge API.",
-            tier: "premium"
-          }
-        ];
-      }
+      // Ensure syncNodes are configured for SQL-only mode
+      this.db.syncNodes = [
+        {
+          id: "node-sql",
+          name: "MySQL Bridge API Cluster",
+          type: "sql",
+          endpoint: "https://api.veloralbillal.top/db_bridge.php",
+          priority: 1,
+          status: "connected",
+          latency: 12,
+          active: true,
+          mode: "dual_sync",
+          description: "cPanel MySQL Database via Bridge API (Primary Storage Engine).",
+          tier: "premium"
+        }
+      ];
 
       if (this.db.syncNodes) {
-        const node1 = this.db.syncNodes.find(n => n.id === "node-1");
-        if (node1) {
-          node1.name = "Primary Database (Cluster 1)";
-          node1.type = "firebase";
-          node1.endpoint = "app_data/lottery_winner_db";
-          node1.tier = "premium";
-        }
-        const node2 = this.db.syncNodes.find(n => n.id === "node-2");
-        if (node2) {
-          node2.name = "Secondary Database (Cluster 2)";
-          node2.type = "firebase";
-          node2.endpoint = "app_data/lottery_winner_db_backup";
-          node2.tier = "premium";
-          node2.status = "connected";
-        }
-        // node-sql removed
         this.db.syncNodes?.forEach(node => {
           if (!node.tier) {
-            node.tier = (node.name.includes("Main") || node.name.includes("Primary") || node.name.includes("Secondary") || node.id === "node-1" || node.id === "node-2") ? "premium" : "free";
+            node.tier = "premium";
           }
         });
 
@@ -794,7 +676,7 @@ export class StateManager {
             username: "veloralb_Digital",
             password: "UcWg.75@wv+Ijzh#",
             autoSync: true,
-            activeEngine: "firebase_primary",
+            activeEngine: "mysql",
             lastSyncTime: new Date().toISOString(),
             syncStatus: "synced"
           };
@@ -805,14 +687,15 @@ export class StateManager {
           if (!this.db.sqlDbConfig.username) this.db.sqlDbConfig.username = "veloralb_Digital";
           if (!this.db.sqlDbConfig.password) this.db.sqlDbConfig.password = "UcWg.75@wv+Ijzh#";
           if (this.db.sqlDbConfig.autoSync === undefined) this.db.sqlDbConfig.autoSync = true;
+          this.db.sqlDbConfig.activeEngine = "mysql";
         }
       }
 
       if (!this.db.syncLogs) {
         const timeStr = new Date().toLocaleTimeString();
         this.db.syncLogs = [
-          { time: timeStr, type: "info", message: "Cloud Failover High-Availability Sync Engine established." },
-          { time: timeStr, type: "success", message: "Initial link to Cluster 1 (Main Firebase Production Cluster) is healthy." }
+          { time: timeStr, type: "info", message: "SQL Sync Engine established." },
+          { time: timeStr, type: "success", message: "Initial link to MySQL Bridge is healthy." }
         ];
       }
 
@@ -2027,6 +1910,8 @@ export class StateManager {
       this.renderTasksTab();
     } else if (this.currentTab === "games") {
       this.renderGamesTab();
+    } else if (this.currentTab === "agent") {
+      AffiliateAgentSystem.renderAgents(this);
     } else if (this.currentTab === "payment-success") {
       this.renderPaymentSuccessTab();
     } else if (this.currentTab === "payment-cancel") {
@@ -5727,166 +5612,106 @@ function initApplicationLoader() {
           }
         }
 
-        // 2. Perform Real Firebase Auth Login
-        try {
-          const userCredential = await signInWithEmailAndPassword(app.auth, loginEmail, passVal);
-          const user = userCredential.user;
+        // 2. Perform Backend / Local Auth Login
+        let matched = app.db.users.find(u => 
+          (u.username && u.username.toLowerCase() === userVal.toLowerCase()) || 
+          (u.email && u.email.toLowerCase() === userVal.toLowerCase()) ||
+          (u.phone && String(u.phone).trim() === userVal)
+        );
 
-          // Check if local database already has this user's profile
-          const matchedAuthUser = app.db.users.find(u => 
-            (user && (u.uid === user.uid || u.id === user.uid)) ||
-            (u.email && u.email.toLowerCase() === loginEmail.toLowerCase()) ||
-            (u.username && u.username.toLowerCase() === userVal.toLowerCase())
-          );
-
-          if (matchedAuthUser) {
-            if (matchedAuthUser.status === "blocked") {
-              app.showToast("This player is currently blocked under support investigation.", "error");
-              setBtnLoading(false);
-              return;
-            }
-            if (matchedAuthUser.status === "permanently_banned") {
-              app.showToast("This account has been permanently barred by operations manager.", "error");
-              setBtnLoading(false);
-              return;
-            }
-            app.currentUser = StateManager.removeCircularReferences(matchedAuthUser);
-            localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-            app.showToast(`Login Successful! Welcome back, @${matchedAuthUser.username}!`, "success");
-            app.render();
-            setBtnLoading(false);
-            return;
-          }
-
-          // If not in local db yet, onAuthStateChanged in SyncCloudModule will hydrate from Firestore
-          app.showToast(`Login Successful! Authenticating...`, "success");
-          setBtnLoading(false);
-          return;
-        } catch (authErr: any) {
-          console.warn("Firebase Auth notice, attempting local credential match:", authErr?.code || authErr?.message);
-          
-          // 3. Local Credential Match (Supports Admin-created agents, offline sessions, and legacy accounts)
-          let matched = app.db.users.find(u => 
-            (u.username && u.username.toLowerCase() === userVal.toLowerCase()) || 
-            (u.email && u.email.toLowerCase() === userVal.toLowerCase()) ||
-            (u.phone && String(u.phone).trim() === userVal)
-          );
-
-          // If not in local db yet (e.g. logging in on another device), query cloud backend
-          if (!matched) {
-            try {
-              const cloudRes = await fetch("/api/auth/player-login", {
+        // If not in local db yet (e.g. logging in on another device), query cloud backend
+        if (!matched) {
+          try {
+            const cloudRes = await fetch("/api/auth/player-login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username: userVal, password: passVal })
+            });
+            if (cloudRes.ok) {
+              const cloudData = await cloudRes.json();
+              if (cloudData.success && cloudData.user) {
+                matched = cloudData.user;
+                matched.password = passVal;
+                if (!matched.status || matched.status === "pending_approval") matched.status = "active";
+                app.db.users.push(matched);
+                app.saveDB();
+              }
+            } else {
+              // Check if this is an authorized agent trying to sign in from player portal
+              const agentRes = await fetch("/api/auth/agent-login", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username: userVal, password: passVal })
               });
-              if (cloudRes.ok) {
-                const cloudData = await cloudRes.json();
-                if (cloudData.success && cloudData.user) {
-                  matched = cloudData.user;
+              if (agentRes.ok) {
+                const agentData = await agentRes.json();
+                if (agentData.success && agentData.user) {
+                  matched = agentData.user;
                   matched.password = passVal;
                   if (!matched.status || matched.status === "pending_approval") matched.status = "active";
                   app.db.users.push(matched);
                   app.saveDB();
                 }
-              } else {
-                // Check if this is an authorized agent trying to sign in from player portal
-                const agentRes = await fetch("/api/auth/agent-login", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ username: userVal, password: passVal })
-                });
-                if (agentRes.ok) {
-                  const agentData = await agentRes.json();
-                  if (agentData.success && agentData.user) {
-                    matched = agentData.user;
-                    matched.password = passVal;
-                    if (!matched.status || matched.status === "pending_approval") matched.status = "active";
-                    app.db.users.push(matched);
-                    app.saveDB();
-                  }
-                }
               }
-            } catch (cloudErr) {
-              console.warn("Cloud login fallback attempt notice:", cloudErr);
             }
+          } catch (cloudErr) {
+            console.warn("Cloud login fallback attempt notice:", cloudErr);
           }
+        }
 
-          const passMatches = matched && (
-            !matched.password || 
-            matched.password.trim() === passVal.trim() || 
-            matched.password === passVal ||
-            isLocalOrPreview
-          );
+        const passMatches = matched && (
+          !matched.password || 
+          matched.password.trim() === passVal.trim() || 
+          matched.password === passVal ||
+          isLocalOrPreview
+        );
 
-          if (!matched || !passMatches) {
-            app.showToast("Invalid credentials. Please check your username/email and password.", "error");
-            generateMathCaptcha();
-            setBtnLoading(false);
-            return;
-          }
-
-          // Ensure password is saved on match if it was blank/missing
-          if (!matched.password) {
-            matched.password = passVal;
-            app.saveDB();
-          }
-
-          // Auto-activate staff/agents if pending approval
-          if (matched.status === "pending_approval") {
-            matched.status = "active";
-            app.saveDB();
-          }
-          
-          const bannedRegions = app.db.settings.bannedRegions || [];
-          if (matched.region && bannedRegions.map(r => r.toLowerCase()).includes(matched.region.toLowerCase())) {
-            app.triggerAdminSecurityAlert("region_restriction", `Blocked banned-region sign-in attempt by user @${matched.username} from blocked region "${matched.region}".`);
-            app.showToast(`REGION BLOCK DETECTED: Region '${matched.region}' has been banned. Sign-in restricted!`, "error");
-            setBtnLoading(false);
-            return;
-          }
-
-          if (matched.status === "blocked") {
-            if (isLocalOrPreview) {
-              matched.status = "active";
-              app.saveDB();
-              app.showToast("Blocked status auto-cleared in development mode.", "info");
-            } else {
-              app.showToast("This player is currently blocked under support investigation.", "error");
-              setBtnLoading(false);
-              return;
-            }
-          }
-
-          if (matched.status === "pending_approval") {
-            app.showToast("আবেদন মুলতুবি আছে! Your agent application is pending admin approval.", "warning");
-            setBtnLoading(false);
-            return;
-          }
-
-          if (matched.status === "permanently_banned") {
-            app.showToast("This account has been permanently barred by operations manager.", "error");
-            setBtnLoading(false);
-            return;
-          }
-
-          // Check 2FA Google Authenticator
-          if (matched.twoFactorEnabled && matched.twoFactorSecret) {
-            const verified = await prompt2FAForUser(matched, app);
-            if (!verified) {
-              app.showToast("Login cancelled: Google Authenticator 2FA code required.", "warning");
-              setBtnLoading(false);
-              return;
-            }
-          }
-
-          app.currentUser = StateManager.removeCircularReferences(matched);
-          localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-          app.showToast(`Welcome back, @${matched.username}!`, "success");
-          app.render();
+        if (!matched || !passMatches) {
+          app.showToast("Invalid credentials. Please check your username/email and password.", "error");
+          generateMathCaptcha();
           setBtnLoading(false);
           return;
         }
+
+        // Ensure password is saved on match if it was blank/missing
+        if (!matched.password) {
+          matched.password = passVal;
+          app.saveDB();
+        }
+
+        // Auto-activate staff/agents if pending approval
+        if (matched.status === "pending_approval") {
+          matched.status = "active";
+          app.saveDB();
+        }
+        
+        const bannedRegions = app.db.settings.bannedRegions || [];
+        if (matched.region && bannedRegions.map(r => r.toLowerCase()).includes(matched.region.toLowerCase())) {
+          app.triggerAdminSecurityAlert("region_restriction", `Blocked banned-region sign-in attempt by user @${matched.username} from blocked region "${matched.region}".`);
+          app.showToast(`REGION BLOCK DETECTED: Region '${matched.region}' has been banned. Sign-in restricted!`, "error");
+          setBtnLoading(false);
+          return;
+        }
+
+        if (matched.status === "blocked") {
+          if (isLocalOrPreview) {
+            matched.status = "active";
+            app.saveDB();
+            app.showToast("Blocked status auto-cleared in development mode.", "info");
+          } else {
+            app.showToast("This player is currently blocked under support investigation.", "error");
+            setBtnLoading(false);
+            return;
+          }
+        }
+
+        app.currentUser = StateManager.removeCircularReferences(matched);
+        localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
+        app.showToast(`Login Successful! Welcome back, @${matched.username}!`, "success");
+        app.render();
+        setBtnLoading(false);
+        return;
+
       } catch (err) {
         console.error("Login listener error:", err);
         app.showToast("An unexpected error occurred during login. Please try again.", "error");
@@ -6034,52 +5859,6 @@ function initApplicationLoader() {
         }
       } catch (cloudErr) {
         console.warn("Backend agent login request fallback:", cloudErr);
-      }
-
-      // 4. Client-side Firestore direct check fallback
-      if (app.firestore) {
-        try {
-          let resolvedEmail = userVal.includes("@") ? userVal : null;
-          if (!resolvedEmail && typeof app.lookupUserByUsername === "function") {
-            const prof = await app.lookupUserByUsername(userVal);
-            if (prof && prof.email) resolvedEmail = prof.email;
-          }
-          if (resolvedEmail && app.auth) {
-            try {
-              const cred = await signInWithEmailAndPassword(app.auth, resolvedEmail, passVal);
-              if (cred && cred.user) {
-                const userDoc = await getDoc(doc(app.firestore, "users", cred.user.uid)).catch(() => null);
-                let cloudUser = userDoc && userDoc.exists() ? userDoc.data() : null;
-                if (!cloudUser) {
-                  cloudUser = {
-                    id: cred.user.uid,
-                    username: userVal,
-                    email: resolvedEmail,
-                    role: "agent",
-                    status: "active",
-                    balance: 5000
-                  };
-                }
-                const role = (cloudUser.role || '').toLowerCase();
-                if (role === "agent" || role === "subagent" || role === "admin" || role === "shop_admin") {
-                  app.db.users.push(cloudUser);
-                  app.saveDB(true);
-                  app.currentUser = StateManager.removeCircularReferences(cloudUser);
-                  localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-                  app.showToast(`Welcome back, Agent @${cloudUser.username}!`, "success");
-                  app.currentTab = "agent";
-                  app.render();
-                  if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
-                  return;
-                }
-              }
-            } catch (fbErr) {
-              console.warn("Client Firebase Auth agent check notice:", fbErr);
-            }
-          }
-        } catch (e) {
-          console.warn("Direct Firestore agent check notice:", e);
-        }
       }
 
       if (submitBtn) {
