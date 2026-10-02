@@ -2294,14 +2294,15 @@ app.post("/api/sql/sync", async (req, res) => {
               await connection.execute(`DELETE FROM settings`);
               const insertedKeysLower = /* @__PURE__ */ new Set();
               for (const [key, value] of Object.entries(parsedDb.settings)) {
-                const keyLower = key.toLowerCase();
+                const keyClean = key.trim();
+                const keyLower = keyClean.toLowerCase();
                 if (insertedKeysLower.has(keyLower)) {
                   console.log(`[SQL Sync Settings] Skipping duplicate case-insensitive key: ${key}`);
                   continue;
                 }
                 insertedKeysLower.add(keyLower);
                 const valStr = typeof value === "object" ? JSON.stringify(value) : String(value);
-                await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, valStr]);
+                await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
               }
               console.log(`[SQL Sync] Synced settings to SQL.`);
             }
@@ -2660,6 +2661,19 @@ async function performCentralAuth(usernameVal, passwordVal) {
     }
   }
   if (matchedUser) {
+    if (!matchedUser.role || matchedUser.role === "user") {
+      const idLower = (matchedUser.id || "").toLowerCase();
+      const nameLower = (matchedUser.username || "").toLowerCase();
+      if (idLower === "admin" || nameLower === "admin") {
+        matchedUser.role = "admin";
+      } else if (idLower.startsWith("agent_") || idLower.startsWith("u_agent_") || nameLower.includes("agent")) {
+        matchedUser.role = "agent";
+      } else if (idLower.startsWith("u_mod_") || nameLower.includes("mod_") || nameLower.includes("moderator")) {
+        matchedUser.role = "moderator";
+      } else if (idLower.startsWith("u_staff_") || nameLower.includes("staff")) {
+        matchedUser.role = "agent";
+      }
+    }
     if (matchedUser.status === "blocked" || matchedUser.status === "permanently_banned") {
       return { success: false, message: "This account is blocked or under review." };
     }
