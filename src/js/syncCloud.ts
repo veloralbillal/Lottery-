@@ -8,75 +8,27 @@ import { fallbackFirebaseConfig } from "./bundledTabs.js";
 export const SyncCloudModule = {
   async initFirebaseSync() {
     try {
-      console.log("SyncCloudModule: Initializing...");
-      let firebaseConfig = null;
-      try {
-        const configRes = await fetch("firebase-applet-config.json");
-        if (configRes.ok) {
-          firebaseConfig = await configRes.json();
-          console.log("Firebase config loaded from JSON.");
-        } else {
-          throw new Error(`HTTP status ${configRes.status}`);
-        }
-      } catch (fetchErr) {
-        console.warn("Could not fetch firebase-applet-config.json, attempting fallback:", fetchErr);
-        firebaseConfig = fallbackFirebaseConfig;
-      }
-
-      if (!firebaseConfig || !firebaseConfig.apiKey) {
-        console.warn("Firebase config is missing or invalid. Cloud sync will be disabled.");
-        this.setSyncState("offline");
-        return;
-      }
-      this.firebaseConfig = firebaseConfig;
+      console.log("SyncCloudModule: Initializing SQL-only sync engine...");
+      this.firebaseConfig = null;
+      this.firestore = null;
+      this.auth = null;
+      this.storage = null;
+      this.firestoreDocRef = null;
       
-      let app;
-      const apps = getApps();
-      if (apps.length > 0) {
-        app = apps[0];
-        console.log("Using existing Firebase app instance.");
-      } else {
-        app = initializeApp(firebaseConfig);
-        console.log("Initialized new Firebase app instance.");
-      }
-
-      const dbId = firebaseConfig.firestoreDatabaseId || "(default)";
-      try {
-        setLogLevel("silent");
-      } catch (logErr) {
-        console.warn("Could not set Firestore log level:", logErr);
-      }
-      
-      this.firestore = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        useFetchStreams: false
-      }, dbId);
-      this.auth = getAuth(app);
-      this.storage = getStorage(app);
-      this.firestoreDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
-      
-      console.log("Firebase sync engine initialized successfully.");
-      
-      // Start subscribing to live Firestore updates and pull latest cloud state immediately
-      this.listenToCloud();
-      this.initAuthListener();
       this.initRealtimeEventStream();
-      await this.loadFromCloud().catch(err => console.warn("Initial cloud load failed:", err));
-    } catch (e) {
-      console.error("Failed to initialize Firebase Sync:", e.message || e);
+      this.initNetworkMonitoring();
+      await this.loadFromCloud().catch(err => console.warn("Initial SQL load notice:", err));
+      this.startSqlPolling();
+      
+      console.log("SQL sync engine initialized successfully.");
+    } catch (e: any) {
+      console.error("Failed to initialize SQL Sync:", e.message || e);
       this.setSyncState("error");
     }
   },
 
   initAuthListener() {
-    onAuthStateChanged(this.auth, async (user) => {
-      if (user) {
-        console.log("Firebase Auth: User logged in:", user.email);
-        await this.loadUserProfile(user.uid);
-      } else {
-        console.log("Firebase Auth: No user logged in.");
-      }
-    });
+    // Legacy stub to prevent ReferenceErrors
   },
 
   async loadUserProfile(uid) {
@@ -329,6 +281,23 @@ export const SyncCloudModule = {
     const sqlDbConfig = this.db && this.db.sqlDbConfig ? this.db.sqlDbConfig : parsed.sqlDbConfig;
 
     this.db = parsed;
+    if (this.db && this.db.users) {
+      this.db.users.forEach((u: any) => {
+        if (!u.role || u.role === 'user') {
+          const idLower = (u.id || '').toLowerCase();
+          const nameLower = (u.username || '').toLowerCase();
+          if (idLower === 'admin' || nameLower === 'admin') {
+            u.role = 'admin';
+          } else if (idLower.startsWith('agent_') || idLower.startsWith('u_agent_') || nameLower.includes('agent')) {
+            u.role = 'agent';
+          } else if (idLower.startsWith('u_mod_') || nameLower.includes('mod_') || nameLower.includes('moderator')) {
+            u.role = 'moderator';
+          } else if (idLower.startsWith('u_staff_') || nameLower.includes('staff')) {
+            u.role = 'agent';
+          }
+        }
+      });
+    }
     if (syncNodes) this.db.syncNodes = syncNodes;
     if (sqlDbConfig) this.db.sqlDbConfig = sqlDbConfig;
   },
@@ -420,117 +389,20 @@ export const SyncCloudModule = {
       return;
     }
 
-    // Fetch the globally active database from server-side source of truth
-    let serverActiveDb = 'mysql';
-    try {
-      const activeDbRes = await fetch("/api/system/active-database");
-      if (activeDbRes.ok) {
-        const activeDbData = await activeDbRes.json();
-        if (activeDbData.success && activeDbData.active_database) {
-          serverActiveDb = activeDbData.active_database.toLowerCase();
-          console.log("[loadFromCloud] Central active database configured as:", serverActiveDb);
-        }
-      }
-    } catch (err) {
-      console.warn("[loadFromCloud] Could not determine global server active database, using default:", err);
-    }
-
-    // Set syncNodes active state to align with the server-side source of truth
-    if (this.db) {
-      if (!this.db.syncNodes) {
-        this.db.syncNodes = [
-          { id: "node-1", name: "Primary Database (Cluster 1)", active: true, type: "firebase", status: "connected" },
-          { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: false, type: "sql", status: "connected" }
-        ];
-      }
-      this.db.syncNodes?.forEach((n: any) => {
-        if (serverActiveDb === 'mysql') {
-          n.active = (n.id === "node-sql");
-        } else {
-          n.active = (n.id === "node-1" || n.id === "node-firebase");
-        }
-      });
-    }
-
-    // Resolve what the live active node is
-    let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
-    if (!activeNode && this.db && this.db.syncNodes && this.db.syncNodes.length > 0) {
-      activeNode = this.db.syncNodes[0];
-    }
-
-    // 🐬 SQL DIRECT LOAD: If the active database engine is SQL, fetch and synchronize state from MySQL server instead of Firestore
-    if (activeNode && activeNode.id === "node-sql") {
-      this.setSyncState("loading");
-      try {
-        const sqlRes = await fetch("/api/sql/db");
-        if (sqlRes.ok) {
-          const sqlData = await sqlRes.json();
-          if (sqlData.success && sqlData.db) {
-            this.mergeParsedDb(sqlData.db);
-
-            if (this.currentUser) {
-              const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
-              if (freshUser) {
-                this.currentUser = removeCircularReferences(freshUser);
-                localStorage.setItem(this.sessionKey, safeStringify(freshUser));
-              }
-            }
-            localStorage.setItem(this.dbKey, safeStringify(this.db));
-            localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
-            this.render();
-            this.startSqlPolling();
-            this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
-            this.setSyncState("synced");
-            return;
-          }
-        }
-      } catch (sqlErr: any) {
-        console.warn("SQL database load notice (falling back to Firestore):", sqlErr?.message || sqlErr);
-        this.addConsoleLog("[SQL DB LOAD] External SQL unreachable. Operating on Firestore / offline cloud fallback mode.", "warning");
-      }
-    }
-
-    if (!this.firestore) {
-      this.setSyncState("offline");
-      return;
-    }
-
-    const isSecondary = activeNode && (activeNode.id === "node-2" || activeNode.name?.includes("Backup") || activeNode.name?.includes("Secondary"));
-    const primaryPath = isSecondary ? "lottery_winner_db_backup" : "lottery_winner_db";
-    const fallbackPath = isSecondary ? "lottery_winner_db" : "lottery_winner_db_backup";
-
     this.setSyncState("loading");
     try {
-      const primaryDocRef = doc(this.firestore, "app_data", primaryPath);
-      const fallbackDocRef = doc(this.firestore, "app_data", fallbackPath);
+      console.log("[loadFromCloud] Initiating load from MySQL database...");
+      const sqlRes = await fetch("/api/sql/db");
+      if (sqlRes.ok) {
+        const sqlData = await sqlRes.json();
+        if (sqlData.success && sqlData.db) {
+          this.mergeParsedDb(sqlData.db);
 
-      let docSnap: any = null;
-      try {
-        const docSnapPromise = getDoc(primaryDocRef);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2500));
-        docSnap = await Promise.race([docSnapPromise, timeoutPromise]);
-      } catch (err) {
-        console.warn(`Primary doc read failed (${primaryPath}), trying fallback (${fallbackPath}):`, err);
-      }
+          // Guarantee we have a syncNodes entry for MySQL
+          this.db.syncNodes = [
+            { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
+          ];
 
-      if (!docSnap || !docSnap.exists || !docSnap.exists()) {
-        try {
-          const fbPromise = getDoc(fallbackDocRef);
-          const fbTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2500));
-          docSnap = await Promise.race([fbPromise, fbTimeout]);
-        } catch (fbErr) {
-          console.warn("Fallback doc read also failed:", fbErr);
-        }
-      }
-
-      if (docSnap && docSnap.exists && docSnap.exists()) {
-        const cloudData = docSnap.data().db;
-        if (cloudData) {
-          let parsed = typeof cloudData === "string" ? JSON.parse(cloudData) : cloudData;
-          if (parsed) {
-            parsed = removeCircularReferences(parsed);
-          }
-          this.mergeParsedDb(parsed);
           if (this.currentUser) {
             const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
             if (freshUser) {
@@ -541,23 +413,17 @@ export const SyncCloudModule = {
           localStorage.setItem(this.dbKey, safeStringify(this.db));
           localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
           this.render();
-          console.log(`Database successfully synced with Firebase cloud (Loaded from ${primaryPath}).`);
-          this.addConsoleLog(`[DUAL REPLICATION] Aligned live state from active cluster (${primaryPath}).`, "success");
+          this.startSqlPolling();
+          this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
           this.setSyncState("synced");
+          return;
         }
-      } else {
-        await this.syncToCloud();
-        console.log("Initialized cloud database documents in Firebase Firestore.");
-        this.setSyncState("synced");
       }
-    } catch (e: any) {
-      if (e && (e.code === "unavailable" || e.message?.includes("offline") || e.message?.includes("reach") || e.message?.includes("Timeout") || e.message?.includes("network"))) {
-        this.addConsoleLog("[REPLICATION] Firestore cluster is currently unreachable. Switched to offline-local mode successfully.", "success");
-        this.setSyncState("offline");
-      } else {
-        this.addConsoleLog(`[REPLICATION] Cloud document fetch warning: ${e.message || e}`, "warning");
-        this.setSyncState("error");
-      }
+      throw new Error(`HTTP ${sqlRes.status}`);
+    } catch (sqlErr: any) {
+      console.warn("SQL database load notice (using offline local DB):", sqlErr?.message || sqlErr);
+      this.addConsoleLog("[SQL DB LOAD] External SQL unreachable. Operating on offline local storage mode.", "warning");
+      this.setSyncState("offline");
     }
   },
 
@@ -575,118 +441,70 @@ export const SyncCloudModule = {
     }
 
     if (!navigator.onLine) {
-      this.addConsoleLog("[REPLICATION] Offline. Dual-sync changes queued in local cache & backup store.", "warning");
+      this.addConsoleLog("[REPLICATION] Offline. Sync changes queued in local cache & backup store.", "warning");
       this.setSyncState("offline");
       return;
-    }
-
-    // Resolve what the live active node is
-    let activeNode = this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
-    if (!activeNode && this.db.syncNodes && this.db.syncNodes.length > 0) {
-      activeNode = this.db.syncNodes[0];
-      if (activeNode) activeNode.active = true;
-    }
-
-    if (!activeNode) {
-      activeNode = { type: "firebase", name: "Primary Database (Cluster 1)" };
     }
 
     this.setSyncState("syncing");
 
     try {
-      if (this.firestore) {
-        const dbSerialized = safeStringify(this.db);
-        const payload = {
-          db: dbSerialized,
-          updatedAt: new Date().toISOString(),
-          activeNodeId: activeNode.id || "node-1",
-          activeNodeName: activeNode.name || "Primary Database",
-          dualSynced: true
-        };
+      const dbSerialized = safeStringify(this.db);
+      const sqlConfig = this.db.sqlDbConfig || {
+        host: 'https://api.veloralbillal.top/db_bridge.php',
+        port: '3306',
+        database: 'veloralb_Digital',
+        username: 'veloralb_Digital',
+        password: 'UcWg.75@wv+Ijzh#',
+        activeEngine: 'mysql',
+        autoSync: true
+      };
+      
+      sqlConfig.activeEngine = 'mysql';
+      sqlConfig.autoSync = true;
+      sqlConfig.lastSyncTime = new Date().toISOString();
+      sqlConfig.syncStatus = "synced";
+      this.db.sqlDbConfig = sqlConfig;
 
-        // DUAL DATABASE WRITING: Synchronize to BOTH Database 1 and Database 2 in Firestore!
-        const primaryDocRef = doc(this.firestore, "app_data", "lottery_winner_db");
-        const secondaryDocRef = doc(this.firestore, "app_data", "lottery_winner_db_backup");
+      // Guarantee we have a syncNodes entry for MySQL
+      this.db.syncNodes = [
+        { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
+      ];
 
-        const primaryPromise = setDoc(primaryDocRef, payload, { merge: true });
-        const secondaryPromise = setDoc(secondaryDocRef, payload, { merge: true });
-
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3500));
-        await Promise.race([
-          Promise.allSettled([primaryPromise, secondaryPromise]),
-          timeoutPromise
-        ]);
-
-        this.addConsoleLog(`[DUAL SYNC ACTIVE] Automatically committed write transaction to BOTH Database 1 (Primary) & Database 2 (Backup Replica)! Zero data loss on switch.`, "success");
-
-        // DUAL DATABASE WRITING TO SQL DB (veloralb_Digital)
-        const isSqlActive = activeNode && activeNode.id === "node-sql";
-        const sqlConfig = this.db.sqlDbConfig || {
-          host: 'https://api.veloralbillal.top/db_bridge.php',
-          port: '3306',
-          database: 'veloralb_Digital',
-          username: 'veloralb_Digital',
-          password: 'UcWg.75@wv+Ijzh#',
-          activeEngine: isSqlActive ? 'mysql' : 'firebase',
-          autoSync: true
-        };
-
-        if (isSqlActive || (sqlConfig && sqlConfig.autoSync !== false)) {
-          sqlConfig.lastSyncTime = new Date().toISOString();
-          sqlConfig.syncStatus = "synced";
-          if (!this.db.sqlDbConfig) this.db.sqlDbConfig = sqlConfig;
-          
-          // Replicate payload to server-side SQL sync endpoint
-          try {
-            const response = await fetch("/api/sql/sync", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ 
-                db: dbSerialized, 
-                config: { ...sqlConfig, activeEngine: isSqlActive ? "mysql" : "firebase" } 
-              })
-            });
-            
-            if (response.ok) {
-              const resData = await response.json();
-              if (resData.success) {
-                const sqlNode = (this.db.syncNodes || []).find((n: any) => n.id === "node-sql");
-                if (sqlNode) {
-                  sqlNode.lastSync = new Date().toLocaleTimeString();
-                  sqlNode.status = "connected";
-                }
-                this.addConsoleLog(`[DUAL SYNC ACTIVE] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) & Google Firebase aligned. 100% data mirrored!`, "success");
-              } else {
-                throw new Error(resData.error || "Server rejected SQL sync");
-              }
-            } else {
-              throw new Error(`HTTP ${response.status}`);
-            }
-          } catch (netErr: any) {
-            this.addConsoleLog(`[DUAL SYNC ERROR] SQL Mirroring failed: ${netErr.message || netErr}`, "error");
-            const sqlNode = (this.db.syncNodes || []).find((n: any) => n.id === "node-sql");
-            if (sqlNode && !sqlNode.name?.includes("Simulated")) {
-              sqlNode.status = "error";
-            }
+      // Replicate payload to server-side SQL sync endpoint
+      try {
+        const response = await fetch("/api/sql/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            db: dbSerialized, 
+            config: sqlConfig 
+          })
+        });
+        
+        if (response.ok) {
+          const resData = await response.json();
+          if (resData.success) {
+            this.addConsoleLog(`[SYNC] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) synced successfully. 100% data synced!`, "success");
+            this.setSyncState("synced");
+          } else {
+            throw new Error(resData.error || "Server rejected SQL sync");
           }
+        } else {
+          throw new Error(`HTTP ${response.status}`);
         }
+      } catch (netErr: any) {
+        this.addConsoleLog(`[SYNC ERROR] SQL Mirroring failed: ${netErr.message || netErr}`, "error");
+        this.setSyncState("error");
       }
 
-      this.setSyncState("synced");
-      
       // Update our new HA cluster UI stats if we're on the Failover Vault tab
       if (this.currentAdminTab === "sync-vault") {
         this.renderSyncVaultTab();
       }
     } catch (e: any) {
-      const isOffline = e && (e.code === "unavailable" || e.message?.includes("offline") || e.message?.includes("reach") || e.message?.includes("Timeout") || e.message?.includes("network"));
-      if (isOffline) {
-        this.addConsoleLog(`[DUAL SYNC OFFLINE] Network notice: ${e.message || e}. Changes secured in local dual-cache.`, "warning");
-        this.setSyncState("offline");
-      } else {
-        this.addConsoleLog(`[DUAL SYNC WARNING] Write replication notice: ${e.message || e}`, "warning");
-        this.setSyncState("error");
-      }
+      this.addConsoleLog(`[SYNC WARNING] Sync notice: ${e.message || e}`, "warning");
+      this.setSyncState("error");
     }
   },
 
