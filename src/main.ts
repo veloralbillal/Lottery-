@@ -229,6 +229,23 @@ export class StateManager {
     // 🛡️ CRITICAL: Guarantee ALL collections exist to prevent crashes in render()
     if (!this.db) this.db = getDefaultDB();
     if (!this.db.users) this.db.users = [];
+    
+    // Autocorrect / Self-heal missing or default roles of staff and agents
+    this.db.users.forEach((u: any) => {
+      if (!u.role || u.role === 'user') {
+        const idLower = (u.id || '').toLowerCase();
+        const nameLower = (u.username || '').toLowerCase();
+        if (idLower === 'admin' || nameLower === 'admin') {
+          u.role = 'admin';
+        } else if (idLower.startsWith('agent_') || idLower.startsWith('u_agent_') || nameLower.includes('agent')) {
+          u.role = 'agent';
+        } else if (idLower.startsWith('u_mod_') || nameLower.includes('mod_') || nameLower.includes('moderator')) {
+          u.role = 'moderator';
+        } else if (idLower.startsWith('u_staff_') || nameLower.includes('staff')) {
+          u.role = 'agent';
+        }
+      }
+    });
     if (!this.db.lotteries) this.db.lotteries = [];
     if (!this.db.tickets) this.db.tickets = [];
     if (!this.db.deposits) this.db.deposits = [];

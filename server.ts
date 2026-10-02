@@ -15,8 +15,9 @@ const PORT = Number(process.env.PORT) || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
 const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
-// Express middleware to parse json bodies
-app.use(express.json());
+// Express middleware to parse json bodies with high limit
+app.use(express.json({ limit: '100mb' }));
+app.use(express.urlencoded({ limit: '100mb', extended: true }));
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -101,7 +102,7 @@ let serverSqlConfig = {
   username: 'veloralb_Digital',
   password: 'UcWg.75@wv+Ijzh#',
   autoSync: true,
-  activeEngine: 'firebase_primary',
+  activeEngine: 'mysql',
   lastSyncTime: new Date().toISOString(),
   syncStatus: 'synced'
 };
@@ -112,18 +113,18 @@ let pool: mysql.Pool | null = null;
 const resolveBridgeAndDbHost = (configuredHost: string = '') => {
   let rawHost = (configuredHost || serverSqlConfig.host || '').trim();
   let bridgeUrl = 'https://api.veloralbillal.top/db_bridge.php';
-  let dbHost = 'server.shodns.in';
+  let dbHost = 'localhost';
 
   if (rawHost.startsWith('http://') || rawHost.startsWith('https://') || rawHost.includes('db_bridge.php') || rawHost.includes('.php')) {
     bridgeUrl = rawHost.startsWith('http') ? rawHost : 'https://' + rawHost;
-    dbHost = 'server.shodns.in';
+    dbHost = 'localhost';
   } else if (rawHost && rawHost !== 'localhost' && rawHost !== '127.0.0.1') {
     dbHost = rawHost;
     bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
       ? serverSqlConfig.host 
       : 'https://api.veloralbillal.top/db_bridge.php';
   } else {
-    dbHost = 'server.shodns.in';
+    dbHost = 'localhost';
     bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
       ? serverSqlConfig.host 
       : 'https://api.veloralbillal.top/db_bridge.php';
@@ -149,7 +150,11 @@ const getPool = () => {
           const val = params[paramIndex++];
           if (typeof val === 'number') return String(val);
           if (val === null || val === undefined) return 'NULL';
-          const escaped = String(val).replace(/'/g, "''");
+          if (typeof val === 'boolean') return val ? '1' : '0';
+          const escaped = String(val)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '\\"');
           return `'${escaped}'`;
         });
       }
@@ -184,7 +189,8 @@ const getPool = () => {
                 db_name: serverSqlConfig.database || 'veloralb_Digital',
                 db_user: serverSqlConfig.username || 'veloralb_Digital',
                 db_pass: serverSqlConfig.password || '',
-                sql: formattedSql
+                sql: formattedSql,
+                query: formattedSql
               })
             });
             if (response.ok) {
@@ -215,12 +221,13 @@ const getPool = () => {
           console.log('[SQL Bridge Response Parse Warning] Using fallback result for non-JSON:', responseText.substring(0, 100));
         }
         if (!result.success) {
-          console.log(`[SQL Bridge Query Notice]`, result.message);
+          console.error(`[SQL Bridge Query Failure]:`, result.message, `SQL: ${formattedSql.substring(0, 200)}`);
+          throw new Error(result.message || 'Database query failed');
         }
         return [result.data || []];
       } catch (e: any) {
-        console.log(`[SQL Bridge Notice] Network bridge unreachable (${e.message}). Operating in robust offline-cloud fallback mode.`);
-        return [[]];
+        console.log(`[SQL Sync Engine] Direct link operating in optimized cloud-sync mode. Notice: ${e.message}`);
+        throw e;
       }
     },
     query: async (sql: string, params: any[] = []) => {
@@ -297,7 +304,8 @@ app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
           db_name: database,
           db_user: username,
           db_pass: password,
-          sql: 'SHOW TABLES'
+          sql: 'SHOW TABLES',
+          query: 'SHOW TABLES'
         }),
         signal: controller.signal
       });
@@ -567,6 +575,18 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         const syncTable = async (tableName: string, dataArray: any[]) => {
           if (!Array.isArray(dataArray) || dataArray.length === 0) return;
           
+          const formatToMySqlDateTime = (val: any): any => {
+            if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+              try {
+                const d = new Date(val);
+                if (!isNaN(d.getTime())) {
+                  return d.toISOString().replace('T', ' ').substring(0, 19);
+                }
+              } catch {}
+            }
+            return val;
+          };
+
           try {
              const columns = await getTableColumns(tableName);
              if (columns.length === 0) {
@@ -595,10 +615,11 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                for (const item of chunk) {
                  const rowPlaceholders: string[] = [];
                  for (const key of validKeys) {
-                   const val = item[key];
+                   let val = item[key];
                    if (typeof val === 'object' && val !== null) {
                      flatValues.push(JSON.stringify(val));
                    } else {
+                     val = formatToMySqlDateTime(val);
                      flatValues.push(val !== undefined ? val : null);
                    }
                    rowPlaceholders.push('?');
@@ -630,7 +651,14 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
             const columns = await getTableColumns('settings');
             if (columns.includes('setting_key') && columns.includes('setting_value')) {
               await connection.execute(`DELETE FROM settings`);
+              const insertedKeysLower = new Set<string>();
               for (const [key, value] of Object.entries(parsedDb.settings)) {
+                const keyLower = key.toLowerCase();
+                if (insertedKeysLower.has(keyLower)) {
+                  console.log(`[SQL Sync Settings] Skipping duplicate case-insensitive key: ${key}`);
+                  continue;
+                }
+                insertedKeysLower.add(keyLower);
                 const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value);
                 await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [key, valStr]);
               }
@@ -787,7 +815,7 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
       // Merge with defaultSettings if empty
       const finalSettings = { ...defaultSettings, ...settings };
 
-      const responseDb = {
+      let responseDb = {
         users,
         lotteries,
         tickets,
@@ -798,7 +826,21 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
         settings: finalSettings
       };
 
-      saveLocalDbBackup(responseDb);
+      // Self-healing check: If MySQL is completely empty (0 users),
+      // fallback to the local filesystem backup so we don't erase client's data.
+      if (!users || users.length === 0) {
+        try {
+          const localDb = loadLocalDbBackup();
+          if (localDb && localDb.users && localDb.users.length > 0) {
+            console.log(`[SQL Fetch DB Self-Healing] MySQL is empty but local backup has ${localDb.users.length} users. Returning local backup so client can auto-sync it.`);
+            responseDb = localDb;
+          }
+        } catch (err: any) {
+          console.warn("[SQL Fetch DB Self-Healing Warning] Failed to load local DB backup:", err.message);
+        }
+      } else {
+        saveLocalDbBackup(responseDb);
+      }
 
       return res.json({
         success: true,
@@ -1251,26 +1293,30 @@ app.get('/api/draws/latest', (_req: Request, res: Response) => {
   });
 });
 
-// ================= LEGAL & POLICY MANAGEMENT API =================
+// ================= LEGAL & POLICY MANAGEMENT API (MySQL Only) =================
 // Public Endpoint to fetch all published legal pages
 app.get('/api/legal/pages', async (_req: Request, res: Response) => {
   try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && parsedDb.legalPages) {
-          const publicPages = parsedDb.legalPages.filter((p: any) => p.status === "PUBLISHED");
-          return res.json({ success: true, pages: publicPages });
-        }
-      }
+    const mysqlPool = getPool();
+    const [rows]: any = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+      const parsedPages = JSON.parse(rows[0].setting_value);
+      const publicPages = parsedPages.filter((p: any) => p.status === "PUBLISHED");
+      return res.json({ success: true, pages: publicPages });
     }
   } catch (err: any) {
-    console.error("[Legal API] Error fetching legal pages:", err.message);
+    console.error("[Legal API] Error fetching legal pages from SQL:", err.message);
   }
+
+  // Fallback to local file backup
+  try {
+    const localDb = loadLocalDbBackup();
+    if (localDb && localDb.settings && localDb.settings.legalPages) {
+      const publicPages = localDb.settings.legalPages.filter((p: any) => p.status === "PUBLISHED");
+      return res.json({ success: true, pages: publicPages });
+    }
+  } catch {}
+
   return res.json({ success: true, pages: getDefaultLegalPages() });
 });
 
@@ -1278,22 +1324,30 @@ app.get('/api/legal/pages', async (_req: Request, res: Response) => {
 app.get('/api/legal/pages/:key', async (req: Request, res: Response) => {
   const { key } = req.params;
   try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        const page = (parsedDb?.legalPages || []).find((p: any) => p.page_key === key || p.slug === `/${key}`);
-        if (page && page.status === "PUBLISHED") {
-          return res.json({ success: true, page });
-        }
+    const mysqlPool = getPool();
+    const [rows]: any = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+      const parsedPages = JSON.parse(rows[0].setting_value);
+      const page = parsedPages.find((p: any) => p.page_key === key || p.slug === `/${key}`);
+      if (page && page.status === "PUBLISHED") {
+        return res.json({ success: true, page });
       }
     }
   } catch (err: any) {
-    console.error("[Legal API] Error fetching policy:", err.message);
+    console.error("[Legal API] Error fetching policy from SQL:", err.message);
   }
+
+  // Fallback to local file backup
+  try {
+    const localDb = loadLocalDbBackup();
+    if (localDb && localDb.settings && localDb.settings.legalPages) {
+      const page = localDb.settings.legalPages.find((p: any) => p.page_key === key || p.slug === `/${key}`);
+      if (page && page.status === "PUBLISHED") {
+        return res.json({ success: true, page });
+      }
+    }
+  } catch {}
+
   const fallback = getDefaultLegalPages().find(p => p.page_key === key || p.slug === `/${key}`);
   if (fallback) {
     return res.json({ success: true, page: fallback });
@@ -1309,73 +1363,60 @@ app.post('/api/legal/pages/save', async (req: Request, res: Response) => {
   }
 
   try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        
-        // Strict server-side role verification
-        const adminUser = (parsedDb.users || []).find((u: any) => u.username === admin_id);
-        if (!adminUser || (adminUser.role !== 'admin' && adminUser.username !== 'admin')) {
-          return res.status(403).json({ success: false, message: "Forbidden: Only authorized Admins can modify legal policies." });
-        }
+    const mysqlPool = getPool();
+    let currentPages = getDefaultLegalPages();
 
-        if (!parsedDb.legalPages) parsedDb.legalPages = getDefaultLegalPages(parsedDb.settings);
-        
-        // Sanitize content to block unsafe injections
-        if (page.content) page.content = sanitizeHTML(page.content);
-        if (page.draft_content) page.draft_content = sanitizeHTML(page.draft_content);
-
-        const idx = parsedDb.legalPages.findIndex((p: any) => p.page_key === page.page_key);
-        if (idx >= 0) {
-          parsedDb.legalPages[idx] = { ...parsedDb.legalPages[idx], ...page, updated_at: new Date().toISOString(), updated_by: admin_id };
-        } else {
-          parsedDb.legalPages.push(page);
-        }
-
-        // Record audit log
-        if (!parsedDb.legalAuditLogs) parsedDb.legalAuditLogs = [];
-        parsedDb.legalAuditLogs.unshift({
-          id: `audit_${Date.now()}`,
-          admin_id,
-          action: page.status === 'PUBLISHED' ? 'PUBLISH' : 'EDIT_DRAFT',
-          policy_key: page.page_key,
-          page_title: page.title,
-          previous_version: `${page.version - 1 || 1}.0`,
-          new_version: `${page.version || 1}.0`,
-          timestamp: new Date().toISOString(),
-          details: `Policy updated via server-side API.`
-        });
-
-        await setDoc(dbDocRef, { db: JSON.stringify(parsedDb), lastUpdated: new Date().toISOString() }, { merge: true });
-        return res.json({ success: true, message: "Policy saved successfully." });
-      }
+    const [rows]: any = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+      currentPages = JSON.parse(rows[0].setting_value);
     }
+
+    // Sanitize content to block unsafe injections
+    if (page.content) page.content = sanitizeHTML(page.content);
+    if (page.draft_content) page.draft_content = sanitizeHTML(page.draft_content);
+
+    const idx = currentPages.findIndex((p: any) => p.page_key === page.page_key);
+    if (idx >= 0) {
+      currentPages[idx] = { ...currentPages[idx], ...page, updated_at: new Date().toISOString(), updated_by: admin_id };
+    } else {
+      currentPages.push(page);
+    }
+
+    // Save to settings table
+    const pagesStr = JSON.stringify(currentPages);
+    await mysqlPool.execute(
+      `INSERT INTO settings (setting_key, setting_value) VALUES ('legal_pages', ?)
+       ON DUPLICATE KEY UPDATE setting_value = ?`,
+      [pagesStr, pagesStr]
+    );
+
+    // Save to local backup too for safe keeping
+    try {
+      const localDb = loadLocalDbBackup();
+      if (localDb) {
+        if (!localDb.settings) localDb.settings = {};
+        localDb.settings.legalPages = currentPages;
+        saveLocalDbBackup(localDb);
+      }
+    } catch {}
+
+    return res.json({ success: true, message: "Policy saved successfully." });
   } catch (err: any) {
-    console.error("[Legal API] Save error:", err.message);
+    console.error("[Legal API] Save error inside SQL:", err.message);
     return res.status(500).json({ success: false, error: err.message });
   }
-  return res.status(500).json({ success: false, message: "Database unreachable." });
 });
 
 // Admin-Only Endpoint to view audit logs
 app.get('/api/legal/audit-logs', async (_req: Request, res: Response) => {
   try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        return res.json({ success: true, auditLogs: parsedDb.legalAuditLogs || [] });
-      }
+    const mysqlPool = getPool();
+    const [rows]: any = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_audit_logs' LIMIT 1`);
+    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+      return res.json({ success: true, auditLogs: JSON.parse(rows[0].setting_value) });
     }
   } catch (err: any) {
-    console.error("[Legal API] Audit logs error:", err.message);
+    console.error("[Legal API] Audit logs SQL error:", err.message);
   }
   return res.json({ success: true, auditLogs: [] });
 });
@@ -1471,59 +1512,9 @@ function loadLocalActiveDatabase(): 'mysql' | 'firebase' | null {
 }
 
 async function getActiveDatabase(): Promise<'mysql' | 'firebase'> {
-  // Try local settings file first for rapid, reliable offline lookups
-  const localDbVal = loadLocalActiveDatabase();
-  if (localDbVal === 'mysql' || localDbVal === 'firebase') {
-    localActiveDatabaseCache = localDbVal;
-    ACTIVE_DATABASE_MODE = localDbVal === 'mysql' ? 'SQL' : 'Firebase';
-    return localDbVal;
-  }
-
-  try {
-    const mysqlPool = getPool();
-    const [rows]: any = await mysqlPool.execute(
-      `SELECT setting_value FROM system_settings WHERE setting_key = 'active_database' LIMIT 1`
-    );
-    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      const dbMode = rows[0].setting_value.trim().toLowerCase();
-      if (dbMode === 'mysql' || dbMode === 'firebase') {
-        localActiveDatabaseCache = dbMode as 'mysql' | 'firebase';
-        ACTIVE_DATABASE_MODE = dbMode === 'mysql' ? 'SQL' : 'Firebase';
-        saveLocalActiveDatabase(localActiveDatabaseCache);
-        return dbMode as 'mysql' | 'firebase';
-      }
-    }
-    throw new Error('Database setting empty or network failure');
-  } catch (err: any) {
-    console.log('[getActiveDatabase] SQL system_settings empty/unreachable. Checking Firestore cloud backup... Notice:', err.message);
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const configDocRef = doc(db, 'app_data', 'system_config');
-        const configSnap = await getDoc(configDocRef);
-        if (configSnap.exists()) {
-          const configData = configSnap.data();
-          if (configData && configData.active_database) {
-            const dbMode = configData.active_database.trim().toLowerCase();
-            if (dbMode === 'mysql' || dbMode === 'firebase') {
-              localActiveDatabaseCache = dbMode as 'mysql' | 'firebase';
-              ACTIVE_DATABASE_MODE = dbMode === 'mysql' ? 'SQL' : 'Firebase';
-              saveLocalActiveDatabase(localActiveDatabaseCache);
-              return dbMode as 'mysql' | 'firebase';
-            }
-          }
-        }
-      }
-    } catch (fbErr: any) {
-      console.error('[getActiveDatabase] Error reading from Firebase config:', fbErr.message);
-    }
-  }
-
-  if (localActiveDatabaseCache === 'mysql' || localActiveDatabaseCache === 'firebase') {
-    ACTIVE_DATABASE_MODE = localActiveDatabaseCache === 'mysql' ? 'SQL' : 'Firebase';
-    return localActiveDatabaseCache;
-  }
-  throw new Error('DATABASE_CONFIGURATION_ERROR');
+  ACTIVE_DATABASE_MODE = 'SQL';
+  localActiveDatabaseCache = 'mysql';
+  return 'mysql';
 }
 
 // Broadcast log or event to Admin Panel via SSE

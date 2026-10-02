@@ -257,10 +257,8 @@ export const OfflineGameModule = {
 
     window.addEventListener("online", () => {
       this.hideOfflineModal();
-      this.showToast("Internet connection restored! Resuming live cloud sync.", "success");
-      if (this.firestoreDocRef) {
-        this.loadFromCloud();
-      }
+      this.showToast("Internet connection restored! Resuming live database sync.", "success");
+      this.loadFromCloud();
     });
 
     // Fluctuating signal indicator
