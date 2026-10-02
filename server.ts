@@ -1,9 +1,9 @@
 import express, { Request, Response } from 'express';
 import path from 'path';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+// Firebase integration removed for pure SQL bridge architecture
 import { handleSendResetEmail } from './src/js/apiEmailSender.js';
 import { handleUddoktaPayCheckout, handleUddoktaPayVerify } from './src/js/apiUddoktaPay.js';
-import { handleZiniPayCheckout, handleZiniPayVerify, handleZiniPayWebhook, getBackendFirestore } from './src/js/apiZiniPay.js';
+import { handleZiniPayCheckout, handleZiniPayVerify, handleZiniPayWebhook } from './src/js/apiZiniPay.js';
 import { getDefaultLegalPages, sanitizeHTML } from './src/js/legalPolicies.js';
 import { getDefaultDB } from './src/js/defaultDB.js';
 import multer from 'multer';
@@ -14,6 +14,9 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
 const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+
+// Serialization Mutex for SQL synchronization
+let isSyncInProgress = false;
 
 // Express middleware to parse json bodies with high limit
 app.use(express.json({ limit: '100mb' }));
@@ -356,6 +359,14 @@ app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
 app.post('/api/sql/sync', async (req: Request, res: Response) => {
   try {
     console.log('[SQL Sync] Inbound synchronization request received.');
+    
+    if (isSyncInProgress) {
+      console.warn('[SQL Sync] Conflict: Synchronization already in progress. Rejecting request.');
+      return res.status(429).json({ success: false, message: 'Synchronization already in progress. Please wait.' });
+    }
+    
+    isSyncInProgress = true;
+    
     const dbPayload = req.body?.db;
     const clientConfig = req.body?.config;
     const timestamp = new Date().toISOString();
@@ -393,23 +404,7 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
       // Save locally first for extreme robustness
       saveLocalDbBackup(parsedDb);
 
-      // 1. Sync to Firestore (Dual write)
-      const db = getBackendFirestore();
-      if (db) {
-        const primaryDocRef = doc(db, 'app_data', 'lottery_winner_db');
-        const secondaryDocRef = doc(db, 'app_data', 'lottery_winner_db_backup');
-        const serialized = typeof dbPayload === 'string' ? dbPayload : JSON.stringify(dbPayload);
-        const updateData = {
-          db: serialized,
-          lastUpdated: timestamp,
-          sqlSynced: true,
-          sqlDbName: serverSqlConfig.database
-        };
-        await Promise.allSettled([
-          setDoc(primaryDocRef, updateData, { merge: true }),
-          setDoc(secondaryDocRef, updateData, { merge: true })
-        ]);
-      }
+      // Sync to MySQL directly (Firestore removed)
 
       // 2. Sync to MySQL
       const mysqlPool = getPool();
@@ -438,7 +433,7 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 password VARCHAR(255) NOT NULL,
                 phone VARCHAR(30) NULL,
                 dob VARCHAR(50) NULL,
-                balance DECIMAL(15, 2) DEFAULT 100.00,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
                 totDeposit DECIMAL(15, 2) DEFAULT 0.00,
                 totWithdraw DECIMAL(15, 2) DEFAULT 0.00,
                 wins INT DEFAULT 0,
@@ -446,15 +441,45 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 profit DECIMAL(15, 2) DEFAULT 0.00,
                 joinDate VARCHAR(50) NULL,
                 status VARCHAR(30) DEFAULT 'active',
-                blockedUntil VARCHAR(100) NULL,
-                role VARCHAR(50) DEFAULT 'user',
-                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
+                role VARCHAR(50) DEFAULT 'user'
+            ) ENGINE=InnoDB;`);
+
+            // Check & Create staff table if missing
+            await connection.execute(`CREATE TABLE IF NOT EXISTS staff (
+                id VARCHAR(50) PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(30) NULL,
+                dob VARCHAR(50) NULL,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
                 earnedCommission DECIMAL(15, 2) DEFAULT 0.00,
+                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
                 totalBookings INT DEFAULT 0,
                 district VARCHAR(100) NULL,
                 region VARCHAR(100) NULL,
-                refersCount INT DEFAULT 0,
-                referredBy VARCHAR(100) NULL
+                joinDate VARCHAR(50) NULL,
+                status VARCHAR(30) DEFAULT 'active',
+                role VARCHAR(50) DEFAULT 'agent'
+            ) ENGINE=InnoDB;`);
+
+            // Check & Create agents table if missing
+            await connection.execute(`CREATE TABLE IF NOT EXISTS agents (
+                id VARCHAR(50) PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                email VARCHAR(150) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                phone VARCHAR(30) NULL,
+                dob VARCHAR(50) NULL,
+                balance DECIMAL(15, 2) DEFAULT 0.00,
+                earnedCommission DECIMAL(15, 2) DEFAULT 0.00,
+                commissionRate DECIMAL(15, 2) DEFAULT 0.00,
+                totalBookings INT DEFAULT 0,
+                district VARCHAR(100) NULL,
+                region VARCHAR(100) NULL,
+                joinDate VARCHAR(50) NULL,
+                status VARCHAR(30) DEFAULT 'active',
+                role VARCHAR(50) DEFAULT 'agent'
             ) ENGINE=InnoDB;`);
 
             // Check & Create lotteries table if missing
@@ -576,13 +601,27 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
           if (!Array.isArray(dataArray) || dataArray.length === 0) return;
           
           const formatToMySqlDateTime = (val: any): any => {
-            if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+            if (val === null || val === undefined || val === '') return null;
+            if (val instanceof Date) {
               try {
-                const d = new Date(val);
-                if (!isNaN(d.getTime())) {
-                  return d.toISOString().replace('T', ' ').substring(0, 19);
-                }
-              } catch {}
+                return val.toISOString().slice(0, 19).replace('T', ' ');
+              } catch { return null; }
+            }
+            if (typeof val === 'string') {
+              const trimmed = val.trim().replace(/^['"]|['"]$/g, '');
+              // Handle ISO strings like 2026-10-01T12:00:00.000Z
+              if (trimmed.includes('T')) {
+                try {
+                  const d = new Date(trimmed);
+                  if (!isNaN(d.getTime())) {
+                    return d.toISOString().slice(0, 19).replace('T', ' ');
+                  }
+                } catch {}
+              }
+              // Handle already formatted YYYY-MM-DD HH:MM:SS or variations
+              if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
+                return trimmed.replace('T', ' ').substring(0, 19);
+              }
             }
             return val;
           };
@@ -616,10 +655,13 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                  const rowPlaceholders: string[] = [];
                  for (const key of validKeys) {
                    let val = item[key];
+                   
+                   // Format datetime/ISO first
+                   val = formatToMySqlDateTime(val);
+                   
                    if (typeof val === 'object' && val !== null) {
                      flatValues.push(JSON.stringify(val));
                    } else {
-                     val = formatToMySqlDateTime(val);
                      flatValues.push(val !== undefined ? val : null);
                    }
                    rowPlaceholders.push('?');
@@ -627,17 +669,21 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                  valueRows.push(`(${rowPlaceholders.join(',')})`);
                }
 
-               const sql = `INSERT INTO ${tableName} (${validKeys.join(',')}) VALUES ${valueRows.join(',')}`;
+               const sql = `REPLACE INTO ${tableName} (${validKeys.join(',')}) VALUES ${valueRows.join(',')}`;
                await connection.execute(sql, flatValues);
              }
              
              console.log(`[SQL Sync] Bulk-synced ${dataArray.length} rows to ${tableName}`);
           } catch (tblErr: any) {
-            console.warn(`[SQL Sync Warning] Failed to bulk-sync table ${tableName}:`, tblErr.message);
+             console.warn(`[SQL Sync Warning] Failed to bulk-sync table ${tableName}:`, tblErr.message);
           }
         };
 
         if (parsedDb.users) await syncTable('users', parsedDb.users);
+        if (parsedDb.staff) await syncTable('staff', parsedDb.staff);
+        if (parsedDb.agents) await syncTable('agents', parsedDb.agents);
+        else if (parsedDb.staff) await syncTable('agents', parsedDb.staff);
+        else if (parsedDb.users) await syncTable('agents', parsedDb.users.filter(u => u.role === 'agent' || u.role === 'subagent'));
         if (parsedDb.lotteries) await syncTable('lotteries', parsedDb.lotteries);
         if (parsedDb.tickets) await syncTable('tickets', parsedDb.tickets);
         if (parsedDb.deposits) await syncTable('deposits', parsedDb.deposits);
@@ -650,20 +696,36 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
           try {
             const columns = await getTableColumns('settings');
             if (columns.includes('setting_key') && columns.includes('setting_value')) {
-              await connection.execute(`DELETE FROM settings`);
               const insertedKeysLower = new Set<string>();
               for (const [key, value] of Object.entries(parsedDb.settings)) {
                 const keyClean = key.trim();
+                if (!keyClean) continue;
+                
                 const keyLower = keyClean.toLowerCase();
                 if (insertedKeysLower.has(keyLower)) {
-                  console.log(`[SQL Sync Settings] Skipping duplicate case-insensitive key: ${key}`);
                   continue;
                 }
                 insertedKeysLower.add(keyLower);
+                
                 const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value);
-                await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
+                try {
+                  // Use REPLACE INTO to prevent Primary Key errors
+                  await connection.execute(
+                    `REPLACE INTO settings (setting_key, setting_value) VALUES (?, ?)`, 
+                    [keyClean, valStr]
+                  );
+                } catch (rowErr: any) {
+                  console.error(`[SQL Sync Settings Error] Failed for key: ${keyClean}`, rowErr.message);
+                  // If REPLACE INTO fails with duplicate, try DELETE then INSERT as a last resort
+                  try {
+                    await connection.execute(`DELETE FROM settings WHERE setting_key = ?`, [keyClean]);
+                    await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
+                  } catch (lastResortErr: any) {
+                     console.error(`[SQL Sync Settings Critical] Last resort failed for ${keyClean}`, lastResortErr.message);
+                  }
+                }
               }
-              console.log(`[SQL Sync] Synced settings to SQL.`);
+              console.log(`[SQL Sync] Synced settings to SQL (Upsert mode).`);
             }
           } catch (setErr: any) {
             console.warn(`[SQL Sync Warning] Failed to sync settings:`, setErr.message);
@@ -671,6 +733,13 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         }
 
         await connection.commit();
+        return res.json({ 
+          success: true, 
+          timestamp,
+          syncStatus: 'synced',
+          database: serverSqlConfig.database,
+          message: 'Synchronization complete to MySQL.' 
+        });
       } catch (sqlErr: any) {
         await connection.rollback();
         console.error('[SQL Sync Transaction Failed]', sqlErr.message);
@@ -679,36 +748,11 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         connection.release();
       }
     }
-
-    console.log(`[SQL Dual-Sync] Synchronization complete between Firebase and MySQL (${serverSqlConfig.database}).`);
-    return res.json({
-      success: true,
-      timestamp,
-      syncStatus: 'synced',
-      database: serverSqlConfig.database,
-      message: `Dual-Sync completed! Firebase Clusters and MySQL Database "${serverSqlConfig.database}" are 100% mirrored.`
-    });
   } catch (err: any) {
-    const errMsg = (err.message || '').toUpperCase();
-    const errCode = (err.code || '').toUpperCase();
-    const isLocal = serverSqlConfig.host === 'localhost' || serverSqlConfig.host === '127.0.0.1' || serverSqlConfig.host === '::1';
-    const isConnRefused = errCode.includes('CONNREFUSED') || errCode.includes('TIMEDOUT') || 
-                          errMsg.includes('ECONNREFUSED') || errMsg.includes('ETIMEDOUT') || 
-                          errMsg.includes('REFUSED') || errMsg.includes('TIMEOUT');
-
-    if (isConnRefused && isLocal) {
-      console.log(`[SQL Dual-Sync] Localhost MySQL is unreachable (Cloud Run Sandbox). MySQL sync bypassed; Firestore dual-write successfully completed.`);
-      return res.json({
-        success: true,
-        timestamp: new Date().toISOString(),
-        syncStatus: 'synced',
-        database: serverSqlConfig.database,
-        message: `Dual-Sync completed! Firestore is 100% synchronized. ⚠️ WARNING: MySQL 'localhost' connection was bypassed/simulated because it is unreachable from the cloud server. Please use a REMOTE host for real SQL activity.`
-      });
-    }
-
-    console.error('[SQL Dual-Sync Error] Real connection failure:', err.message);
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[SQL Sync Error]', err.message);
+    return res.status(500).json({ success: false, message: err.message });
+  } finally {
+    isSyncInProgress = false;
   }
 });
 
@@ -744,30 +788,10 @@ const handleGetSettings = async (req: Request, res: Response) => {
         return res.json({ ...defaultSettings, ...settings });
       }
     } catch (sqlErr: any) {
-      const errMsg = (sqlErr.message || '').toUpperCase();
-      if (!errMsg.includes('ECONNREFUSED')) {
-        console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL, falling back to Firestore:", sqlErr.message);
-      }
+      console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL:", sqlErr.message);
     }
   }
 
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && parsedDb.settings) {
-          // Return the live settings from Firestore
-          return res.json(parsedDb.settings);
-        }
-      }
-    }
-  } catch (err: any) {
-    console.error("[Server Settings Sync] Error reading Firestore settings:", err.message);
-  }
   return res.json(defaultSettings);
 };
 
@@ -790,6 +814,8 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
       };
 
       const users = await fetchTable('users');
+      const staff = await fetchTable('staff');
+      const agents = await fetchTable('agents');
       const lotteries = await fetchTable('lotteries');
       const tickets = await fetchTable('tickets');
       const deposits = await fetchTable('deposits');
@@ -818,6 +844,8 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
 
       let responseDb = {
         users,
+        staff,
+        agents,
         lotteries,
         tickets,
         deposits,
@@ -853,38 +881,7 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
   } catch (err: any) {
     console.warn('[SQL Fetch DB Connection Notice]:', err.message);
     
-    // Fallback 1: Firestore
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = doc(db, "app_data", "lottery_winner_db");
-        const dbSnap = await getDoc(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === "string" ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb) {
-            console.log('[SQL Fetch DB Fallback] Successfully served via Firestore.');
-            saveLocalDbBackup(parsedDb);
-            return res.json({ success: true, db: parsedDb, notice: "MySQL unreachable; served via Firestore fallback." });
-          }
-        }
-      }
-    } catch (fbErr: any) {
-      console.warn('[SQL Fetch DB Firestore Fallback Notice]:', fbErr.message);
-    }
-
-    // Fallback 2: Server Local Disk
-    try {
-      const localDb = loadLocalDbBackup();
-      if (localDb) {
-        console.log('[SQL Fetch DB Fallback] Successfully served via local Server File Backup.');
-        return res.json({ success: true, db: localDb, notice: "MySQL and Firestore unreachable; served via server-side local cache fallback." });
-      }
-    } catch (diskErr: any) {
-      console.warn('[SQL Fetch DB Server Disk Fallback Failed]:', diskErr.message);
-    }
-
-    // Ultimate fallback: return empty database structure so UI doesn't crash
+    // Final fallback: return empty database structure or local backup
     const finalBackup = loadLocalDbBackup() || {
       users: [],
       lotteries: [],
@@ -894,7 +891,7 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
       transactions: [],
       agentLedger: []
     };
-    return res.json({ success: true, db: finalBackup, notice: "Offline cloud recovery mode activated." });
+    return res.json({ success: true, db: finalBackup, notice: "Served via local server backup fallback." });
   }
 });
 
@@ -915,6 +912,16 @@ async function lookupUserInMySQL(cleanUser: string): Promise<any | null> {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
     try {
+      // Check staff table first (priority for agents/mods)
+      const [staffRows]: any = await connection.execute(
+        `SELECT * FROM staff WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
+        [cleanUser, cleanUser, cleanUser]
+      );
+      if (Array.isArray(staffRows) && staffRows.length > 0) {
+        return staffRows[0];
+      }
+
+      // Then check users table
       const [rows]: any = await connection.execute(
         `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
         [cleanUser, cleanUser, cleanUser]
@@ -927,31 +934,6 @@ async function lookupUserInMySQL(cleanUser: string): Promise<any | null> {
     }
   } catch (sqlErr: any) {
     console.log('[lookupUserInMySQL] Notice:', sqlErr.message);
-  }
-  return null;
-}
-
-async function lookupUserInFirebase(cleanUser: string): Promise<any | null> {
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, 'app_data', 'lottery_winner_db');
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === 'string' ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && Array.isArray(parsedDb.users)) {
-          const matched = parsedDb.users.find((u: any) => 
-            (u.username && u.username.toLowerCase() === cleanUser) ||
-            (u.email && u.email.toLowerCase() === cleanUser) ||
-            (u.phone && String(u.phone).trim() === cleanUser)
-          );
-          if (matched) return matched;
-        }
-      }
-    }
-  } catch (fbErr: any) {
-    console.log('[lookupUserInFirebase] Notice:', fbErr.message);
   }
   return null;
 }
@@ -982,35 +964,9 @@ async function insertUserIntoMySQL(user: any) {
         user.status || 'active'
       ]
     );
-    console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to MySQL.`);
+    console.log(`[Sync] Successfully replicated user @${user.username} to MySQL.`);
   } catch (e: any) {
     console.warn('[insertUserIntoMySQL] Failed:', e.message);
-  }
-}
-
-async function insertUserIntoFirebase(user: any) {
-  try {
-    const db = getBackendFirestore();
-    if (db) {
-      const dbDocRef = doc(db, 'app_data', 'lottery_winner_db');
-      const dbSnap = await getDoc(dbDocRef);
-      if (dbSnap.exists()) {
-        const dbData = dbSnap.data();
-        const parsedDb = typeof dbData.db === 'string' ? JSON.parse(dbData.db) : dbData.db;
-        if (parsedDb && Array.isArray(parsedDb.users)) {
-          const existingIdx = parsedDb.users.findIndex((u: any) => u.username === user.username || u.id === user.id);
-          if (existingIdx >= 0) {
-            parsedDb.users[existingIdx] = { ...parsedDb.users[existingIdx], ...user };
-          } else {
-            parsedDb.users.push(user);
-          }
-          await setDoc(dbDocRef, { db: JSON.stringify(parsedDb) }, { merge: true });
-          console.log(`[Auto-Heal] Successfully replicated missing user @${user.username} to Firestore.`);
-        }
-      }
-    }
-  } catch (e: any) {
-    console.warn('[insertUserIntoFirebase] Failed:', e.message);
   }
 }
 
@@ -1043,30 +999,11 @@ async function performCentralAuth(usernameVal: string, passwordVal: string): Pro
   }
 
   // Read central active database setting
-  const activeDb = await getActiveDatabase();
-  console.log(`[Central Auth Router] Authenticating @${cleanUser} against active database: ${activeDb}`);
-
-  let primaryMatch: any = null;
-  let secondaryMatch: any = null;
-  const primaryDbSource: 'mysql' | 'firebase' = activeDb;
-
-  // 1. Dual-Write Auto-Healing Lookup
-  if (activeDb === 'mysql') {
-    primaryMatch = await lookupUserInMySQL(cleanUser);
-    if (!primaryMatch) {
-      secondaryMatch = await lookupUserInFirebase(cleanUser);
-    }
-  } else {
-    primaryMatch = await lookupUserInFirebase(cleanUser);
-    if (!primaryMatch) {
-      secondaryMatch = await lookupUserInMySQL(cleanUser);
-    }
-  }
-
-  let matchedUser = primaryMatch || secondaryMatch;
+  // 1. Core Lookup from MySQL
+  let matchedUser = await lookupUserInMySQL(cleanUser);
   
   if (!matchedUser) {
-    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL or Firebase. Checking local server backup...`);
+    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL. Checking local server backup...`);
     try {
       const localDb = loadLocalDbBackup();
       if (localDb && Array.isArray(localDb.users)) {
@@ -1086,39 +1023,12 @@ async function performCentralAuth(usernameVal: string, passwordVal: string): Pro
   }
 
   if (matchedUser) {
-    // Autocorrect / Self-heal missing roles of staff and agents on the server
-    if (!matchedUser.role || matchedUser.role === 'user') {
-      const idLower = (matchedUser.id || '').toLowerCase();
-      const nameLower = (matchedUser.username || '').toLowerCase();
-      if (idLower === 'admin' || nameLower === 'admin') {
-        matchedUser.role = 'admin';
-      } else if (idLower.startsWith('agent_') || idLower.startsWith('u_agent_') || nameLower.includes('agent')) {
-        matchedUser.role = 'agent';
-      } else if (idLower.startsWith('u_mod_') || nameLower.includes('mod_') || nameLower.includes('moderator')) {
-        matchedUser.role = 'moderator';
-      } else if (idLower.startsWith('u_staff_') || nameLower.includes('staff')) {
-        matchedUser.role = 'agent';
-      }
-    }
     if (matchedUser.status === 'blocked' || matchedUser.status === 'permanently_banned') {
       return { success: false, message: 'This account is blocked or under review.' };
     }
 
     const passMatches = !matchedUser.password || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === 'Admin123' || cleanPass === 'Agent123';
     if (passMatches) {
-      // Auto-heal missing databases on login
-      if (!primaryMatch) {
-        console.log(`[Central Auth Router] User @${matchedUser.username} exists in secondary but missing in active DB (${primaryDbSource}). Replicating now.`);
-        try {
-          if (primaryDbSource === 'mysql') {
-            await insertUserIntoMySQL(matchedUser);
-          } else {
-            await insertUserIntoFirebase(matchedUser);
-          }
-        } catch (healErr: any) {
-          console.warn('[Central Auth Router] Healing execution notice:', healErr.message);
-        }
-      }
       return { success: true, user: matchedUser };
     } else {
       return { success: false, message: 'Incorrect credentials.' };
@@ -1222,38 +1132,6 @@ app.post('/api/auth/lookup-user', async (req: Request, res: Response) => {
         }
       } finally {
         connection.release();
-      }
-    } catch (e) {}
-
-    // Check Firestore
-    try {
-      const db = getBackendFirestore();
-      if (db) {
-        const dbDocRef = doc(db, 'app_data', 'lottery_winner_db');
-        const dbSnap = await getDoc(dbDocRef);
-        if (dbSnap.exists()) {
-          const dbData = dbSnap.data();
-          const parsedDb = typeof dbData.db === 'string' ? JSON.parse(dbData.db) : dbData.db;
-          if (parsedDb && Array.isArray(parsedDb.users)) {
-            const matched = parsedDb.users.find((u: any) => 
-              (u.username && u.username.toLowerCase() === cleanUser) ||
-              (u.email && u.email.toLowerCase() === cleanUser) ||
-              (u.phone && String(u.phone).trim() === cleanUser)
-            );
-            if (matched) {
-              return res.json({
-                success: true,
-                user: {
-                  id: matched.id || matched.uid,
-                  username: matched.username,
-                  email: matched.email,
-                  phone: matched.phone,
-                  role: matched.role
-                }
-              });
-            }
-          }
-        }
       }
     } catch (e) {}
 
@@ -1822,24 +1700,8 @@ const SQLAdapter = {
   }
 };
 
-const FirebaseAdapter = {
-  name: 'Firebase',
-  async health() {
-    try {
-      const db = getBackendFirestore();
-      if (!db) return { connected: false, error: 'Firestore uninitialized', recordCount: 0 };
-      const docSnap = await getDoc(doc(db, 'app_data', 'lottery_winner_db'));
-      return { connected: true, recordCount: docSnap.exists() ? 1 : 0 };
-    } catch (e: any) {
-      return { connected: false, error: e.message, recordCount: 0 };
-    }
-  }
-};
-
-// Database Health API
 app.get('/api/database/health', async (_req: Request, res: Response) => {
   const sqlHealth = await SQLAdapter.health();
-  const fbHealth = await FirebaseAdapter.health();
 
   let pendingCount = 0;
   let failedCount = 0;
@@ -1853,7 +1715,7 @@ app.get('/api/database/health', async (_req: Request, res: Response) => {
 
   return res.json({
     success: true,
-    activeMode: ACTIVE_DATABASE_MODE,
+    activeMode: 'SQL',
     sql: {
       connected: sqlHealth.connected,
       recordCount: sqlHealth.recordCount,
@@ -1863,52 +1725,21 @@ app.get('/api/database/health', async (_req: Request, res: Response) => {
       error: sqlHealth.error || null
     },
     firebase: {
-      connected: fbHealth.connected,
-      recordCount: fbHealth.recordCount,
-      lastSuccessfulSync: lastSuccessfulSyncTime,
-      pendingSync: pendingCount,
-      failedSync: failedCount,
-      error: fbHealth.error || null
+      connected: false,
+      recordCount: 0,
+      lastSuccessfulSync: null,
+      pendingSync: 0,
+      failedSync: 0,
+      error: 'Firebase removed'
     }
   });
 });
 
-// Database Consistency Check API
 app.get('/api/database/consistency', async (_req: Request, res: Response) => {
-  let mismatches: any[] = [];
-  let sqlUsersCount = 0;
-  let fbUsersCount = 0;
-  try {
-    const pool = getPool();
-    const [uRows]: any = await pool.execute('SELECT COUNT(*) as cnt FROM users');
-    sqlUsersCount = uRows[0]?.cnt || 0;
-
-    const db = getBackendFirestore();
-    if (db) {
-      const snap = await getDoc(doc(db, 'app_data', 'lottery_winner_db'));
-      if (snap.exists()) {
-        const parsed = JSON.parse(snap.data().db || '{}');
-        fbUsersCount = parsed.users?.length || 0;
-      }
-    }
-
-    if (sqlUsersCount !== fbUsersCount) {
-      mismatches.push({
-        entity: 'Users',
-        id: 'collection_count',
-        sqlValue: sqlUsersCount,
-        firebaseValue: fbUsersCount,
-        mismatchType: 'Record Count Mismatch'
-      });
-    }
-  } catch (e: any) {
-    mismatches.push({ entity: 'General', id: 'check_error', sqlValue: 'N/A', firebaseValue: 'N/A', mismatchType: e.message });
-  }
-
   return res.json({
     success: true,
-    consistent: mismatches.length === 0,
-    mismatches
+    consistent: true,
+    mismatches: []
   });
 });
 
@@ -1956,19 +1787,7 @@ async function executeDatabaseSwitch(dbParam: string, adminId: string, ipAddress
     console.warn('[executeDatabaseSwitch] SQL system_settings write failed (using fallback):', sqlErr.message);
   }
 
-  // 2. Redundancy update to centralized Cloud document in Firestore for absolute safety
-  const db = getBackendFirestore();
-  if (db) {
-    const configDocRef = doc(db, 'app_data', 'system_config');
-    await setDoc(configDocRef, {
-      active_database: targetDbVal,
-      updated_at: new Date().toISOString()
-    }, { merge: true }).catch((fbErr) => {
-      console.warn('[executeDatabaseSwitch] Firebase write failed:', fbErr.message);
-    });
-  }
-
-  // 2b. Write to local filesystem setting for absolute, fail-safe offline persistence
+  // 2. Write to local filesystem setting for absolute, fail-safe offline persistence
   saveLocalActiveDatabase(targetDbVal);
 
   // 3. Write database switch log in SQL
@@ -2170,6 +1989,40 @@ if (!fs.existsSync(permanentUploadDir)) {
   fs.mkdirSync(permanentUploadDir, { recursive: true });
 }
 app.use('/uploads', express.static(permanentUploadDir));
+
+app.post('/api/upload', upload.single('file'), async (req: Request, res: Response) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No file uploaded.' });
+  }
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/svg+xml', 'image/x-icon', 'image/webp', 'image/gif'];
+  if (!allowedTypes.includes(req.file.mimetype)) {
+    return res.status(400).json({ success: false, message: 'Invalid file type.' });
+  }
+  if (req.file.size > 10 * 1024 * 1024) {
+    return res.status(400).json({ success: false, message: 'File too large. Max 10MB allowed.' });
+  }
+  try {
+    const ext = path.extname(req.file.originalname) || '.png';
+    const uniqueFilename = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+    const targetPath = path.join(permanentUploadDir, uniqueFilename);
+    const relativePath = `/uploads/${uniqueFilename}`;
+
+    fs.writeFileSync(targetPath, req.file.buffer);
+    if (!fs.existsSync(targetPath) || fs.statSync(targetPath).size === 0) {
+      throw new Error('File physical write verification failed.');
+    }
+
+    return res.json({
+      success: true,
+      message: 'Image uploaded successfully.',
+      url: relativePath,
+      fileUrl: relativePath
+    });
+  } catch (err: any) {
+    console.error('[Generic Upload Error]', err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 app.post('/api/upload/logo', upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) {

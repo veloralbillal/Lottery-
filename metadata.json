@@ -1,6 +1,6 @@
 {
   "name": "Lottery Winner",
-  "description": "Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools.",
+  "description": "Unified authentication system with SQL Bridge (MySQL) & local profiles. Pure SQL-based architecture. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools.",
   "requestFramePermissions": ["vibrate"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -58,6 +58,26 @@ export function getDefaultDB() {
         blockedUntil: new Date(Date.now() + 86400000).toISOString()
       },
       {
+        id: "u_mod_support",
+        username: "mod_support",
+        email: "support@lotterywinner.app",
+        password: "password123",
+        phone: "01700000002",
+        dob: "1993-02-15",
+        balance: 0,
+        totDeposit: 0,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-21",
+        status: "active",
+        blockedUntil: null,
+        role: "moderator"
+      }
+    ],
+    staff: [
+      {
         id: "u_agent_dhaka",
         username: "agent_dhaka",
         email: "dhaka@agents.app",
@@ -100,16 +120,40 @@ export function getDefaultDB() {
         earnedCommission: 310.00,
         totalBookings: 43,
         district: "Sylhet"
+      }
+    ],
+    agents: [
+      {
+        id: "u_agent_dhaka",
+        username: "agent_dhaka",
+        email: "dhaka@agents.app",
+        password: "password123",
+        phone: "01700000001",
+        dob: "1990-01-01",
+        balance: 5000,
+        totDeposit: 5000,
+        totWithdraw: 0,
+        wins: 0,
+        loss: 0,
+        profit: 0,
+        joinDate: "2026-06-20",
+        status: "active",
+        blockedUntil: null,
+        role: "agent",
+        commissionRate: 5.0,
+        earnedCommission: 120.00,
+        totalBookings: 24,
+        district: "Dhaka"
       },
       {
-        id: "u_mod_support",
-        username: "mod_support",
-        email: "support@lotterywinner.app",
+        id: "u_agent_sylhet",
+        username: "agent_sylhet",
+        email: "sylhet@agents.app",
         password: "password123",
-        phone: "01700000002",
-        dob: "1993-02-15",
-        balance: 0,
-        totDeposit: 0,
+        phone: "01900000005",
+        dob: "1992-05-18",
+        balance: 8500,
+        totDeposit: 8500,
         totWithdraw: 0,
         wins: 0,
         loss: 0,
@@ -117,7 +161,11 @@ export function getDefaultDB() {
         joinDate: "2026-06-21",
         status: "active",
         blockedUntil: null,
-        role: "moderator"
+        role: "agent",
+        commissionRate: 6.0,
+        earnedCommission: 310.00,
+        totalBookings: 43,
+        district: "Sylhet"
       }
     ],
     lotteries: [
