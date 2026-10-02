@@ -562,7 +562,13 @@ export const SyncVaultModule = {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ host, port, database, username })
           });
-          const data = await res.json();
+          const text = await res.text();
+          let data;
+          try {
+            data = JSON.parse(text);
+          } catch (e) {
+            throw new Error(`Server returned non-JSON response (possibly HTML error page): ${text.substring(0, 100)}...`);
+          }
 
           if (data.success) {
             this.addConsoleLog(`[SQL TEST] 🟢 Connection established! Latency: ${data.latency}ms. Engine: ${data.engine}`, "success");
