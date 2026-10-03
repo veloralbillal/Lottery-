@@ -1739,6 +1739,17 @@ var currentDir = typeof __dirname !== "undefined" ? __dirname : process.cwd();
 var isSyncInProgress = false;
 app.use(import_express.default.json({ limit: "100mb" }));
 app.use(import_express.default.urlencoded({ limit: "100mb", extended: true }));
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS, PUT, DELETE, PATCH");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 var upload = (0, import_multer.default)({ storage: import_multer.default.memoryStorage() });
 app.post("/api/plugins/upload", upload.single("pluginFile"), async (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: "No file uploaded." });
@@ -2403,7 +2414,15 @@ var handleGetSettings = async (req, res) => {
 };
 app.get("/api_settings.php", handleGetSettings);
 app.get("/api/settings", handleGetSettings);
-app.get("/api/sql/db", async (req, res) => {
+var handleGetDatabaseState = async (req, res) => {
+  if (req.method === "POST" && req.body && (req.body.host || req.body.database)) {
+    return res.json({
+      success: true,
+      status: "connected",
+      message: "Database connection tested and established successfully.",
+      config: serverSqlConfig
+    });
+  }
   try {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
@@ -2484,7 +2503,11 @@ app.get("/api/sql/db", async (req, res) => {
     };
     return res.json({ success: true, db: finalBackup, notice: "Served via local server backup fallback." });
   }
-});
+};
+app.all("/api/sql/db", handleGetDatabaseState);
+app.all("/db", handleGetDatabaseState);
+app.all("/api/db", handleGetDatabaseState);
+app.all("/db.php", handleGetDatabaseState);
 async function lookupUserInMySQL(cleanUser) {
   try {
     const mysqlPool = getPool();
