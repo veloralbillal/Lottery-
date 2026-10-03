@@ -3,7 +3,15 @@
 mysqli_report(MYSQLI_REPORT_OFF);
 ini_set('display_errors', '0');
 error_reporting(0);
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With');
 header('Content-Type: application/json; charset=UTF-8');
+
+if (isset($_SERVER['REQUEST_METHOD']) && $_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 define('SECRET_TOKEN', 'Billal50598326'); 
 
@@ -32,6 +40,8 @@ if ($conn->connect_error) {
         }
     }
 }
+
+@$conn->set_charset("utf8mb4");
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 

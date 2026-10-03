@@ -118,19 +118,23 @@ const resolveBridgeAndDbHost = (configuredHost: string = '') => {
   let bridgeUrl = 'https://api.veloralbillal.top/db_bridge.php';
   let dbHost = 'localhost';
 
-  if (rawHost.startsWith('http://') || rawHost.startsWith('https://') || rawHost.includes('db_bridge.php') || rawHost.includes('.php')) {
+  if (rawHost.startsWith('http://') || rawHost.startsWith('https://')) {
+    if (!rawHost.endsWith('.php')) {
+      const cleanBase = rawHost.replace(/\/+$/, '');
+      bridgeUrl = cleanBase.endsWith('/db') ? `${cleanBase}_bridge.php` : `${cleanBase}/db_bridge.php`;
+    } else {
+      bridgeUrl = rawHost;
+    }
+    dbHost = 'localhost';
+  } else if (rawHost.includes('db_bridge.php') || rawHost.includes('.php')) {
     bridgeUrl = rawHost.startsWith('http') ? rawHost : 'https://' + rawHost;
     dbHost = 'localhost';
   } else if (rawHost && rawHost !== 'localhost' && rawHost !== '127.0.0.1') {
     dbHost = rawHost;
-    bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
-      ? serverSqlConfig.host 
-      : 'https://api.veloralbillal.top/db_bridge.php';
+    bridgeUrl = 'https://api.veloralbillal.top/db_bridge.php';
   } else {
     dbHost = 'localhost';
-    bridgeUrl = (serverSqlConfig.host && serverSqlConfig.host.startsWith('http')) 
-      ? serverSqlConfig.host 
-      : 'https://api.veloralbillal.top/db_bridge.php';
+    bridgeUrl = 'https://api.veloralbillal.top/db_bridge.php';
   }
 
   return { bridgeUrl, dbHost };
@@ -316,6 +320,12 @@ app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
 
       const responseText = await response.text();
       let result: any = { success: true, data: [] };
+      if (responseText && responseText.trim().startsWith('<')) {
+        return res.json({
+          success: false,
+          message: `Bridge URL returned HTML instead of JSON. Please ensure your Host URL ends with /db_bridge.php and that db_bridge.php is uploaded to your hosting server.`
+        });
+      }
       try {
         if (responseText && responseText.trim().startsWith('{')) {
           result = JSON.parse(responseText);
