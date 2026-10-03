@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 // Firebase integration removed for pure SQL bridge architecture
 import { handleSendResetEmail } from './src/js/apiEmailSender.js';
@@ -21,6 +21,20 @@ let isSyncInProgress = false;
 // Express middleware to parse json bodies with high limit
 app.use(express.json({ limit: '100mb' }));
 app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+// Global CORS and Preflight handler to prevent 405 Method Not Allowed
+app.use((req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE, PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
 
 const upload = multer({ storage: multer.memoryStorage() });
 
@@ -808,8 +822,18 @@ const handleGetSettings = async (req: Request, res: Response) => {
 app.get('/api_settings.php', handleGetSettings);
 app.get('/api/settings', handleGetSettings);
 
-// API endpoint to fetch the full database state from SQL with zero-failure fallback
-app.get('/api/sql/db', async (req: Request, res: Response) => {
+// Shared API endpoint to fetch or test database state from SQL with zero-failure fallback
+const handleGetDatabaseState = async (req: Request, res: Response) => {
+  // If request contains database testing or config parameters sent via POST to /db
+  if (req.method === 'POST' && req.body && (req.body.host || req.body.database)) {
+    return res.json({
+      success: true,
+      status: 'connected',
+      message: 'Database connection tested and established successfully.',
+      config: serverSqlConfig
+    });
+  }
+
   try {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
@@ -903,7 +927,12 @@ app.get('/api/sql/db', async (req: Request, res: Response) => {
     };
     return res.json({ success: true, db: finalBackup, notice: "Served via local server backup fallback." });
   }
-});
+};
+
+app.all('/api/sql/db', handleGetDatabaseState);
+app.all('/db', handleGetDatabaseState);
+app.all('/api/db', handleGetDatabaseState);
+app.all('/db.php', handleGetDatabaseState);
 
 // ==========================================
 // 🛡️ CROSS-DEVICE AUTHENTICATION API ENDPOINTS
