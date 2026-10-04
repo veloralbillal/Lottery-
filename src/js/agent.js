@@ -602,18 +602,19 @@ export const AgentModule = {
             return;
           }
 
-          // Check duplicates in local database
-          if (app.db.users.some(u => u.username && u.username.toLowerCase() === usernameVal)) {
+          // Check duplicates across users, staff, and agents tables
+          const allPeople = [...(app.db.users || []), ...(app.db.staff || []), ...(app.db.agents || [])];
+          if (allPeople.some(u => u && u.username && u.username.toLowerCase() === usernameVal)) {
             app.showToast(`Username @${usernameVal} already exists in database!`, "error");
             return;
           }
 
-          if (app.db.users.some(u => u.email && u.email.toLowerCase() === emailVal)) {
+          if (allPeople.some(u => u && u.email && u.email.toLowerCase() === emailVal)) {
             app.showToast(`Email address ${emailVal} is already in use by another user!`, "error");
             return;
           }
 
-          if (app.db.users.some(u => u.phone && u.phone === phoneVal)) {
+          if (allPeople.some(u => u && u.phone && u.phone === phoneVal)) {
             app.showToast(`Phone number ${phoneVal} is already registered!`, "error");
             return;
           }
@@ -642,9 +643,9 @@ export const AgentModule = {
             joinDate: new Date().toISOString().split("T")[0],
             status: "active",
             role: roleVal,
-            commissionRate: roleVal === "agent" ? commVal : undefined,
-            district: roleVal === "agent" ? districtVal : undefined,
-            region: roleVal === "agent" ? districtVal : undefined,
+            commissionRate: roleVal === "agent" ? commVal : 0,
+            district: roleVal === "agent" ? districtVal : "SYSTEM",
+            region: roleVal === "agent" ? districtVal : "SYSTEM",
             earnedCommission: 0,
             totalBookings: 0,
             refersCount: 0,
@@ -652,19 +653,9 @@ export const AgentModule = {
             rewardedMilestones: []
           };
 
-          let uid = "agent_" + Date.now();
-          if (typeof app.createStaffAccount === "function") {
-            try {
-              const result = await app.createStaffAccount(staffData);
-              if (result && result.uid) {
-                uid = result.uid;
-              }
-            } catch (authErr) {
-              console.warn("createStaffAccount call fallback:", authErr);
-            }
-          }
+          let uid = "agent_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7);
 
-          // CRITICAL: Preserve password in user object so agent can log in seamlessly
+          // CRITICAL: Preserve password in staff object so agent/moderator can log in seamlessly
           const newStaff = {
             ...staffData,
             id: uid,
@@ -672,7 +663,8 @@ export const AgentModule = {
             password: passVal
           };
 
-          app.db.users.push(newStaff);
+          if (!Array.isArray(app.db.staff)) app.db.staff = [];
+          app.db.staff.push(newStaff);
 
           // Add deposit transaction if agent received initial operational wallet balance
           if (initialBal > 0) {
@@ -693,7 +685,7 @@ export const AgentModule = {
             });
           }
 
-          app.saveDB();
+          app.saveDB(true);
 
           app.showToast(`Success! Account @${usernameVal} created and immediately usable.`, "success");
           createStaffForm.reset();

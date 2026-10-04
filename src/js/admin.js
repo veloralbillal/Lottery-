@@ -1226,9 +1226,9 @@ export const AdminModule = {
   },
 
   async renderAdminAgents() {
-    // Fetch live data from MySQL
+    // Fetch live data from MySQL with cache-busting no-store
     try {
-      const sqlRes = await fetch("/api/sql/db");
+      const sqlRes = await fetch("/api/sql/db", { cache: "no-store" });
       if (sqlRes.ok) {
         const sqlData = await sqlRes.json();
         if (sqlData.success && sqlData.db) {
@@ -1259,13 +1259,24 @@ export const AdminModule = {
     }
     const query = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
-    // Stats calculations
+    // Build unified deduplicated staff & agent list across agents, staff, and users tables
+    const allAgents = (this.db.agents || []);
     const allStaff = (this.db.staff || []);
-    const agentsCount = allStaff.filter(u => u.role === "agent" || u.role === "subagent").length;
-    const modsCount = (this.db.users || []).filter(u => u.role === "moderator").length + allStaff.filter(u => u.role === "moderator").length;
+    const legacyStaff = (this.db.users || []).filter(u => u && (u.role === "agent" || u.role === "moderator" || u.role === "subagent"));
+    const staffMap = new Map();
+    [...allAgents, ...allStaff, ...legacyStaff].forEach(s => {
+      if (!s) return;
+      const key = (s.username ? s.username.toLowerCase() : s.id);
+      if (key) staffMap.set(key, s);
+    });
+    const unifiedStaffList = Array.from(staffMap.values());
+
+    // Stats calculations from unified deduplicated records
+    const agentsCount = unifiedStaffList.filter(u => u.role === "agent" || u.role === "subagent").length;
+    const modsCount = unifiedStaffList.filter(u => u.role === "moderator").length;
     
-    const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (log.commission || 0), 0);
-    const initialSeedComms = allStaff.filter(u => u.role === "agent").reduce((sum, u) => sum + (u.earnedCommission || 0), 0);
+    const totalComms = (this.db.agentLedger || []).reduce((sum, log) => sum + (parseFloat(log.commission) || 0), 0);
+    const initialSeedComms = unifiedStaffList.filter(u => u.role === "agent" || u.role === "subagent").reduce((sum, u) => sum + (parseFloat(u.earnedCommission) || 0), 0);
 
     const statCountEl = document.getElementById("agents-stat-count");
     const modCountEl = document.getElementById("moderators-stat-count");
@@ -1304,14 +1315,7 @@ export const AdminModule = {
       });
     }
 
-    // Filtering - Pull from agents, staff, and users
-    const allAgents = (this.db.agents || []);
-    const staffList = (this.db.staff || []);
-    const legacyStaff = (this.db.users || []).filter(u => u.role === "agent" || u.role === "moderator" || u.role === "subagent");
-    
-    const staffMap = new Map();
-    [...allAgents, ...staffList, ...allStaff, ...legacyStaff].forEach(s => staffMap.set(s.id || s.username, s));
-    let staffAccounts = Array.from(staffMap.values());
+    let staffAccounts = [...unifiedStaffList];
     if (query) {
       staffAccounts = staffAccounts.filter(u => u.username.toLowerCase().includes(query) || (u.email || "").toLowerCase().includes(query) || (u.phone || "").toLowerCase().includes(query));
     }

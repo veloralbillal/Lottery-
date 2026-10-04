@@ -1,4 +1,6 @@
 import "./index.css";
+import { installUniversalSqlBridgeFetchInterceptor } from "./js/sqlBridgeClient.js";
+installUniversalSqlBridgeFetchInterceptor();
 import { SyncCloudModule } from "./js/syncCloud.js";
 import { UIEffectsModule } from "./js/uiEffects.js";
 // Firebase removed per user request
@@ -226,7 +228,13 @@ export class StateManager {
 
     // 🛡️ CRITICAL: Guarantee ALL collections exist to prevent crashes in render()
     if (!this.db) this.db = getDefaultDB();
+    const staticMockIds = new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
     if (!this.db.users) this.db.users = [];
+    if (!this.db.staff) this.db.staff = [];
+    if (!this.db.agents) this.db.agents = [];
+    this.db.users = this.db.users.filter((u: any) => u && !staticMockIds.has(u.id));
+    this.db.staff = this.db.staff.filter((s: any) => s && !staticMockIds.has(s.id));
+    this.db.agents = this.db.agents.filter((a: any) => a && !staticMockIds.has(a.id));
     
     // Role self-healing completely removed per user request to respect actual database roles without overriding them based on prefixes.
     if (!this.db.lotteries) this.db.lotteries = [];
@@ -699,79 +707,8 @@ export class StateManager {
         ];
       }
 
-      // Automatically guarantee Agent & Moderator records exist in DB
-      if (this.db && this.db.users) {
-        if (!this.db.users.some(u => u.username === "agent_dhaka")) {
-          this.db.users.push({
-            id: "u_agent_dhaka",
-            username: "agent_dhaka",
-            email: "dhaka@agents.app",
-            password: "password123",
-            phone: "01700000001",
-            dob: "1990-01-01",
-            balance: 5000,
-            totDeposit: 5000,
-            totWithdraw: 0,
-            wins: 0,
-            loss: 0,
-            profit: 0,
-            joinDate: "2026-06-20",
-            status: "active",
-            blockedUntil: null,
-            role: "agent",
-            commissionRate: 5.0,
-            earnedCommission: 120.00,
-            totalBookings: 24,
-            district: "Dhaka"
-          });
-        }
-        if (!this.db.users.some(u => u.username === "agent_sylhet")) {
-          this.db.users.push({
-            id: "u_agent_sylhet",
-            username: "agent_sylhet",
-            email: "sylhet@agents.app",
-            password: "password123",
-            phone: "01900000005",
-            dob: "1992-05-18",
-            balance: 8500,
-            totDeposit: 8500,
-            totWithdraw: 0,
-            wins: 0,
-            loss: 0,
-            profit: 0,
-            joinDate: "2026-06-21",
-            status: "active",
-            blockedUntil: null,
-            role: "agent",
-            commissionRate: 6.0,
-            earnedCommission: 310.00,
-            totalBookings: 43,
-            district: "Sylhet"
-          });
-        }
-        if (!this.db.users.some(u => u.username === "mod_support")) {
-          this.db.users.push({
-            id: "u_mod_support",
-            username: "mod_support",
-            email: "support@lotterywinner.app",
-            password: "password123",
-            phone: "01700000002",
-            dob: "1993-02-15",
-            balance: 0,
-            totDeposit: 0,
-            totWithdraw: 0,
-            wins: 0,
-            loss: 0,
-            profit: 0,
-            joinDate: "2026-06-21",
-            status: "active",
-            blockedUntil: null,
-            role: "moderator"
-          });
-        }
-      }
-
-      this.saveDB();
+      if (!this.db.staff) this.db.staff = [];
+      if (!this.db.agents) this.db.agents = [];
     }
   }
 

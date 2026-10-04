@@ -1420,118 +1420,10 @@ function getDefaultDB() {
         joinDate: "2026-06-10",
         status: "blocked",
         blockedUntil: new Date(Date.now() + 864e5).toISOString()
-      },
-      {
-        id: "u_mod_support",
-        username: "mod_support",
-        email: "support@lotterywinner.app",
-        password: "password123",
-        phone: "01700000002",
-        dob: "1993-02-15",
-        balance: 0,
-        totDeposit: 0,
-        totWithdraw: 0,
-        wins: 0,
-        loss: 0,
-        profit: 0,
-        joinDate: "2026-06-21",
-        status: "active",
-        blockedUntil: null,
-        role: "moderator"
       }
     ],
-    staff: [
-      {
-        id: "u_agent_dhaka",
-        username: "agent_dhaka",
-        email: "dhaka@agents.app",
-        password: "password123",
-        phone: "01700000001",
-        dob: "1990-01-01",
-        balance: 5e3,
-        totDeposit: 5e3,
-        totWithdraw: 0,
-        wins: 0,
-        loss: 0,
-        profit: 0,
-        joinDate: "2026-06-20",
-        status: "active",
-        blockedUntil: null,
-        role: "agent",
-        commissionRate: 5,
-        earnedCommission: 120,
-        totalBookings: 24,
-        district: "Dhaka"
-      },
-      {
-        id: "u_agent_sylhet",
-        username: "agent_sylhet",
-        email: "sylhet@agents.app",
-        password: "password123",
-        phone: "01900000005",
-        dob: "1992-05-18",
-        balance: 8500,
-        totDeposit: 8500,
-        totWithdraw: 0,
-        wins: 0,
-        loss: 0,
-        profit: 0,
-        joinDate: "2026-06-21",
-        status: "active",
-        blockedUntil: null,
-        role: "agent",
-        commissionRate: 6,
-        earnedCommission: 310,
-        totalBookings: 43,
-        district: "Sylhet"
-      }
-    ],
-    agents: [
-      {
-        id: "u_agent_dhaka",
-        username: "agent_dhaka",
-        email: "dhaka@agents.app",
-        password: "password123",
-        phone: "01700000001",
-        dob: "1990-01-01",
-        balance: 5e3,
-        totDeposit: 5e3,
-        totWithdraw: 0,
-        wins: 0,
-        loss: 0,
-        profit: 0,
-        joinDate: "2026-06-20",
-        status: "active",
-        blockedUntil: null,
-        role: "agent",
-        commissionRate: 5,
-        earnedCommission: 120,
-        totalBookings: 24,
-        district: "Dhaka"
-      },
-      {
-        id: "u_agent_sylhet",
-        username: "agent_sylhet",
-        email: "sylhet@agents.app",
-        password: "password123",
-        phone: "01900000005",
-        dob: "1992-05-18",
-        balance: 8500,
-        totDeposit: 8500,
-        totWithdraw: 0,
-        wins: 0,
-        loss: 0,
-        profit: 0,
-        joinDate: "2026-06-21",
-        status: "active",
-        blockedUntil: null,
-        role: "agent",
-        commissionRate: 6,
-        earnedCommission: 310,
-        totalBookings: 43,
-        district: "Sylhet"
-      }
-    ],
+    staff: [],
+    agents: [],
     categories: [
       { id: "c1", name: "10 Taka Banner", label: "\u{1F39F}\uFE0F \u09F310 Sliders", type: "single", defaultPrizes: "" },
       { id: "c2", name: "20 Taka Banner", label: "\u{1F39F}\uFE0F \u09F320 Sliders", type: "single", defaultPrizes: "" },
@@ -1818,11 +1710,11 @@ app.get("/api/zinipay/webhook", (req, res) => {
   return handleZiniPayWebhook(req, res);
 });
 var serverSqlConfig = {
-  host: "https://api.veloralbillal.top/db_bridge.php",
-  port: "3306",
-  database: "veloralb_Digital",
-  username: "veloralb_Digital",
-  password: "UcWg.75@wv+Ijzh#",
+  host: process.env.SQL_BRIDGE_URL || process.env.DB_HOST || "https://api.veloralbillal.top/db_bridge.php",
+  port: process.env.DB_PORT || "3306",
+  database: process.env.DB_NAME || "veloralb_Digital",
+  username: process.env.DB_USER || "veloralb_Digital",
+  password: process.env.DB_PASS || "UcWg.75@wv+Ijzh#",
   autoSync: true,
   activeEngine: "mysql",
   lastSyncTime: (/* @__PURE__ */ new Date()).toISOString(),
@@ -2310,9 +2202,9 @@ app.post("/api/sql/sync", async (req, res) => {
         const syncTable = async (tableName, dataArray) => {
           if (!Array.isArray(dataArray)) return;
           if (dataArray.length === 0) {
-            if (tableName === "lotteries") {
+            if (tableName === "lotteries" || tableName === "staff" || tableName === "agents") {
               try {
-                await connection.execute(`DELETE FROM lotteries`);
+                await connection.execute(`DELETE FROM ${tableName}`);
               } catch {
               }
             }
@@ -2401,9 +2293,11 @@ app.post("/api/sql/sync", async (req, res) => {
         if (dbToSync.lotteries) await syncTable("lotteries", dbToSync.lotteries);
         if (dbToSync.users) await syncTable("users", dbToSync.users);
         if (dbToSync.staff) await syncTable("staff", dbToSync.staff);
-        if (dbToSync.agents) await syncTable("agents", dbToSync.agents);
-        else if (dbToSync.staff) await syncTable("agents", dbToSync.staff);
-        else if (dbToSync.users) await syncTable("agents", dbToSync.users.filter((u) => u.role === "agent" || u.role === "subagent"));
+        if (Array.isArray(dbToSync.agents) && dbToSync.agents.length > 0) {
+          await syncTable("agents", dbToSync.agents);
+        } else if (Array.isArray(dbToSync.staff)) {
+          await syncTable("agents", dbToSync.staff.filter((s) => s && (s.role === "agent" || s.role === "subagent")));
+        }
         if (dbToSync.tickets) await syncTable("tickets", dbToSync.tickets);
         if (dbToSync.deposits) await syncTable("deposits", dbToSync.deposits);
         if (dbToSync.withdrawals) await syncTable("withdrawals", dbToSync.withdrawals);
@@ -2505,7 +2399,74 @@ var handleGetSettings = async (req, res) => {
 };
 app.get("/api_settings.php", handleGetSettings);
 app.get("/api/settings", handleGetSettings);
+app.get("/api/sql/debug", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
+  const { bridgeUrl, dbHost } = resolveBridgeAndDbHost(serverSqlConfig.host);
+  const start = Date.now();
+  try {
+    const mysqlPool = getPool();
+    const connection = await mysqlPool.getConnection();
+    const fetchSafe = async (tbl) => {
+      try {
+        const [rows] = await connection.execute(`SELECT * FROM ${tbl}`);
+        return Array.isArray(rows) ? rows : [];
+      } catch {
+        return [];
+      }
+    };
+    const [users, staff, agents, categories, lotteries] = await Promise.all([
+      fetchSafe("users"),
+      fetchSafe("staff"),
+      fetchSafe("agents"),
+      fetchSafe("categories"),
+      fetchSafe("lotteries")
+    ]);
+    connection.release();
+    const staffMap = /* @__PURE__ */ new Map();
+    const legacyStaff = users.filter((u) => u && (u.role === "agent" || u.role === "moderator" || u.role === "subagent"));
+    [...agents, ...staff, ...legacyStaff].forEach((s) => {
+      if (!s) return;
+      const key = s.username ? String(s.username).toLowerCase() : s.id;
+      if (key) staffMap.set(key, s);
+    });
+    const unifiedStaff = Array.from(staffMap.values());
+    return res.json({
+      success: true,
+      environment: process.env.NODE_ENV || "development",
+      latencyMs: Date.now() - start,
+      connection: {
+        bridgeUrl,
+        dbHost,
+        database: serverSqlConfig.database,
+        username: serverSqlConfig.username
+      },
+      tableRowCounts: {
+        users: users.length,
+        staff: staff.length,
+        agents: agents.length,
+        categories: categories.length,
+        lotteries: lotteries.length
+      },
+      computedAdminBadgeCounts: {
+        agentsCount: unifiedStaff.filter((u) => u.role === "agent" || u.role === "subagent").length,
+        modsCount: unifiedStaff.filter((u) => u.role === "moderator").length,
+        unifiedStaffUsernames: unifiedStaff.map((u) => ({ username: u.username, role: u.role, status: u.status }))
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      connection: { bridgeUrl, dbHost, database: serverSqlConfig.database }
+    });
+  }
+});
 var handleGetDatabaseState = async (req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  res.setHeader("Expires", "0");
   if (req.method === "POST" && req.body && (req.body.host || req.body.database)) {
     return res.json({
       success: true,
@@ -2536,9 +2497,13 @@ var handleGetDatabaseState = async (req, res) => {
           return [];
         }
       };
-      const users = await fetchTable("users");
-      const staff = await fetchTable("staff");
-      const agents = await fetchTable("agents");
+      const staticMockIds = /* @__PURE__ */ new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
+      const rawUsers = await fetchTable("users");
+      const rawStaff = await fetchTable("staff");
+      const rawAgents = await fetchTable("agents");
+      const users = Array.isArray(rawUsers) ? rawUsers.filter((u) => u && !staticMockIds.has(u.id)) : [];
+      const staff = Array.isArray(rawStaff) ? rawStaff.filter((s) => s && !staticMockIds.has(s.id)) : [];
+      const agents = Array.isArray(rawAgents) ? rawAgents.filter((a) => a && !staticMockIds.has(a.id)) : [];
       const rawCategories = await fetchTable("categories");
       const defaultCategories = [
         { id: "c1", name: "10 Taka Banner", label: "\u{1F39F}\uFE0F \u09F310 Sliders", type: "single", defaultPrizes: "" },
