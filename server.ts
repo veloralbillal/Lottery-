@@ -115,13 +115,13 @@ app.get('/api/zinipay/webhook', (req: Request, res: Response) => {
 
 import mysql from 'mysql2/promise';
 
-// SQL Database Configuration & Dual Sync API Endpoints
+// SQL Database Configuration & Dual Sync API Endpoints (supports .env overrides)
 let serverSqlConfig = {
-  host: 'https://api.veloralbillal.top/db_bridge.php',
-  port: '3306',
-  database: 'veloralb_Digital',
-  username: 'veloralb_Digital',
-  password: 'UcWg.75@wv+Ijzh#',
+  host: process.env.SQL_BRIDGE_URL || process.env.DB_HOST || 'https://api.veloralbillal.top/db_bridge.php',
+  port: process.env.DB_PORT || '3306',
+  database: process.env.DB_NAME || 'veloralb_Digital',
+  username: process.env.DB_USER || 'veloralb_Digital',
+  password: process.env.DB_PASS || 'UcWg.75@wv+Ijzh#',
   autoSync: true,
   activeEngine: 'mysql',
   lastSyncTime: new Date().toISOString(),
@@ -664,8 +664,8 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         const syncTable = async (tableName: string, dataArray: any[]) => {
           if (!Array.isArray(dataArray)) return;
           if (dataArray.length === 0) {
-            if (tableName === 'lotteries') {
-              try { await connection.execute(`DELETE FROM lotteries`); } catch {}
+            if (tableName === 'lotteries' || tableName === 'staff' || tableName === 'agents') {
+              try { await connection.execute(`DELETE FROM ${tableName}`); } catch {}
             }
             return;
           }
@@ -759,14 +759,15 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
           }
         };
 
-        // Sync categories and lotteries first so pool/category additions/deletions are persisted immediately
         if (dbToSync.categories) await syncTable('categories', dbToSync.categories);
         if (dbToSync.lotteries) await syncTable('lotteries', dbToSync.lotteries);
         if (dbToSync.users) await syncTable('users', dbToSync.users);
         if (dbToSync.staff) await syncTable('staff', dbToSync.staff);
-        if (dbToSync.agents) await syncTable('agents', dbToSync.agents);
-        else if (dbToSync.staff) await syncTable('agents', dbToSync.staff);
-        else if (dbToSync.users) await syncTable('agents', dbToSync.users.filter((u: any) => u.role === 'agent' || u.role === 'subagent'));
+        if (Array.isArray(dbToSync.agents) && dbToSync.agents.length > 0) {
+          await syncTable('agents', dbToSync.agents);
+        } else if (Array.isArray(dbToSync.staff)) {
+          await syncTable('agents', dbToSync.staff.filter((s: any) => s && (s.role === 'agent' || s.role === 'subagent')));
+        }
         if (dbToSync.tickets) await syncTable('tickets', dbToSync.tickets);
         if (dbToSync.deposits) await syncTable('deposits', dbToSync.deposits);
         if (dbToSync.withdrawals) await syncTable('withdrawals', dbToSync.withdrawals);
@@ -880,8 +881,81 @@ const handleGetSettings = async (req: Request, res: Response) => {
 app.get('/api_settings.php', handleGetSettings);
 app.get('/api/settings', handleGetSettings);
 
+// Live SQL Diagnostic & Disparity Verification Endpoint
+app.get('/api/sql/debug', async (_req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  const { bridgeUrl, dbHost } = resolveBridgeAndDbHost(serverSqlConfig.host);
+  const start = Date.now();
+  try {
+    const mysqlPool = getPool();
+    const connection = await mysqlPool.getConnection();
+    const fetchSafe = async (tbl: string) => {
+      try {
+        const [rows]: any = await connection.execute(`SELECT * FROM ${tbl}`);
+        return Array.isArray(rows) ? rows : [];
+      } catch {
+        return [];
+      }
+    };
+    const [users, staff, agents, categories, lotteries] = await Promise.all([
+      fetchSafe('users'),
+      fetchSafe('staff'),
+      fetchSafe('agents'),
+      fetchSafe('categories'),
+      fetchSafe('lotteries')
+    ]);
+    connection.release();
+
+    const staffMap = new Map<string, any>();
+    const legacyStaff = users.filter((u: any) => u && (u.role === 'agent' || u.role === 'moderator' || u.role === 'subagent'));
+    [...agents, ...staff, ...legacyStaff].forEach((s: any) => {
+      if (!s) return;
+      const key = s.username ? String(s.username).toLowerCase() : s.id;
+      if (key) staffMap.set(key, s);
+    });
+    const unifiedStaff = Array.from(staffMap.values());
+
+    return res.json({
+      success: true,
+      environment: process.env.NODE_ENV || 'development',
+      latencyMs: Date.now() - start,
+      connection: {
+        bridgeUrl,
+        dbHost,
+        database: serverSqlConfig.database,
+        username: serverSqlConfig.username
+      },
+      tableRowCounts: {
+        users: users.length,
+        staff: staff.length,
+        agents: agents.length,
+        categories: categories.length,
+        lotteries: lotteries.length
+      },
+      computedAdminBadgeCounts: {
+        agentsCount: unifiedStaff.filter((u: any) => u.role === 'agent' || u.role === 'subagent').length,
+        modsCount: unifiedStaff.filter((u: any) => u.role === 'moderator').length,
+        unifiedStaffUsernames: unifiedStaff.map((u: any) => ({ username: u.username, role: u.role, status: u.status }))
+      }
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      connection: { bridgeUrl, dbHost, database: serverSqlConfig.database }
+    });
+  }
+});
+
 // Shared API endpoint to fetch or test database state from SQL with zero-failure fallback
 const handleGetDatabaseState = async (req: Request, res: Response) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   // If request contains database testing or config parameters sent via POST to /db
   if (req.method === 'POST' && req.body && (req.body.host || req.body.database)) {
     return res.json({
@@ -918,9 +992,13 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
         }
       };
 
-      const users = await fetchTable('users');
-      const staff = await fetchTable('staff');
-      const agents = await fetchTable('agents');
+      const staticMockIds = new Set(['u_agent_dhaka', 'u_agent_sylhet', 'u_mod_support']);
+      const rawUsers = await fetchTable('users');
+      const rawStaff = await fetchTable('staff');
+      const rawAgents = await fetchTable('agents');
+      const users = Array.isArray(rawUsers) ? rawUsers.filter((u: any) => u && !staticMockIds.has(u.id)) : [];
+      const staff = Array.isArray(rawStaff) ? rawStaff.filter((s: any) => s && !staticMockIds.has(s.id)) : [];
+      const agents = Array.isArray(rawAgents) ? rawAgents.filter((a: any) => a && !staticMockIds.has(a.id)) : [];
       const rawCategories = await fetchTable('categories');
       const defaultCategories = [
         { id: 'c1', name: '10 Taka Banner', label: '🎟️ ৳10 Sliders', type: 'single', defaultPrizes: '' },

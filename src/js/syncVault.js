@@ -557,7 +557,8 @@ export const SyncVaultModule = {
         this.addConsoleLog(`[SQL TEST] Probing MySQL engine at ${host}:${port} (User: ${username})...`, "info");
 
         try {
-          const res = await fetch("/api/sql/test-connection", {
+          const fetchFn = window.sqlBridgeFetch || fetch;
+          const res = await fetchFn("/api/sql/test-connection", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ host, port, database, username })
