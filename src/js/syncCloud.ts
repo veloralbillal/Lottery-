@@ -76,7 +76,14 @@ async function executeDirectBridgeQuery(sql: string, params: any[] = [], customC
 }
 
 async function directBridgeFetchDatabase(): Promise<any> {
-  const staticMockIds = new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
+  const staticMockIds = new Set([
+    "u_agent_dhaka", "u_agent_sylhet", "u_mod_support",
+    "u1", "u2", "u3",
+    "l1", "l2", "l3", "l_quick_default",
+    "t1", "t2", "t3",
+    "d1", "d2", "w1",
+    "syn_mock_1", "syn_mock_2"
+  ]);
   const fetchTableSafe = async (tbl: string) => {
     try {
       return await executeDirectBridgeQuery(`SELECT * FROM ${tbl}`);
@@ -85,7 +92,7 @@ async function directBridgeFetchDatabase(): Promise<any> {
     }
   };
 
-  const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, tickets, deposits, withdrawals, transactions, agentLedger, settingsRows] = await Promise.all([
+  const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, rawTickets, rawDeposits, rawWithdrawals, transactions, agentLedger, settingsRows] = await Promise.all([
     fetchTableSafe("users"),
     fetchTableSafe("staff"),
     fetchTableSafe("agents"),
@@ -102,6 +109,9 @@ async function directBridgeFetchDatabase(): Promise<any> {
   const users = rawUsers.filter((u: any) => u && !staticMockIds.has(u.id));
   const staff = rawStaff.filter((s: any) => s && !staticMockIds.has(s.id));
   const agents = rawAgents.filter((a: any) => a && !staticMockIds.has(a.id));
+  const tickets = rawTickets.filter((t: any) => t && !staticMockIds.has(t.id));
+  const deposits = rawDeposits.filter((d: any) => d && !staticMockIds.has(d.id));
+  const withdrawals = rawWithdrawals.filter((w: any) => w && !staticMockIds.has(w.id));
 
   const defaultCategories = [
     { id: "c1", name: "10 Taka Banner", label: "🎟️ ৳10 Sliders", type: "single", defaultPrizes: "" },
@@ -114,16 +124,17 @@ async function directBridgeFetchDatabase(): Promise<any> {
   ];
   const categories = rawCategories.length > 0 ? rawCategories : defaultCategories;
 
-  const lotteries = rawLotteries.map((l: any) => {
-    if (!l) return l;
-    if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
-      l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
-    }
-    if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
-      try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch {}
-    }
-    return l;
-  });
+  const lotteries = rawLotteries
+    .filter((l: any) => l && !staticMockIds.has(l.id))
+    .map((l: any) => {
+      if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
+        l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
+      }
+      if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
+        try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch {}
+      }
+      return l;
+    });
 
   const settings: any = {
     payMasterEnabled: "true",
@@ -532,121 +543,97 @@ export const SyncCloudModule = {
     if (!parsed) return;
     const prevDb = this.db || {};
     const deletedIds: Set<string> = (this as any)._deletedIds instanceof Set ? (this as any)._deletedIds : new Set();
-    const staticMockIds = new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
-    const hasRecentLocalEdit = Boolean(this.lastLocalWriteTime && (Date.now() - this.lastLocalWriteTime < 15000));
+    const staticMockIds = new Set([
+      "u_agent_dhaka", "u_agent_sylhet", "u_mod_support",
+      "u1", "u2", "u3",
+      "l1", "l2", "l3", "l_quick_default",
+      "t1", "t2", "t3",
+      "d1", "d2", "w1",
+      "syn_mock_1", "syn_mock_2"
+    ]);
+    // Only preserve in-flight local mutations if a local write was triggered within the last 3.5 seconds
+    const hasInFlightWrite = Boolean(this.lastLocalWriteTime && (Date.now() - this.lastLocalWriteTime < 3500));
 
-    if (prevDb.users && Array.isArray(prevDb.users) && Array.isArray(parsed.users)) {
-      const cloudUserMap = new Map(parsed.users.map((u: any) => [u.username?.toLowerCase() || u.id, u]));
-      if (hasRecentLocalEdit) {
+    // Single Source of Truth: Database collections (users, staff, agents, categories, lotteries, tickets, deposits, withdrawals, transactions, agentLedger)
+    // come directly from the primary MySQL database. Stale localStorage items are NOT re-injected.
+    if (Array.isArray(parsed.users)) {
+      if (hasInFlightWrite && Array.isArray(prevDb.users)) {
+        const cloudUserMap = new Map(parsed.users.map((u: any) => [u.username?.toLowerCase() || u.id, u]));
         for (const localUser of prevDb.users) {
-          if (!localUser || staticMockIds.has(localUser.id)) continue;
+          if (!localUser || staticMockIds.has(localUser.id) || deletedIds.has(localUser.id)) continue;
           const key = localUser.username?.toLowerCase() || localUser.id;
-          if (!deletedIds.has(localUser.id) && !cloudUserMap.has(key)) {
-            parsed.users.push(localUser);
-          }
+          if (!cloudUserMap.has(key)) parsed.users.push(localUser);
         }
       }
       parsed.users = parsed.users.filter((u: any) => u && !staticMockIds.has(u.id) && !deletedIds.has(u.id));
     }
-    if (prevDb.staff && Array.isArray(prevDb.staff) && Array.isArray(parsed.staff)) {
-      const cloudStaffMap = new Map(parsed.staff.map((s: any) => [s.username?.toLowerCase() || s.id, s]));
-      if (hasRecentLocalEdit) {
+
+    if (Array.isArray(parsed.staff)) {
+      if (hasInFlightWrite && Array.isArray(prevDb.staff)) {
+        const cloudStaffMap = new Map(parsed.staff.map((s: any) => [s.username?.toLowerCase() || s.id, s]));
         for (const localStaff of prevDb.staff) {
-          if (!localStaff || staticMockIds.has(localStaff.id)) continue;
+          if (!localStaff || staticMockIds.has(localStaff.id) || deletedIds.has(localStaff.id)) continue;
           const key = localStaff.username?.toLowerCase() || localStaff.id;
-          if (!deletedIds.has(localStaff.id) && !cloudStaffMap.has(key)) {
-            parsed.staff.push(localStaff);
-          }
+          if (!cloudStaffMap.has(key)) parsed.staff.push(localStaff);
         }
       }
       parsed.staff = parsed.staff.filter((s: any) => s && !staticMockIds.has(s.id) && !deletedIds.has(s.id));
     }
-    if (prevDb.agents && Array.isArray(prevDb.agents) && Array.isArray(parsed.agents)) {
-      const cloudAgentMap = new Map(parsed.agents.map((a: any) => [a.username?.toLowerCase() || a.id, a]));
-      if (hasRecentLocalEdit) {
+
+    if (Array.isArray(parsed.agents)) {
+      if (hasInFlightWrite && Array.isArray(prevDb.agents)) {
+        const cloudAgentMap = new Map(parsed.agents.map((a: any) => [a.username?.toLowerCase() || a.id, a]));
         for (const localAgent of prevDb.agents) {
-          if (!localAgent || staticMockIds.has(localAgent.id)) continue;
+          if (!localAgent || staticMockIds.has(localAgent.id) || deletedIds.has(localAgent.id)) continue;
           const key = localAgent.username?.toLowerCase() || localAgent.id;
-          if (!deletedIds.has(localAgent.id) && !cloudAgentMap.has(key)) {
-            parsed.agents.push(localAgent);
-          }
+          if (!cloudAgentMap.has(key)) parsed.agents.push(localAgent);
         }
       }
       parsed.agents = parsed.agents.filter((a: any) => a && !staticMockIds.has(a.id) && !deletedIds.has(a.id));
     }
-    if (prevDb.categories && Array.isArray(prevDb.categories) && Array.isArray(parsed.categories)) {
-      const cloudCatMap = new Map(parsed.categories.map((c: any) => [c.id || c.name?.toLowerCase(), c]));
-      for (const localCat of prevDb.categories) {
-        if (!localCat || deletedIds.has(localCat.id)) continue;
-        const key = localCat.id || localCat.name?.toLowerCase();
-        if (!cloudCatMap.has(key) && !parsed.categories.some((c: any) => c.name?.toLowerCase() === localCat.name?.toLowerCase())) {
-          parsed.categories.push(localCat);
+
+    if (Array.isArray(parsed.categories)) {
+      if (hasInFlightWrite && Array.isArray(prevDb.categories)) {
+        const cloudCatMap = new Map(parsed.categories.map((c: any) => [c.id || c.name?.toLowerCase(), c]));
+        for (const localCat of prevDb.categories) {
+          if (!localCat || deletedIds.has(localCat.id)) continue;
+          const key = localCat.id || localCat.name?.toLowerCase();
+          if (!cloudCatMap.has(key)) parsed.categories.push(localCat);
         }
       }
       parsed.categories = parsed.categories.filter((c: any) => c && !deletedIds.has(c.id));
     }
-    if (prevDb.lotteries && Array.isArray(prevDb.lotteries) && Array.isArray(parsed.lotteries)) {
-      const cloudLotMap = new Map(parsed.lotteries.map((l: any) => [l.id, l]));
-      for (const localLot of prevDb.lotteries) {
-        if (!localLot || !localLot.id || deletedIds.has(localLot.id)) continue;
-        if (!cloudLotMap.has(localLot.id)) {
-          parsed.lotteries.unshift(localLot);
-        } else {
-          const cloudLot: any = cloudLotMap.get(localLot.id);
-          if (localLot.multiWinnerPrizes && !cloudLot.multiWinnerPrizes) cloudLot.multiWinnerPrizes = localLot.multiWinnerPrizes;
-          if (localLot.originalDrawMode && !cloudLot.originalDrawMode) cloudLot.originalDrawMode = localLot.originalDrawMode;
-          if (localLot.exactDatetime && !cloudLot.exactDatetime) cloudLot.exactDatetime = localLot.exactDatetime;
-          if (localLot.drawnWinnersList && !cloudLot.drawnWinnersList) cloudLot.drawnWinnersList = localLot.drawnWinnersList;
+
+    if (Array.isArray(parsed.lotteries)) {
+      if (hasInFlightWrite && Array.isArray(prevDb.lotteries)) {
+        const cloudLotMap = new Map(parsed.lotteries.map((l: any) => [l.id, l]));
+        for (const localLot of prevDb.lotteries) {
+          if (!localLot || !localLot.id || staticMockIds.has(localLot.id) || deletedIds.has(localLot.id)) continue;
+          if (!cloudLotMap.has(localLot.id)) {
+            parsed.lotteries.unshift(localLot);
+          }
         }
       }
-      parsed.lotteries = parsed.lotteries.filter((l: any) => l && !deletedIds.has(l.id));
+      parsed.lotteries = parsed.lotteries.filter((l: any) => l && !staticMockIds.has(l.id) && !deletedIds.has(l.id));
     }
-    if (prevDb.tickets && Array.isArray(prevDb.tickets) && Array.isArray(parsed.tickets)) {
-      const cloudTicketIds = new Set(parsed.tickets.map((t: any) => t.id));
-      for (const localTicket of prevDb.tickets) {
-        if (localTicket && localTicket.id && !deletedIds.has(localTicket.id) && !cloudTicketIds.has(localTicket.id)) {
-          parsed.tickets.push(localTicket);
-        }
-      }
+
+    if (Array.isArray(parsed.tickets)) {
+      parsed.tickets = parsed.tickets.filter((t: any) => t && !staticMockIds.has(t.id) && !deletedIds.has(t.id));
     }
-    if (prevDb.deposits && Array.isArray(prevDb.deposits) && Array.isArray(parsed.deposits)) {
-      const cloudDepIds = new Set(parsed.deposits.map((d: any) => d.id));
-      for (const localDep of prevDb.deposits) {
-        if (localDep && localDep.id && !cloudDepIds.has(localDep.id)) {
-          parsed.deposits.push(localDep);
-        }
-      }
+    if (Array.isArray(parsed.deposits)) {
+      parsed.deposits = parsed.deposits.filter((d: any) => d && !staticMockIds.has(d.id) && !deletedIds.has(d.id));
     }
-    if (prevDb.withdrawals && Array.isArray(prevDb.withdrawals) && Array.isArray(parsed.withdrawals)) {
-      const cloudWdrIds = new Set(parsed.withdrawals.map((w: any) => w.id));
-      for (const localWdr of prevDb.withdrawals) {
-        if (localWdr && localWdr.id && !cloudWdrIds.has(localWdr.id)) {
-          parsed.withdrawals.push(localWdr);
-        }
-      }
+    if (Array.isArray(parsed.withdrawals)) {
+      parsed.withdrawals = parsed.withdrawals.filter((w: any) => w && !staticMockIds.has(w.id) && !deletedIds.has(w.id));
     }
-    if (prevDb.transactions && Array.isArray(prevDb.transactions) && Array.isArray(parsed.transactions)) {
-      const cloudTxIds = new Set(parsed.transactions.map((t: any) => t.id));
-      for (const localTx of prevDb.transactions) {
-        if (!cloudTxIds.has(localTx.id)) {
-          parsed.transactions.push(localTx);
-        }
-      }
-    }
-    if (prevDb.agentLedger && Array.isArray(prevDb.agentLedger) && Array.isArray(parsed.agentLedger)) {
-      const cloudLedgerIds = new Set(parsed.agentLedger.map((l: any) => l.id));
-      for (const localLedger of prevDb.agentLedger) {
-        if (!cloudLedgerIds.has(localLedger.id)) {
-          parsed.agentLedger.push(localLedger);
-        }
-      }
-    }
-    const syncNodes = prevDb.syncNodes ? prevDb.syncNodes : parsed.syncNodes;
+
+    const syncNodes = [
+      { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
+    ];
     const sqlDbConfig = prevDb.sqlDbConfig ? prevDb.sqlDbConfig : parsed.sqlDbConfig;
     const mergedSettings = { ...(prevDb.settings || {}), ...(parsed.settings || {}) };
 
-    // Merge instead of overwriting so non-SQL collections (categories, syndicates, etc.) are preserved
-    this.db = { ...prevDb, ...parsed, settings: mergedSettings };
+    this.db = { ...prevDb, ...parsed, syncNodes, settings: mergedSettings };
 
     // Guarantee all required collections are initialized as arrays
     if (!Array.isArray(this.db.users)) this.db.users = [];
@@ -876,7 +863,7 @@ export const SyncCloudModule = {
     this.setSyncState("loading");
     try {
       console.log("[loadFromCloud] Initiating load from MySQL database...");
-      const sqlRes = await sqlBridgeFetch("/api/sql/db", { cache: "no-store" });
+      const sqlRes = await sqlBridgeFetch(`/api/sql/db?_t=${Date.now()}`, { cache: "no-store" });
       if (sqlRes.ok) {
         const sqlData = await sqlRes.json();
         if (sqlData.success && sqlData.db) {
@@ -976,6 +963,11 @@ export const SyncCloudModule = {
           const resData = await response.json();
           if (resData.success) {
             this.lastLocalWriteTime = Date.now();
+            try {
+              if ((this as any)._bcChannel) {
+                (this as any)._bcChannel.postMessage({ type: "database_updated", timestamp: Date.now() });
+              }
+            } catch {}
             this.addConsoleLog(`[SYNC] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) synced successfully. 100% data synced!`, "success");
             this.setSyncState("synced");
           } else {
@@ -1135,6 +1127,21 @@ export const SyncCloudModule = {
   },
 
   initRealtimeEventStream() {
+    // 1. Same-browser multi-tab instant BroadcastChannel
+    if (typeof BroadcastChannel !== "undefined" && !(this as any)._bcChannel) {
+      try {
+        const bc = new BroadcastChannel("lw_realtime_db_sync");
+        (this as any)._bcChannel = bc;
+        bc.onmessage = async (ev) => {
+          if (ev.data && ev.data.type === "database_updated") {
+            if (this.syncState === "syncing" || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 2000)) return;
+            await this.loadFromCloud();
+          }
+        };
+      } catch {}
+    }
+
+    // 2. Server-Sent Events (SSE) real-time push stream (/api/events)
     if ((this as any)._sseEventSource) return;
     try {
       const es = new EventSource("/api/events");
@@ -1142,18 +1149,17 @@ export const SyncCloudModule = {
       es.onmessage = async (event) => {
         try {
           const payload = JSON.parse(event.data);
-          if (payload && payload.type === "database_switched") {
+          if (payload && payload.type === "database_updated") {
+            if (this.syncState === "syncing" || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 2500)) {
+              return;
+            }
+            console.log("[SSE Realtime Stream] Database mutation received — refreshing state immediately.");
+            await this.loadFromCloud();
+          } else if (payload && payload.type === "database_switched") {
             console.log("[SSE Realtime Broadcaster] Database engine switched across browsers:", payload.activeMode);
             if (payload.config && this.db) {
               if (!this.db.sqlDbConfig) this.db.sqlDbConfig = {};
               this.db.sqlDbConfig = { ...this.db.sqlDbConfig, ...payload.config };
-                this.db.syncNodes?.forEach((n: any) => {
-                  if (payload.activeMode === "SQL") {
-                    n.active = (n.id === "node-sql");
-                  } else {
-                    n.active = (n.id === "node-1" || n.id === "node-firebase");
-                  }
-                });
             }
             localStorage.removeItem("lottery_winner_db_backup");
             await this.loadFromCloud();
@@ -1177,40 +1183,55 @@ export const SyncCloudModule = {
   startSqlPolling() {
     if (this._sqlPollInterval) return;
     this._sqlPollInterval = setInterval(async () => {
-      if (typeof document !== 'undefined' && document.hidden) return;
-      if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 10000)) {
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 4000)) {
         return;
       }
-      let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
-      if (activeNode && activeNode.id === "node-sql") {
-        try {
-          const sqlRes = await sqlBridgeFetch("/api/sql/db", { cache: "no-store" });
-          if (sqlRes.ok) {
-            if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 10000)) {
-              return;
-            }
-            const sqlData = await sqlRes.json();
-            if (sqlData.success && sqlData.db) {
-              const currentStr = safeStringify(this.db);
-              const incomingStr = typeof sqlData.db === "string" ? sqlData.db : safeStringify(sqlData.db);
-              if (currentStr !== incomingStr) {
-                let parsed = typeof sqlData.db === "string" ? JSON.parse(sqlData.db) : sqlData.db;
-                if (parsed) {
-                  parsed = removeCircularReferences(parsed);
-                  this.mergeParsedDb(parsed);
-                  localStorage.setItem(this.dbKey, safeStringify(this.db));
-                  localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
-                  this.render();
-                  console.log("[SQL Realtime Poll] Live state successfully synchronized across browser from MySQL.");
-                }
+      try {
+        const sqlRes = await sqlBridgeFetch(`/api/sql/db?_t=${Date.now()}`, { cache: "no-store" });
+        if (sqlRes.ok) {
+          if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 4000)) {
+            return;
+          }
+          const sqlData = await sqlRes.json();
+          if (sqlData.success && sqlData.db) {
+            let parsed = typeof sqlData.db === "string" ? JSON.parse(sqlData.db) : sqlData.db;
+            if (parsed) {
+              parsed = removeCircularReferences(parsed);
+              const beforeSig = safeStringify({
+                l: this.db?.lotteries,
+                s: this.db?.staff,
+                a: this.db?.agents,
+                u: this.db?.users,
+                c: this.db?.categories,
+                t: this.db?.tickets,
+                d: this.db?.deposits,
+                w: this.db?.withdrawals
+              });
+              this.mergeParsedDb(parsed);
+              const afterSig = safeStringify({
+                l: this.db?.lotteries,
+                s: this.db?.staff,
+                a: this.db?.agents,
+                u: this.db?.users,
+                c: this.db?.categories,
+                t: this.db?.tickets,
+                d: this.db?.deposits,
+                w: this.db?.withdrawals
+              });
+              if (beforeSig !== afterSig) {
+                localStorage.setItem(this.dbKey, safeStringify(this.db));
+                localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
+                this.render();
+                console.log("[SQL Realtime Poll] Live database changes detected and rendered automatically.");
               }
             }
           }
-        } catch (e) {
-          // silent background poll catch
         }
+      } catch (e) {
+        // silent background poll catch
       }
-    }, 5000);
+    }, 3000);
   }
 };
 

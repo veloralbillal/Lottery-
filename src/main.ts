@@ -228,19 +228,29 @@ export class StateManager {
 
     // 🛡️ CRITICAL: Guarantee ALL collections exist to prevent crashes in render()
     if (!this.db) this.db = getDefaultDB();
-    const staticMockIds = new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
+    const staticMockIds = new Set([
+      "u_agent_dhaka", "u_agent_sylhet", "u_mod_support",
+      "u1", "u2", "u3",
+      "l1", "l2", "l3", "l_quick_default",
+      "t1", "t2", "t3",
+      "d1", "d2", "w1",
+      "syn_mock_1", "syn_mock_2"
+    ]);
     if (!this.db.users) this.db.users = [];
     if (!this.db.staff) this.db.staff = [];
     if (!this.db.agents) this.db.agents = [];
-    this.db.users = this.db.users.filter((u: any) => u && !staticMockIds.has(u.id));
-    this.db.staff = this.db.staff.filter((s: any) => s && !staticMockIds.has(s.id));
-    this.db.agents = this.db.agents.filter((a: any) => a && !staticMockIds.has(a.id));
-    
-    // Role self-healing completely removed per user request to respect actual database roles without overriding them based on prefixes.
     if (!this.db.lotteries) this.db.lotteries = [];
     if (!this.db.tickets) this.db.tickets = [];
     if (!this.db.deposits) this.db.deposits = [];
     if (!this.db.withdrawals) this.db.withdrawals = [];
+
+    this.db.users = this.db.users.filter((u: any) => u && !staticMockIds.has(u.id));
+    this.db.staff = this.db.staff.filter((s: any) => s && !staticMockIds.has(s.id));
+    this.db.agents = this.db.agents.filter((a: any) => a && !staticMockIds.has(a.id));
+    this.db.lotteries = this.db.lotteries.filter((l: any) => l && !staticMockIds.has(l.id));
+    this.db.tickets = this.db.tickets.filter((t: any) => t && !staticMockIds.has(t.id));
+    this.db.deposits = this.db.deposits.filter((d: any) => d && !staticMockIds.has(d.id));
+    this.db.withdrawals = this.db.withdrawals.filter((w: any) => w && !staticMockIds.has(w.id));
     if (!this.db.settings) this.db.settings = (getDefaultDB() as any).settings || {};
     if (!this.db.categories) this.db.categories = [];
     if (!this.db.syndicates) this.db.syndicates = [];
@@ -272,7 +282,7 @@ export class StateManager {
         this.db.settings = {};
       }
       if (this.db.settings.quickDrawEnabled === undefined) {
-        this.db.settings.quickDrawEnabled = true;
+        this.db.settings.quickDrawEnabled = false;
       }
       if (this.db.settings.ipPreventionEnabled === undefined) {
         this.db.settings.ipPreventionEnabled = true;
@@ -392,24 +402,14 @@ export class StateManager {
       
       // Initialize Jackpot and Daily Tasks repositories
       if (!this.db.jackpotRegistrations) {
-        this.db.jackpotRegistrations = [
-          { id: "jack_reg_1", userName: "tasnim_99", qty: 3, spent: 60, date: "2026-06-19 11:15 AM" },
-          { id: "jack_reg_2", userName: "rifat_bkash", qty: 10, spent: 200, date: "2026-06-19 12:30 PM" },
-          { id: "jack_reg_3", userName: "sadia_cyber", qty: 5, spent: 100, date: "2026-06-19 01:10 PM" }
-        ];
+        this.db.jackpotRegistrations = [];
       }
       if (!this.db.dailyTasks) {
-        this.db.dailyTasks = [
-          { id: "task_1", title: "Subscribe YouTube Channel", reward: 15, category: "youtube", url: "https://youtube.com", instructions: "Subscribe to our channel, turn on all notifications, take screenshot.", date: "2026-06-19 10:00 AM" },
-          { id: "task_2", title: "Join Official Telegram Group", reward: 25, category: "telegram", url: "https://telegram.org", instructions: "Join official discussion forum and post a positive comment. Grab screenshot showing your profile.", date: "2026-06-19 10:05 AM" },
-          { id: "task_3", title: "Like Facebook Promo Video", reward: 10, category: "facebook", url: "https://facebook.com", instructions: "Like the video and drop a comment explaining why you enjoy pools. Screen-grab comment.", date: "2026-06-19 10:10 AM" }
-        ];
+        this.db.dailyTasks = [];
       }
       if (!this.db.taskSubmissions) {
         this.db.taskSubmissions = [];
       }
-
-      this.saveDB();
     }
 
     // Guarantee categories collection exists
@@ -423,10 +423,9 @@ export class StateManager {
         { id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" },
         { id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" }
       ];
-      this.saveDB();
     }
 
-    // Dynamic database upgrade for existing local storage instances
+    // Dynamic database upgrade for existing local storage instances (without injecting dummy lotteries)
     if (this.db) {
       if (!this.db.categories.some(c => c.name === "Syndicate")) {
         this.db.categories.push({ id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" });
@@ -436,140 +435,16 @@ export class StateManager {
       }
       if (!this.db.syndicates) {
         this.db.syndicates = [];
+      } else {
+        this.db.syndicates = this.db.syndicates.filter((s: any) => s && !staticMockIds.has(s.id));
       }
-      // Guarantee a couple of active syndicates in lobby for beautiful dynamic display
-      if (this.db.syndicates.length === 0) {
-        this.db.syndicates = [
-          {
-            id: "syn_mock_1",
-            name: "🔥 ঢাকা সিটির বিজয়ী গ্রুপ",
-            code: "SYN-DHAKA7",
-            lotteryId: "l2", // 20 Taka Super Pool
-            size: 3,
-            creatorId: "u1",
-            creatorUsername: "lottery_pro",
-            joinedUserIds: ["u1", "u2"],
-            joinedUsernames: ["lottery_pro", "lucky_player"],
-            status: "pending",
-            ticketCode: null,
-            entryFeeShare: 6.67,
-            createdAt: new Date().toISOString()
-          },
-          {
-            id: "syn_mock_2",
-            name: "💎 সিলেট লাকি ট্রিপল",
-            code: "SYN-SYLHET9",
-            lotteryId: "l3", // 50 Taka Mega Jackpot
-            size: 3,
-            creatorId: "u2",
-            creatorUsername: "lucky_player",
-            joinedUserIds: ["u2"],
-            joinedUsernames: ["lucky_player"],
-            status: "pending",
-            ticketCode: null,
-            entryFeeShare: 16.67,
-            createdAt: new Date().toISOString()
-          }
-        ];
-      }
-      // Guarantee at least one active Quick Draw pool exists
-      if (this.db.settings.quickDrawEnabled !== false && !this.db.lotteries.some(l => l.category === "Quick Draw" && l.status === "active")) {
-        const initialSold = 0;
-        const entryFee = 10;
-        this.db.lotteries.push({
-          id: "l_quick_default",
-          name: "⚡ ১-মিনিট ইনস্ট্যান্ট কুইক ক্যাশ (1-Min Draw)",
-          details: "Buy ticket for instant drawings. Draws every 1 minute automatically!",
-          entryFee: entryFee,
-          totalTickets: 50,
-          soldTickets: initialSold,
-          category: "Quick Draw",
-          drawTime: new Date(Date.now() + 60 * 1000).toISOString(),
-          status: "active",
-          prizeAmount: 0,
-          drawMode: "auto"
-        });
-      }
-      this.saveDB();
     }
 
-    // Guarantee community collections exist
-    if (this.db && !this.db.communityPosts) {
-      this.db.communityPosts = [
-        {
-          id: "p1",
-          userId: "u1",
-          username: "lottery_pro",
-          email: "pro@lotterywinner.app",
-          content: "Wow! Subscribed to the 10-Taka Fast Cash Daily tickets and just won 500 Taka yesterday! This portal is fully transparent and pays immediately. Highly recommended! 🇧🇩🏆",
-          likes: ["u2"],
-          dislikes: [],
-          date: "2026-06-16T12:30:00Z",
-          status: "active"
-        },
-        {
-          id: "p2",
-          userId: "u2",
-          username: "lucky_player",
-          email: "lucky@quickdraw.net",
-          content: "Has anyone tried the dynamic Rank Multi-winner split tickets yet? Please guide me on strategies!",
-          likes: [],
-          dislikes: [],
-          date: "2026-06-17T14:45:00Z",
-          status: "active"
-        }
-      ];
-    }
-    if (this.db && !this.db.communityComments) {
-      this.db.communityComments = [
-        {
-          id: "m1",
-          postId: "p2",
-          userId: "u1",
-          username: "lottery_pro",
-          email: "pro@lotterywinner.app",
-          content: "Yes, they are awesome! Especially the 15 Winner ones, because more buyers win a fraction, spreading the luck around. Try smaller sizes first! 👍",
-          likes: ["u2"],
-          dislikes: [],
-          date: "2026-06-17T15:00:00Z",
-          status: "active"
-        }
-      ];
-    }
-    if (this.db && !this.db.reports) {
-      this.db.reports = [
-        {
-          id: "rep1",
-          reporterId: "u2",
-          reporterUsername: "lucky_player",
-          type: "post",
-          targetId: "p1",
-          targetText: "Wow! Subscribed to the 10-Taka Fast Cash Daily tickets...",
-          authorUsername: "lottery_pro",
-          reason: "Spam advertisement or selling details.",
-          date: "2026-06-17T16:20:00Z",
-          status: "pending"
-        }
-      ];
-    }
-    if (this.db && !this.db.badgeRequests) {
-      this.db.badgeRequests = [];
-    }
-    if (this.db && !this.db.messages) {
-      this.db.messages = [
-        {
-          id: "msg1",
-          recipientType: "bulk",
-          targetUsername: "",
-          category: "general",
-          subject: "Welcome to Live Lottery Winner!",
-          content: "Welcome to our live platform! Stay tuned for premium updates, jackpots, special ticket draws, the community forum, and secure payment gate details straight from the admin room.",
-          date: "2026-06-18T12:00:00Z",
-          readBy: []
-        }
-      ];
-    }
-    this.saveDB();
+    if (this.db && !this.db.communityPosts) this.db.communityPosts = [];
+    if (this.db && !this.db.communityComments) this.db.communityComments = [];
+    if (this.db && !this.db.reports) this.db.reports = [];
+    if (this.db && !this.db.badgeRequests) this.db.badgeRequests = [];
+    if (this.db && !this.db.messages) this.db.messages = [];
     // Guarantee that standard Admin credentials requested by user are set
     if (this.db && this.db.settings) {
       const s = this.db.settings;
@@ -1260,9 +1135,9 @@ export class StateManager {
             }
             } // Close of the else block we added for refund check
 
-            // Spawn new Quick Draw if category is Quick Draw
+            // Spawn new Quick Draw only if explicitly enabled by Admin
             if (lot.category === "Quick Draw") {
-              if (this.db.settings.quickDrawEnabled !== false) {
+              if (this.db.settings.quickDrawEnabled === true && this.isAdminMode) {
                 const nextId = "l_quick_" + Date.now();
                 const entryFee = 10;
                 const newQuickDraw = {
@@ -1287,8 +1162,7 @@ export class StateManager {
               lot.status = "drawn";
               dbUpdated = true;
 
-              // Spawn next Quick Draw even if no tickets were purchased for this draw interval
-              if (this.db.settings.quickDrawEnabled !== false) {
+              if (this.db.settings.quickDrawEnabled === true && this.isAdminMode) {
                 const nextId = "l_quick_" + Date.now();
                 const entryFee = 10;
                 const newQuickDraw = {

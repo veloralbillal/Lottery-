@@ -29,7 +29,14 @@ const DEFAULT_SQL_CONFIG: SqlConfig = {
   activeEngine: "mysql"
 };
 
-const STATIC_MOCK_IDS = new Set(["u_agent_dhaka", "u_agent_sylhet", "u_mod_support"]);
+const STATIC_MOCK_IDS = new Set([
+  "u_agent_dhaka", "u_agent_sylhet", "u_mod_support",
+  "u1", "u2", "u3",
+  "l1", "l2", "l3", "l_quick_default",
+  "t1", "t2", "t3",
+  "d1", "d2", "w1",
+  "syn_mock_1", "syn_mock_2"
+]);
 
 export function resolveBridgeEndpoint(configuredHost?: string): { bridgeUrl: string; dbHost: string } {
   const raw = (configuredHost || DEFAULT_SQL_CONFIG.host || "").trim();
@@ -208,18 +215,19 @@ export async function fetchDatabaseDirectlyFromBridge(): Promise<any> {
   const categories = Array.isArray(rawCategories) && rawCategories.length > 0 ? rawCategories : defaultCategories;
 
   const lotteries = Array.isArray(rawLotteries)
-    ? rawLotteries.map((l: any) => {
-        if (!l) return l;
-        if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
-          l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
-        }
-        if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
-          try {
-            l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes);
-          } catch {}
-        }
-        return l;
-      })
+    ? rawLotteries
+        .filter((l: any) => l && !STATIC_MOCK_IDS.has(l.id))
+        .map((l: any) => {
+          if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
+            l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
+          }
+          if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
+            try {
+              l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes);
+            } catch {}
+          }
+          return l;
+        })
     : [];
 
   const settings: Record<string, any> = {

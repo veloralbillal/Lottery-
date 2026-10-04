@@ -822,6 +822,25 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         lastSyncStartTime = Date.now();
         await executeFullSqlSync(nextDb);
       }
+
+      // Broadcast real-time database_updated event to all connected SSE clients immediately
+      try {
+        const ssePayload = {
+          type: 'database_updated',
+          timestamp,
+          counts: {
+            lotteries: Array.isArray(parsedDb.lotteries) ? parsedDb.lotteries.length : 0,
+            staff: Array.isArray(parsedDb.staff) ? parsedDb.staff.length : 0,
+            users: Array.isArray(parsedDb.users) ? parsedDb.users.length : 0
+          }
+        };
+        const sseMsg = `data: ${JSON.stringify(ssePayload)}\n\n`;
+        sseClients.forEach((client: any) => {
+          try {
+            client.write(sseMsg);
+          } catch {}
+        });
+      } catch {}
     }
 
     return res.json({ 
@@ -992,7 +1011,14 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
         }
       };
 
-      const staticMockIds = new Set(['u_agent_dhaka', 'u_agent_sylhet', 'u_mod_support']);
+      const staticMockIds = new Set([
+        'u_agent_dhaka', 'u_agent_sylhet', 'u_mod_support',
+        'u1', 'u2', 'u3',
+        'l1', 'l2', 'l3', 'l_quick_default',
+        't1', 't2', 't3',
+        'd1', 'd2', 'w1',
+        'syn_mock_1', 'syn_mock_2'
+      ]);
       const rawUsers = await fetchTable('users');
       const rawStaff = await fetchTable('staff');
       const rawAgents = await fetchTable('agents');
@@ -1011,19 +1037,25 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
       ];
       const categories = Array.isArray(rawCategories) && rawCategories.length > 0 ? rawCategories : defaultCategories;
       const rawLotteries = await fetchTable('lotteries');
-      const lotteries = Array.isArray(rawLotteries) ? rawLotteries.map((l: any) => {
-        if (!l) return l;
-        if (typeof l.drawTime === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
-          l.drawTime = l.drawTime.trim().replace(' ', 'T') + '.000Z';
-        }
-        if (typeof l.multiWinnerPrizes === 'string' && l.multiWinnerPrizes.trim().startsWith('[')) {
-          try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch {}
-        }
-        return l;
-      }) : [];
-      const tickets = await fetchTable('tickets');
-      const deposits = await fetchTable('deposits');
-      const withdrawals = await fetchTable('withdrawals');
+      const lotteries = Array.isArray(rawLotteries)
+        ? rawLotteries
+            .filter((l: any) => l && !staticMockIds.has(l.id))
+            .map((l: any) => {
+              if (typeof l.drawTime === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
+                l.drawTime = l.drawTime.trim().replace(' ', 'T') + '.000Z';
+              }
+              if (typeof l.multiWinnerPrizes === 'string' && l.multiWinnerPrizes.trim().startsWith('[')) {
+                try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch {}
+              }
+              return l;
+            })
+        : [];
+      const rawTickets = await fetchTable('tickets');
+      const rawDeposits = await fetchTable('deposits');
+      const rawWithdrawals = await fetchTable('withdrawals');
+      const tickets = Array.isArray(rawTickets) ? rawTickets.filter((t: any) => t && !staticMockIds.has(t.id)) : [];
+      const deposits = Array.isArray(rawDeposits) ? rawDeposits.filter((d: any) => d && !staticMockIds.has(d.id)) : [];
+      const withdrawals = Array.isArray(rawWithdrawals) ? rawWithdrawals.filter((w: any) => w && !staticMockIds.has(w.id)) : [];
       const transactions = await fetchTable('transactions');
       const agentLedger = await fetchTable('agentLedger');
       
@@ -1240,24 +1272,6 @@ async function performCentralAuth(usernameVal: string, passwordVal: string): Pro
     const passMatches = !matchedUser.password || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === 'Admin123' || cleanPass === 'Agent123';
     if (passMatches) {
       return { success: true, user: matchedUser };
-    } else {
-      return { success: false, message: 'Incorrect credentials.' };
-    }
-  }
-
-  // Final check for default agents
-  const defaultAgents: any[] = [
-    { id: 'u_agent_dhaka', username: 'agent_dhaka', email: 'dhaka@agents.app', phone: '01700000001', password: 'password123', role: 'agent', district: 'Dhaka', balance: 5000, commissionRate: 5.0, status: 'active' },
-    { id: 'u_agent_sylhet', username: 'agent_sylhet', email: 'sylhet@agents.app', phone: '01900000005', password: 'password123', role: 'agent', district: 'Sylhet', balance: 8500, commissionRate: 6.0, status: 'active' }
-  ];
-  const defAgent = defaultAgents.find(a => 
-    a.username.toLowerCase() === cleanUser || 
-    a.email.toLowerCase() === cleanUser || 
-    a.phone === cleanUser
-  );
-  if (defAgent) {
-    if (defAgent.password === cleanPass || cleanPass === 'password123' || cleanPass === 'Admin123' || cleanPass === 'Agent123') {
-      return { success: true, user: defAgent };
     } else {
       return { success: false, message: 'Incorrect credentials.' };
     }
