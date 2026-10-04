@@ -15,8 +15,12 @@ const PORT = Number(process.env.PORT) || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
 const currentDir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
 
-// Serialization Mutex for SQL synchronization
+// Serialization Mutex & Queue for SQL synchronization
 let isSyncInProgress = false;
+let pendingSyncDb: any = null;
+let lastSyncStartTime = 0;
+let schemaMigrated = false;
+const tableColumnsCache: Record<string, string[]> = {};
 
 // Express middleware to parse json bodies with high limit
 app.use(express.json({ limit: '100mb' }));
@@ -169,7 +173,7 @@ const getPool = () => {
         let paramIndex = 0;
         formattedSql = sql.replace(/\?/g, () => {
           const val = params[paramIndex++];
-          if (typeof val === 'number') return String(val);
+          if (typeof val === 'number') return Number.isFinite(val) ? String(val) : '0';
           if (val === null || val === undefined) return 'NULL';
           if (typeof val === 'boolean') return val ? '1' : '0';
           const escaped = String(val)
@@ -304,7 +308,7 @@ app.post('/api/sql/test-connection', async (req: Request, res: Response) => {
     urlObj.searchParams.set('db_user', username);
     urlObj.searchParams.set('db_pass', password);
 
-    let tablesVerified: string[] = ['users', 'lotteries', 'tickets', 'deposits', 'withdrawals', 'settings', 'transactions'];
+    let tablesVerified: string[] = ['users', 'staff', 'agents', 'categories', 'lotteries', 'tickets', 'deposits', 'withdrawals', 'settings', 'transactions', 'agentLedger'];
     let latency = Date.now() - start;
 
     try {
@@ -384,13 +388,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
   try {
     console.log('[SQL Sync] Inbound synchronization request received.');
     
-    if (isSyncInProgress) {
-      console.warn('[SQL Sync] Conflict: Synchronization already in progress. Rejecting request.');
-      return res.status(429).json({ success: false, message: 'Synchronization already in progress. Please wait.' });
-    }
-    
-    isSyncInProgress = true;
-    
     const dbPayload = req.body?.db;
     const clientConfig = req.body?.config;
     const timestamp = new Date().toISOString();
@@ -402,7 +399,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
       const oldDb = serverSqlConfig.database;
       const oldPort = serverSqlConfig.port;
 
-      // Preserve activeEngine if not provided by client, but allow client to override it
       const newActiveEngine = clientConfig.activeEngine || serverSqlConfig.activeEngine;
       
       let safeHost = (clientConfig.host || serverSqlConfig.host || '').trim();
@@ -418,38 +414,64 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
           pool.end().catch(() => {});
           pool = null;
         }
+        schemaMigrated = false;
+        Object.keys(tableColumnsCache).forEach(k => delete tableColumnsCache[k]);
         console.log('[SQL Sync] Re-initializing connection pool for new client config:', serverSqlConfig.database, serverSqlConfig.host);
       }
     }
 
     const parsedDb = typeof dbPayload === 'string' ? JSON.parse(dbPayload) : dbPayload;
-    
     if (parsedDb) {
-      // Save locally first for extreme robustness
+      // Save locally first so local backup is always 100% up-to-date immediately
       saveLocalDbBackup(parsedDb);
+    }
 
-      // Sync to MySQL directly (Firestore removed)
+    if (isSyncInProgress) {
+      pendingSyncDb = parsedDb;
+      console.log('[SQL Sync] Sync already in progress; queued latest database state for immediate follow-up sync.');
+      return res.json({
+        success: true,
+        queued: true,
+        timestamp,
+        syncStatus: 'synced',
+        database: serverSqlConfig.database,
+        message: 'Synchronization queued and saved to local backup.'
+      });
+    }
+    
+    isSyncInProgress = true;
+    lastSyncStartTime = Date.now();
+    
+    const executeFullSqlSync = async (dbToSync: any) => {
+      if (!dbToSync) return;
+      saveLocalDbBackup(dbToSync);
 
-      // 2. Sync to MySQL
       const mysqlPool = getPool();
       const connection = await mysqlPool.getConnection();
       try {
         await connection.beginTransaction();
         
-        // Helper to get columns for a table to avoid "Unknown column" errors
-        const getTableColumns = async (tableName: string) => {
+        // Helper to get columns for a table with caching to avoid redundant HTTP roundtrips
+        const getTableColumns = async (tableName: string, forceRefresh = false) => {
+          if (!forceRefresh && tableColumnsCache[tableName] && tableColumnsCache[tableName].length > 0) {
+            return tableColumnsCache[tableName];
+          }
           try {
             const [rows]: any = await connection.execute(`DESCRIBE ${tableName}`);
-            return rows.map((r: any) => r.Field);
+            const cols = Array.isArray(rows) ? rows.map((r: any) => r.Field).filter(Boolean) : [];
+            if (cols.length > 0) {
+              tableColumnsCache[tableName] = cols;
+            }
+            return cols;
           } catch (e) {
             return [];
           }
         };
 
-        // Schema auto-migration helper
+        // Schema auto-migration helper (runs once per server boot / config change)
         const runMigrationsIfNeeded = async () => {
+          if (schemaMigrated) return;
           try {
-            // Check & Create users table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS users (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
@@ -468,7 +490,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 role VARCHAR(50) DEFAULT 'user'
             ) ENGINE=InnoDB;`);
 
-            // Check & Create staff table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS staff (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
@@ -487,7 +508,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 role VARCHAR(50) DEFAULT 'agent'
             ) ENGINE=InnoDB;`);
 
-            // Check & Create agents table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS agents (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
@@ -506,7 +526,14 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 role VARCHAR(50) DEFAULT 'agent'
             ) ENGINE=InnoDB;`);
 
-            // Check & Create lotteries table if missing
+            await connection.execute(`CREATE TABLE IF NOT EXISTS categories (
+                id VARCHAR(50) PRIMARY KEY,
+                name VARCHAR(150) NOT NULL,
+                label VARCHAR(150) NOT NULL,
+                type VARCHAR(50) DEFAULT 'single',
+                defaultPrizes TEXT NULL
+            ) ENGINE=InnoDB;`);
+
             await connection.execute(`CREATE TABLE IF NOT EXISTS lotteries (
                 id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(150) NOT NULL,
@@ -519,10 +546,10 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 status VARCHAR(30) DEFAULT 'active',
                 prizeAmount DECIMAL(15, 2) NOT NULL,
                 drawMode VARCHAR(50) DEFAULT 'manual',
-                drawDuration INT DEFAULT 10
+                drawDuration INT DEFAULT 10,
+                multiWinnerPrizes TEXT NULL
             ) ENGINE=InnoDB;`);
 
-            // Check & Create tickets table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS tickets (
                 id VARCHAR(50) PRIMARY KEY,
                 userId VARCHAR(50) NOT NULL,
@@ -533,7 +560,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 prizeAmount DECIMAL(15, 2) DEFAULT 0.00
             ) ENGINE=InnoDB;`);
 
-            // Check & Create deposits table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS deposits (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
@@ -544,7 +570,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
 
-            // Check & Create withdrawals table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS withdrawals (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
@@ -555,13 +580,11 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
 
-            // Check & Create settings table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS settings (
                 setting_key VARCHAR(100) PRIMARY KEY,
                 setting_value TEXT NULL
             ) ENGINE=InnoDB;`);
 
-            // Check & Create transactions table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS transactions (
                 id VARCHAR(50) PRIMARY KEY,
                 userId VARCHAR(50) NOT NULL,
@@ -577,7 +600,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
 
-            // Check & Create agentLedger table if missing
             await connection.execute(`CREATE TABLE IF NOT EXISTS agentLedger (
                 id VARCHAR(50) PRIMARY KEY,
                 agentId VARCHAR(50) NOT NULL,
@@ -590,10 +612,9 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 status VARCHAR(30) DEFAULT 'pending'
             ) ENGINE=InnoDB;`);
 
-            // Add missing columns to users table just in case they have an old users table definition
-            const userColumns = await getTableColumns('users');
+            const userColumns = await getTableColumns('users', true);
             if (userColumns.length > 0) {
-              const missingColumns = [
+              const missingUserCols = [
                 { name: 'role', type: "VARCHAR(50) DEFAULT 'user'" },
                 { name: 'commissionRate', type: 'DECIMAL(15, 2) DEFAULT 0.00' },
                 { name: 'earnedCommission', type: 'DECIMAL(15, 2) DEFAULT 0.00' },
@@ -603,26 +624,51 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                 { name: 'refersCount', type: 'INT DEFAULT 0' },
                 { name: 'referredBy', type: 'VARCHAR(100) NULL' }
               ];
-
-              for (const col of missingColumns) {
+              for (const col of missingUserCols) {
                 if (!userColumns.includes(col.name)) {
                   await connection.execute(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type};`);
-                  console.log(`[SQL Migration] Added column ${col.name} to users table.`);
+                  userColumns.push(col.name);
                 }
               }
+              tableColumnsCache['users'] = userColumns;
             }
+
+            const lotteryColumns = await getTableColumns('lotteries', true);
+            if (lotteryColumns.length > 0) {
+              const missingLotteryCols = [
+                { name: 'details', type: 'TEXT NULL' },
+                { name: 'soldTickets', type: 'INT DEFAULT 0' },
+                { name: 'category', type: "VARCHAR(50) DEFAULT '10 Taka Banner'" },
+                { name: 'status', type: "VARCHAR(30) DEFAULT 'active'" },
+                { name: 'drawMode', type: "VARCHAR(50) DEFAULT 'manual'" },
+                { name: 'drawDuration', type: 'INT DEFAULT 10' },
+                { name: 'multiWinnerPrizes', type: 'TEXT NULL' }
+              ];
+              for (const col of missingLotteryCols) {
+                if (!lotteryColumns.includes(col.name)) {
+                  await connection.execute(`ALTER TABLE lotteries ADD COLUMN ${col.name} ${col.type};`);
+                  lotteryColumns.push(col.name);
+                }
+              }
+              tableColumnsCache['lotteries'] = lotteryColumns;
+            }
+
+            schemaMigrated = true;
           } catch (migErr: any) {
             console.warn('[SQL Migration Warning]', migErr.message);
           }
         };
 
-        // Run migrations before syncing
         await runMigrationsIfNeeded();
 
-        // Helper to sync table data
-        // Helper to sync table data
         const syncTable = async (tableName: string, dataArray: any[]) => {
-          if (!Array.isArray(dataArray) || dataArray.length === 0) return;
+          if (!Array.isArray(dataArray)) return;
+          if (dataArray.length === 0) {
+            if (tableName === 'lotteries') {
+              try { await connection.execute(`DELETE FROM lotteries`); } catch {}
+            }
+            return;
+          }
           
           const formatToMySqlDateTime = (val: any): any => {
             if (val === null || val === undefined || val === '') return null;
@@ -633,7 +679,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
             }
             if (typeof val === 'string') {
               const trimmed = val.trim().replace(/^['"]|['"]$/g, '');
-              // Handle ISO strings like 2026-10-01T12:00:00.000Z
               if (trimmed.includes('T')) {
                 try {
                   const d = new Date(trimmed);
@@ -642,7 +687,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                   }
                 } catch {}
               }
-              // Handle already formatted YYYY-MM-DD HH:MM:SS or variations
               if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
                 return trimmed.replace('T', ' ').substring(0, 19);
               }
@@ -657,18 +701,23 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                return;
              }
 
-             await connection.execute(`DELETE FROM ${tableName}`);
-             
-             // Identify the keys that exist in both the item and the database table columns
-             const sampleItem = dataArray[0];
-             const validKeys = Object.keys(sampleItem).filter(k => columns.includes(k));
+             // Collect union of all keys across items that exist in database table columns
+             const keySet = new Set<string>();
+             for (const item of dataArray) {
+               if (item && typeof item === 'object') {
+                 Object.keys(item).forEach(k => {
+                   if (columns.includes(k)) keySet.add(k);
+                 });
+               }
+             }
+             const validKeys = Array.from(keySet);
              
              if (validKeys.length === 0) {
                console.warn(`[SQL Sync] No valid columns found to sync for ${tableName}`);
                return;
              }
 
-             // We chunk data to prevent hitting max_allowed_packet or query length limitations
+             // Upsert via REPLACE INTO FIRST so table is never wiped if an error occurs
              const chunkSize = 100;
              for (let i = 0; i < dataArray.length; i += chunkSize) {
                const chunk = dataArray.slice(i, i + chunkSize);
@@ -679,8 +728,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                  const rowPlaceholders: string[] = [];
                  for (const key of validKeys) {
                    let val = item[key];
-                   
-                   // Format datetime/ISO first
                    val = formatToMySqlDateTime(val);
                    
                    if (typeof val === 'object' && val !== null) {
@@ -696,6 +743,15 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                const sql = `REPLACE INTO ${tableName} (${validKeys.join(',')}) VALUES ${valueRows.join(',')}`;
                await connection.execute(sql, flatValues);
              }
+
+             // After REPLACE INTO succeeds, prune any deleted rows whose id is no longer in dataArray
+             if (validKeys.includes('id')) {
+               const activeIds = dataArray.map(item => item?.id).filter(Boolean);
+               if (activeIds.length > 0 && activeIds.length <= 500) {
+                 const placeholders = activeIds.map(() => '?').join(',');
+                 await connection.execute(`DELETE FROM ${tableName} WHERE id NOT IN (${placeholders})`, activeIds);
+               }
+             }
              
              console.log(`[SQL Sync] Bulk-synced ${dataArray.length} rows to ${tableName}`);
           } catch (tblErr: any) {
@@ -703,53 +759,44 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
           }
         };
 
-        if (parsedDb.users) await syncTable('users', parsedDb.users);
-        if (parsedDb.staff) await syncTable('staff', parsedDb.staff);
-        if (parsedDb.agents) await syncTable('agents', parsedDb.agents);
-        else if (parsedDb.staff) await syncTable('agents', parsedDb.staff);
-        else if (parsedDb.users) await syncTable('agents', parsedDb.users.filter(u => u.role === 'agent' || u.role === 'subagent'));
-        if (parsedDb.lotteries) await syncTable('lotteries', parsedDb.lotteries);
-        if (parsedDb.tickets) await syncTable('tickets', parsedDb.tickets);
-        if (parsedDb.deposits) await syncTable('deposits', parsedDb.deposits);
-        if (parsedDb.withdrawals) await syncTable('withdrawals', parsedDb.withdrawals);
-        if (parsedDb.transactions) await syncTable('transactions', parsedDb.transactions);
-        if (parsedDb.agentLedger) await syncTable('agentLedger', parsedDb.agentLedger);
+        // Sync categories and lotteries first so pool/category additions/deletions are persisted immediately
+        if (dbToSync.categories) await syncTable('categories', dbToSync.categories);
+        if (dbToSync.lotteries) await syncTable('lotteries', dbToSync.lotteries);
+        if (dbToSync.users) await syncTable('users', dbToSync.users);
+        if (dbToSync.staff) await syncTable('staff', dbToSync.staff);
+        if (dbToSync.agents) await syncTable('agents', dbToSync.agents);
+        else if (dbToSync.staff) await syncTable('agents', dbToSync.staff);
+        else if (dbToSync.users) await syncTable('agents', dbToSync.users.filter((u: any) => u.role === 'agent' || u.role === 'subagent'));
+        if (dbToSync.tickets) await syncTable('tickets', dbToSync.tickets);
+        if (dbToSync.deposits) await syncTable('deposits', dbToSync.deposits);
+        if (dbToSync.withdrawals) await syncTable('withdrawals', dbToSync.withdrawals);
+        if (dbToSync.transactions) await syncTable('transactions', dbToSync.transactions);
+        if (dbToSync.agentLedger) await syncTable('agentLedger', dbToSync.agentLedger);
         
-        if (parsedDb.settings) {
-          // Special handling for settings (key-value pair table)
+        if (dbToSync.settings && typeof dbToSync.settings === 'object') {
           try {
             const columns = await getTableColumns('settings');
             if (columns.includes('setting_key') && columns.includes('setting_value')) {
               const insertedKeysLower = new Set<string>();
-              for (const [key, value] of Object.entries(parsedDb.settings)) {
+              const settingRows: string[] = [];
+              const settingValues: any[] = [];
+              for (const [key, value] of Object.entries(dbToSync.settings)) {
                 const keyClean = key.trim();
                 if (!keyClean) continue;
-                
                 const keyLower = keyClean.toLowerCase();
-                if (insertedKeysLower.has(keyLower)) {
-                  continue;
-                }
+                if (insertedKeysLower.has(keyLower)) continue;
                 insertedKeysLower.add(keyLower);
-                
                 const valStr = typeof value === 'object' ? JSON.stringify(value) : String(value);
-                try {
-                  // Use REPLACE INTO to prevent Primary Key errors
-                  await connection.execute(
-                    `REPLACE INTO settings (setting_key, setting_value) VALUES (?, ?)`, 
-                    [keyClean, valStr]
-                  );
-                } catch (rowErr: any) {
-                  console.error(`[SQL Sync Settings Error] Failed for key: ${keyClean}`, rowErr.message);
-                  // If REPLACE INTO fails with duplicate, try DELETE then INSERT as a last resort
-                  try {
-                    await connection.execute(`DELETE FROM settings WHERE setting_key = ?`, [keyClean]);
-                    await connection.execute(`INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)`, [keyClean, valStr]);
-                  } catch (lastResortErr: any) {
-                     console.error(`[SQL Sync Settings Critical] Last resort failed for ${keyClean}`, lastResortErr.message);
-                  }
-                }
+                settingRows.push('(?, ?)');
+                settingValues.push(keyClean, valStr);
               }
-              console.log(`[SQL Sync] Synced settings to SQL (Upsert mode).`);
+              if (settingRows.length > 0) {
+                await connection.execute(
+                  `REPLACE INTO settings (setting_key, setting_value) VALUES ${settingRows.join(',')}`,
+                  settingValues
+                );
+              }
+              console.log(`[SQL Sync] Bulk-synced ${settingRows.length} settings to SQL.`);
             }
           } catch (setErr: any) {
             console.warn(`[SQL Sync Warning] Failed to sync settings:`, setErr.message);
@@ -757,13 +804,6 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
         }
 
         await connection.commit();
-        return res.json({ 
-          success: true, 
-          timestamp,
-          syncStatus: 'synced',
-          database: serverSqlConfig.database,
-          message: 'Synchronization complete to MySQL.' 
-        });
       } catch (sqlErr: any) {
         await connection.rollback();
         console.error('[SQL Sync Transaction Failed]', sqlErr.message);
@@ -771,7 +811,25 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
       } finally {
         connection.release();
       }
+    };
+
+    if (parsedDb) {
+      await executeFullSqlSync(parsedDb);
+      while (pendingSyncDb) {
+        const nextDb = pendingSyncDb;
+        pendingSyncDb = null;
+        lastSyncStartTime = Date.now();
+        await executeFullSqlSync(nextDb);
+      }
     }
+
+    return res.json({ 
+      success: true, 
+      timestamp,
+      syncStatus: 'synced',
+      database: serverSqlConfig.database,
+      message: 'Synchronization complete to MySQL.' 
+    });
   } catch (err: any) {
     console.error('[SQL Sync Error]', err.message);
     return res.status(500).json({ success: false, message: err.message });
@@ -834,6 +892,19 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
     });
   }
 
+  // If an active SQL sync is currently writing to the bridge, return the atomic local backup immediately
+  // so background polls never read mid-transaction or stale bridge tables.
+  if (isSyncInProgress || (lastSyncStartTime && Date.now() - lastSyncStartTime < 4000)) {
+    const recentBackup = loadLocalDbBackup();
+    if (recentBackup && recentBackup.users) {
+      return res.json({
+        success: true,
+        source: 'mysql-live-buffer',
+        db: recentBackup
+      });
+    }
+  }
+
   try {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
@@ -850,7 +921,28 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
       const users = await fetchTable('users');
       const staff = await fetchTable('staff');
       const agents = await fetchTable('agents');
-      const lotteries = await fetchTable('lotteries');
+      const rawCategories = await fetchTable('categories');
+      const defaultCategories = [
+        { id: 'c1', name: '10 Taka Banner', label: '🎟️ ৳10 Sliders', type: 'single', defaultPrizes: '' },
+        { id: 'c2', name: '20 Taka Banner', label: '🎟️ ৳20 Sliders', type: 'single', defaultPrizes: '' },
+        { id: 'c3', name: 'Mega Jackpot', label: '💎 Jackpots', type: 'single', defaultPrizes: '' },
+        { id: 'c4', name: '3 Winner Category', label: '👑 3 Winners Category', type: 'multi', defaultPrizes: '50, 30, 20' },
+        { id: 'c5', name: '15 Winner Category', label: '🚀 15 Winners Category', type: 'multi', defaultPrizes: '100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10' },
+        { id: 'c6', name: 'Syndicate', label: '👥 গ্রুপ লটারি (Syndicate)', type: 'syndicate', defaultPrizes: '' },
+        { id: 'c7', name: 'Quick Draw', label: '⚡ কুইক লটারি (1-Min)', type: 'single', defaultPrizes: '' }
+      ];
+      const categories = Array.isArray(rawCategories) && rawCategories.length > 0 ? rawCategories : defaultCategories;
+      const rawLotteries = await fetchTable('lotteries');
+      const lotteries = Array.isArray(rawLotteries) ? rawLotteries.map((l: any) => {
+        if (!l) return l;
+        if (typeof l.drawTime === 'string' && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
+          l.drawTime = l.drawTime.trim().replace(' ', 'T') + '.000Z';
+        }
+        if (typeof l.multiWinnerPrizes === 'string' && l.multiWinnerPrizes.trim().startsWith('[')) {
+          try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch {}
+        }
+        return l;
+      }) : [];
       const tickets = await fetchTable('tickets');
       const deposits = await fetchTable('deposits');
       const withdrawals = await fetchTable('withdrawals');
@@ -880,6 +972,7 @@ const handleGetDatabaseState = async (req: Request, res: Response) => {
         users,
         staff,
         agents,
+        categories,
         lotteries,
         tickets,
         deposits,

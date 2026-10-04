@@ -69,6 +69,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     referredBy VARCHAR(100) NULL
                 ) ENGINE=InnoDB;",
 
+                'categories' => "CREATE TABLE IF NOT EXISTS categories (
+                    id VARCHAR(50) PRIMARY KEY,
+                    name VARCHAR(150) NOT NULL,
+                    label VARCHAR(150) NOT NULL,
+                    type VARCHAR(50) DEFAULT 'single',
+                    defaultPrizes TEXT NULL
+                ) ENGINE=InnoDB;",
+
                 'lotteries' => "CREATE TABLE IF NOT EXISTS lotteries (
                     id VARCHAR(50) PRIMARY KEY,
                     name VARCHAR(150) NOT NULL,

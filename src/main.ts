@@ -405,7 +405,7 @@ export class StateManager {
     }
 
     // Guarantee categories collection exists
-    if (this.db && !this.db.categories) {
+    if (this.db && (!Array.isArray(this.db.categories) || this.db.categories.length === 0)) {
       this.db.categories = [
         { id: "c1", name: "10 Taka Banner", label: "🎟️ ৳10 Sliders", type: "single", defaultPrizes: "" },
         { id: "c2", name: "20 Taka Banner", label: "🎟️ ৳20 Sliders", type: "single", defaultPrizes: "" },
@@ -1346,11 +1346,11 @@ export class StateManager {
               dbUpdated = true;
             }
           } else {
-            lot.status = "drawn";
-            dbUpdated = true;
-
-            // Spawn next Quick Draw even if no tickets were purchased for this draw interval
             if (lot.category === "Quick Draw") {
+              lot.status = "drawn";
+              dbUpdated = true;
+
+              // Spawn next Quick Draw even if no tickets were purchased for this draw interval
               if (this.db.settings.quickDrawEnabled !== false) {
                 const nextId = "l_quick_" + Date.now();
                 const entryFee = 10;
@@ -1369,6 +1369,11 @@ export class StateManager {
                 };
                 this.db.lotteries.push(newQuickDraw);
               }
+            } else {
+              // Keep admin-created lottery pools active if 0 tickets were sold by extending drawTime
+              const extMinutes = Math.max(10, parseInt(lot.drawDuration) || 60);
+              lot.drawTime = new Date(Date.now() + extMinutes * 60 * 1000).toISOString();
+              dbUpdated = true;
             }
           }
         }
@@ -1495,27 +1500,19 @@ export class StateManager {
     const now = Date.now();
     let dbUpdated = false;
 
-    // Filter lotteries that are completed: drawn or refunded
-    // Note: We also consider active lotteries that have expired and had 0 tickets as completed
-    const completedLotteries = this.db.lotteries.filter(lot => {
+    // Only auto-cleanup completed transient 1-minute Quick Draw pools so admin-created pools are never auto-deleted
+    const completedLotteries = (this.db.lotteries || []).filter(lot => {
+      if (!lot) return false;
+      const isQuickDraw = lot.category === "Quick Draw" || String(lot.id || "").startsWith("l_quick_");
+      if (!isQuickDraw) return false;
+
       if (lot.status === "drawn" || lot.status === "refunded") return true;
-      
-      // If active but expired
-      if (lot.status === "active") {
-        const drawTime = new Date(lot.drawTime).getTime();
-        if (now >= drawTime) {
-          const ticketsCount = this.db.tickets.filter(t => t.lotteryId === lot.id).length;
-          if (ticketsCount === 0) {
-            return true; // Expired with 0 tickets sold
-          }
-        }
-      }
       return false;
     });
 
     completedLotteries.forEach(lot => {
       // Find all tickets for this lottery
-      const lotTickets = this.db.tickets.filter(t => t.lotteryId === lot.id);
+      const lotTickets = (this.db.tickets || []).filter(t => t.lotteryId === lot.id);
       
       // Check if all tickets have been notified, or if more than 12 hours have passed since drawTime
       const drawTime = new Date(lot.drawTime).getTime();
@@ -1524,12 +1521,14 @@ export class StateManager {
       const allNotified = lotTickets.length === 0 || lotTickets.every(t => t.notified === true);
 
       if (allNotified || isTimeSafetyPassed) {
-        // Delete the lottery
+        if (!(this as any)._deletedIds) (this as any)._deletedIds = new Set();
+        (this as any)._deletedIds.add(lot.id);
+        // Delete the transient Quick Draw lottery
         this.db.lotteries = this.db.lotteries.filter(l => l.id !== lot.id);
         // Delete its tickets
         this.db.tickets = this.db.tickets.filter(t => t.lotteryId !== lot.id);
         dbUpdated = true;
-        console.log(`Automatically cleaned up completed lottery: ${lot.name} (${lot.id})`);
+        console.log(`Automatically cleaned up completed Quick Draw lottery: ${lot.name} (${lot.id})`);
       }
     });
 
@@ -4097,12 +4096,22 @@ export class StateManager {
   }
 
   createNewLotteryPool(name, entryFee, prizeAmount, totalTickets, category, drawMode = "manual", drawDuration = 10, exactDatetime = "", desc = "", multiWinnerPrizes = null) {
+    const safeFee = Number.isFinite(parseFloat(entryFee)) ? parseFloat(entryFee) : 10;
+    const safePrize = Number.isFinite(parseFloat(prizeAmount)) ? parseFloat(prizeAmount) : 500;
+    const safeTotal = Number.isFinite(parseInt(totalTickets)) && parseInt(totalTickets) > 0 ? parseInt(totalTickets) : 1000;
+    const safeDuration = Number.isFinite(parseInt(drawDuration)) && parseInt(drawDuration) > 0 ? parseInt(drawDuration) : 10;
+
     let drawTimeDate;
     const resolvedDrawMode = (drawMode === "manual") ? "manual" : "auto";
     if (drawMode === "auto") {
-      drawTimeDate = new Date(Date.now() + drawDuration * 60 * 1000);
+      drawTimeDate = new Date(Date.now() + safeDuration * 60 * 1000);
     } else if (drawMode === "auto_datetime" && exactDatetime) {
-      drawTimeDate = new Date(exactDatetime);
+      const parsedDt = new Date(exactDatetime);
+      if (!isNaN(parsedDt.getTime()) && parsedDt.getTime() > Date.now() + 60 * 1000) {
+        drawTimeDate = parsedDt;
+      } else {
+        drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      }
     } else {
       drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
@@ -4113,32 +4122,33 @@ export class StateManager {
         const totalAward = multiWinnerPrizes.reduce((sum, p) => sum + p, 0);
         defaultsDesc = `Multiple Rank Winners Draw event! A total cash pool of ৳${totalAward} is distributed among top ${multiWinnerPrizes.length} lucky ticket holders! Rank prizes: ${multiWinnerPrizes.map((p, i) => `#${i+1} gets ৳${p}`).join(", ")}.`;
       } else {
-        defaultsDesc = `Exclusive ${entryFee} Taka lottery draw pool. The luck winner receives ৳${prizeAmount}!`;
+        defaultsDesc = `Exclusive ${safeFee} Taka lottery draw pool. The lucky winner receives ৳${safePrize}!`;
       }
     }
 
     const newLot = {
       id: "l" + Date.now(),
-      name: name,
+      name: name || "Special Lottery Pool",
       details: defaultsDesc,
-      entryFee: entryFee,
-      totalTickets: totalTickets,
+      entryFee: safeFee,
+      totalTickets: safeTotal,
       soldTickets: 0,
-      category: category,
+      category: category || "10 Taka Banner",
       drawTime: drawTimeDate.toISOString(),
       status: "active",
-      prizeAmount: prizeAmount,
+      prizeAmount: safePrize,
       drawMode: resolvedDrawMode,
-      drawDuration: drawDuration,
+      drawDuration: safeDuration,
       originalDrawMode: drawMode,
-      exactDatetime: exactDatetime,
+      exactDatetime: exactDatetime || "",
       multiWinnerPrizes: multiWinnerPrizes
     };
 
+    if (!Array.isArray(this.db.lotteries)) this.db.lotteries = [];
     this.db.lotteries.unshift(newLot);
-    this.saveDB();
+    this.saveDB(true);
     this.render();
-    this.showToast(`New ${category} lottery created dynamically!`, "success");
+    this.showToast(`New ${newLot.category} lottery created dynamically!`, "success");
   }
 
   // Seamless User Profile Navigation
@@ -8123,7 +8133,7 @@ function initApplicationLoader() {
       };
 
       app.db.categories.push(newCategory);
-      app.saveDB();
+      app.saveDB(true);
       app.showToast(`Category '${label}' added successfully!`, "success");
 
       // Reset

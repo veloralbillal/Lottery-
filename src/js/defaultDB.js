@@ -168,6 +168,15 @@ export function getDefaultDB() {
         district: "Sylhet"
       }
     ],
+    categories: [
+      { id: "c1", name: "10 Taka Banner", label: "🎟️ ৳10 Sliders", type: "single", defaultPrizes: "" },
+      { id: "c2", name: "20 Taka Banner", label: "🎟️ ৳20 Sliders", type: "single", defaultPrizes: "" },
+      { id: "c3", name: "Mega Jackpot", label: "💎 Jackpots", type: "single", defaultPrizes: "" },
+      { id: "c4", name: "3 Winner Category", label: "👑 3 Winners Category", type: "multi", defaultPrizes: "50, 30, 20" },
+      { id: "c5", name: "15 Winner Category", label: "🚀 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" },
+      { id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" },
+      { id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" }
+    ],
     lotteries: [
       {
         id: "l1",

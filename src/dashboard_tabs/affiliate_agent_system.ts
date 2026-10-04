@@ -127,11 +127,15 @@ export class AffiliateAgentSystem {
     // 1. Get Level 1 Users (direct referrals)
     // We look at all users who have referredBy equal to current username, OR who are in referredUsers.
     const directUsernames = new Set();
-    if (currentUser.referredUsers) {
-      currentUser.referredUsers.forEach(r => directUsernames.add(r.username.toLowerCase()));
+    if (Array.isArray(currentUser.referredUsers)) {
+      currentUser.referredUsers.forEach(r => {
+        if (r && r.username) directUsernames.add(r.username.toLowerCase());
+      });
     }
 
-    const level1Users = db.users.filter(u => {
+    const allDbUsers = Array.isArray(db.users) ? db.users : [];
+    const level1Users = allDbUsers.filter(u => {
+      if (!u || !u.username) return false;
       if (u.username.toLowerCase() === currentUser.username.toLowerCase()) return false;
       return (u.referredBy && u.referredBy.toLowerCase() === currentUser.username.toLowerCase()) || 
              directUsernames.has(u.username.toLowerCase());
@@ -146,8 +150,8 @@ export class AffiliateAgentSystem {
       level2UsersMap[l1User.username] = [];
     });
 
-    db.users.forEach(u => {
-      if (!u.referredBy) return;
+    allDbUsers.forEach(u => {
+      if (!u || !u.referredBy) return;
       const parentLower = u.referredBy.toLowerCase();
       if (parentLower === currentUser.username.toLowerCase()) return; // Skip direct L1s
 

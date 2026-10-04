@@ -51,8 +51,8 @@ export class HomeTab {
       tabsCont.appendChild(allBtn);
 
       // Category buttons dynamically mapped
-      appInstance.db.categories.forEach(cat => {
-        if (cat.name === "Quick Draw" && appInstance.db.settings.quickDrawEnabled === false) {
+      (appInstance.db.categories || []).forEach(cat => {
+        if (cat.name === "Quick Draw" && appInstance.db.settings?.quickDrawEnabled === false) {
           return;
         }
         const btn = document.createElement("button");
