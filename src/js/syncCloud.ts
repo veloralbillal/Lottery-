@@ -122,54 +122,250 @@ export const SyncCloudModule = {
 
   mergeParsedDb(parsed) {
     if (!parsed) return;
-    if (this.db && this.db.users && parsed.users) {
+    const prevDb = this.db || {};
+    const deletedIds: Set<string> = (this as any)._deletedIds instanceof Set ? (this as any)._deletedIds : new Set();
+
+    if (prevDb.users && Array.isArray(prevDb.users) && Array.isArray(parsed.users)) {
       const cloudUserMap = new Map(parsed.users.map((u: any) => [u.username?.toLowerCase() || u.id, u]));
-      for (const localUser of this.db.users) {
+      for (const localUser of prevDb.users) {
+        if (!localUser) continue;
         const key = localUser.username?.toLowerCase() || localUser.id;
-        if (!cloudUserMap.has(key)) {
+        if (!deletedIds.has(localUser.id) && !cloudUserMap.has(key)) {
           parsed.users.push(localUser);
         }
       }
+      parsed.users = parsed.users.filter((u: any) => u && !deletedIds.has(u.id));
     }
-    if (this.db && this.db.transactions && parsed.transactions) {
+    if (prevDb.staff && Array.isArray(prevDb.staff) && Array.isArray(parsed.staff)) {
+      const cloudStaffMap = new Map(parsed.staff.map((s: any) => [s.username?.toLowerCase() || s.id, s]));
+      for (const localStaff of prevDb.staff) {
+        if (!localStaff) continue;
+        const key = localStaff.username?.toLowerCase() || localStaff.id;
+        if (!deletedIds.has(localStaff.id) && !cloudStaffMap.has(key)) {
+          parsed.staff.push(localStaff);
+        }
+      }
+      parsed.staff = parsed.staff.filter((s: any) => s && !deletedIds.has(s.id));
+    }
+    if (prevDb.agents && Array.isArray(prevDb.agents) && Array.isArray(parsed.agents)) {
+      const cloudAgentMap = new Map(parsed.agents.map((a: any) => [a.username?.toLowerCase() || a.id, a]));
+      for (const localAgent of prevDb.agents) {
+        if (!localAgent) continue;
+        const key = localAgent.username?.toLowerCase() || localAgent.id;
+        if (!deletedIds.has(localAgent.id) && !cloudAgentMap.has(key)) {
+          parsed.agents.push(localAgent);
+        }
+      }
+      parsed.agents = parsed.agents.filter((a: any) => a && !deletedIds.has(a.id));
+    }
+    if (prevDb.categories && Array.isArray(prevDb.categories) && Array.isArray(parsed.categories)) {
+      const cloudCatMap = new Map(parsed.categories.map((c: any) => [c.id || c.name?.toLowerCase(), c]));
+      for (const localCat of prevDb.categories) {
+        if (!localCat || deletedIds.has(localCat.id)) continue;
+        const key = localCat.id || localCat.name?.toLowerCase();
+        if (!cloudCatMap.has(key) && !parsed.categories.some((c: any) => c.name?.toLowerCase() === localCat.name?.toLowerCase())) {
+          parsed.categories.push(localCat);
+        }
+      }
+      parsed.categories = parsed.categories.filter((c: any) => c && !deletedIds.has(c.id));
+    }
+    if (prevDb.lotteries && Array.isArray(prevDb.lotteries) && Array.isArray(parsed.lotteries)) {
+      const cloudLotMap = new Map(parsed.lotteries.map((l: any) => [l.id, l]));
+      for (const localLot of prevDb.lotteries) {
+        if (!localLot || !localLot.id || deletedIds.has(localLot.id)) continue;
+        if (!cloudLotMap.has(localLot.id)) {
+          parsed.lotteries.unshift(localLot);
+        } else {
+          const cloudLot: any = cloudLotMap.get(localLot.id);
+          if (localLot.multiWinnerPrizes && !cloudLot.multiWinnerPrizes) cloudLot.multiWinnerPrizes = localLot.multiWinnerPrizes;
+          if (localLot.originalDrawMode && !cloudLot.originalDrawMode) cloudLot.originalDrawMode = localLot.originalDrawMode;
+          if (localLot.exactDatetime && !cloudLot.exactDatetime) cloudLot.exactDatetime = localLot.exactDatetime;
+          if (localLot.drawnWinnersList && !cloudLot.drawnWinnersList) cloudLot.drawnWinnersList = localLot.drawnWinnersList;
+        }
+      }
+      parsed.lotteries = parsed.lotteries.filter((l: any) => l && !deletedIds.has(l.id));
+    }
+    if (prevDb.tickets && Array.isArray(prevDb.tickets) && Array.isArray(parsed.tickets)) {
+      const cloudTicketIds = new Set(parsed.tickets.map((t: any) => t.id));
+      for (const localTicket of prevDb.tickets) {
+        if (localTicket && localTicket.id && !deletedIds.has(localTicket.id) && !cloudTicketIds.has(localTicket.id)) {
+          parsed.tickets.push(localTicket);
+        }
+      }
+    }
+    if (prevDb.deposits && Array.isArray(prevDb.deposits) && Array.isArray(parsed.deposits)) {
+      const cloudDepIds = new Set(parsed.deposits.map((d: any) => d.id));
+      for (const localDep of prevDb.deposits) {
+        if (localDep && localDep.id && !cloudDepIds.has(localDep.id)) {
+          parsed.deposits.push(localDep);
+        }
+      }
+    }
+    if (prevDb.withdrawals && Array.isArray(prevDb.withdrawals) && Array.isArray(parsed.withdrawals)) {
+      const cloudWdrIds = new Set(parsed.withdrawals.map((w: any) => w.id));
+      for (const localWdr of prevDb.withdrawals) {
+        if (localWdr && localWdr.id && !cloudWdrIds.has(localWdr.id)) {
+          parsed.withdrawals.push(localWdr);
+        }
+      }
+    }
+    if (prevDb.transactions && Array.isArray(prevDb.transactions) && Array.isArray(parsed.transactions)) {
       const cloudTxIds = new Set(parsed.transactions.map((t: any) => t.id));
-      for (const localTx of this.db.transactions) {
+      for (const localTx of prevDb.transactions) {
         if (!cloudTxIds.has(localTx.id)) {
           parsed.transactions.push(localTx);
         }
       }
     }
-    if (this.db && this.db.agentLedger && parsed.agentLedger) {
+    if (prevDb.agentLedger && Array.isArray(prevDb.agentLedger) && Array.isArray(parsed.agentLedger)) {
       const cloudLedgerIds = new Set(parsed.agentLedger.map((l: any) => l.id));
-      for (const localLedger of this.db.agentLedger) {
+      for (const localLedger of prevDb.agentLedger) {
         if (!cloudLedgerIds.has(localLedger.id)) {
           parsed.agentLedger.push(localLedger);
         }
       }
     }
-    const syncNodes = this.db && this.db.syncNodes ? this.db.syncNodes : parsed.syncNodes;
-    const sqlDbConfig = this.db && this.db.sqlDbConfig ? this.db.sqlDbConfig : parsed.sqlDbConfig;
+    const syncNodes = prevDb.syncNodes ? prevDb.syncNodes : parsed.syncNodes;
+    const sqlDbConfig = prevDb.sqlDbConfig ? prevDb.sqlDbConfig : parsed.sqlDbConfig;
+    const mergedSettings = { ...(prevDb.settings || {}), ...(parsed.settings || {}) };
 
-    this.db = parsed;
-    
+    // Merge instead of overwriting so non-SQL collections (categories, syndicates, etc.) are preserved
+    this.db = { ...prevDb, ...parsed, settings: mergedSettings };
+
+    // Guarantee all required collections are initialized as arrays
+    if (!Array.isArray(this.db.users)) this.db.users = [];
+    if (!Array.isArray(this.db.staff)) this.db.staff = [];
+    if (!Array.isArray(this.db.agents)) this.db.agents = [];
+    if (!Array.isArray(this.db.lotteries)) this.db.lotteries = [];
+    if (!Array.isArray(this.db.tickets)) this.db.tickets = [];
+    if (!Array.isArray(this.db.deposits)) this.db.deposits = [];
+    if (!Array.isArray(this.db.withdrawals)) this.db.withdrawals = [];
+    if (!Array.isArray(this.db.transactions)) this.db.transactions = [];
+    if (!Array.isArray(this.db.agentLedger)) this.db.agentLedger = [];
+    if (!Array.isArray(this.db.agentRecruitsLogs)) this.db.agentRecruitsLogs = [];
+    if (!Array.isArray(this.db.categories) || this.db.categories.length === 0) {
+      this.db.categories = [
+        { id: "c1", name: "10 Taka Banner", label: "🎟️ ৳10 Sliders", type: "single", defaultPrizes: "" },
+        { id: "c2", name: "20 Taka Banner", label: "🎟️ ৳20 Sliders", type: "single", defaultPrizes: "" },
+        { id: "c3", name: "Mega Jackpot", label: "💎 Jackpots", type: "single", defaultPrizes: "" },
+        { id: "c4", name: "3 Winner Category", label: "👑 3 Winners Category", type: "multi", defaultPrizes: "50, 30, 20" },
+        { id: "c5", name: "15 Winner Category", label: "🚀 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" },
+        { id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" },
+        { id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" }
+      ];
+    }
+    if (!Array.isArray(this.db.syndicates)) this.db.syndicates = [];
+    if (!Array.isArray(this.db.communityPosts)) this.db.communityPosts = [];
+    if (!Array.isArray(this.db.communityComments)) this.db.communityComments = [];
+    if (!Array.isArray(this.db.reports)) this.db.reports = [];
+    if (!Array.isArray(this.db.badgeRequests)) this.db.badgeRequests = [];
+    if (!Array.isArray(this.db.messages)) this.db.messages = [];
+    if (!Array.isArray(this.db.taskSubmissions)) this.db.taskSubmissions = [];
+    if (!Array.isArray(this.db.dailyTasks)) this.db.dailyTasks = [];
+    if (!Array.isArray(this.db.jackpotRegistrations)) this.db.jackpotRegistrations = [];
+    if (!Array.isArray(this.db.spinHistory)) this.db.spinHistory = [];
+    if (!Array.isArray(this.db.securityLogs)) this.db.securityLogs = [];
+    if (!Array.isArray(this.db.pendingAdminToasts)) this.db.pendingAdminToasts = [];
+    if (!Array.isArray(this.db.webPushAds)) this.db.webPushAds = [];
+    if (!Array.isArray(this.db.products)) this.db.products = [];
+    if (!Array.isArray(this.db.videoBounties)) this.db.videoBounties = [];
+    if (!Array.isArray(this.db.syncLogs)) this.db.syncLogs = [];
+
     // Ensure strict table separation: migrate any staff/agents from users to staff
-    if (!this.db.staff) this.db.staff = [];
-    if (this.db.users && Array.isArray(this.db.users)) {
-      const genuineUsers = [];
-      for (const u of this.db.users) {
-        const role = (u.role || "").toLowerCase();
-        if (role === "agent" || role === "subagent" || role === "moderator") {
-          if (!this.db.staff.some(s => s.id === u.id || (s.username && u.username && s.username.toLowerCase() === u.username.toLowerCase()))) {
-            this.db.staff.push(u);
-          }
-        } else {
-          genuineUsers.push(u);
+    const genuineUsers = [];
+    for (const u of this.db.users) {
+      const role = (u.role || "").toLowerCase();
+      if (role === "agent" || role === "subagent" || role === "moderator") {
+        if (!this.db.staff.some((s: any) => s.id === u.id || (s.username && u.username && s.username.toLowerCase() === u.username.toLowerCase()))) {
+          this.db.staff.push(u);
+        }
+      } else {
+        genuineUsers.push(u);
+      }
+    }
+    this.db.users = genuineUsers;
+
+    // Normalize user & staff records (numeric strings from SQL & sub-arrays)
+    const normalizePerson = (u: any) => {
+      if (!u) return;
+      u.balance = parseFloat(u.balance) || 0;
+      u.totDeposit = parseFloat(u.totDeposit) || 0;
+      u.totWithdraw = parseFloat(u.totWithdraw) || 0;
+      u.wins = parseInt(u.wins) || 0;
+      u.loss = parseInt(u.loss) || 0;
+      u.profit = parseFloat(u.profit) || 0;
+      if (u.commissionRate !== undefined) u.commissionRate = parseFloat(u.commissionRate) || 5.0;
+      if (u.earnedCommission !== undefined) u.earnedCommission = parseFloat(u.earnedCommission) || 0;
+      if (u.totalBookings !== undefined) u.totalBookings = parseInt(u.totalBookings) || 0;
+      if (!Array.isArray(u.referredUsers)) u.referredUsers = [];
+      if (!Array.isArray(u.rewardedMilestones)) u.rewardedMilestones = [];
+      if (!Array.isArray(u.unlockedItems)) u.unlockedItems = [];
+    };
+    this.db.users.forEach(normalizePerson);
+    this.db.staff.forEach(normalizePerson);
+    this.db.agents.forEach(normalizePerson);
+
+    this.db.lotteries.forEach((l: any) => {
+      if (!l) return;
+      l.entryFee = parseFloat(l.entryFee) || 0;
+      l.totalTickets = parseInt(l.totalTickets) || 100;
+      l.soldTickets = parseInt(l.soldTickets) || 0;
+      l.prizeAmount = parseFloat(l.prizeAmount) || 0;
+      l.drawDuration = parseInt(l.drawDuration) || 10;
+      if (!l.status) l.status = "active";
+      if (!l.drawMode) l.drawMode = "manual";
+      if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
+        try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch { l.multiWinnerPrizes = null; }
+      }
+      if (typeof l.drawTime === "string") {
+        const trimmed = l.drawTime.trim();
+        if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(trimmed)) {
+          l.drawTime = trimmed.replace(" ", "T") + ".000Z";
         }
       }
-      this.db.users = genuineUsers;
+      const parsedDrawTime = l.drawTime ? new Date(l.drawTime).getTime() : NaN;
+      if (isNaN(parsedDrawTime)) {
+        l.drawTime = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      }
+    });
+
+    this.db.tickets.forEach((t: any) => {
+      if (!t) return;
+      t.prizeAmount = parseFloat(t.prizeAmount) || 0;
+      if (t.userIds && !Array.isArray(t.userIds)) t.userIds = [];
+    });
+
+    this.db.syndicates.forEach((s: any) => {
+      if (!s) return;
+      if (!Array.isArray(s.joinedUserIds)) s.joinedUserIds = [];
+      if (!Array.isArray(s.joinedUsernames)) s.joinedUsernames = [];
+    });
+
+    if (this.db.settings) {
+      if (!Array.isArray(this.db.settings.vipTiers)) {
+        this.db.settings.vipTiers = [
+          { id: "vip_1", title: "Bronze VIP 1", price: 100, multiplier: 1.05, discount: 3, bonus: 5 },
+          { id: "vip_2", title: "Silver VIP 2", price: 250, multiplier: 1.10, discount: 5, bonus: 15 },
+          { id: "vip_3", title: "Gold VIP 3", price: 500, multiplier: 1.20, discount: 8, bonus: 40 },
+          { id: "vip_4", title: "Platinum VIP 4", price: 1000, multiplier: 1.35, discount: 12, bonus: 100 },
+          { id: "vip_5", title: "Crown VIP 5", price: 2500, multiplier: 1.60, discount: 20, bonus: 300 }
+        ];
+      }
+      if (!Array.isArray(this.db.settings.bannerSlides)) this.db.settings.bannerSlides = [];
+      if (!Array.isArray(this.db.settings.milestoneLevels)) {
+        this.db.settings.milestoneLevels = [
+          { title: "Bronze Recruiter", count: 3, reward: 50 },
+          { title: "Silver Partner", count: 8, reward: 150 },
+          { title: "Gold Ambassador", count: 20, reward: 500 },
+          { title: "Supreme Influencer", count: 50, reward: 1500 }
+        ];
+      }
+      if (!Array.isArray(this.db.settings.checkinRewards)) this.db.settings.checkinRewards = [2, 4, 6, 8, 10, 15, 25];
+      if (!Array.isArray(this.db.settings.allowedRegions)) this.db.settings.allowedRegions = ["Dhaka", "Chittagong", "Sylhet", "Rajshahi"];
+      if (!Array.isArray(this.db.settings.bannedRegions)) this.db.settings.bannedRegions = [];
+      if (!Array.isArray(this.db.settings.bannedIPs)) this.db.settings.bannedIPs = [];
     }
 
-    // Role self-healing completely removed per user request.
     if (syncNodes) this.db.syncNodes = syncNodes;
     if (sqlDbConfig) this.db.sqlDbConfig = sqlDbConfig;
   },
@@ -319,6 +515,7 @@ export const SyncCloudModule = {
     }
 
     this.setSyncState("syncing");
+    this.lastLocalWriteTime = Date.now();
 
     try {
       const dbSerialized = safeStringify(this.db);
@@ -354,9 +551,15 @@ export const SyncCloudModule = {
           })
         });
         
+        if (response.status === 429) {
+          setTimeout(() => this.syncToCloud(), 2000);
+          return;
+        }
+        
         if (response.ok) {
           const resData = await response.json();
           if (resData.success) {
+            this.lastLocalWriteTime = Date.now();
             this.addConsoleLog(`[SYNC] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) synced successfully. 100% data synced!`, "success");
             this.setSyncState("synced");
           } else {
@@ -559,11 +762,17 @@ export const SyncCloudModule = {
     if (this._sqlPollInterval) return;
     this._sqlPollInterval = setInterval(async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
+      if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 10000)) {
+        return;
+      }
       let activeNode = this.db && this.db.syncNodes ? this.db.syncNodes.find(n => n.active) : null;
       if (activeNode && activeNode.id === "node-sql") {
         try {
           const sqlRes = await fetch("/api/sql/db");
           if (sqlRes.ok) {
+            if (this.syncState === "syncing" || (this as any).cloudSyncTimeout != null || (this.lastLocalWriteTime && Date.now() - this.lastLocalWriteTime < 10000)) {
+              return;
+            }
             const sqlData = await sqlRes.json();
             if (sqlData.success && sqlData.db) {
               const currentStr = safeStringify(this.db);
@@ -585,7 +794,7 @@ export const SyncCloudModule = {
           // silent background poll catch
         }
       }
-    }, 4000);
+    }, 5000);
   }
 };
 

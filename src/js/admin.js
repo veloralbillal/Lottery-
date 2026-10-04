@@ -193,19 +193,25 @@ export const AdminModule = {
 
 
   renderAdminStats() {
-    const totalUsers = this.db.users.length;
-    const activeLotteries = this.db.lotteries.filter(l => l.status === "active").length;
-    const completedLotteries = this.db.lotteries.filter(l => l.status === "drawn").length;
+    const users = this.db.users || [];
+    const lotteries = this.db.lotteries || [];
+    const deposits = this.db.deposits || [];
+    const withdrawals = this.db.withdrawals || [];
+    const tickets = this.db.tickets || [];
 
-    const totalDepositedApproved = this.db.deposits.filter(d => d.status === "approved").reduce((sum, d) => sum + d.amount, 0);
-    const pendingDeposCount = this.db.deposits.filter(d => d.status === "pending").length;
-    const pendingWdsCount = this.db.withdrawals.filter(w => w.status === "pending").length;
-    const totalWdsApproved = this.db.withdrawals.filter(w => w.status === "approved").reduce((sum, w) => sum + w.amount, 0);
+    const totalUsers = users.length;
+    const activeLotteries = lotteries.filter(l => l.status === "active").length;
+    const completedLotteries = lotteries.filter(l => l.status === "drawn").length;
+
+    const totalDepositedApproved = deposits.filter(d => d.status === "approved").reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+    const pendingDeposCount = deposits.filter(d => d.status === "pending").length;
+    const pendingWdsCount = withdrawals.filter(w => w.status === "pending").length;
+    const totalWdsApproved = withdrawals.filter(w => w.status === "approved").reduce((sum, w) => sum + (parseFloat(w.amount) || 0), 0);
 
     let actualPaidTicketSpent = 0;
-    this.db.tickets.forEach(ticket => {
-      const lot = this.db.lotteries.find(l => l.id === ticket.lotteryId);
-      if (lot) actualPaidTicketSpent += lot.entryFee;
+    tickets.forEach(ticket => {
+      const lot = lotteries.find(l => l.id === ticket.lotteryId);
+      if (lot) actualPaidTicketSpent += (parseFloat(lot.entryFee) || 0);
     });
 
     const shopSales = (this.db.digitalOrders || []).reduce((sum, o) => sum + (o.amount || 0), 0);
@@ -216,7 +222,7 @@ export const AdminModule = {
     document.getElementById("admin-stat-deposits").innerText = `৳${totalDepositedApproved}`;
     document.getElementById("admin-stat-pending").innerText = `${pendingDeposCount + pendingWdsCount} Ops`;
 
-    document.getElementById("admin-metric-total-pools").innerText = `${this.db.lotteries.length} pools`;
+    document.getElementById("admin-metric-total-pools").innerText = `${lotteries.length} pools`;
     document.getElementById("admin-metric-active-pools").innerText = `${activeLotteries} active Pools`;
     document.getElementById("admin-metric-total-completes").innerText = `${completedLotteries} completed Pools`;
     document.getElementById("admin-metric-withdrawn-approved").innerText = `৳${totalWdsApproved} paid out`;
@@ -232,7 +238,7 @@ export const AdminModule = {
           if (typeof this.mergeParsedDb === "function") {
             this.mergeParsedDb(sqlData.db);
           } else {
-            this.db = sqlData.db;
+            this.db = { ...this.db, ...sqlData.db };
           }
         }
       }
@@ -499,7 +505,7 @@ export const AdminModule = {
     if (!listEl) return;
     listEl.innerHTML = "";
 
-    this.db.categories.forEach(cat => {
+    (this.db.categories || []).forEach(cat => {
       const row = document.createElement("tr");
       row.className = "hover:bg-slate-900/40 border-b border-slate-800/60";
 
@@ -537,8 +543,11 @@ export const AdminModule = {
         }
 
         if (confirm(`Remove custom category '${matched.label}' permanently?`)) {
+          if (!this._deletedIds) this._deletedIds = new Set();
+          this._deletedIds.add(catId);
           this.db.categories = this.db.categories.filter(c => c.id !== catId);
-          this.saveDB();
+          this.saveDB(true);
+          this.populateCreatePoolCategories();
           this.renderAdminCategories();
           this.showToast("Custom category wiped successfully.", "success");
         }
@@ -1042,17 +1051,18 @@ export const AdminModule = {
     const preValue = selectEl.value;
     selectEl.innerHTML = "";
     
-    this.db.categories.forEach(cat => {
+    const cats = this.db.categories || [];
+    cats.forEach(cat => {
       const opt = document.createElement("option");
       opt.value = cat.name;
       opt.innerText = `${cat.label} (${cat.type === "multi" ? "Multi Winners" : "Single Winner"})`;
       selectEl.appendChild(opt);
     });
     
-    if (preValue && this.db.categories.some(c => c.name === preValue)) {
+    if (preValue && cats.some(c => c.name === preValue)) {
       selectEl.value = preValue;
-    } else if (this.db.categories.length > 0) {
-      selectEl.value = this.db.categories[0].name;
+    } else if (cats.length > 0) {
+      selectEl.value = cats[0].name;
     }
   },
 
@@ -1225,7 +1235,7 @@ export const AdminModule = {
           if (typeof this.mergeParsedDb === "function") {
             this.mergeParsedDb(sqlData.db);
           } else {
-            this.db = sqlData.db;
+            this.db = { ...this.db, ...sqlData.db };
           }
         }
       }
@@ -1426,10 +1436,12 @@ export const AdminModule = {
         if (!staff) return;
 
         if (confirm(`Are you absolutely sure you want to permanently delete the staff account @${staff.username}?`)) {
+          if (!this._deletedIds) this._deletedIds = new Set();
+          this._deletedIds.add(id);
           if (this.db.staff) this.db.staff = this.db.staff.filter(u => u.id !== id);
           if (this.db.agents) this.db.agents = this.db.agents.filter(u => u.id !== id);
           if (this.db.users) this.db.users = this.db.users.filter(u => u.id !== id);
-          this.saveDB();
+          this.saveDB(true);
           this.showToast(`Deleted staff account @${staff.username} successfully.`, "success");
           this.renderAdminAgents();
         }
@@ -3019,7 +3031,7 @@ export const AdminModule = {
     const listEl = document.getElementById("admin-pools-list-container");
     listEl.innerHTML = "";
 
-    this.db.lotteries.forEach(lot => {
+    (this.db.lotteries || []).forEach(lot => {
       const card = document.createElement("div");
       card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative space-y-4 shadow-lg";
 
@@ -3079,8 +3091,10 @@ export const AdminModule = {
         if (!pool) return;
 
         if (confirm(`Are you sure you want to permanently delete lottery pool "${pool.name}"?`)) {
+          if (!this._deletedIds) this._deletedIds = new Set();
+          this._deletedIds.add(lotId);
           this.db.lotteries = this.db.lotteries.filter(l => l.id !== lotId);
-          this.saveDB();
+          this.saveDB(true);
           this.renderAdminLotteries();
           this.showToast(`Lottery pool "${pool.name}" has been deleted.`, "success");
         }
@@ -4247,12 +4261,22 @@ export const AdminModule = {
   },
 
   createNewLotteryPool(name, entryFee, prizeAmount, totalTickets, category, drawMode = "manual", drawDuration = 10, exactDatetime = "", desc = "", multiWinnerPrizes = null) {
+    const safeFee = Number.isFinite(parseFloat(entryFee)) ? parseFloat(entryFee) : 10;
+    const safePrize = Number.isFinite(parseFloat(prizeAmount)) ? parseFloat(prizeAmount) : 500;
+    const safeTotal = Number.isFinite(parseInt(totalTickets)) && parseInt(totalTickets) > 0 ? parseInt(totalTickets) : 1000;
+    const safeDuration = Number.isFinite(parseInt(drawDuration)) && parseInt(drawDuration) > 0 ? parseInt(drawDuration) : 10;
+
     let drawTimeDate;
     const resolvedDrawMode = (drawMode === "manual") ? "manual" : "auto";
     if (drawMode === "auto") {
-      drawTimeDate = new Date(Date.now() + drawDuration * 60 * 1000);
+      drawTimeDate = new Date(Date.now() + safeDuration * 60 * 1000);
     } else if (drawMode === "auto_datetime" && exactDatetime) {
-      drawTimeDate = new Date(exactDatetime);
+      const parsedDt = new Date(exactDatetime);
+      if (!isNaN(parsedDt.getTime()) && parsedDt.getTime() > Date.now() + 60 * 1000) {
+        drawTimeDate = parsedDt;
+      } else {
+        drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      }
     } else {
       drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
@@ -4263,32 +4287,33 @@ export const AdminModule = {
         const totalAward = multiWinnerPrizes.reduce((sum, p) => sum + p, 0);
         defaultsDesc = `Multiple Rank Winners Draw event! A total cash pool of ৳${totalAward} is distributed among top ${multiWinnerPrizes.length} lucky ticket holders! Rank prizes: ${multiWinnerPrizes.map((p, i) => `#${i+1} gets ৳${p}`).join(", ")}.`;
       } else {
-        defaultsDesc = `Exclusive ${entryFee} Taka lottery draw pool. The luck winner receives ৳${prizeAmount}!`;
+        defaultsDesc = `Exclusive ${safeFee} Taka lottery draw pool. The lucky winner receives ৳${safePrize}!`;
       }
     }
 
     const newLot = {
       id: "l" + Date.now(),
-      name: name,
+      name: name || "Special Lottery Pool",
       details: defaultsDesc,
-      entryFee: entryFee,
-      totalTickets: totalTickets,
+      entryFee: safeFee,
+      totalTickets: safeTotal,
       soldTickets: 0,
-      category: category,
+      category: category || "10 Taka Banner",
       drawTime: drawTimeDate.toISOString(),
       status: "active",
-      prizeAmount: prizeAmount,
+      prizeAmount: safePrize,
       drawMode: resolvedDrawMode,
-      drawDuration: drawDuration,
+      drawDuration: safeDuration,
       originalDrawMode: drawMode,
-      exactDatetime: exactDatetime,
+      exactDatetime: exactDatetime || "",
       multiWinnerPrizes: multiWinnerPrizes
     };
 
+    if (!Array.isArray(this.db.lotteries)) this.db.lotteries = [];
     this.db.lotteries.unshift(newLot);
-    this.saveDB();
+    this.saveDB(true);
     this.render();
-    this.showToast(`New ${category} lottery created dynamically!`, "success");
+    this.showToast(`New ${newLot.category} lottery created dynamically!`, "success");
   },
 
   renderAdminVipClub() {
