@@ -2487,23 +2487,6 @@ async function performCentralAuth(usernameVal, passwordVal) {
     };
   }
   let matchedUser = await lookupUserInMySQL(cleanUser);
-  if (!matchedUser) {
-    console.log(`[Central Auth Router] @${cleanUser} not found in live MySQL. Checking local server backup...`);
-    try {
-      const localDb = loadLocalDbBackup();
-      if (localDb && Array.isArray(localDb.users)) {
-        const localMatch = localDb.users.find(
-          (u) => u.username && u.username.toLowerCase() === cleanUser || u.email && u.email.toLowerCase() === cleanUser || u.phone && String(u.phone).trim() === cleanUser
-        );
-        if (localMatch) {
-          console.log(`[Central Auth Router] User @${cleanUser} found in Server Local Disk fallback.`);
-          matchedUser = localMatch;
-        }
-      }
-    } catch (diskErr) {
-      console.warn("[Central Auth Router] Local server backup lookup error:", diskErr.message);
-    }
-  }
   if (matchedUser) {
     if (matchedUser.status === "blocked" || matchedUser.status === "permanently_banned") {
       return { success: false, message: "This account is blocked or under review." };
