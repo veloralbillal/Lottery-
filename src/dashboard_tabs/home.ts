@@ -640,8 +640,9 @@ export class HomeTab {
     ];
 
     filteredLotteries.forEach((lot, idx) => {
+      const isCompleted = lot.status === "drawn" || new Date(lot.drawTime) < new Date();
       const card = document.createElement("div");
-      card.className = "lottery-ticket-card rounded-3xl p-5 relative overflow-hidden space-y-4 shadow-2xl cursor-pointer transition-all duration-300";
+      card.className = "lottery-ticket-card rounded-3xl p-5 relative overflow-hidden space-y-4 shadow-2xl cursor-pointer transition-all duration-300" + (isCompleted ? " opacity-70" : "");
 
       const ballTheme = ballStyles[idx % ballStyles.length];
       const badgeColor = lot.category.includes("10") ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40" :
@@ -658,6 +659,10 @@ export class HomeTab {
       });
 
       card.innerHTML = `
+        ${isCompleted ? `<div class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10 rounded-3xl border-2 border-slate-700/50">
+            <div class="text-red-500 text-lg font-bold font-mono">COMPLETED</div>
+            <div class="text-white/50 text-[10px] font-mono">Draw Has Been Finalized</div>
+          </div>` : ""}
         <!-- Top Lottery Ticket Stub Header -->
         <div class="flex justify-between items-start gap-3">
           <div class="flex items-start gap-3">
