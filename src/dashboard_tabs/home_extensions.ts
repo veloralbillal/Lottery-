@@ -80,14 +80,14 @@ export class HomeExtensions {
         const left = total - sold;
         return { ...lot, progress, left };
       })
-      .filter(lot => lot.left > 0) // Only active/not fully sold out
+      .filter(lot => lot.left > 0 || lot.status === "drawn" || new Date(lot.drawTime) < new Date())
       .sort((a, b) => b.progress - a.progress); // Highest progress first
 
-    // Select top 4 fastest-filling pools to show in carousel
+    // Select top 4 fastest-filling/completed pools to show in carousel
     const hotPools = trendingPools.slice(0, 4);
 
     if (hotPools.length === 0) {
-      // If no active fast pools, hide the container cleanly
+      // If no active/completed pools, hide the container cleanly
       extDiv.innerHTML = "";
       extDiv.classList.add("hidden");
       return;
@@ -97,6 +97,7 @@ export class HomeExtensions {
 
     let cardsHTML = "";
     hotPools.forEach((lot, index) => {
+      const isCompleted = lot.status === "drawn" || new Date(lot.drawTime) < new Date() || lot.left <= 0;
       const urgencyClass = lot.left <= 10 ? "text-red-400 font-black animate-pulse" : "text-amber-400 font-extrabold";
       const urgencyBadge = lot.left <= 5 ? "🔥 শেষ সুযোগ" : "⚡ দ্রুত পূর্ণ হচ্ছে";
       const ballIcons = ["7️⃣", "🎱", "🎰", "💎"];
@@ -105,14 +106,17 @@ export class HomeExtensions {
         <!-- Carousel Item -->
         <div class="carousel-card-item min-w-[280px] md:min-w-[310px] lottery-ticket-card rounded-3xl p-4.5 relative overflow-hidden transition-all duration-300 cursor-pointer snap-start flex-shrink-0 shadow-xl" data-id="${lot.id}" data-lottery-id="${lot.id}">
           
+          ${isCompleted ? `<div class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10 rounded-3xl border-2 border-slate-700/50">
+            <div class="text-red-500 text-lg font-bold font-mono">COMPLETED</div>
+          </div>` : ``}
+
           <!-- Urgent Badge -->
           <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10">
             <span class="bg-red-950/90 border border-red-500/50 text-red-300 font-mono text-[8.5px] font-black px-2.5 py-0.5 rounded-full tracking-wider shadow">
-              ${urgencyBadge}
+              ${isCompleted ? "🏁 ড্র সম্পন্ন" : urgencyBadge}
             </span>
           </div>
-
-          <div class="space-y-3">
+          <div class="space-y-3 ${isCompleted ? 'opacity-60' : ''}">
             <!-- Lottery Category / Title with Lotto Ball -->
             <div class="flex items-start gap-2.5">
               <div class="lottery-ball-3d lottery-ball-gold !w-8 !h-8 !text-xs shrink-0 mt-0.5">
@@ -128,7 +132,7 @@ export class HomeExtensions {
             <div class="flex items-center justify-between text-[11px] font-mono bg-slate-950/60 p-2 rounded-xl border border-amber-500/15">
               <div class="space-y-0.5">
                 <span class="text-[8.5px] text-slate-400 block">বাকি টিকেট</span>
-                <span class="${urgencyClass} text-xs">মাত্র ${lot.left}টি বাকি!</span>
+                <span class="${urgencyClass} text-xs">${isCompleted ? "০" : `মাত্র ${lot.left}টি বাকি!`}</span>
               </div>
               <div class="text-right space-y-0.5">
                 <span class="text-[8.5px] text-slate-400 block">টিকেট মূল্য</span>
@@ -149,9 +153,9 @@ export class HomeExtensions {
 
             <!-- Buy Action -->
             <div class="pt-1 flex items-center justify-between gap-3">
-              <span class="text-[8.5px] text-slate-400 font-mono italic">বিস্তারিত দেখতে ট্যাপ করুন</span>
+              <span class="text-[8.5px] text-slate-400 font-mono italic">${isCompleted ? "ড্র ফলাফল দেখুন" : "বিস্তারিত দেখতে ট্যাপ করুন"}</span>
               <button class="carousel-buy-btn lottery-ticket-btn text-white font-black text-[10.5px] uppercase py-1.5 px-3.5 rounded-xl cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95 flex items-center gap-1.5 shadow" data-id="${lot.id}">
-                <i class="fa-solid fa-ticket"></i> টিকেট নিন
+                <i class="fa-solid fa-ticket"></i> ${isCompleted ? "ফলাফল" : "টিকেট নিন"}
               </button>
             </div>
           </div>
