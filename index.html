@@ -158,6 +158,31 @@
     <meta property="twitter:title" id="twitter-title" content="Lottery Winner" />
     <meta property="twitter:description" id="twitter-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     <meta property="twitter:image" id="twitter-image" content="logo.jpg" />
+    <script>
+      (function() {
+        const updateMeta = () => {
+          const baseUrl = window.location.origin + (window.APP_BASE || '/');
+          const imageUrl = baseUrl + 'logo.jpg';
+          const currentUrl = window.location.href;
+
+          const ogImage = document.getElementById('og-image');
+          if (ogImage) ogImage.setAttribute('content', imageUrl);
+          const twitterImage = document.getElementById('twitter-image');
+          if (twitterImage) twitterImage.setAttribute('content', imageUrl);
+
+          const ogUrl = document.getElementById('og-url');
+          if (ogUrl) ogUrl.setAttribute('content', currentUrl);
+          const twitterUrl = document.getElementById('twitter-url');
+          if (twitterUrl) twitterUrl.setAttribute('content', currentUrl);
+        };
+        // Update on load and when the base might have been resolved
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', updateMeta);
+        } else {
+          updateMeta();
+        }
+      })();
+    </script>
 
     <link rel="canonical" id="canonical-url" href="" />
 
