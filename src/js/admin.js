@@ -3036,8 +3036,9 @@ export const AdminModule = {
     listEl.innerHTML = "";
 
     (this.db.lotteries || []).forEach(lot => {
-      const card = document.createElement("div");
-      card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative space-y-4 shadow-lg";
+        const isCompleted = lot.status === "drawn" || new Date(lot.drawTime) < new Date();
+        const card = document.createElement("div");
+        card.className = "bg-slate-900 border border-slate-800 p-5 rounded-3xl relative space-y-4 shadow-lg" + (isCompleted ? " opacity-70" : "");
 
       const badge = lot.status === "drawn" ? `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-green-950 text-green-300">🏆 DRAW COMPLETED</span>` :
                                              `<span class="text-[10px] font-mono py-1 px-3 rounded-full bg-cyan-950 text-cyan-400">⏳ ACTIVE RUNNING</span>`;
@@ -3053,7 +3054,8 @@ export const AdminModule = {
       }
 
       card.innerHTML = `
-        <div class="flex justify-between items-start gap-4">
+
+          <div class="flex justify-between items-start gap-4">
           <div>
             <h4 class="text-white font-bold font-sans text-sm">${this.escapeHTML(lot.name)}</h4>
             <span class="text-[10px] text-slate-500 font-mono">Category: <span class="text-cyan-400 font-bold uppercase">${lot.category}</span></span>
@@ -3061,7 +3063,7 @@ export const AdminModule = {
           ${badge}
         </div>
 
-        <p class="text-xs text-slate-400 leading-normal">${this.escapeHTML(lot.details || "Experience live payout lottery draws.")}</p>
+        <p class="text-xs text-slate-400 leading-normal">${this.escapeHTML((lot.details && lot.details !== "undefined") ? lot.details : "Experience live payout lottery draws.")}</p>
 
         ${multiPrizesDetails}
 
