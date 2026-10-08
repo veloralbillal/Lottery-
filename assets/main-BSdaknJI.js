@@ -4084,22 +4084,25 @@ COMMIT;`},getSqlFullDump(){var e;(e=this.db.sqlDbConfig)!=null&&e.database;let s
 \r
 `+JSON.stringify(n)+r+`Content-Type: text/csv\r
 \r
-`+t+o;fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:`Bearer ${this.googleAuthToken}`,"Content-Type":`multipart/related; boundary=${a}`},body:i}).then(l=>{if(l.ok)this.showToast("Transaction history backed up securely to your Google Drive!","success");else throw new Error}).catch(()=>{this.showToast("Failed to compile cloud file to Drive.","error")})})},browseDriveStatementsPicker(){this.authenticateGoogle(()=>{const s=new google.picker.View(google.picker.ViewId.DOCS);new google.picker.PickerBuilder().addView(s).setOAuthToken(this.googleAuthToken).setCallback(t=>{if(t[google.picker.Response.ACTION]===google.picker.Action.PICKED){const n=t[google.picker.Response.DOCUMENTS][0];this.showToast(`Selected statement backup: ${n[google.picker.Document.NAME]}`,"success")}}).build().setVisible(!0)})}};class Ks{static init(e){this.injectHTMLPlaceholder(),this.setupListeners(e)}static injectHTMLPlaceholder(){if(document.getElementById("home-extensions-container"))return;const e=document.getElementById("tab-home");if(!e)return;const t=document.createElement("div");t.id="home-extensions-container",t.className="space-y-4 mb-4",e.insertBefore(t,e.firstChild)}static setupListeners(e){const t=document.getElementById("home-extensions-container");t&&t.dataset.listenersAttached!=="true"&&(t.dataset.listenersAttached="true",t.addEventListener("click",n=>{const a=n.target;if(!a||typeof a.closest!="function")return;const r=a.closest(".carousel-buy-btn");if(r){n.stopPropagation();const i=r.getAttribute("data-id")||r.getAttribute("data-lottery-id");i&&e.purchaseTicket(i);return}const o=a.closest(".carousel-card-item, .lottery-ticket-card");if(o){const i=o.getAttribute("data-lottery-id")||o.getAttribute("data-id");i&&(n.stopPropagation(),e.openLotteryDetailsPop(i))}}))}static render(e){this.injectHTMLPlaceholder();const t=document.getElementById("home-extensions-container");if(!t)return;const r=(e.db.lotteries||[]).map(i=>{const l=i.soldTickets||0,d=i.totalTickets||100,u=Math.round(l/d*100),c=d-l;return{...i,progress:u,left:c}}).filter(i=>i.left>0).sort((i,l)=>l.progress-i.progress).slice(0,4);if(r.length===0){t.innerHTML="",t.classList.add("hidden");return}t.classList.remove("hidden");let o="";r.forEach((i,l)=>{const d=i.left<=10?"text-red-400 font-black animate-pulse":"text-amber-400 font-extrabold",u=i.left<=5?"🔥 শেষ সুযোগ":"⚡ দ্রুত পূর্ণ হচ্ছে",c=["7️⃣","🎱","🎰","💎"];o+=`
+`+t+o;fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart",{method:"POST",headers:{Authorization:`Bearer ${this.googleAuthToken}`,"Content-Type":`multipart/related; boundary=${a}`},body:i}).then(l=>{if(l.ok)this.showToast("Transaction history backed up securely to your Google Drive!","success");else throw new Error}).catch(()=>{this.showToast("Failed to compile cloud file to Drive.","error")})})},browseDriveStatementsPicker(){this.authenticateGoogle(()=>{const s=new google.picker.View(google.picker.ViewId.DOCS);new google.picker.PickerBuilder().addView(s).setOAuthToken(this.googleAuthToken).setCallback(t=>{if(t[google.picker.Response.ACTION]===google.picker.Action.PICKED){const n=t[google.picker.Response.DOCUMENTS][0];this.showToast(`Selected statement backup: ${n[google.picker.Document.NAME]}`,"success")}}).build().setVisible(!0)})}};class Ks{static init(e){this.injectHTMLPlaceholder(),this.setupListeners(e)}static injectHTMLPlaceholder(){if(document.getElementById("home-extensions-container"))return;const e=document.getElementById("tab-home");if(!e)return;const t=document.createElement("div");t.id="home-extensions-container",t.className="space-y-4 mb-4",e.insertBefore(t,e.firstChild)}static setupListeners(e){const t=document.getElementById("home-extensions-container");t&&t.dataset.listenersAttached!=="true"&&(t.dataset.listenersAttached="true",t.addEventListener("click",n=>{const a=n.target;if(!a||typeof a.closest!="function")return;const r=a.closest(".carousel-buy-btn");if(r){n.stopPropagation();const i=r.getAttribute("data-id")||r.getAttribute("data-lottery-id");i&&e.purchaseTicket(i);return}const o=a.closest(".carousel-card-item, .lottery-ticket-card");if(o){const i=o.getAttribute("data-lottery-id")||o.getAttribute("data-id");i&&(n.stopPropagation(),e.openLotteryDetailsPop(i))}}))}static render(e){this.injectHTMLPlaceholder();const t=document.getElementById("home-extensions-container");if(!t)return;const r=(e.db.lotteries||[]).map(i=>{const l=i.soldTickets||0,d=i.totalTickets||100,u=Math.round(l/d*100),c=d-l;return{...i,progress:u,left:c}}).filter(i=>i.left>0||i.status==="drawn"||new Date(i.drawTime)<new Date).sort((i,l)=>l.progress-i.progress).slice(0,4);if(r.length===0){t.innerHTML="",t.classList.add("hidden");return}t.classList.remove("hidden");let o="";r.forEach((i,l)=>{const d=i.status==="drawn"||new Date(i.drawTime)<new Date||i.left<=0,u=i.left<=10?"text-red-400 font-black animate-pulse":"text-amber-400 font-extrabold",c=i.left<=5?"🔥 শেষ সুযোগ":"⚡ দ্রুত পূর্ণ হচ্ছে",p=["7️⃣","🎱","🎰","💎"];o+=`
         <!-- Carousel Item -->
         <div class="carousel-card-item min-w-[280px] md:min-w-[310px] lottery-ticket-card rounded-3xl p-4.5 relative overflow-hidden transition-all duration-300 cursor-pointer snap-start flex-shrink-0 shadow-xl" data-id="${i.id}" data-lottery-id="${i.id}">
           
+          ${d?`<div class="absolute inset-0 bg-slate-900/90 flex flex-col items-center justify-center z-10 rounded-3xl border-2 border-slate-700/50">
+            <div class="text-red-500 text-lg font-bold font-mono">COMPLETED</div>
+          </div>`:""}
+
           <!-- Urgent Badge -->
           <div class="absolute top-3 right-3 flex items-center gap-1.5 z-10">
             <span class="bg-red-950/90 border border-red-500/50 text-red-300 font-mono text-[8.5px] font-black px-2.5 py-0.5 rounded-full tracking-wider shadow">
-              ${u}
+              ${d?"🏁 ড্র সম্পন্ন":c}
             </span>
           </div>
-
-          <div class="space-y-3">
+          <div class="space-y-3 ${d?"opacity-60":""}">
             <!-- Lottery Category / Title with Lotto Ball -->
             <div class="flex items-start gap-2.5">
               <div class="lottery-ball-3d lottery-ball-gold !w-8 !h-8 !text-xs shrink-0 mt-0.5">
-                <span>${c[l%c.length]}</span>
+                <span>${p[l%p.length]}</span>
               </div>
               <div class="space-y-0.5 max-w-[170px]">
                 <span class="text-[9px] uppercase font-bold text-amber-400/90 font-mono tracking-wider block">🎟️ ${i.category||"Main Draw"}</span>
@@ -4111,7 +4114,7 @@ COMMIT;`},getSqlFullDump(){var e;(e=this.db.sqlDbConfig)!=null&&e.database;let s
             <div class="flex items-center justify-between text-[11px] font-mono bg-slate-950/60 p-2 rounded-xl border border-amber-500/15">
               <div class="space-y-0.5">
                 <span class="text-[8.5px] text-slate-400 block">বাকি টিকেট</span>
-                <span class="${d} text-xs">মাত্র ${i.left}টি বাকি!</span>
+                <span class="${u} text-xs">${d?"০":`মাত্র ${i.left}টি বাকি!`}</span>
               </div>
               <div class="text-right space-y-0.5">
                 <span class="text-[8.5px] text-slate-400 block">টিকেট মূল্য</span>
@@ -4132,9 +4135,9 @@ COMMIT;`},getSqlFullDump(){var e;(e=this.db.sqlDbConfig)!=null&&e.database;let s
 
             <!-- Buy Action -->
             <div class="pt-1 flex items-center justify-between gap-3">
-              <span class="text-[8.5px] text-slate-400 font-mono italic">বিস্তারিত দেখতে ট্যাপ করুন</span>
+              <span class="text-[8.5px] text-slate-400 font-mono italic">${d?"ড্র ফলাফল দেখুন":"বিস্তারিত দেখতে ট্যাপ করুন"}</span>
               <button class="carousel-buy-btn lottery-ticket-btn text-white font-black text-[10.5px] uppercase py-1.5 px-3.5 rounded-xl cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95 flex items-center gap-1.5 shadow" data-id="${i.id}">
-                <i class="fa-solid fa-ticket"></i> টিকেট নিন
+                <i class="fa-solid fa-ticket"></i> ${d?"ফলাফল":"টিকেট নিন"}
               </button>
             </div>
           </div>
