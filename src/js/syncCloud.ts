@@ -146,7 +146,9 @@ async function directBridgeFetchDatabase(): Promise<any> {
     if (!row || !row.setting_key) continue;
     const val = row.setting_value;
     try {
-      settings[row.setting_key] = typeof val === "string" && (val.startsWith("{") || val.startsWith("["))
+      if (val === "1") settings[row.setting_key] = true;
+      else if (val === "0") settings[row.setting_key] = false;
+      else settings[row.setting_key] = typeof val === "string" && (val.startsWith("{") || val.startsWith("["))
         ? JSON.parse(val)
         : val;
     } catch {
@@ -283,7 +285,7 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
       for (const [k, v] of Object.entries(dbToSync.settings)) {
         if (!k.trim()) continue;
         settingRows.push("(?, ?)");
-        settingVals.push(k.trim(), typeof v === "object" ? JSON.stringify(v) : String(v));
+        settingVals.push(k.trim(), typeof v === "object" ? JSON.stringify(v) : (typeof v === 'boolean' ? (v ? '1' : '0') : String(v)));
       }
       if (settingRows.length > 0) {
         await executeDirectBridgeQuery(
