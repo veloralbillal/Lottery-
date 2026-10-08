@@ -1,6 +1,6 @@
 {
-  "summary":  "Implementation plan to fix the 'undefined' lottery description bug and add a visual indicator for completed lottery draws.",
-  "updatedAt":  "2026-10-08T12:05:47.528277394Z",
+  "summary":  "Implement dynamic absolute URL generation for OpenGraph and Twitter meta tags in index.html to fix social media preview issues.",
+  "updatedAt":  "2026-10-08T13:54:40.266839218Z",
   "requestFeedback":  true,
   "userFacing":  true
 }
