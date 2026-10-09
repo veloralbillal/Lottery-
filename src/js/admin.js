@@ -185,10 +185,40 @@ export const AdminModule = {
 
     // Flush any pending real-time security alerts/toasts
     this.flushAdminToasts();
+    
+    // OG Config
+    if (this.currentAdminTab === "og-config") {
+      this.renderAdminOgConfig();
+    }
   },
 
   async renderAdminStore() {
     AdminStoreManager.render(this);
+  },
+
+  renderAdminOgConfig() {
+    const s = this.db.settings.ogSettings;
+    if (!s) return;
+
+    const titleEl = document.getElementById("og-title");
+    const descEl = document.getElementById("og-description");
+    const imageEl = document.getElementById("og-image");
+
+    if (titleEl) titleEl.value = s.title || "";
+    if (descEl) descEl.value = s.description || "";
+    if (imageEl) imageEl.value = s.image || "";
+    
+    window.saveOgSettings = () => this.saveOgSettings();
+  },
+
+  saveOgSettings() {
+    const title = document.getElementById("og-title").value;
+    const description = document.getElementById("og-description").value;
+    const image = document.getElementById("og-image").value;
+       
+    this.db.settings.ogSettings = { title, description, image };
+    this.saveDB();
+    this.showToast("OG Configuration saved successfully!", "success");
   },
 
 

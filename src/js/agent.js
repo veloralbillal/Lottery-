@@ -65,6 +65,7 @@ export const AgentModule = {
     if (!this.currentUser || (this.currentUser.role !== "agent" && this.currentUser.role !== "subagent")) return;
 
     const ledger = (this.db.agentLedger || []).filter(l => l.agentId === this.currentUser.id);
+    console.log("DEBUG: Ledger items for user", this.currentUser.id, ":", ledger);
 
     // Display basic identity
     const nameEl = document.getElementById("agent-display-name");
@@ -1269,7 +1270,7 @@ export const AgentModule = {
 
         // Log Agent activity ledger
         if (!app.db.agentLedger) app.db.agentLedger = [];
-        app.db.agentLedger.push({
+        const ledgerEntry = {
           id: "act_" + Date.now(),
           agentId: app.currentUser.id,
           agentUsername: app.currentUser.username,
@@ -1278,7 +1279,9 @@ export const AgentModule = {
           description: `Wallet Cash Deposit Load Commission (${loadCommRate}%)`,
           amount: amount,
           commission: loadCommission
-        });
+        };
+        app.db.agentLedger.push(ledgerEntry);
+        console.log("DEBUG: Ledger entry created:", ledgerEntry);
 
         app.saveDB();
         app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Earned ৳${loadCommission.toFixed(2)} balance load commission!`, "success");
@@ -1387,3 +1390,5 @@ export const AgentModule = {
     }
   }
 };
+    // Assuming renderAgentWorkspace is near the end or needs to be found. 
+    // I need to find renderAgentWorkspace in agent.js to add logs there.

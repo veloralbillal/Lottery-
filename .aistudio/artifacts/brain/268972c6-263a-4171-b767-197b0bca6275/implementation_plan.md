@@ -1,15 +1,11 @@
-# Implementation Plan: Fix Social Media Meta Tags
+# Implementation Plan: Fix Agent Ledger Display
 
-## Problem
-The OpenGraph and Twitter meta tags for images are using relative paths (e.g., `content="logo.jpg"`), causing social media platforms (Facebook, Twitter/X, Slack, Discord) to fail in displaying the correct preview image when links are shared.
+## Objective
+Fix the issue where balance additions by agents are not reflected in the Payment Ledger.
 
-## Proposed Changes
-1.  **Modify `index.html`**:
-    -   Extend the existing dynamic initialization IIFE to calculate the absolute URL of the application.
-    -   Use `document.getElementById` to target the `og:image`, `twitter:image`, `og:url`, and `twitter:url` meta tags.
-    -   Update their `content` attributes with the correctly resolved absolute URLs.
-    -   This will use `window.location.origin` combined with `window.APP_BASE` to ensure compatibility with both custom domains and GitHub Pages subpaths.
-
-## Verification
--   After implementation, I will verify that the script correctly updates the meta tags by reviewing the `index.html` structure.
--   The change is non-destructive and preserves all existing SEO, UI, and functionality.
+## Plan
+1. Add console logging to `agent.js` within the `agentCashDepositForm` submission handler to trace the ledger entry creation and verify the `agentId`.
+2. Add console logging to `AgentModule.renderAgentWorkspace` to trace the filtering of the `agentLedger`.
+3. Analyze logs to determine why entries are not appearing.
+4. Correct the ledger entry creation or filter logic.
+5. Verify the fix.
