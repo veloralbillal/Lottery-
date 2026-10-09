@@ -1419,7 +1419,12 @@ function getDefaultDB() {
       signupBonusEnabled: true,
       signupBonus: 50,
       shopEnabled: true,
-      quickDrawEnabled: false
+      quickDrawEnabled: false,
+      ogSettings: {
+        title: "Mobile Lottery Portal",
+        description: "Join the best lottery experience.",
+        image: "https://example.com/logo.jpg"
+      }
     }
   };
 }

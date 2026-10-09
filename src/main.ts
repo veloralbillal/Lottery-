@@ -163,6 +163,7 @@ export class StateManager {
       this.ensureTabLoaded("tab-home");
 
       console.log("StateManager: Initial Render (Performance Mode Active)...");
+      this.updateMetaTags();
       this.render();
 
       // Defer secondary module templates to idle time
@@ -201,6 +202,36 @@ export class StateManager {
         box.classList.remove("hidden");
       }
     }
+  }
+
+  updateMetaTags() {
+    if (!this.db || !this.db.settings || !this.db.settings.ogSettings) return;
+    const { title, description, image } = this.db.settings.ogSettings;
+    
+    const titleEl = document.getElementById("og-title");
+    if (titleEl) titleEl.setAttribute("content", title);
+    
+    const descEl = document.getElementById("og-desc");
+    if (descEl) descEl.setAttribute("content", description);
+    
+    const imageEl = document.getElementById("og-image");
+    if (imageEl) imageEl.setAttribute("content", image);
+    
+    // Also update Twitter meta tags
+    const twitterTitleEl = document.getElementById("twitter-title");
+    if (twitterTitleEl) twitterTitleEl.setAttribute("content", title);
+    
+    const twitterDescEl = document.getElementById("twitter-desc");
+    if (twitterDescEl) twitterDescEl.setAttribute("content", description);
+    
+    const twitterImageEl = document.getElementById("twitter-image");
+    if (twitterImageEl) twitterImageEl.setAttribute("content", image);
+    
+    const dynamicTitleEl = document.getElementById("dynamic-title");
+    if (dynamicTitleEl) dynamicTitleEl.innerText = title;
+
+    const dynamicDescEl = document.getElementById("dynamic-desc");
+    if (dynamicDescEl) dynamicDescEl.setAttribute("content", description);
   }
 
   initDatabase() {
@@ -298,6 +329,13 @@ export class StateManager {
       }
       if (!this.db.settings.bannedRegions) {
         this.db.settings.bannedRegions = ["Barisal"]; // test banned region
+      }
+      if (!this.db.settings.ogSettings) {
+        this.db.settings.ogSettings = {
+          title: "Mobile Lottery Portal",
+          description: "Join the best lottery experience.",
+          image: "https://example.com/logo.jpg"
+        };
       }
       if (!this.db.settings.milestoneLevels) {
         this.db.settings.milestoneLevels = [

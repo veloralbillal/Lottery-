@@ -337,6 +337,9 @@ function uppercase($str) {
                 <!-- Registered Players management -->
                 <?php require_once __DIR__ . '/admin_tabs/players.php'; ?>
 
+                <!-- Open Graph Configuration -->
+                <?php require_once __DIR__ . '/admin_tabs/og_config.php'; ?>
+
                 <!-- Payment gateways sync shortcuts -->
                 <?php require_once __DIR__ . '/admin_tabs/gateways.php'; ?>
 
