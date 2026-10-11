@@ -486,6 +486,7 @@ export class StateManager {
     // Guarantee that standard Admin credentials requested by user are set
     if (this.db && this.db.settings) {
       const s = this.db.settings;
+      s.maintenanceMode = Boolean(s.maintenanceMode);
       if (s.adminPass === "admin123" || !s.adminPass) {
         s.adminPass = "Admin123";
       }
@@ -1453,7 +1454,8 @@ export class StateManager {
   // Route Views Switcher
   getAppView() {
     // Check maintenance first
-    if (this.db.settings.maintenanceMode && !this.isAdminMode && (!this.currentUser || this.currentUser.role !== "moderator")) {
+    const isMaintenance = this.db?.settings?.maintenanceMode === true || this.db?.settings?.maintenanceMode === "true" || this.db?.settings?.maintenanceMode === "1" || this.db?.settings?.maintenanceMode === 1;
+    if (isMaintenance && !this.isAdminMode && (!this.currentUser || this.currentUser.role !== "moderator")) {
       return "maintenance";
     }
     if (this.isAdminMode || (this.currentUser && this.currentUser.role === "moderator")) {
@@ -1519,7 +1521,7 @@ export class StateManager {
 
       const view = this.getAppView();
       // Safe screen hiding
-      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent", "screen-store"];
+      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent", "screen-store", "screen-agent-chat"];
       screens.forEach(s => {
         const el = document.getElementById(s);
         if (el) el.classList.add("hidden");
@@ -1533,6 +1535,10 @@ export class StateManager {
         const el = document.getElementById("screen-auth");
         if (el) el.classList.remove("hidden");
         this.renderAuth();
+      } else if (this.currentTab === "agent-chat") {
+        const el = document.getElementById("screen-agent-chat");
+        if (el) el.classList.remove("hidden");
+        this.renderAgentChat();
       } else if (view === "dashboard") {
         const isShopStaff = this.currentUser && (this.currentUser.role === "shop_admin" || this.currentUser.role === "shop_manager" || this.currentUser.role === "shop_owner");
         if (isShopStaff) {
@@ -1583,6 +1589,100 @@ export class StateManager {
         debugBox.classList.remove("hidden");
       }
     }
+  }
+
+  // ================= AGENT LIVE CHAT SYSTEM =================
+  openAgentChat(agentUsername: string) {
+    this.currentChatAgent = agentUsername;
+    this.currentTab = "agent-chat";
+    this.render();
+    this.setupAgentChatListeners();
+  }
+
+  closeAgentChat() {
+    this.currentChatAgent = null;
+    this.currentTab = "home";
+    this.render();
+  }
+
+  setupAgentChatListeners() {
+    setTimeout(() => {
+      const form = document.getElementById("agent-chat-form");
+      const input = document.getElementById("agent-chat-input") as HTMLInputElement | null;
+      if (form && !form.dataset.listenerAttached) {
+        form.dataset.listenerAttached = "true";
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          if (!input || !input.value.trim()) return;
+          const text = input.value.trim();
+          input.value = "";
+
+          if (!this.db.agentChats) this.db.agentChats = [];
+          this.db.agentChats.push({
+            id: "chat_" + Date.now(),
+            sender: this.currentUser ? this.currentUser.username : "guest",
+            recipient: this.currentChatAgent || "agent",
+            message: text,
+            timestamp: new Date().toISOString()
+          });
+
+          this.saveDB(true);
+          this.renderAgentChat();
+          this.showToast("বার্তা সফলভাবে পাঠানো হয়েছে!", "success");
+        });
+      }
+      this.renderAgentChat();
+    }, 50);
+  }
+
+  renderAgentChat() {
+    const titleEl = document.getElementById("chat-agent-title");
+    if (titleEl && this.currentChatAgent) {
+      titleEl.innerText = `@${this.currentChatAgent}`;
+    }
+
+    const container = document.getElementById("agent-chat-messages-container");
+    if (!container) return;
+
+    if (!this.db.agentChats) this.db.agentChats = [];
+    const chats = this.db.agentChats.filter(c => 
+      (c.sender === this.currentUser?.username && c.recipient === this.currentChatAgent) ||
+      (c.sender === this.currentChatAgent && c.recipient === this.currentUser?.username) ||
+      (c.recipient === this.currentChatAgent)
+    );
+
+    if (chats.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-12 space-y-3">
+          <div class="w-14 h-14 bg-cyan-950/40 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto text-cyan-400 text-xl animate-pulse">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <h3 class="text-xs font-bold text-white font-mono">কথোপকথন শুরু করুন</h3>
+          <p class="text-[10px] text-slate-400 max-w-xs mx-auto font-sans">
+            @${this.currentChatAgent} এর সাথে আপনার ক্যাশ-ইন, ক্যাশ-আউট বা অন্যান্য যেকোনো সহায়তা নিয়ে সরাসরি লাইভ চ্যাট করুন।
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const currentName = this.currentUser?.username || "guest";
+    container.innerHTML = chats.map(c => {
+      const isMe = c.sender === currentName;
+      const timeStr = new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return `
+        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1">
+          <div class="text-[9px] font-mono text-slate-500 px-1">
+            ${isMe ? 'আপনি (You)' : '@' + c.sender} • ${timeStr}
+          </div>
+          <div class="max-w-[80%] rounded-2xl px-4 py-3 text-xs font-sans shadow-lg ${isMe ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'}">
+            ${this.escapeHTML(c.message)}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.scrollTop = container.scrollHeight;
   }
 
   // ================= MAINTENANCE VIEW RENDER =================
@@ -1645,7 +1745,7 @@ export class StateManager {
     const balanceEls = document.querySelectorAll(".curr-balance");
 
     usernameEls.forEach(el => el.innerText = this.currentUser.username);
-    balanceEls.forEach(el => el.innerText = this.currentUser.balance.toFixed(2));
+    balanceEls.forEach(el => el.innerText = (Number(this.currentUser?.balance) || 0).toFixed(2));
 
     // Trigger full screen popup
     this.triggerFullScreenPopup();
@@ -1777,7 +1877,7 @@ export class StateManager {
     // Update balance labels
     const balanceEls = document.querySelectorAll(".curr-balance");
     balanceEls.forEach(el => {
-      (el as HTMLElement).innerText = this.currentUser ? this.currentUser.balance.toFixed(2) : "0.00";
+      (el as HTMLElement).innerText = this.currentUser ? (Number(this.currentUser.balance) || 0).toFixed(2) : "0.00";
     });
 
     // Synchronize visibility of all deposit gateway cards with Admin Settings
@@ -7258,7 +7358,7 @@ function initApplicationLoader() {
     saveAppConfigForm.addEventListener("submit", (e) => {
       e.preventDefault();
 
-    app.db.settings.maintenanceMode = (document.getElementById("sys-maintenance-toggle") as HTMLInputElement)?.checked ?? false;
+    app.db.settings.maintenanceMode = Boolean((document.getElementById("sys-maintenance-toggle") as HTMLInputElement)?.checked);
     
     const shopEnabledInput = document.getElementById("sys-shop-enabled-toggle") as HTMLInputElement | null;
     if (shopEnabledInput) {
@@ -7291,7 +7391,7 @@ function initApplicationLoader() {
     app.db.settings.whatsappUrl = document.getElementById("sys-whatsapp-url")?.value.trim() || "";
     app.db.settings.minReferralDeposit = parseFloat(document.getElementById("sys-min-referral-deposit")?.value || "50");
 
-    app.saveDB();
+    app.saveDB(true);
     app.showToast("Core system parameters and maintenance configs committed.", "success");
     app.render();
     });

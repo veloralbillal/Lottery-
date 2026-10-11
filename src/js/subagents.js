@@ -315,7 +315,7 @@ export const SubAgentModule = {
 
           if (idField) idField.value = matchedSub.id;
           if (usernameLbl) usernameLbl.innerText = `@${matchedSub.username}`;
-          if (balanceLbl) balanceLbl.innerText = `৳${(matchedSub.balance || 0).toFixed(2)}`;
+          if (balanceLbl) balanceLbl.innerText = `৳${(Number(matchedSub.balance) || 0).toFixed(2)}`;
           if (amountInput) amountInput.value = "";
 
           const modal = document.getElementById("agent-subagent-cash-modal");

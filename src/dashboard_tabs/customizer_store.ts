@@ -645,7 +645,7 @@ export class CustomizerStore {
 
           <div class="flex items-center gap-2 shrink-0">
             <span class="bg-slate-950 border border-slate-800 px-3 py-1 rounded-2xl text-[10px] font-mono text-slate-300">
-              Balance: <strong class="text-emerald-400">৳${(user.balance || 0).toFixed(2)}</strong>
+              Balance: <strong class="text-emerald-400">৳${(Number(user.balance) || 0).toFixed(2)}</strong>
             </span>
           </div>
         </div>

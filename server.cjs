@@ -1394,6 +1394,7 @@ function getDefaultDB() {
     badgeRequests: [],
     messages: [],
     taskSubmissions: [],
+    agentChats: [],
     dailyTasks: [],
     jackpotRegistrations: [],
     webPushAds: [],
@@ -1683,7 +1684,7 @@ app.post("/api/sql/test-connection", async (req, res) => {
     urlObj.searchParams.set("db_name", database);
     urlObj.searchParams.set("db_user", username);
     urlObj.searchParams.set("db_pass", password);
-    let tablesVerified = ["users", "staff", "agents", "categories", "lotteries", "tickets", "deposits", "withdrawals", "settings", "transactions", "agentLedger"];
+    let tablesVerified = ["users", "staff", "agents", "categories", "lotteries", "tickets", "deposits", "withdrawals", "settings", "transactions", "agentLedger", "agentChats"];
     let latency = Date.now() - start;
     try {
       const controller = new AbortController();
@@ -1954,6 +1955,23 @@ app.post("/api/sql/sync", async (req, res) => {
                 commission DECIMAL(15, 2) DEFAULT 0.00,
                 status VARCHAR(30) DEFAULT 'pending'
             ) ENGINE=InnoDB;`);
+            await connection.execute(`CREATE TABLE IF NOT EXISTS agentChats (
+                id VARCHAR(80) PRIMARY KEY,
+                conversationId VARCHAR(120) NULL,
+                sender VARCHAR(100) NOT NULL,
+                senderRole VARCHAR(30) DEFAULT 'user',
+                recipient VARCHAR(100) NOT NULL,
+                message TEXT NULL,
+                attachmentUrl LONGTEXT NULL,
+                attachmentName VARCHAR(255) NULL,
+                attachmentType VARCHAR(100) NULL,
+                timestamp VARCHAR(100) NOT NULL,
+                status VARCHAR(30) DEFAULT 'sent',
+                readAt VARCHAR(100) NULL,
+                threadStatus VARCHAR(30) DEFAULT 'open',
+                priority VARCHAR(30) DEFAULT 'normal',
+                isInternalNote INT DEFAULT 0
+            ) ENGINE=InnoDB;`);
             const userColumns = await getTableColumns("users", true);
             if (userColumns.length > 0) {
               const missingUserCols = [
@@ -2103,7 +2121,11 @@ app.post("/api/sql/sync", async (req, res) => {
         if (dbToSync.withdrawals) await syncTable("withdrawals", dbToSync.withdrawals);
         if (dbToSync.transactions) await syncTable("transactions", dbToSync.transactions);
         if (dbToSync.agentLedger) await syncTable("agentLedger", dbToSync.agentLedger);
+        if (dbToSync.agentChats) await syncTable("agentChats", dbToSync.agentChats);
         if (dbToSync.settings && typeof dbToSync.settings === "object") {
+          if (Array.isArray(dbToSync.agentChats)) {
+            dbToSync.settings._agentChats = dbToSync.agentChats;
+          }
           try {
             const columns = await getTableColumns("settings");
             if (columns.includes("setting_key") && columns.includes("setting_value")) {
@@ -2116,7 +2138,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 const keyLower = keyClean.toLowerCase();
                 if (insertedKeysLower.has(keyLower)) continue;
                 insertedKeysLower.add(keyLower);
-                const valStr = typeof value === "object" ? JSON.stringify(value) : String(value);
+                const valStr = typeof value === "object" ? JSON.stringify(value) : typeof value === "boolean" ? value ? "1" : "0" : String(value);
                 settingRows.push("(?, ?)");
                 settingValues.push(keyClean, valStr);
               }
@@ -2376,20 +2398,42 @@ var handleGetDatabaseState = async (req, res) => {
       const withdrawals = Array.isArray(rawWithdrawals) ? rawWithdrawals.filter((w) => w && !staticMockIds.has(w.id)) : [];
       const transactions = await fetchTable("transactions");
       const agentLedger = await fetchTable("agentLedger");
+      const sqlAgentChats = await fetchTable("agentChats");
       const settingsRows = await fetchTable("settings");
       const settings = {};
       if (Array.isArray(settingsRows)) {
         for (const row of settingsRows) {
           const key = row.setting_key;
           const value = row.setting_value;
-          try {
-            settings[key] = typeof value === "string" && (value.startsWith("{") || value.startsWith("[")) ? JSON.parse(value) : value;
-          } catch {
-            settings[key] = value;
+          if (value === "1" || value === "true" || value === true) {
+            settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? true : value;
+          } else if (value === "0" || value === "false" || value === false) {
+            settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? false : value;
+          } else {
+            try {
+              settings[key] = typeof value === "string" && (value.startsWith("{") || value.startsWith("[")) ? JSON.parse(value) : value;
+            } catch {
+              settings[key] = value;
+            }
           }
         }
       }
       const finalSettings = { ...defaultSettings, ...settings };
+      if (finalSettings.maintenanceMode !== void 0) {
+        finalSettings.maintenanceMode = finalSettings.maintenanceMode === true || finalSettings.maintenanceMode === "true" || finalSettings.maintenanceMode === "1";
+      }
+      const chatMap = /* @__PURE__ */ new Map();
+      if (Array.isArray(finalSettings._agentChats)) {
+        for (const c of finalSettings._agentChats) {
+          if (c && c.id) chatMap.set(c.id, c);
+        }
+      }
+      if (Array.isArray(sqlAgentChats)) {
+        for (const c of sqlAgentChats) {
+          if (c && c.id) chatMap.set(c.id, { ...chatMap.get(c.id) || {}, ...c });
+        }
+      }
+      const agentChats = Array.from(chatMap.values());
       let responseDb = {
         users,
         staff,
@@ -2401,6 +2445,7 @@ var handleGetDatabaseState = async (req, res) => {
         withdrawals,
         transactions,
         agentLedger,
+        agentChats,
         settings: finalSettings
       };
       if (!users || users.length === 0) {
@@ -2432,7 +2477,8 @@ var handleGetDatabaseState = async (req, res) => {
       deposits: [],
       withdrawals: [],
       transactions: [],
-      agentLedger: []
+      agentLedger: [],
+      agentChats: []
     };
     return res.json({ success: true, db: finalBackup, notice: "Served via local server backup fallback." });
   }
@@ -2762,7 +2808,8 @@ function loadLocalDbBackup() {
     deposits: [],
     withdrawals: [],
     transactions: [],
-    agentLedger: []
+    agentLedger: [],
+    agentChats: []
   };
 }
 function saveLocalActiveDatabase(dbMode) {

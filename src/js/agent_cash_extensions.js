@@ -502,7 +502,7 @@ export class AgentCashExtensions {
             <div class="grid grid-cols-2 gap-2 text-[10.5px]">
               <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-850">
                 <span class="text-slate-500 block mb-0.5 font-mono">Wallet Balance</span>
-                <span class="font-mono text-xs font-black text-white">৳${balance.toFixed(2)}</span>
+                <span class="font-mono text-xs font-black text-white">৳${(Number(balance) || 0).toFixed(2)}</span>
               </div>
               <div class="bg-slate-900 p-2.5 rounded-xl border border-slate-850">
                 <span class="text-slate-500 block mb-0.5 font-mono">Bought Tickets</span>

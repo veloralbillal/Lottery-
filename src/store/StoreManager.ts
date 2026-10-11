@@ -171,7 +171,7 @@ export class StoreTab {
   static updateHeaderUI() {
     const balEl = document.getElementById("store-header-balance");
     if (balEl && StoreTab.appInstance.currentUser) {
-      balEl.innerText = StoreTab.appInstance.currentUser.balance.toFixed(2);
+      balEl.innerText = (Number(StoreTab.appInstance.currentUser.balance) || 0).toFixed(2);
     }
 
     const settings = StoreTab.appInstance.db.shopSettings;

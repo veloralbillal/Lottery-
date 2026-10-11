@@ -6,7 +6,7 @@
  * 3. Cache versioning
  */
 
-const CACHE_VERSION = 'v1.0.5';
+const CACHE_VERSION = 'v1.0.6';
 const DOMAIN = self.location.hostname;
 const CACHE_NAME = `lw-cache-${DOMAIN}-${CACHE_VERSION}`;
 
@@ -44,6 +44,22 @@ self.addEventListener("fetch", (e) => {
     url.hostname.includes('cdnjs.cloudflare.com');
 
   if (e.request.method === 'GET' && (isStaticAsset || isCDNLibraries)) {
+    // For local app scripts (.js), prefer network-first so code updates apply immediately
+    const isAppScript = url.pathname.endsWith('.js') && !isCDNLibraries;
+
+    if (isAppScript) {
+      e.respondWith(
+        fetch(e.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(e.request, responseToCache));
+          }
+          return networkResponse;
+        }).catch(() => caches.match(e.request).then((cached) => cached || new Response('Offline', { status: 503 })))
+      );
+      return;
+    }
+
     e.respondWith(
       caches.match(e.request).then((cachedResponse) => {
         const fetchPromise = fetch(e.request).then((networkResponse) => {

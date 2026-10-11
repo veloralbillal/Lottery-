@@ -32,6 +32,7 @@ export function getDefaultDB() {
     badgeRequests: [],
     messages: [],
     taskSubmissions: [],
+    agentChats: [],
     dailyTasks: [],
     jackpotRegistrations: [],
     webPushAds: [],
