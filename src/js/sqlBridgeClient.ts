@@ -598,12 +598,20 @@ export function installUniversalSqlBridgeFetchInterceptor(): void {
         const cleanUser = String(bodyObj.username || "").trim().toLowerCase();
         const cleanPass = String(bodyObj.password || "").trim();
 
+        if (pathname === "/api/auth/agent-login" && cleanUser === "admin") {
+          return jsonResponse({ success: false, message: "Admin credentials cannot be used on the agent login page." }, 403);
+        }
+
+
         if (pathname !== "/api/auth/lookup-user" && cleanUser === "admin" && (cleanPass === "Admin123" || cleanPass === "admin123" || cleanPass === "admin")) {
-          return jsonResponse({
-            success: true,
-            isAdmin: true,
-            user: { id: "admin", username: "admin", role: "admin", status: "active" }
-          });
+          if (pathname === "/api/auth/login" || pathname === "/api/auth/player-login") {
+            return jsonResponse({
+              success: true,
+              isAdmin: true,
+              user: { id: "admin", username: "admin", role: "admin", status: "active" }
+            });
+          }
+          return jsonResponse({ success: false, message: "Admin access required." }, 403);
         }
 
         const staffRows = await executeBridgeSql(
@@ -629,6 +637,16 @@ export function installUniversalSqlBridgeFetchInterceptor(): void {
         }
         if (matched.status === "blocked" || matched.status === "permanently_banned") {
           return jsonResponse({ success: false, message: "This account is blocked or under review." }, 403);
+        }
+
+        if (pathname === "/api/auth/login" && matched.role !== "admin") {
+          return jsonResponse({ success: false, message: "Admin access required." }, 403);
+        }
+        if (pathname === "/api/auth/agent-login" && matched.role !== "agent" && matched.role !== "subagent" && matched.role !== "shop_admin") {
+          return jsonResponse({ success: false, message: "Account is not an authorized agent." }, 403);
+        }
+        if (pathname === "/api/auth/player-login" && (matched.role === "agent" || matched.role === "subagent")) {
+          return jsonResponse({ success: false, message: "Agent accounts cannot log in through the player portal." }, 403);
         }
         const passOk =
           !matched.password ||

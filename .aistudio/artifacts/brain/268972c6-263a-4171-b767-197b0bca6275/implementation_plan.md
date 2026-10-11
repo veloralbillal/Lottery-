@@ -1,17 +1,17 @@
-# Implementation Plan - Fix DefaultDB & Bridge Maintenance Mode Default
+# Implementation Plan - Fix Navigation Menu and Agent Page Interactions
 
-Ensure `maintenanceMode` in `defaultDB.js` and server/bridge fallbacks defaults strictly to `false` instead of `true`, so disabling maintenance mode in the admin panel stays permanently disabled.
-
-## User Review Required
-> [!IMPORTANT]
-> Please review the plan below. Clicking **Proceed** will execute the implementation.
-
-- **Files to Inspect & Edit**:
-  - `src/js/defaultDB.js`
-  - Any server-side or bridge default database config files.
-- **Action**: Change any default `maintenanceMode: true` or fallback to `false`.
+## Problem
+- Clicking on main navigation menu items (like `.tab-selector-btn`), agent page links, or sidebar menus does nothing ("কিছুই হয় না").
+- This occurs because tab selector event listeners are attached statically via `document.querySelectorAll(".tab-selector-btn")` only once on initial load, and are lost or non-responsive when tabs are re-rendered or loaded dynamically.
 
 ## Proposed Changes
+1. **Global Event Delegation for Tab Selectors in `src/main.ts`**:
+   - Add a robust delegation handler in the global `document.addEventListener("click", ...)` block for `.tab-selector-btn` (and any related nav buttons).
+   - Ensure `app.currentTab = tab; app.render();` executes reliably regardless of when or where the tab button is rendered.
 
-### 1. `src/js/defaultDB.js`
-- Set `maintenanceMode: false` explicitly.
+2. **Verify Agent Tab & Dashboard Interactivity**:
+   - Check affiliate agent system and UI rendering to ensure clicks on agent menu items, district filters, search inputs, and action buttons work seamlessly on both desktop and mobile views.
+
+3. **Verification**:
+   - Compile and build the applet to verify zero syntax or build errors.
+   - Test navigation menu clicks and agent page interactions.

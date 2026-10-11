@@ -92,12 +92,12 @@
       "status": "active"
     },
     {
-      "id": "agent_1791479045729_s3k58",
-      "username": "sujondh",
-      "email": "sujon@gmail.com",
-      "password": "sujon123",
-      "phone": "0135874521",
-      "balance": "1000.00",
+      "id": "agent_1791691597495",
+      "username": "Admin",
+      "email": "admin@lotterywinner.app",
+      "password": "Admin123",
+      "phone": null,
+      "balance": "50000.00",
       "totDeposit": "0.00",
       "wins": "0",
       "loss": "0",
@@ -115,6 +115,19 @@
       "wins": "0",
       "loss": "0",
       "profit": "0.00",
+      "status": "active"
+    },
+    {
+      "id": "u_1791554619632_4bw1z",
+      "username": "ammunna20",
+      "email": "ammunna20@lotterywinner.app",
+      "password": "ammunna29",
+      "phone": "01766435305",
+      "balance": "44.00",
+      "totDeposit": "0.00",
+      "wins": "0",
+      "loss": "20",
+      "profit": "-20.00",
       "status": "active"
     },
     {
@@ -594,6 +607,23 @@
       "joinDate": "2026-10-08",
       "status": "active",
       "role": "agent"
+    },
+    {
+      "id": "u_1791478887254_jebqr",
+      "username": "sujon",
+      "email": "sujon@lotterywinner.app",
+      "password": "bangladesh",
+      "phone": "01767237447",
+      "dob": null,
+      "balance": "50.00",
+      "earnedCommission": "0.00",
+      "commissionRate": "5.00",
+      "totalBookings": "0",
+      "district": "Dhaka",
+      "region": null,
+      "joinDate": null,
+      "status": "active",
+      "role": "agent"
     }
   ],
   "agents": [
@@ -611,6 +641,23 @@
       "district": "Dhaka",
       "region": "Dhaka",
       "joinDate": "2026-10-08",
+      "status": "active",
+      "role": "agent"
+    },
+    {
+      "id": "u_1791478887254_jebqr",
+      "username": "sujon",
+      "email": "sujon@lotterywinner.app",
+      "password": "bangladesh",
+      "phone": "01767237447",
+      "dob": null,
+      "balance": "50.00",
+      "earnedCommission": "0.00",
+      "commissionRate": "5.00",
+      "totalBookings": "0",
+      "district": "Dhaka",
+      "region": null,
+      "joinDate": null,
       "status": "active",
       "role": "agent"
     }
@@ -686,7 +733,7 @@
       "totalTickets": "20",
       "soldTickets": "0",
       "category": "10 Taka Banner",
-      "drawTime": "2026-10-11T02:12:41.000Z",
+      "drawTime": "2026-10-11T09:15:16.000Z",
       "status": "active",
       "prizeAmount": "200.00",
       "drawMode": "auto"
@@ -723,6 +770,13 @@
       "recipient": "sujondh",
       "message": "Hi",
       "timestamp": "2026-10-10T15:52:08.657Z"
+    },
+    {
+      "id": "chat_1791688890008",
+      "sender": "sujondh",
+      "recipient": "sujondh",
+      "message": "Hlw",
+      "timestamp": "2026-10-11T03:21:30.008Z"
     }
   ],
   "settings": {
@@ -742,6 +796,13 @@
         "recipient": "sujondh",
         "message": "Hi",
         "timestamp": "2026-10-10T15:52:08.657Z"
+      },
+      {
+        "id": "chat_1791688890008",
+        "sender": "sujondh",
+        "recipient": "sujondh",
+        "message": "Hlw",
+        "timestamp": "2026-10-11T03:21:30.008Z"
       }
     ],
     "aamarpayMode": "sandbox",

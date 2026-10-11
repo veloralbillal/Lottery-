@@ -407,6 +407,11 @@ export const AgentModule = {
 
     // Render Cash Terminal Extensions
     AgentCashExtensions.render(this);
+
+    // Setup Agent navigation and sidebar listeners
+    if (typeof this.setupAllListeners === "function") {
+      this.setupAllListeners(this);
+    }
   },
 
   setupDistrictAgentsLookup() {
