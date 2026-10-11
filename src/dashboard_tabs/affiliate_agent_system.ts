@@ -515,17 +515,63 @@ export class AffiliateAgentSystem {
   }
 
   static renderAgents(appInstance) {
-    console.log("renderAgents called, db users:", appInstance.db.users ? appInstance.db.users.length : "no users");
     const listContainer = document.getElementById("agent-list-container");
     if (!listContainer) {
-      console.error("agent-list-container not found");
       return;
     }
 
-    const agents = (appInstance.db.staff || []);
-    console.log("[AffiliateAgentSystem] Found agents for display:", agents.length);
-    
-    listContainer.innerHTML = agents.map(agent => `
+    const allAgents = Array.isArray(appInstance.db?.agents) ? appInstance.db.agents : [];
+    const allStaff = Array.isArray(appInstance.db?.staff) ? appInstance.db.staff : [];
+    const userAgents = (Array.isArray(appInstance.db?.users) ? appInstance.db.users : []).filter(
+      (u: any) => u && (u.role === "agent" || u.role === "subagent")
+    );
+
+    const agentMap = new Map<string, any>();
+    [...userAgents, ...allStaff, ...allAgents].forEach((a: any) => {
+      if (!a || !a.username) return;
+      if (a.role !== "agent" && a.role !== "subagent") return;
+      if (a.status === "blocked" || a.status === "suspended" || a.status === "permanently_banned") return;
+      const key = a.username.toLowerCase();
+      agentMap.set(key, { ...(agentMap.get(key) || {}), ...a });
+    });
+
+    const agents = Array.from(agentMap.values());
+    const currentUsername = (appInstance.currentUser?.username || "").toLowerCase();
+    const allChats = Array.isArray(appInstance.db?.agentChats) ? appInstance.db.agentChats : [];
+
+    if (agents.length === 0) {
+      listContainer.innerHTML = `
+        <div class="bg-slate-900/90 border border-slate-800/80 p-6 rounded-2xl text-center space-y-2">
+          <i class="fa-solid fa-user-tie text-slate-600 text-2xl block"></i>
+          <p class="text-xs font-bold text-slate-300">No active agents available right now</p>
+          <p class="text-[10px] text-slate-500">অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
+        </div>
+      `;
+      return;
+    }
+
+    listContainer.innerHTML = agents.map(agent => {
+      const agentLower = (agent.username || "").toLowerCase();
+      const unreadCount = currentUsername
+        ? allChats.filter((c: any) =>
+            c &&
+            !c.isInternalNote &&
+            c.isInternalNote !== 1 &&
+            (c.sender || "").toLowerCase() === agentLower &&
+            (c.recipient || "").toLowerCase() === currentUsername &&
+            c.status !== "read"
+          ).length
+        : 0;
+
+      const availability = (agent.availabilityStatus || "online").toLowerCase();
+      const isOnline = availability !== "offline";
+      const statusBadge = availability === "busy"
+        ? `<span class="inline-flex items-center gap-1 bg-amber-950/80 text-amber-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-amber-800/50"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> BUSY</span>`
+        : isOnline
+          ? `<span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE</span>`
+          : `<span class="inline-flex items-center gap-1 bg-slate-900 text-slate-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-slate-800"><span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> OFFLINE</span>`;
+
+      return `
       <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="${appInstance.escapeHTML(agent.district || '')}" data-name="${appInstance.escapeHTML(agent.username)}" data-phone="${appInstance.escapeHTML(agent.phone || '')}">
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
@@ -534,25 +580,24 @@ export class AffiliateAgentSystem {
             </div>
             <div>
               <div class="flex items-center gap-1.5">
-                <h3 class="text-xs font-black text-white font-mono">@${appInstance.escapeHTML(agent.username)}</h3>
+                <h3 class="text-xs font-black text-white font-mono">${appInstance.escapeHTML(agent.displayName || ('@' + agent.username))}</h3>
                 <span class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
                   <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
                 </span>
               </div>
-              <p class="text-[10px] text-slate-400 font-sans">${appInstance.escapeHTML(agent.district || 'Unknown District')} • ${appInstance.escapeHTML(agent.username)}</p>
-              <span class="text-[9px] text-slate-500 font-mono">Counter Code: ${appInstance.escapeHTML(agent.id.toUpperCase().slice(-6))} • Cash In/Out Active</span>
+              <p class="text-[10px] text-slate-400 font-sans">${appInstance.escapeHTML(agent.district || 'Dhaka')} • @${appInstance.escapeHTML(agent.username)}</p>
+              <span class="text-[9px] text-slate-500 font-mono">Counter ID: ${appInstance.escapeHTML(String(agent.id || agent.username).toUpperCase().slice(-6))} • Cash In/Out Active</span>
             </div>
           </div>
-          <span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE
-          </span>
+          ${statusBadge}
         </div>
         <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
-          <a href="tel:${appInstance.escapeHTML(agent.phone || '')}" class="flex-1 bg-slate-950 hover:bg-slate-850 text-slate-200 border border-slate-800 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-            <i class="fa-solid fa-phone text-emerald-400"></i>
-            <span>Call Desk</span>
-          </a>
-          <a href="https://wa.me/${appInstance.escapeHTML(agent.phone || '')}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
+          <button type="button" onclick="if(window.app){window.app.openAgentChat('${appInstance.escapeHTML(agent.username)}');}" class="relative flex-1 bg-cyan-950/80 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
+            <i class="fa-solid fa-comments text-cyan-400"></i>
+            <span>Live Chat</span>
+            ${unreadCount > 0 ? `<span class="ml-1 px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[9px] font-black animate-pulse">${unreadCount}</span>` : ''}
+          </button>
+          <a href="https://wa.me/${appInstance.escapeHTML((agent.phone || '').replace(/[^0-9]/g, ''))}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
             <i class="fa-brands fa-whatsapp text-emerald-400"></i>
             <span>WhatsApp</span>
           </a>
@@ -562,6 +607,7 @@ export class AffiliateAgentSystem {
           </button>
         </div>
       </div>
-    `).join("");
+    `;
+    }).join("");
   }
 }

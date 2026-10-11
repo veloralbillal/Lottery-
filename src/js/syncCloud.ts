@@ -92,7 +92,7 @@ async function directBridgeFetchDatabase(): Promise<any> {
     }
   };
 
-  const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, rawTickets, rawDeposits, rawWithdrawals, transactions, agentLedger, settingsRows] = await Promise.all([
+  const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, rawTickets, rawDeposits, rawWithdrawals, transactions, agentLedger, rawAgentChats, settingsRows] = await Promise.all([
     fetchTableSafe("users"),
     fetchTableSafe("staff"),
     fetchTableSafe("agents"),
@@ -103,6 +103,7 @@ async function directBridgeFetchDatabase(): Promise<any> {
     fetchTableSafe("withdrawals"),
     fetchTableSafe("transactions"),
     fetchTableSafe("agentLedger"),
+    fetchTableSafe("agentChats"),
     fetchTableSafe("settings")
   ]);
 
@@ -170,6 +171,7 @@ async function directBridgeFetchDatabase(): Promise<any> {
       withdrawals,
       transactions,
       agentLedger,
+      agentChats: Array.isArray(rawAgentChats) && rawAgentChats.length > 0 ? rawAgentChats : (Array.isArray(settings._agentChats) ? settings._agentChats : []),
       settings
     }
   };
@@ -277,8 +279,12 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
   if (dbToSync.withdrawals) await syncTableDirect("withdrawals", dbToSync.withdrawals);
   if (dbToSync.transactions) await syncTableDirect("transactions", dbToSync.transactions);
   if (dbToSync.agentLedger) await syncTableDirect("agentLedger", dbToSync.agentLedger);
+  if (dbToSync.agentChats) await syncTableDirect("agentChats", dbToSync.agentChats);
 
   if (dbToSync.settings && typeof dbToSync.settings === "object") {
+    if (Array.isArray(dbToSync.agentChats)) {
+      dbToSync.settings._agentChats = dbToSync.agentChats;
+    }
     try {
       const settingRows: string[] = [];
       const settingVals: any[] = [];
@@ -632,10 +638,27 @@ export const SyncCloudModule = {
     const syncNodes = [
       { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
     ];
-    const sqlDbConfig = prevDb.sqlDbConfig ? prevDb.sqlDbConfig : parsed.sqlDbConfig;
     const mergedSettings = { ...(prevDb.settings || {}), ...(parsed.settings || {}) };
+    if (mergedSettings.maintenanceMode !== undefined) {
+      mergedSettings.maintenanceMode = (mergedSettings.maintenanceMode === true || mergedSettings.maintenanceMode === "true" || mergedSettings.maintenanceMode === "1" || mergedSettings.maintenanceMode === 1);
+    }
 
-    this.db = { ...prevDb, ...parsed, syncNodes, settings: mergedSettings };
+    // Merge agentChats across prevDb, parsed.agentChats, and mergedSettings._agentChats
+    const chatMergeMap = new Map<string, any>();
+    const pushChats = (arr: any) => {
+      if (!Array.isArray(arr)) return;
+      for (const c of arr) {
+        if (c && c.id) {
+          const existing = chatMergeMap.get(c.id);
+          chatMergeMap.set(c.id, existing ? { ...existing, ...c } : c);
+        }
+      }
+    };
+    pushChats(prevDb.agentChats);
+    pushChats(mergedSettings._agentChats);
+    pushChats(parsed.agentChats);
+
+    this.db = { ...prevDb, ...parsed, syncNodes, settings: mergedSettings, agentChats: Array.from(chatMergeMap.values()) };
 
     // Guarantee all required collections are initialized as arrays
     if (!Array.isArray(this.db.users)) this.db.users = [];
@@ -647,6 +670,7 @@ export const SyncCloudModule = {
     if (!Array.isArray(this.db.withdrawals)) this.db.withdrawals = [];
     if (!Array.isArray(this.db.transactions)) this.db.transactions = [];
     if (!Array.isArray(this.db.agentLedger)) this.db.agentLedger = [];
+    if (!Array.isArray(this.db.agentChats)) this.db.agentChats = [];
     if (!Array.isArray(this.db.agentRecruitsLogs)) this.db.agentRecruitsLogs = [];
     if (!Array.isArray(this.db.categories) || this.db.categories.length === 0) {
       this.db.categories = [

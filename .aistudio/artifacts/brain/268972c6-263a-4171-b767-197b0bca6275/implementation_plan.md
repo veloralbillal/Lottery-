@@ -1,11 +1,17 @@
-# Implementation Plan: Fix Agent Ledger Display
+# Implementation Plan - Fix DefaultDB & Bridge Maintenance Mode Default
 
-## Objective
-Fix the issue where balance additions by agents are not reflected in the Payment Ledger.
+Ensure `maintenanceMode` in `defaultDB.js` and server/bridge fallbacks defaults strictly to `false` instead of `true`, so disabling maintenance mode in the admin panel stays permanently disabled.
 
-## Plan
-1. Add console logging to `agent.js` within the `agentCashDepositForm` submission handler to trace the ledger entry creation and verify the `agentId`.
-2. Add console logging to `AgentModule.renderAgentWorkspace` to trace the filtering of the `agentLedger`.
-3. Analyze logs to determine why entries are not appearing.
-4. Correct the ledger entry creation or filter logic.
-5. Verify the fix.
+## User Review Required
+> [!IMPORTANT]
+> Please review the plan below. Clicking **Proceed** will execute the implementation.
+
+- **Files to Inspect & Edit**:
+  - `src/js/defaultDB.js`
+  - Any server-side or bridge default database config files.
+- **Action**: Change any default `maintenanceMode: true` or fallback to `false`.
+
+## Proposed Changes
+
+### 1. `src/js/defaultDB.js`
+- Set `maintenanceMode: false` explicitly.

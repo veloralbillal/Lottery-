@@ -168,6 +168,23 @@ async function ensureClientSchema(): Promise<void> {
       type VARCHAR(50) DEFAULT 'single',
       defaultPrizes TEXT NULL
     ) ENGINE=InnoDB;`);
+    await executeBridgeSql(`CREATE TABLE IF NOT EXISTS agentChats (
+      id VARCHAR(80) PRIMARY KEY,
+      conversationId VARCHAR(120) NULL,
+      sender VARCHAR(100) NOT NULL,
+      senderRole VARCHAR(30) DEFAULT 'user',
+      recipient VARCHAR(100) NOT NULL,
+      message TEXT NULL,
+      attachmentUrl LONGTEXT NULL,
+      attachmentName VARCHAR(255) NULL,
+      attachmentType VARCHAR(100) NULL,
+      timestamp VARCHAR(100) NOT NULL,
+      status VARCHAR(30) DEFAULT 'sent',
+      readAt VARCHAR(100) NULL,
+      threadStatus VARCHAR(30) DEFAULT 'open',
+      priority VARCHAR(30) DEFAULT 'normal',
+      isInternalNote INT DEFAULT 0
+    ) ENGINE=InnoDB;`);
     clientSchemaVerified = true;
   } catch {}
 }
@@ -192,6 +209,7 @@ export async function fetchDatabaseDirectlyFromBridge(): Promise<any> {
     withdrawals,
     transactions,
     agentLedger,
+    rawAgentChats,
     settingsRows
   ] = await Promise.all([
     fetchSafe("users"),
@@ -204,6 +222,7 @@ export async function fetchDatabaseDirectlyFromBridge(): Promise<any> {
     fetchSafe("withdrawals"),
     fetchSafe("transactions"),
     fetchSafe("agentLedger"),
+    fetchSafe("agentChats"),
     fetchSafe("settings")
   ]);
 
@@ -246,13 +265,23 @@ export async function fetchDatabaseDirectlyFromBridge(): Promise<any> {
     for (const row of settingsRows) {
       if (!row || !row.setting_key) continue;
       const val = row.setting_value;
-      try {
-        settings[row.setting_key] =
-          typeof val === "string" && (val.startsWith("{") || val.startsWith("[")) ? JSON.parse(val) : val;
-      } catch {
-        settings[row.setting_key] = val;
+      if (val === "1" || val === "true" || val === true) {
+        settings[row.setting_key] = (row.setting_key === "maintenanceMode" || row.setting_key.toLowerCase().includes("enabled") || row.setting_key.toLowerCase().includes("mode")) ? true : val;
+      } else if (val === "0" || val === "false" || val === false) {
+        settings[row.setting_key] = (row.setting_key === "maintenanceMode" || row.setting_key.toLowerCase().includes("enabled") || row.setting_key.toLowerCase().includes("mode")) ? false : val;
+      } else {
+        try {
+          settings[row.setting_key] =
+            typeof val === "string" && (val.startsWith("{") || val.startsWith("[")) ? JSON.parse(val) : val;
+        } catch {
+          settings[row.setting_key] = val;
+        }
       }
     }
+  }
+
+  if (settings.maintenanceMode !== undefined) {
+    settings.maintenanceMode = (settings.maintenanceMode === true || settings.maintenanceMode === "true" || settings.maintenanceMode === "1" || settings.maintenanceMode === 1);
   }
 
   return {
@@ -266,6 +295,7 @@ export async function fetchDatabaseDirectlyFromBridge(): Promise<any> {
     withdrawals: withdrawals || [],
     transactions: transactions || [],
     agentLedger: agentLedger || [],
+    agentChats: Array.isArray(rawAgentChats) && rawAgentChats.length > 0 ? rawAgentChats : (Array.isArray(settings._agentChats) ? settings._agentChats : []),
     settings
   };
 }
@@ -368,8 +398,12 @@ export async function syncDatabaseDirectlyToBridge(dbToSync: any, customConfig?:
   if (dbToSync.withdrawals) await syncTable("withdrawals", dbToSync.withdrawals);
   if (dbToSync.transactions) await syncTable("transactions", dbToSync.transactions);
   if (dbToSync.agentLedger) await syncTable("agentLedger", dbToSync.agentLedger);
+  if (dbToSync.agentChats) await syncTable("agentChats", dbToSync.agentChats);
 
   if (dbToSync.settings && typeof dbToSync.settings === "object") {
+    if (Array.isArray(dbToSync.agentChats)) {
+      dbToSync.settings._agentChats = dbToSync.agentChats;
+    }
     try {
       const settingRows: string[] = [];
       const settingVals: any[] = [];

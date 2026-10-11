@@ -286,7 +286,7 @@ export class StoreUI {
              </div>
              <div class="flex flex-col">
                 <span class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Available Balance</span>
-                <span class="text-base font-black text-emerald-400">৳${balance.toFixed(2)}</span>
+                <span class="text-base font-black text-emerald-400">৳${(Number(balance) || 0).toFixed(2)}</span>
              </div>
           </div>
 
@@ -338,7 +338,7 @@ export class StoreUI {
           <div class="flex flex-col">
             <span class="text-sm font-black text-white">@${user.username}</span>
             <span class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">${user.role || 'Member'}</span>
-            <span class="text-[10px] font-bold text-cyan-400 mt-1">৳${user.balance.toFixed(2)} Balance</span>
+            <span class="text-[10px] font-bold text-cyan-400 mt-1">৳${(Number(user.balance) || 0).toFixed(2)} Balance</span>
           </div>
         </div>
 

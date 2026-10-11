@@ -94,13 +94,13 @@ export const AgentModule = {
 
     // Update Overview Stats
     const balOverview = document.getElementById("agent-overview-wallet-balance");
-    if (balOverview) balOverview.innerText = `৳${(this.currentUser.balance || 0).toFixed(2)}`;
+    if (balOverview) balOverview.innerText = `৳${(Number(this.currentUser.balance) || 0).toFixed(2)}`;
 
     const commOverview = document.getElementById("agent-overview-commission-earned");
-    if (commOverview) commOverview.innerText = `৳${(this.currentUser.earnedCommission || 0).toFixed(2)}`;
+    if (commOverview) commOverview.innerText = `৳${(Number(this.currentUser.earnedCommission) || 0).toFixed(2)}`;
 
     const bookingsOverview = document.getElementById("agent-overview-total-bookings");
-    if (bookingsOverview) bookingsOverview.innerText = `${this.currentUser.totalBookings || 0}`;
+    if (bookingsOverview) bookingsOverview.innerText = `${parseInt(this.currentUser.totalBookings, 10) || 0}`;
 
     const rateOverview = document.getElementById("agent-overview-commission-rate");
     if (rateOverview) rateOverview.innerText = `${parseFloat(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
@@ -303,7 +303,7 @@ export const AgentModule = {
               <div class="text-[9.5px] text-slate-500 font-mono select-all">${p.email || "N/A"}</div>
             </td>
             <td class="p-3 font-mono text-slate-350 select-all">${p.phone || "N/A"}</td>
-            <td class="p-3 font-mono font-bold text-emerald-400">৳${(p.balance || 0).toFixed(2)}</td>
+            <td class="p-3 font-mono font-bold text-emerald-400">৳${(Number(p.balance) || 0).toFixed(2)}</td>
             <td class="p-3">
               <span class="inline-flex items-center gap-1.5 py-0.5 px-2 rounded-full text-[9px] font-mono leading-none font-bold ${p.status === 'active' ? 'bg-emerald-950 text-emerald-450 border border-emerald-900/30' : 'bg-rose-950 text-rose-450 border border-rose-900/30'}">
                 <span class="w-1.5 h-1.5 rounded-full ${p.status === 'active' ? 'bg-emerald-400 animate-pulse' : 'bg-rose-500'}"></span>
@@ -393,8 +393,8 @@ export const AgentModule = {
               <span>${act.description || "Agent Activity"}</span>
               <div>${statusBadge}</div>
             </td>
-            <td class="p-3 text-slate-200">৳${(act.amount || 0).toFixed(2)}</td>
-            <td class="p-3 ${act.commission > 0 && !isPending ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}">${act.commission > 0 ? `${isPending ? "(Pending) " : ""}+৳${act.commission.toFixed(2)}` : "-"}</td>
+            <td class="p-3 text-slate-200">৳${(Number(act.amount) || 0).toFixed(2)}</td>
+            <td class="p-3 ${Number(act.commission) > 0 && !isPending ? "text-emerald-400 font-bold" : "text-amber-400 font-bold"}">${Number(act.commission) > 0 ? `${isPending ? "(Pending) " : ""}+৳${(Number(act.commission) || 0).toFixed(2)}` : "-"}</td>
           `;
           tbody.appendChild(row);
         });
@@ -989,7 +989,7 @@ export const AgentModule = {
           </div>
           <div class="flex justify-between font-mono text-xs">
             <span class="text-slate-500">Wallet Balance:</span>
-            <span class="text-emerald-400 font-bold">৳${(targetUser.balance || 0).toFixed(2)}</span>
+            <span class="text-emerald-400 font-bold">৳${(Number(targetUser.balance) || 0).toFixed(2)}</span>
           </div>
           <div class="flex justify-between font-mono text-xs">
             <span class="text-slate-500">Email Address:</span>
@@ -1072,7 +1072,7 @@ export const AgentModule = {
         const totalCost = unitPrice * qty;
 
         if (targetUser.balance < totalCost) {
-          app.showToast(`Booking Failed: Player @${targetUser.username} has insufficient balance (৳${targetUser.balance.toFixed(2)}). Need ৳${totalCost.toFixed(2)}. Please load cash into their wallet first.`, "error");
+          app.showToast(`Booking Failed: Player @${targetUser.username} has insufficient balance (৳${(Number(targetUser.balance) || 0).toFixed(2)}). Need ৳${totalCost.toFixed(2)}. Please load cash into their wallet first.`, "error");
           return;
         }
 
@@ -1228,7 +1228,7 @@ export const AgentModule = {
 
         // Dedect from agent funds
         if (app.currentUser.balance < amount) {
-          app.showToast(`Load Failed: Insufficient Agent Wallet funds (Current Balance: ৳${app.currentUser.balance.toFixed(2)}). Contact Administrator for Agent Wallet limit refill!`, "error");
+          app.showToast(`Load Failed: Insufficient Agent Wallet funds (Current Balance: ৳${(Number(app.currentUser.balance) || 0).toFixed(2)}). Contact Administrator for Agent Wallet limit refill!`, "error");
           return;
         }
 
@@ -1315,7 +1315,7 @@ export const AgentModule = {
 
         // Verify player is active and has sufficient wallet balance
         if (targetUser.balance < amount) {
-          app.showToast(`Cashout Failed: Player @${targetUser.username} has insufficient wallet balance (৳${targetUser.balance.toFixed(2)})!`, "error");
+          app.showToast(`Cashout Failed: Player @${targetUser.username} has insufficient wallet balance (৳${(Number(targetUser.balance) || 0).toFixed(2)})!`, "error");
           return;
         }
 

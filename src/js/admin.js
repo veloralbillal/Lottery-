@@ -1713,7 +1713,7 @@ export const AdminModule = {
 
     const optionsHtml = leaders.length === 0
       ? `<option value="">No Active Agent Leaders Found</option>`
-      : leaders.map(l => `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"} - Bal: ৳${(l.balance || 0).toFixed(2)})</option>`).join("");
+      : leaders.map(l => `<option value="${l.username}">@${l.username} (${l.district || l.region || "Dhaka"} - Bal: ৳${(Number(l.balance) || 0).toFixed(2)})</option>`).join("");
 
     if (leaderSelect) {
       const currentVal = leaderSelect.value;
@@ -2473,7 +2473,7 @@ export const AdminModule = {
       statusLbl.className = leader.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
     }
 
-    document.getElementById("detail-leader-balance-lbl").innerText = `৳${(leader.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-leader-balance-lbl").innerText = `৳${(Number(leader.balance) || 0).toFixed(2)}`;
     document.getElementById("detail-leader-commission-lbl").innerText = `${parseFloat(leader.commissionRate || 5.0).toFixed(1)}%`;
 
     // Targets & Mission
@@ -2482,7 +2482,7 @@ export const AdminModule = {
     const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
     
     document.getElementById("detail-leader-target-tickets").innerText = target;
-    document.getElementById("detail-leader-target-reward").innerText = `৳${(leader.monthlyTargetReward || 0).toFixed(2)}`;
+    document.getElementById("detail-leader-target-reward").innerText = `৳${(Number(leader.monthlyTargetReward) || 0).toFixed(2)}`;
 
     // Target pool
     let targetPoolName = "Any Active Pool";
@@ -2959,7 +2959,7 @@ export const AdminModule = {
       statusLbl.className = sub.status === "active" ? "font-bold uppercase text-emerald-400 font-mono" : "font-bold uppercase text-rose-400 font-mono";
     }
 
-    document.getElementById("detail-sub-balance-lbl").innerText = `৳${(sub.balance || 0).toFixed(2)}`;
+    document.getElementById("detail-sub-balance-lbl").innerText = `৳${(Number(sub.balance) || 0).toFixed(2)}`;
     document.getElementById("detail-sub-commission-lbl").innerText = `${parseFloat(sub.commissionRate || 3.0).toFixed(1)}%`;
     document.getElementById("detail-sub-bookings-lbl").innerText = `${sub.totalBookings || 0} Sales`;
 
@@ -2969,7 +2969,7 @@ export const AdminModule = {
     const pct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
     
     document.getElementById("detail-sub-target-tickets").innerText = target;
-    document.getElementById("detail-sub-target-reward").innerText = `৳${(sub.monthlyTargetReward || 0).toFixed(2)}`;
+    document.getElementById("detail-sub-target-reward").innerText = `৳${(Number(sub.monthlyTargetReward) || 0).toFixed(2)}`;
 
     // Target pool
     let targetPoolName = "Any Active Pool";
@@ -3035,7 +3035,7 @@ export const AdminModule = {
                 <span class="text-white font-bold">@${player.username}</span>
               </div>
             </td>
-            <td class="p-3 text-slate-300 font-bold font-mono">৳${(player.balance || 0).toFixed(2)}</td>
+            <td class="p-3 text-slate-300 font-bold font-mono">৳${(Number(player.balance) || 0).toFixed(2)}</td>
             <td class="p-3 text-slate-400 font-sans">${player.email || "N/A"}</td>
             <td class="p-3 text-slate-400">${player.phone || "N/A"}</td>
             <td class="p-3 text-right">
@@ -3728,7 +3728,9 @@ export const AdminModule = {
 
     // Populate App Maintenance & Config Fields
     const maintenanceToggle = document.getElementById("sys-maintenance-toggle");
-    if (maintenanceToggle) maintenanceToggle.checked = !!s.maintenanceMode;
+    if (maintenanceToggle) {
+      maintenanceToggle.checked = (s.maintenanceMode === true || s.maintenanceMode === "true" || s.maintenanceMode === "1" || s.maintenanceMode === 1);
+    }
 
     const shopEnabledToggle = document.getElementById("sys-shop-enabled-toggle");
     if (shopEnabledToggle) shopEnabledToggle.checked = s.shopEnabled !== false;
@@ -5483,7 +5485,7 @@ export const AdminModule = {
       if (agents.length === 0) {
         agentSelect.innerHTML = `<option value="">No agents found</option>`;
       } else {
-        agentSelect.innerHTML = agents.map(ag => `<option value="${ag.username}">@${ag.username} (${ag.district || "Dhaka"} - Bal: ৳${(ag.balance || 0).toFixed(2)})</option>`).join("");
+        agentSelect.innerHTML = agents.map(ag => `<option value="${ag.username}">@${ag.username} (${ag.district || "Dhaka"} - Bal: ৳${(Number(ag.balance) || 0).toFixed(2)})</option>`).join("");
       }
     }
 
