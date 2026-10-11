@@ -2557,9 +2557,21 @@ app.post("/api/auth/login", async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ success: false, message: "Username and password are required." });
     }
+    const cleanUser = String(username).trim().toLowerCase();
+    if (cleanUser !== "admin") {
+      const resultCheck = await performCentralAuth(username, password);
+      if (!resultCheck.success || !resultCheck.isAdmin && resultCheck.user?.role !== "admin") {
+        return res.status(403).json({ success: false, message: "Admin access required. Please use the player or agent login portal." });
+      }
+    }
     const result = await performCentralAuth(username, password);
     if (result.success) {
-      return res.json({ success: true, user: result.user, isAdmin: result.isAdmin });
+      const u = result.user || {};
+      const isAdminRole = result.isAdmin || u.role === "admin" || cleanUser === "admin";
+      if (!isAdminRole) {
+        return res.status(403).json({ success: false, message: "Admin access required." });
+      }
+      return res.json({ success: true, user: u, isAdmin: true });
     } else {
       return res.status(401).json({ success: false, message: result.message || "Invalid credentials." });
     }
@@ -2573,12 +2585,16 @@ app.post("/api/auth/agent-login", async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ success: false, message: "Username/email and password are required." });
     }
+    const cleanUser = String(username).trim().toLowerCase();
+    if (cleanUser === "admin") {
+      return res.status(403).json({ success: false, message: "Admin credentials cannot be used on the agent login page. Please use the Admin login portal." });
+    }
     const result = await performCentralAuth(username, password);
     if (result.success) {
       const u = result.user || {};
-      const isAgent = u.role === "agent" || u.role === "subagent" || u.role === "admin" || result.isAdmin;
+      const isAgent = u.role === "agent" || u.role === "subagent" || u.role === "shop_admin";
       if (!isAgent) {
-        return res.status(403).json({ success: false, message: "Account is not an authorized agent." });
+        return res.status(403).json({ success: false, message: "Account is not an authorized agent. Please use the player login portal." });
       }
       return res.json({ success: true, user: u });
     } else {
@@ -2594,9 +2610,15 @@ app.post("/api/auth/player-login", async (req, res) => {
     if (!username || !password) {
       return res.status(400).json({ success: false, message: "Username/email and password are required." });
     }
+    const cleanUser = String(username).trim().toLowerCase();
     const result = await performCentralAuth(username, password);
     if (result.success) {
-      return res.json({ success: true, user: result.user, isAdmin: result.isAdmin });
+      const u = result.user || {};
+      const isAgent = u.role === "agent" || u.role === "subagent";
+      if (isAgent) {
+        return res.status(403).json({ success: false, message: "Agent accounts cannot log in through the player portal. Please use the Agent login page." });
+      }
+      return res.json({ success: true, user: u });
     } else {
       return res.status(401).json({ success: false, message: result.message || "Invalid credentials." });
     }

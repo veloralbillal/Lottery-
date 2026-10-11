@@ -1629,15 +1629,57 @@ export const AgentSuiteUpgrade = {
       backdrop.addEventListener("click", () => this.closeMobileDrawer());
     }
 
-    // 2. Sidebar 19 Tab Selector Buttons + Logout (#20)
-    document.querySelectorAll(".agent-tab-selector-btn").forEach(btn => {
-      if (btn.dataset.suiteBound) return;
-      btn.dataset.suiteBound = "true";
-      btn.addEventListener("click", () => {
-        const val = btn.getAttribute("val");
-        this.switchAgentTab(app, val);
+    // Global event delegation for Agent suite interactions (guarantees clicks never fail on re-render)
+    if (!window._agentSuiteDelegated) {
+      window._agentSuiteDelegated = true;
+      document.addEventListener("click", (e) => {
+        const agentTabBtn = e.target.closest(".agent-tab-selector-btn");
+        if (agentTabBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          const val = agentTabBtn.getAttribute("val") || agentTabBtn.getAttribute("data-tab");
+          if (val) {
+            AgentSuiteUpgrade.switchAgentTab(app, val);
+          }
+          return;
+        }
+
+        const mobileMenu = e.target.closest("#agent-mobile-menu-btn");
+        if (mobileMenu) {
+          e.preventDefault();
+          e.stopPropagation();
+          AgentSuiteUpgrade.openMobileDrawer();
+          return;
+        }
+
+        const closeBtn = e.target.closest("#agent-sidebar-close-btn") || e.target.closest("#agent-sidebar-backdrop");
+        if (closeBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          AgentSuiteUpgrade.closeMobileDrawer();
+          return;
+        }
+
+        const collapseBtn = e.target.closest("#agent-sidebar-collapse-btn");
+        if (collapseBtn) {
+          e.preventDefault();
+          e.stopPropagation();
+          AgentSuiteUpgrade.sidebarCollapsed = !AgentSuiteUpgrade.sidebarCollapsed;
+          localStorage.setItem("agent_sidebar_collapsed", String(AgentSuiteUpgrade.sidebarCollapsed));
+          AgentSuiteUpgrade.applySidebarState();
+          return;
+        }
+
+        const sidebarLogout = e.target.closest("#agent-sidebar-logout-btn");
+        if (sidebarLogout) {
+          e.preventDefault();
+          e.stopPropagation();
+          const headerLogout = document.getElementById("agent-logout-btn");
+          if (headerLogout) headerLogout.click();
+          return;
+        }
       });
-    });
+    }
 
     const sidebarLogoutBtn = document.getElementById("agent-sidebar-logout-btn");
     if (sidebarLogoutBtn && !sidebarLogoutBtn.dataset.bound) {

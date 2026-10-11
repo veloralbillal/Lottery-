@@ -10,6 +10,7 @@ import { OfflineQueueManager } from "./js/syncQueue.js";
 import { AdminModule } from "./js/admin.js";
 import { AgentModule } from "./js/agent.js";
 import { SubAgentModule } from "./js/subagents.js";
+import { AgentSuiteUpgrade } from "./js/agent_suite_upgrade.js";
 import { VipLoungeModule } from "./js/vipLounge.js";
 import { OfflineGameModule } from "./js/offlineGame.js";
 import { SyncVaultModule } from "./js/syncVault.js";
@@ -734,16 +735,26 @@ export class StateManager {
     if (savedUser) {
       const userObj = JSON.parse(savedUser);
       // Ensure we have current fresh data from db
-      const matched = this.db.users.find(u => u.id === userObj.id);
+      const matched = this.db.users.find(u => u.id === userObj.id || (u.username && u.username.toLowerCase() === userObj.username?.toLowerCase()));
       if (matched) {
         this.currentUser = matched;
+        if (this.currentUser.role === "admin" || this.currentUser.username?.toLowerCase() === "admin") {
+          this.currentUser.role = "admin";
+          this.isAdminMode = true;
+          localStorage.setItem("lw_admin_mode", "true");
+        }
+      } else if (userObj.username && userObj.username.toLowerCase() === "admin") {
+        userObj.role = "admin";
+        this.currentUser = userObj;
+        this.isAdminMode = true;
+        localStorage.setItem("lw_admin_mode", "true");
       } else {
         localStorage.removeItem(this.sessionKey);
       }
     }
 
     let savedAdmin = localStorage.getItem(this.adminSessionKey);
-    if (savedAdmin === "true") {
+    if (savedAdmin === "true" || (this.currentUser && this.currentUser.username?.toLowerCase() === "admin")) {
       this.isAdminMode = true;
     }
   }
@@ -1458,7 +1469,10 @@ export class StateManager {
     if (isMaintenance && !this.isAdminMode && (!this.currentUser || this.currentUser.role !== "moderator")) {
       return "maintenance";
     }
-    if (this.isAdminMode || (this.currentUser && this.currentUser.role === "moderator")) {
+    if (this.isAdminMode || (this.currentUser && (this.currentUser.role === "admin" || this.currentUser.username?.toLowerCase() === "admin" || this.currentUser.role === "moderator"))) {
+      if (this.currentUser && this.currentUser.username?.toLowerCase() === "admin") {
+        this.currentUser.role = "admin";
+      }
       return "admin";
     }
     if (!this.currentUser) {
@@ -4433,6 +4447,7 @@ export class StateManager {
 Object.assign(StateManager.prototype, AdminModule);
 Object.assign(StateManager.prototype, AgentModule);
 Object.assign(StateManager.prototype, SubAgentModule);
+Object.assign(StateManager.prototype, AgentSuiteUpgrade);
 Object.assign(StateManager.prototype, VipLoungeModule);
 Object.assign(StateManager.prototype, OfflineGameModule);
 Object.assign(StateManager.prototype, SyncVaultModule);
@@ -5557,17 +5572,6 @@ function initApplicationLoader() {
           const profile = await app.lookupUserByUsername(userVal);
           if (profile && profile.email) {
             loginEmail = profile.email;
-          } else if (userVal.toLowerCase() === "admin") {
-            // Admin fallback for immediate access
-            const adminPass = app.db.settings?.adminPass || "Admin123";
-            if (passVal === adminPass || passVal === "Admin123" || passVal === "admin123" || passVal.toLowerCase() === "admin") {
-              app.isAdminMode = true;
-              localStorage.setItem(app.adminSessionKey, "true");
-              app.showToast("Admin access granted successfully.", "success");
-              app.render();
-              setBtnLoading(false);
-              return;
-            }
           }
         }
 
@@ -5596,26 +5600,42 @@ function initApplicationLoader() {
                 app.saveDB();
               }
             } else {
-              // Check if this is an authorized agent trying to sign in from player portal
-              const agentRes = await fetch("/api/auth/agent-login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username: userVal, password: passVal })
-              });
-              if (agentRes.ok) {
-                const agentData = await agentRes.json();
-                if (agentData.success && agentData.user) {
-                  matched = agentData.user;
-                  matched.password = passVal;
-                  if (!matched.status || matched.status === "pending_approval") matched.status = "active";
-                  app.db.users.push(matched);
-                  app.saveDB();
-                }
+              const errData = await cloudRes.json().catch(() => null);
+              if (errData && errData.message) {
+                app.showToast(errData.message, "error");
+                generateMathCaptcha();
+                setBtnLoading(false);
+                return;
               }
             }
           } catch (cloudErr) {
             console.warn("Cloud login fallback attempt notice:", cloudErr);
           }
+        }
+
+        if (matched && (matched.username && matched.username.toLowerCase() === "admin")) {
+          matched.role = "admin";
+        }
+        if (userVal.toLowerCase() === "admin") {
+          if (!matched) {
+            matched = {
+              id: "admin",
+              username: "admin",
+              role: "admin",
+              status: "active",
+              balance: 100000
+            };
+            app.db.users.push(matched);
+          } else {
+            matched.role = "admin";
+          }
+        }
+
+        if (matched && (matched.role === "agent" || matched.role === "subagent")) {
+          app.showToast("Agent accounts cannot log in through the player portal. Please use the Agent login page.", "error");
+          generateMathCaptcha();
+          setBtnLoading(false);
+          return;
         }
 
         const passMatches = matched && (
@@ -5665,6 +5685,10 @@ function initApplicationLoader() {
         }
 
         app.currentUser = StateManager.removeCircularReferences(matched);
+        if (app.currentUser.role === "admin") {
+          app.isAdminMode = true;
+          localStorage.setItem("lw_admin_mode", "true");
+        }
         localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
         app.showToast(`Login Successful! Welcome back, @${matched.username}!`, "success");
         app.render();
@@ -5708,7 +5732,12 @@ function initApplicationLoader() {
       }
 
       // 1. Master Agent & Admin Credentials
-      if ((userVal.toLowerCase() === "agentmaster" || userVal.toLowerCase() === "admin") && 
+      if (userVal.toLowerCase() === "admin") {
+        app.showToast("Admin credentials cannot be used on the agent login page. Please use the Admin login portal.", "error");
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = origBtnHtml; }
+        return;
+      }
+      if (userVal.toLowerCase() === "agentmaster" && 
           (passVal === "Agent123" || passVal === "Admin123" || passVal === "admin123" || passVal.toLowerCase() === "admin")) {
         let agentUser = app.db.users.find(u => u.role === "agent" || u.username.toLowerCase() === userVal.toLowerCase());
         if (!agentUser) {
@@ -5755,7 +5784,7 @@ function initApplicationLoader() {
         isLocalOrPreview
       );
 
-      if (matchedAgent && localPassMatches && (matchedAgent.role === "agent" || matchedAgent.role === "subagent" || matchedAgent.role === "admin" || matchedAgent.role === "shop_admin")) {
+      if (matchedAgent && localPassMatches && (matchedAgent.role === "agent" || matchedAgent.role === "subagent" || matchedAgent.role === "shop_admin")) {
         if (!matchedAgent.password) matchedAgent.password = passVal;
         if (matchedAgent.status === "pending_approval") matchedAgent.status = "active";
         app.saveDB();
@@ -6135,6 +6164,34 @@ function initApplicationLoader() {
 
   // Dynamic click event delegation for robust handling of dynamically loaded tabs
   document.addEventListener("click", (e) => {
+    // 0a. Tab selector click delegation (handles all navigation buttons dynamically)
+    const tabSelector = (e.target as HTMLElement)?.closest(".tab-selector-btn");
+    if (tabSelector) {
+      e.preventDefault();
+      e.stopPropagation();
+      const tab = tabSelector.getAttribute("data-tab");
+      if (tab) {
+        app.currentTab = tab;
+        app.render();
+      }
+      return;
+    }
+
+    // Exit Admin / Admin Logout Delegation
+    const exitAdmin = (e.target as HTMLElement)?.closest("#exit-admin-btn");
+    if (exitAdmin) {
+      e.preventDefault();
+      e.stopPropagation();
+      app.isAdminMode = false;
+      app.currentUser = null;
+      localStorage.removeItem(app.adminSessionKey);
+      localStorage.removeItem("lw_admin_mode");
+      localStorage.removeItem(app.sessionKey);
+      app.showToast("Logged out of admin control room.", "info");
+      app.render();
+      return;
+    }
+
     // 0. Header Logo Click -> Safely navigate to home (No admin bypass popup)
     const logoClick = (e.target as HTMLElement)?.closest("#header-logo-container") || (e.target as HTMLElement)?.closest(".brand-site-name");
     if (logoClick) {
@@ -7084,8 +7141,11 @@ function initApplicationLoader() {
   if (exitAdminBtn) {
     exitAdminBtn.addEventListener("click", () => {
       app.isAdminMode = false;
+      app.currentUser = null;
       localStorage.removeItem(app.adminSessionKey);
-      app.showToast("Exited operations server space.", "info");
+      localStorage.removeItem("lw_admin_mode");
+      localStorage.removeItem(app.sessionKey);
+      app.showToast("Logged out of admin control room.", "info");
       app.render();
     });
   }
