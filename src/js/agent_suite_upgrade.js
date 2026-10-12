@@ -219,8 +219,13 @@ export const AgentSuiteUpgrade = {
     // Re-apply collapsed text visibility
     this.applySidebarState();
 
-    // Render updated data
-    app.renderAgentWorkspace();
+    if (typeof this.renderAllPanels === "function") {
+      this.renderAllPanels(app);
+    }
+
+    if (tabKey === "profile" && typeof this.populateProfileForm === "function") {
+      this.populateProfileForm(app);
+    }
   },
 
   openMobileDrawer() {
@@ -362,7 +367,7 @@ export const AgentSuiteUpgrade = {
     this.renderPaymentRequestsTab(app, allDeposits, allWithdrawals);
 
     // Render Wallet & Balance
-    this.renderWalletTab(app, balanceNum, earnedCommNum, myLedger);
+    this.renderAgentWalletTab(app, balanceNum, earnedCommNum, myLedger);
 
     // Render Referral Performance
     this.renderReferralsTab(app, myUsers);
@@ -787,8 +792,9 @@ export const AgentSuiteUpgrade = {
     });
   },
 
-  renderWalletTab(app, balanceNum, earnedCommNum, myLedger) {
-    const totalLoaded = myLedger
+  renderAgentWalletTab(app, balanceNum, earnedCommNum, myLedger) {
+    const ledgerList = Array.isArray(myLedger) ? myLedger : [];
+    const totalLoaded = ledgerList
       .filter(l => (l.description || "").toLowerCase().includes("deposit") || (l.description || "").toLowerCase().includes("load"))
       .reduce((s, l) => s + (Number(l.amount) || 0), 0);
 
@@ -796,9 +802,21 @@ export const AgentSuiteUpgrade = {
       const el = document.getElementById(id);
       if (el) el.innerText = t;
     };
-    setEl("agent-wallet-tab-balance", `৳${balanceNum.toFixed(2)}`);
-    setEl("agent-wallet-tab-commission", `৳${earnedCommNum.toFixed(2)}`);
+    const bNum = Number(balanceNum) || 0;
+    const cNum = Number(earnedCommNum) || 0;
+    setEl("agent-wallet-tab-balance", `৳${bNum.toFixed(2)}`);
+    setEl("agent-wallet-tab-commission", `৳${cNum.toFixed(2)}`);
     setEl("agent-wallet-tab-loaded", `৳${totalLoaded.toFixed(2)}`);
+  },
+
+  renderWalletTab(app, balanceNum, earnedCommNum, myLedger) {
+    if (myLedger !== undefined || (typeof balanceNum === "number" && !isNaN(balanceNum))) {
+      return this.renderAgentWalletTab(app, balanceNum, earnedCommNum, myLedger);
+    }
+    const targetApp = app || this;
+    if (typeof (targetApp).renderUserWalletTab === "function") {
+      return (targetApp).renderUserWalletTab();
+    }
   },
 
   renderReferralsTab(app, myUsers) {
@@ -1000,13 +1018,19 @@ export const AgentSuiteUpgrade = {
     if (!agent) return;
     const setVal = (id, v) => {
       const el = document.getElementById(id);
-      if (el && document.activeElement !== el) el.value = v || "";
+      if (el) el.value = v || "";
     };
-    setVal("agent-prof-username", `@${agent.username}`);
-    setVal("agent-prof-displayname", agent.displayName || agent.name || agent.username);
-    setVal("agent-prof-phone", agent.phone || "");
-    setVal("agent-prof-email", agent.email || "");
-    setVal("agent-prof-district", agent.district || "Dhaka");
+    const agentInDb = Array.isArray(app.db?.users)
+      ? app.db.users.find(u => u && (u.id === agent.id || (u.username && u.username.toLowerCase() === (agent.username || "").toLowerCase())))
+      : null;
+    const rawUsername = agent.username || (agentInDb && agentInDb.username) || agent.name || agent.id || "";
+    const cleanUsername = rawUsername ? (rawUsername.startsWith("@") ? rawUsername : `@${rawUsername}`) : "";
+    const currentDistrict = agent.district || (agentInDb && agentInDb.district) || agent.region || (agentInDb && agentInDb.region) || "Dhaka";
+    setVal("agent-prof-username", cleanUsername);
+    setVal("agent-prof-displayname", agent.displayName || agent.name || rawUsername);
+    setVal("agent-prof-phone", agent.phone || (agentInDb && agentInDb.phone) || "");
+    setVal("agent-prof-email", agent.email || (agentInDb && agentInDb.email) || "");
+    setVal("agent-prof-district", currentDistrict);
     setVal("agent-prof-availability", agent.availabilityStatus || "online");
   },
 
@@ -1859,8 +1883,7 @@ export const AgentSuiteUpgrade = {
         app.currentUser.name = app.currentUser.displayName || app.currentUser.username;
         app.currentUser.phone = (document.getElementById("agent-prof-phone")?.value || "").trim();
         app.currentUser.email = (document.getElementById("agent-prof-email")?.value || "").trim();
-        app.currentUser.district = (document.getElementById("agent-prof-district")?.value || "Dhaka").trim();
-        app.currentUser.region = app.currentUser.district;
+        // Assigned district is set by Admin and read-only for agent - preserve admin selection
         app.currentUser.availabilityStatus = document.getElementById("agent-prof-availability")?.value || "online";
 
         this.syncAgentRecordEverywhere(app, app.currentUser);
@@ -2190,6 +2213,9 @@ export const AgentSuiteUpgrade = {
         this.renderAllPanels(app);
       });
     }
+
+    // Populate profile form with agent credentials and district
+    this.populateProfileForm(app);
   },
 
   updateThreadMetadata(app, targetUsername, updates) {

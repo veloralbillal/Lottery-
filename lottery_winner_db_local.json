@@ -92,6 +92,19 @@
       "status": "active"
     },
     {
+      "id": "agent_1791479045729_s3k58",
+      "username": "sujondh",
+      "email": "bh9957455@gmail.com",
+      "password": "sujon123",
+      "phone": "0178888888",
+      "balance": "1000.00",
+      "totDeposit": "0.00",
+      "wins": "0",
+      "loss": "0",
+      "profit": "0.00",
+      "status": "active"
+    },
+    {
       "id": "agent_1791691597495",
       "username": "Admin",
       "email": "admin@lotterywinner.app",
@@ -571,6 +584,45 @@
       "loss": "0",
       "profit": "0.00",
       "status": "active"
+    },
+    {
+      "id": "u1791721457525",
+      "username": "winner_292938",
+      "email": "winner_292938@lottery.local",
+      "password": "21hmtpbb",
+      "phone": "01722552327",
+      "balance": "5.00",
+      "totDeposit": "0.00",
+      "wins": "0",
+      "loss": "0",
+      "profit": "0.00",
+      "status": "active"
+    },
+    {
+      "id": "u1791721565701",
+      "username": "winner_636877",
+      "email": "winner_636877@lottery.local",
+      "password": "bj4eb48j",
+      "phone": "01758060915",
+      "balance": "500.00",
+      "totDeposit": "0.00",
+      "wins": "0",
+      "loss": "0",
+      "profit": "0.00",
+      "status": "active"
+    },
+    {
+      "id": "u1791732644555",
+      "username": "winner_716107",
+      "email": "winner_716107@lottery.local",
+      "password": "uwt5p41h",
+      "phone": "01738286990",
+      "balance": "50.00",
+      "totDeposit": "0.00",
+      "wins": "0",
+      "loss": "0",
+      "profit": "0.00",
+      "status": "active"
     }
   ],
   "staff": [
@@ -594,16 +646,16 @@
     {
       "id": "agent_1791479045729_s3k58",
       "username": "sujondh",
-      "email": "sujon@gmail.com",
+      "email": "bh9957455@gmail.com",
       "password": "sujon123",
-      "phone": "0135874521",
+      "phone": "0178888888",
       "dob": "1995-01-01",
       "balance": "1000.00",
       "earnedCommission": "0.00",
       "commissionRate": "4.00",
       "totalBookings": "0",
-      "district": "Dhaka",
-      "region": "Dhaka",
+      "district": "Sylvia",
+      "region": "Sylvia",
       "joinDate": "2026-10-08",
       "status": "active",
       "role": "agent"
@@ -640,6 +692,23 @@
       "totalBookings": "0",
       "district": "Dhaka",
       "region": "Dhaka",
+      "joinDate": "2026-10-08",
+      "status": "active",
+      "role": "agent"
+    },
+    {
+      "id": "agent_1791479045729_s3k58",
+      "username": "sujondh",
+      "email": "bh9957455@gmail.com",
+      "password": "sujon123",
+      "phone": "0178888888",
+      "dob": "1995-01-01",
+      "balance": "1000.00",
+      "earnedCommission": "0.00",
+      "commissionRate": "4.00",
+      "totalBookings": "0",
+      "district": "Sylvia",
+      "region": "Sylvia",
       "joinDate": "2026-10-08",
       "status": "active",
       "role": "agent"
@@ -733,9 +802,33 @@
       "totalTickets": "20",
       "soldTickets": "0",
       "category": "10 Taka Banner",
-      "drawTime": "2026-10-11T09:15:16.000Z",
+      "drawTime": "2026-10-12T16:30:26.000Z",
       "status": "active",
       "prizeAmount": "200.00",
+      "drawMode": "auto"
+    },
+    {
+      "id": "l1791721449709",
+      "name": "Trst",
+      "entryFee": "10.00",
+      "totalTickets": "20",
+      "soldTickets": "2",
+      "category": "10 Taka Banner",
+      "drawTime": "2026-10-11T12:36:02.000Z",
+      "status": "refunded",
+      "prizeAmount": "500.00",
+      "drawMode": "auto"
+    },
+    {
+      "id": "l1791732629084",
+      "name": "Trst",
+      "entryFee": "10.00",
+      "totalTickets": "10",
+      "soldTickets": "2",
+      "category": "10 Taka Banner",
+      "drawTime": "2026-10-11T15:33:00.000Z",
+      "status": "refunded",
+      "prizeAmount": "500.00",
       "drawMode": "auto"
     }
   ],
@@ -756,6 +849,24 @@
       "code": "LW-181691",
       "purchaseDate": "2026-10-08 13:12:03",
       "status": "pending",
+      "prizeAmount": "0.00"
+    },
+    {
+      "id": "t179173265329474",
+      "userId": "u1791732644555",
+      "lotteryId": "l1791732629084",
+      "code": "LW-453929",
+      "purchaseDate": "2026-10-11 15:30:53",
+      "status": "refunded",
+      "prizeAmount": "0.00"
+    },
+    {
+      "id": "t179173265833691",
+      "userId": "u1791732644555",
+      "lotteryId": "l1791732629084",
+      "code": "LW-324689",
+      "purchaseDate": "2026-10-11 15:30:58",
+      "status": "refunded",
       "prizeAmount": "0.00"
     }
   ],
@@ -870,7 +981,7 @@
     "forceUpdateLink": "https://example.com/download/LotteryWinner_v5.2.apk",
     "ipPreventionEnabled": true,
     "jackpotExpiry": "2026-10-09T23:59",
-    "jackpotPool": "8425010",
+    "jackpotPool": "84250101010",
     "jackpotTicketCost": "20",
     "maintenanceMessage": "Internal server hardware upgrade and database syncing in progress. Please try again soon.",
     "maintenanceMode": false,

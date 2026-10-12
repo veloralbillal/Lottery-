@@ -1,17 +1,13 @@
-# Implementation Plan - Fix Navigation Menu and Agent Page Interactions
+# Implementation Plan - Fix Agent Main Menu Navigation Click Responsiveness
 
 ## Problem
-- Clicking on main navigation menu items (like `.tab-selector-btn`), agent page links, or sidebar menus does nothing ("কিছুই হয় না").
-- This occurs because tab selector event listeners are attached statically via `document.querySelectorAll(".tab-selector-btn")` only once on initial load, and are lost or non-responsive when tabs are re-rendered or loaded dynamically.
+When clicking any of the Agent workspace sidebar or top navigation menu items, the tab switcher updates the active tab state and visibility classes, but does not trigger the underlying data rendering (`renderAllPanels` / `renderUserLiveChat`), causing the panels to appear empty or unresponsive ("kaj kore na sob koytay").
 
 ## Proposed Changes
-1. **Global Event Delegation for Tab Selectors in `src/main.ts`**:
-   - Add a robust delegation handler in the global `document.addEventListener("click", ...)` block for `.tab-selector-btn` (and any related nav buttons).
-   - Ensure `app.currentTab = tab; app.render();` executes reliably regardless of when or where the tab button is rendered.
+### `src/js/agent_suite_upgrade.js`
+- Update `switchAgentTab(app, tabKey)` to call `this.renderAllPanels(app)` and `this.renderUserLiveChat(app)` (when tab is `live-chat`) so that switching tabs immediately renders and populates the selected tab's data and UI components.
 
-2. **Verify Agent Tab & Dashboard Interactivity**:
-   - Check affiliate agent system and UI rendering to ensure clicks on agent menu items, district filters, search inputs, and action buttons work seamlessly on both desktop and mobile views.
-
-3. **Verification**:
-   - Compile and build the applet to verify zero syntax or build errors.
-   - Test navigation menu clicks and agent page interactions.
+## Verification Plan
+- Compile applet with `compile_applet`.
+- Lint codebase with `lint_applet`.
+- Verify in browser that clicking any agent sidebar navigation item correctly switches the view and renders the corresponding data panel.

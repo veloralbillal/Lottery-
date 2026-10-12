@@ -550,7 +550,14 @@ export const SyncCloudModule = {
   mergeParsedDb(parsed) {
     if (!parsed) return;
     const prevDb = this.db || {};
-    const deletedIds: Set<string> = (this as any)._deletedIds instanceof Set ? (this as any)._deletedIds : new Set();
+    let deletedIds: Set<string>;
+    try {
+      const storedDeleted = JSON.parse(localStorage.getItem("lw_deleted_ids") || "[]");
+      const currentSet = (this as any)._deletedIds instanceof Set ? Array.from((this as any)._deletedIds) : [];
+      deletedIds = new Set([...storedDeleted, ...currentSet]);
+    } catch {
+      deletedIds = (this as any)._deletedIds instanceof Set ? (this as any)._deletedIds : new Set();
+    }
     const staticMockIds = new Set([
       "u_agent_dhaka", "u_agent_sylhet", "u_mod_support",
       "u1", "u2", "u3",

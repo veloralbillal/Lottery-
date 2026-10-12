@@ -910,7 +910,7 @@ export class StateManager {
     }
 
     const discountPercent = this.getUserTicketDiscount(this.currentUser);
-    const originalCost = this.db.settings.jackpotTicketCost || 20.00;
+    const originalCost = Number(this.db.settings.jackpotTicketCost) || 20.00;
     const finalCost = originalCost * (1 - discountPercent / 100);
 
     if (this.currentUser.balance < finalCost) {
@@ -966,13 +966,14 @@ export class StateManager {
       if (lot.status === "active" && lot.drawMode === "auto") {
         const drawTime = new Date(lot.drawTime).getTime();
         if (now >= drawTime) {
-          const ticketsOfPool = this.db.tickets.filter(t => t.lotteryId === lot.id && t.status === "pending");
+          const ticketsOfPool = this.db.tickets.filter(t => t.lotteryId === lot.id && (t.status === "pending" || t.status === "active" || !t.status));
 
           if (ticketsOfPool.length > 0) {
             if (lot.category !== "Quick Draw" && ticketsOfPool.length < lot.totalTickets) {
               // REFUND ALL TICKETS AS TARGET HAS NOT BEEN MET
               ticketsOfPool.forEach(t => {
                 t.status = "refunded";
+                t.refundDate = new Date().toISOString();
                 const u = this.db.users.find(usr => usr.id === t.userId);
                 if (u) {
                   u.balance += lot.entryFee;
@@ -1081,6 +1082,7 @@ export class StateManager {
 
               lot.status = "drawn";
               lot.drawnWinnersList = multiWinnersList;
+              lot.winningTicketCodes = multiWinnersList.map(w => w.ticketCode);
               dbUpdated = true;
 
               const multiDrawEvent = {
@@ -4187,15 +4189,111 @@ export class StateManager {
     }
 
     // Manage purchase button callback inside details modal
-    const buyBtn = document.getElementById("detail-lot-buy-btn");
-    if (buyBtn) {
-      buyBtn.onclick = (e) => {
-        e.stopPropagation();
-        modal.classList.add("hidden");
-        modal.style.display = "none";
-        if (this.countdownInterval) clearInterval(this.countdownInterval);
-        this.purchaseTicket(lot.id);
-      };
+    const isRefunded = lot.status === "refunded";
+    const leftTickets = (lot.totalTickets || 100) - (lot.soldTickets || 0);
+    lot.left = leftTickets;
+    const isCompleted = isRefunded || lot.status === "drawn" || lot.status === "completed" || new Date(lot.drawTime) < new Date() || leftTickets <= 0;
+    const buyBtn = document.getElementById("detail-lot-buy-btn") as HTMLElement | null;
+    let resultsBox = document.getElementById("detail-lot-results-box");
+
+    if (isRefunded) {
+      if (!resultsBox && buyBtn?.parentElement) {
+        resultsBox = document.createElement("div");
+        resultsBox.id = "detail-lot-results-box";
+        buyBtn.parentElement.insertBefore(resultsBox, buyBtn);
+      }
+      if (resultsBox) {
+        resultsBox.className = "bg-slate-950 p-3 rounded-2xl border border-amber-500/30 space-y-2 mt-2";
+        resultsBox.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+            <span class="text-[10px] uppercase font-bold text-amber-400 font-mono flex items-center gap-1.5">
+              <i class="fa-solid fa-rotate-left text-amber-400 text-xs"></i> লটারি বাতিল ও রিফান্ড
+            </span>
+            <span class="text-[8.5px] bg-amber-950 text-amber-400 border border-amber-900 px-2 py-0.5 rounded-full font-mono">Refunded</span>
+          </div>
+          <p class="text-[10px] text-slate-300 text-center py-1 font-mono">এই লটারিটি বাতিল করা হয়েছে এবং আপনার এন্ট্রি ফি রিফান্ড করা হয়েছে।</p>
+        `;
+        resultsBox.classList.remove("hidden");
+      }
+      if (buyBtn) {
+        buyBtn.innerText = "↩️ লটারি বাতিল ও রিফান্ড (Refunded)";
+        buyBtn.className = "w-full bg-slate-800 text-amber-400 font-bold py-3 rounded-xl transition cursor-not-allowed opacity-80 text-xs";
+        buyBtn.onclick = (e) => {
+          e.stopPropagation();
+          modal.classList.add("hidden");
+          modal.style.display = "none";
+        };
+      }
+    } else if (isCompleted) {
+      if (!resultsBox && buyBtn?.parentElement) {
+        resultsBox = document.createElement("div");
+        resultsBox.id = "detail-lot-results-box";
+        buyBtn.parentElement.insertBefore(resultsBox, buyBtn);
+      }
+      if (resultsBox) {
+        const winnersList = (lot.drawnWinnersList && lot.drawnWinnersList.length > 0) ? lot.drawnWinnersList : [];
+        let winnersHTML = "";
+        if (winnersList.length > 0) {
+          winnersHTML = winnersList.map((w: any, i: number) => `
+            <div class="flex justify-between items-center text-[10px] bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 font-mono">
+              <span class="text-slate-200"><strong class="text-amber-400 font-bold">#${w.rank || (i + 1)}</strong> @${w.username || 'Winner'}</span>
+              <span class="bg-slate-950 px-2 py-0.5 rounded text-amber-300 font-bold tracking-wider">${w.ticketCode || w.code || 'LW-WIN'}</span>
+              <span class="text-emerald-400 font-black">৳${w.prize || w.prizeAmount || lot.prizeAmount}</span>
+            </div>
+          `).join("");
+        } else {
+          const winTicket = (this.db.tickets || []).find((t: any) => t.lotteryId === lot.id && t.status === "won");
+          if (winTicket) {
+            const u = (this.db.users || []).find((usr: any) => usr.id === winTicket.userId);
+            winnersHTML = `
+              <div class="flex justify-between items-center text-[10px] bg-slate-900/90 px-3 py-2 rounded-xl border border-slate-800 font-mono">
+                <span class="text-slate-200">@${u ? u.username : 'Winner'}</span>
+                <span class="bg-slate-950 px-2 py-0.5 rounded text-amber-300 font-bold tracking-wider">${winTicket.code || winTicket.ticketNumber}</span>
+                <span class="text-emerald-400 font-black">৳${winTicket.prizeAmount || lot.prizeAmount}</span>
+              </div>
+            `;
+          } else {
+            winnersHTML = `<p class="text-[9.5px] text-slate-500 font-mono text-center py-1">কোনো বিজয়ী রেকর্ড পাওয়া যায়নি।</p>`;
+          }
+        }
+
+        resultsBox.className = "bg-slate-950 p-3 rounded-2xl border border-amber-500/30 space-y-2 mt-2";
+        resultsBox.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
+            <span class="text-[10px] uppercase font-bold text-amber-400 font-mono flex items-center gap-1.5">
+              <i class="fa-solid fa-trophy text-yellow-400 text-xs"></i> অফিশিয়াল ড্র ফলাফল (Draw Results)
+            </span>
+            <span class="text-[8.5px] bg-emerald-955 text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded-full font-mono">Finalized</span>
+          </div>
+          <div class="space-y-1.5">
+            ${winnersHTML}
+          </div>
+        `;
+        resultsBox.classList.remove("hidden");
+      }
+
+      if (buyBtn) {
+        buyBtn.innerText = "🏁 ড্র সম্পন্ন হয়েছে (Draw Concluded)";
+        buyBtn.className = "w-full bg-slate-800 text-slate-400 font-bold py-3 rounded-xl transition cursor-not-allowed opacity-80 text-xs";
+        buyBtn.onclick = (e) => {
+          e.stopPropagation();
+          modal.classList.add("hidden");
+          modal.style.display = "none";
+        };
+      }
+    } else {
+      if (resultsBox) resultsBox.classList.add("hidden");
+      if (buyBtn) {
+        buyBtn.innerText = "Secure Buy Ticket Now";
+        buyBtn.className = "w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.02] text-white font-black py-3 rounded-xl shadow-lg transition active:opacity-90 cursor-pointer";
+        buyBtn.onclick = (e) => {
+          e.stopPropagation();
+          modal.classList.add("hidden");
+          modal.style.display = "none";
+          if (this.countdownInterval) clearInterval(this.countdownInterval);
+          this.purchaseTicket(lot.id);
+        };
+      }
     }
 
     // Handle Countdown Timer
@@ -4204,6 +4302,16 @@ export class StateManager {
     const updateCountdown = () => {
       const cdEl = document.getElementById("detail-lot-countdown");
       if (!cdEl) return;
+      if (isRefunded) {
+        cdEl.innerText = "↩️ REFUNDED";
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
+        return;
+      }
+      if (isCompleted) {
+        cdEl.innerText = "🏆 DRAW COMPLETED";
+        if (this.countdownInterval) clearInterval(this.countdownInterval);
+        return;
+      }
       const now = new Date().getTime();
       const draw = new Date(lot.drawTime).getTime();
       const diff = draw - now;
@@ -4223,7 +4331,9 @@ export class StateManager {
     };
 
     updateCountdown();
-    this.countdownInterval = setInterval(updateCountdown, 1000);
+    if (!isCompleted) {
+      this.countdownInterval = setInterval(updateCountdown, 1000);
+    }
 
     // Record selection for Cart Abandonment Strategy
     if (this.currentUser) {
@@ -4280,7 +4390,8 @@ export class StateManager {
 
     const lot = this.db.lotteries.find(l => l.id === ticket.lotteryId) || { name: "Archived Event", prizeAmount: 0 };
 
-    document.getElementById("popup-ticket-code").innerText = ticket.code;
+    const ticketCode = ticket.code || ticket.ticketNumber || "LW-TICKET";
+    document.getElementById("popup-ticket-code").innerText = ticketCode;
     document.getElementById("popup-ticket-lottery").innerText = lot.name;
     document.getElementById("popup-ticket-date").innerText = new Date(ticket.purchaseDate).toLocaleDateString();
     document.getElementById("popup-ticket-prize").innerText = `৳${lot.prizeAmount || lot.prizePool || 0}`;
@@ -4292,14 +4403,59 @@ export class StateManager {
     winDetails.classList.add("hidden");
     lostDetails.classList.add("hidden");
 
+    // Self-heal ticket state if lottery is drawn or completed or refunded
+    if ((lot.status === "drawn" || lot.status === "completed") && ticket.status !== "won" && ticket.status !== "lost") {
+      const isWinner = (lot.drawnWinnersList && lot.drawnWinnersList.some((w: any) => (w.ticketCode || w.code) === ticketCode)) ||                       (lot.winningTicketCodes && lot.winningTicketCodes.includes(ticketCode));
+      ticket.status = isWinner ? "won" : "lost";
+    } else if (lot.status === "refunded" && ticket.status !== "refunded") {
+      ticket.status = "refunded";
+    }
+
+    const winnerRecord = (lot.drawnWinnersList && lot.drawnWinnersList.length > 0) ? lot.drawnWinnersList[0] : null;
+    const winTicket = !winnerRecord ? (this.db.tickets || []).find((x: any) => x.lotteryId === lot.id && x.status === "won") : null;
+    const winCode = winnerRecord ? (winnerRecord.ticketCode || winnerRecord.code) : (winTicket ? (winTicket.code || winTicket.ticketNumber) : null);
+    const winUser = winnerRecord ? (winnerRecord.username ? `@${winnerRecord.username}` : "") : (winTicket ? (this.db.users?.find((u: any) => u.id === winTicket.userId)?.username ? `@${this.db.users?.find((u: any) => u.id === winTicket.userId)?.username}` : "") : "");
+
     if (ticket.status === "won") {
       statusEl.className = "font-bold text-emerald-400";
       statusEl.innerText = "🏆 WINNER";
       document.getElementById("popup-ticket-reward-amount").innerText = ticket.prizeAmount || lot.prizeAmount || lot.prizePool || 0;
       winDetails.classList.remove("hidden");
-    } else if (ticket.status === "lost") {
-      statusEl.className = "font-bold text-slate-500";
-      statusEl.innerText = "❌ LOST";
+    } else if (ticket.status === "lost" || lot.status === "drawn" || lot.status === "completed") {
+      statusEl.className = "font-bold text-slate-400";
+      statusEl.innerText = "🏁 DRAW COMPLETED (NOT WON)";
+      if (winCode) {
+        lostDetails.innerHTML = `
+          <div class="space-y-2 text-center">
+            <p class="text-slate-400 text-[10.5px]">এই লটারিটির ড্র সফলভাবে সম্পন্ন হয়েছে।</p>
+            <div class="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+              <span class="text-[9px] uppercase tracking-wider text-amber-400 font-bold block flex items-center justify-center gap-1">
+                <i class="fa-solid fa-trophy text-yellow-400"></i> অফিশিয়াল বিজয়ী ফলাফল:
+              </span>
+              <div class="text-base font-black text-amber-300 font-mono tracking-widest">${winCode}</div>
+              ${winUser ? `<span class="text-[10px] text-slate-400 font-mono block">বিজয়ী ইউজার: <strong class="text-white">${winUser}</strong></span>` : ""}
+              <span class="text-[9.5px] text-emerald-400 font-mono font-bold block">পুরস্কার: ৳${(winnerRecord?.prize || winnerRecord?.prizeAmount || lot.prizeAmount || 0).toLocaleString()}</span>
+            </div>
+            <p class="text-slate-500 text-[9.5px]">আপনার এন্ট্রি বিজয়ী হয়নি। পরবর্তী ড্র-এর জন্য শুভকামনা!</p>
+          </div>
+        `;
+      } else {
+        lostDetails.innerHTML = `এই ড্র সম্পন্ন হয়েছে। আপনার এন্ট্রি বিজয়ী হয়নি। পরবর্তী ড্র-তে অংশগ্রহণ করুন!`;
+      }
+      lostDetails.classList.remove("hidden");
+    } else if (ticket.status === "refunded" || lot.status === "refunded") {
+      statusEl.className = "font-bold text-amber-400";
+      statusEl.innerText = "↩️ REFUNDED";
+      lostDetails.innerHTML = `
+        <div class="space-y-2 text-center">
+          <p class="text-slate-400 text-[10.5px]">এই লটারিটি বাতিল করা হয়েছে এবং আপনার টিকিট ফি রিফান্ড করা হয়েছে।</p>
+          <div class="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
+            <span class="text-[9px] uppercase tracking-wider text-amber-400 font-bold block">
+              রিফান্ড স্ট্যাটাস: সফল (${lot.entryFee || 10} ৳)
+            </span>
+          </div>
+        </div>
+      `;
       lostDetails.classList.remove("hidden");
     } else {
       statusEl.className = "font-bold text-cyan-400 animate-pulse";
@@ -4455,6 +4611,14 @@ Object.assign(StateManager.prototype, LuckyWheelModule);
 Object.assign(StateManager.prototype, SyncCloudModule);
 Object.assign(StateManager.prototype, UIEffectsModule);
 Object.assign(StateManager.prototype, GoogleDriveModule);
+
+// Ensure user portal tab renderers are never overwritten by agent/admin mixins
+StateManager.prototype.renderWalletTab = function() {
+  WalletTab.render(this);
+};
+StateManager.prototype.renderUserWalletTab = function() {
+  WalletTab.render(this);
+};
 
 // Initialize Application State on DOM load
 function initApplicationLoader() {
@@ -6895,7 +7059,7 @@ function initApplicationLoader() {
       const qty = parseInt(qtyInput ? qtyInput.value : 1);
       
       const discountPercent = app.getUserTicketDiscount(app.currentUser);
-      const originalCost = app.db.settings.jackpotTicketCost || 20.00;
+      const originalCost = Number(app.db.settings.jackpotTicketCost) || 20.00;
       const finalCostPerTicket = originalCost * (1 - discountPercent / 100);
       const totalCost = qty * finalCostPerTicket;
 

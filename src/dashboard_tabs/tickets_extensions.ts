@@ -80,10 +80,46 @@ export class TicketsExtensions {
     const user = appInstance.currentUser;
     const tickets = (appInstance.db.tickets || []).filter(t => t.userId === user.id);
 
+    // Self-heal ticket states for concluded draws
+    let hasHealed = false;
+    tickets.forEach(t => {
+      const lot = appInstance.db.lotteries.find(l => l.id === t.lotteryId);
+      if (lot && (lot.status === "drawn" || lot.status === "completed") && t.status !== "won" && t.status !== "lost") {
+        const ticketCode = t.code || t.ticketNumber || "";
+        const cleanCode = ticketCode.replace(/^LW-/, "");
+        const isWinner = (lot.drawnWinnersList && lot.drawnWinnersList.some(w => {
+          const wCode = (w.ticketCode || w.code || "").replace(/^LW-/, "");
+          return (w.ticketCode || w.code) === ticketCode || wCode === cleanCode;
+        })) ||
+        (lot.winningTicketCodes && lot.winningTicketCodes.some(c => c === ticketCode || c.replace(/^LW-/, "") === cleanCode));
+
+        if (isWinner) {
+          t.status = "won";
+          const winRec = lot.drawnWinnersList?.find(w => {
+            const wCode = (w.ticketCode || w.code || "").replace(/^LW-/, "");
+            return (w.ticketCode || w.code) === ticketCode || wCode === cleanCode;
+          });
+          if (winRec && (winRec.prize || winRec.prizeAmount)) t.prizeAmount = winRec.prize || winRec.prizeAmount;
+        } else {
+          t.status = "lost";
+        }
+        hasHealed = true;
+      } else if (lot && lot.status === "refunded" && t.status !== "refunded") {
+        t.status = "refunded";
+        hasHealed = true;
+      }
+    });
+    if (hasHealed && typeof appInstance.saveDB === "function") {
+      appInstance.saveDB();
+    }
+
     const totalCount = tickets.length;
     const wonCount = tickets.filter(t => t.status === "won").length;
     const lostCount = tickets.filter(t => t.status === "lost").length;
-    const runningCount = tickets.filter(t => t.status !== "won" && t.status !== "lost").length;
+    const runningCount = tickets.filter(t => {
+      const lot = appInstance.db.lotteries.find(l => l.id === t.lotteryId);
+      return t.status !== "won" && t.status !== "lost" && (!lot || lot.status !== "drawn");
+    }).length;
 
     // Calculate win rate
     const closedCount = wonCount + lostCount;
@@ -455,13 +491,31 @@ export class TicketsExtensions {
       // Ticket found!
       const lot = appInstance.db.lotteries.find(l => l.id === ticket.lotteryId) || { name: "Archived Pool", prizeAmount: 0 };
       
+      // Self-heal ticket state if lottery is drawn
+      if (lot.status === "drawn" && ticket.status !== "won" && ticket.status !== "lost") {
+        const ticketCode = ticket.code || ticket.ticketNumber;
+        const isWinner = (lot.drawnWinnersList && lot.drawnWinnersList.some(w => (w.ticketCode || w.code) === ticketCode)) ||
+                         (lot.winningTicketCodes && lot.winningTicketCodes.includes(ticketCode));
+        ticket.status = isWinner ? "won" : "lost";
+      }
+
+      const winnerRecord = (lot.drawnWinnersList && lot.drawnWinnersList.length > 0) ? lot.drawnWinnersList[0] : null;
+      const winTicket = !winnerRecord ? (appInstance.db.tickets || []).find(x => x.lotteryId === lot.id && x.status === "won") : null;
+      const winCode = winnerRecord ? (winnerRecord.ticketCode || winnerRecord.code) : (winTicket ? (winTicket.code || winTicket.ticketNumber) : null);
+      const winUser = winnerRecord ? (winnerRecord.username ? `@${winnerRecord.username}` : "") : (winTicket ? (appInstance.db.users.find(u => u.id === winTicket.userId)?.username ? `@${appInstance.db.users.find(u => u.id === winTicket.userId)?.username}` : "") : "");
+
       let statusHTML = "";
       if (ticket.status === "won") {
         statusHTML = `<span class="px-2 py-0.5 rounded text-[8.5px] font-black bg-emerald-955 text-emerald-400 border border-emerald-900">🏆 WINNING TICKET</span>`;
-      } else if (ticket.status === "lost") {
-        statusHTML = `<span class="px-2 py-0.5 rounded text-[8.5px] font-black bg-rose-955 text-rose-400 border border-rose-900">❌ NO REWARDS DRAWN</span>`;
+      } else if (ticket.status === "lost" || lot.status === "drawn") {
+        statusHTML = `<span class="px-2 py-0.5 rounded text-[8.5px] font-black bg-rose-955 text-rose-400 border border-rose-900">🏁 DRAW COMPLETED (NOT WON)</span>`;
       } else {
         statusHTML = `<span class="px-2 py-0.5 rounded text-[8.5px] font-black bg-amber-955 text-amber-500 border border-amber-900 animate-pulse">⏳ DRAW ACTIVE / PENDING</span>`;
+      }
+
+      let drawResultRow = "";
+      if (lot.status === "drawn" && winCode) {
+        drawResultRow = `<div class="flex justify-between border-t border-slate-800/80 pt-1 text-amber-400"><span class="text-slate-500">Official Draw Result:</span> <strong class="font-mono text-amber-300 font-bold">${winCode} ${winUser ? `(${winUser})` : ''}</strong></div>`;
       }
 
       outputBox.innerHTML = `
@@ -472,14 +526,15 @@ export class TicketsExtensions {
           </div>
           
           <div class="space-y-1 text-[9px]">
-            <div class="flex justify-between"><span class="text-slate-500">Ticket Code:</span> <strong class="text-white">${ticket.code}</strong></div>
+            <div class="flex justify-between"><span class="text-slate-500">Ticket Code:</span> <strong class="text-white">${ticket.code || ticket.ticketNumber}</strong></div>
             <div class="flex justify-between"><span class="text-slate-500">Draw Pool:</span> <strong class="text-slate-300 truncate max-w-[150px]">${lot.name}</strong></div>
             <div class="flex justify-between"><span class="text-slate-500">Purchase Date:</span> <strong class="text-slate-400">${new Date(ticket.purchaseDate).toLocaleDateString()}</strong></div>
             <div class="flex justify-between"><span class="text-slate-500">Est. Pool Prize:</span> <strong class="text-white">৳${Number(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}</strong></div>
+            ${drawResultRow}
           </div>
 
           <button type="button" data-id="${ticket.id}" class="verifier-view-ticket-btn w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-extrabold text-[9px] py-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer">
-            <i class="fa-solid fa-circle-info"></i> Open Receipt Invoice Invoice
+            <i class="fa-solid fa-circle-info"></i> Open Receipt Invoice
           </button>
         </div>
       `;
@@ -581,7 +636,20 @@ export class TicketsExtensions {
 
     // Status filter
     if (filterStatus !== "all") {
-      filtered = filtered.filter(t => t.status === filterStatus);
+      filtered = filtered.filter(t => {
+        const lot = appInstance.db.lotteries.find(l => l.id === t.lotteryId);
+        const isDrawn = lot && (lot.status === "drawn" || lot.status === "completed");
+        if (filterStatus === "pending") {
+          return t.status !== "won" && t.status !== "lost" && t.status !== "refunded" && !isDrawn && (!lot || lot.status !== "refunded");
+        } else if (filterStatus === "won") {
+          return t.status === "won";
+        } else if (filterStatus === "lost") {
+          return t.status === "lost" || (isDrawn && t.status !== "won");
+        } else if (filterStatus === "refunded") {
+          return t.status === "refunded" || (lot && lot.status === "refunded");
+        }
+        return t.status === filterStatus;
+      });
     }
 
     // Apply Sorting
@@ -590,9 +658,9 @@ export class TicketsExtensions {
       const lotB = appInstance.db.lotteries.find(l => l.id === b.lotteryId) || { name: "", prizeAmount: 0 };
 
       if (sortBy === "date-desc") {
-        return new Date(b.purchaseDate) - new Date(a.purchaseDate);
+        return new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime();
       } else if (sortBy === "date-asc") {
-        return new Date(a.purchaseDate) - new Date(b.purchaseDate);
+        return new Date(a.purchaseDate).getTime() - new Date(b.purchaseDate).getTime();
       } else if (sortBy === "prize-desc") {
         return (lotB.prizeAmount || lotB.prizePool || 0) - (lotA.prizeAmount || lotA.prizePool || 0);
       } else if (sortBy === "prize-asc") {
@@ -619,14 +687,58 @@ export class TicketsExtensions {
       const card = document.createElement("div");
       card.className = "bg-slate-900 hover:bg-slate-850 border border-slate-800/80 p-4 rounded-3xl relative flex justify-between items-center cursor-pointer hover:border-rose-500/40 transition-all duration-300 shadow-sm relative group overflow-hidden active:scale-[0.99]";
 
+      // Self-heal ticket state if the draw has already concluded
+      const ticketCode = t.code || t.ticketNumber || "LW-TICKET";
+      const cleanCode = ticketCode.replace(/^LW-/, "");
+      if ((lot.status === "drawn" || lot.status === "completed") && t.status !== "won" && t.status !== "lost") {
+        const isWinner = (lot.drawnWinnersList && lot.drawnWinnersList.some(w => {
+          const wCode = (w.ticketCode || w.code || "").replace(/^LW-/, "");
+          return (w.ticketCode || w.code) === ticketCode || wCode === cleanCode;
+        })) ||
+        (lot.winningTicketCodes && lot.winningTicketCodes.some(c => c === ticketCode || c.replace(/^LW-/, "") === cleanCode));
+
+        if (isWinner) {
+          t.status = "won";
+          const winRec = lot.drawnWinnersList?.find(w => {
+            const wCode = (w.ticketCode || w.code || "").replace(/^LW-/, "");
+            return (w.ticketCode || w.code) === ticketCode || wCode === cleanCode;
+          });
+          if (winRec && (winRec.prize || winRec.prizeAmount)) t.prizeAmount = winRec.prize || winRec.prizeAmount;
+        } else {
+          t.status = "lost";
+        }
+      } else if (lot.status === "refunded" && t.status !== "refunded") {
+        t.status = "refunded";
+      }
+
+      // Find winning result information for this draw
+      const winnerRecord = (lot.drawnWinnersList && lot.drawnWinnersList.length > 0) ? lot.drawnWinnersList[0] : null;
+      const winTicket = !winnerRecord ? (appInstance.db.tickets || []).find(x => x.lotteryId === lot.id && x.status === "won") : null;
+      const winCode = winnerRecord ? (winnerRecord.ticketCode || winnerRecord.code) : (winTicket ? (winTicket.code || winTicket.ticketNumber) : null);
+      const winUser = winnerRecord ? (winnerRecord.username ? `@${winnerRecord.username}` : "") : (winTicket ? (appInstance.db.users?.find(u => u.id === winTicket.userId)?.username ? `@${appInstance.db.users?.find(u => u.id === winTicket.userId)?.username}` : "") : "");
+
       let statusBadge = "";
       if (t.status === "won") {
-        statusBadge = `<span class="bg-emerald-950/55 border border-emerald-900 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">🏆 WON ৳${t.prizeAmount || lot.prizeAmount}</span>`;
-      } else if (t.status === "lost") {
-        statusBadge = `<span class="bg-slate-950 border border-slate-800 text-slate-500 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">❌ LOST</span>`;
+        statusBadge = `<span class="bg-emerald-955 border border-emerald-800 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">🏆 WON ৳${t.prizeAmount || lot.prizeAmount}</span>`;
+      } else if (t.status === "lost" || lot.status === "drawn" || lot.status === "completed") {
+        statusBadge = `<span class="bg-slate-950 border border-slate-850 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">🏁 DRAWN / LOST</span>`;
+      } else if (t.status === "refunded" || lot.status === "refunded") {
+        statusBadge = `<span class="bg-amber-955 border border-amber-800 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono">↩️ REFUNDED ৳${lot.entryFee || 10}</span>`;
       } else {
         statusBadge = `<span class="bg-amber-950/55 border border-amber-900 text-amber-500 text-[10px] font-bold px-2 py-0.5 rounded-full font-mono animate-pulse">⏳ RUNNING</span>`;
       }
+
+      const resultNotice = (lot.status === "drawn" || lot.status === "completed") && winCode ? `
+        <div class="mt-1 flex items-center gap-1.5 flex-wrap text-[9px] font-mono">
+          <span class="text-amber-400 font-bold flex items-center gap-1">
+            <i class="fa-solid fa-trophy text-[9px] text-yellow-400"></i> ড্র ফলাফল:
+          </span>
+          <span class="bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/30 text-amber-300 font-extrabold tracking-wider select-all">
+            ${winCode}
+          </span>
+          ${winUser ? `<span class="text-slate-400 text-[8.5px]">(${winUser})</span>` : ""}
+        </div>
+      ` : "";
 
       card.innerHTML = `
         <div class="space-y-1 max-w-[70%] font-mono">
@@ -635,7 +747,8 @@ export class TicketsExtensions {
             ${lot.name}
           </h4>
           <span class="text-[9px] text-slate-500 font-mono block">Purchased: ${new Date(t.purchaseDate).toLocaleDateString()}</span>
-          <div class="text-sm font-black tracking-widest text-rose-400 font-mono pt-1 select-all select-text">${t.code}</div>
+          <div class="text-sm font-black tracking-widest text-rose-400 font-mono pt-0.5 select-all select-text">${ticketCode}</div>
+          ${resultNotice}
         </div>
         <div class="text-right shrink-0">
           ${statusBadge}

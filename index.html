@@ -82,28 +82,30 @@
       (function() {
         const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable", "script error", "scripterror"];
         const shouldFilter = (args) => {
-          for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (!arg) continue;
-            if (typeof arg === 'string') {
-              if (filterWords.some(word => arg.includes(word))) {
-                return true;
-              }
-            } else if (arg.message && typeof arg.message === 'string') {
-              if (filterWords.some(word => arg.message.includes(word))) {
-                return true;
-              }
-            } else if (arg.reason && arg.reason.message && typeof arg.reason.message === 'string') {
-              if (filterWords.some(word => arg.reason.message.includes(word))) {
-                return true;
-              }
-            } else if (typeof arg.toString === 'function') {
-              const str = arg.toString();
-              if (filterWords.some(word => str.includes(word))) {
-                return true;
+          try {
+            for (let i = 0; i < args.length; i++) {
+              const arg = args[i];
+              if (!arg) continue;
+              if (typeof arg === 'string') {
+                if (filterWords.some(word => arg.includes(word))) {
+                  return true;
+                }
+              } else if (arg.message && typeof arg.message === 'string') {
+                if (filterWords.some(word => arg.message.includes(word))) {
+                  return true;
+                }
+              } else if (arg.reason && arg.reason.message && typeof arg.reason.message === 'string') {
+                if (filterWords.some(word => arg.reason.message.includes(word))) {
+                  return true;
+                }
+              } else if (typeof arg === 'object' && arg !== null && typeof arg.toString === 'function' && arg.toString !== Object.prototype.toString && arg.toString !== Array.prototype.toString) {
+                const str = arg.toString();
+                if (typeof str === 'string' && filterWords.some(word => str.includes(word))) {
+                  return true;
+                }
               }
             }
-          }
+          } catch (e) {}
           return false;
         };
 

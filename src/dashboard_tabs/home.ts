@@ -423,10 +423,10 @@ export class HomeTab {
       const progress = Math.min(100, Math.round((activeQuick.soldTickets / activeQuick.totalTickets) * 100));
       const myTickets = appInstance.db.tickets.filter(t => t.lotteryId === activeQuick.id && t.userId === appInstance.currentUser?.id && t.status === "pending");
 
-      // Render completed high frequency past quick draws
-      const pastQuickDraws = appInstance.db.lotteries.filter(l => l.category === "Quick Draw" && l.status === "drawn")
-        .sort((a,b) => new Date(b.drawTime).getTime() - new Date(a.drawTime).getTime())
-        .slice(0, 8);
+      // Render completed past draws across all pools and quick draws
+      const pastQuickDraws = (appInstance.db.lotteries || []).filter(l => l.status === "drawn")
+        .sort((a,b) => new Date(b.drawTime || 0).getTime() - new Date(a.drawTime || 0).getTime())
+        .slice(0, 10);
 
       listEl.innerHTML = `
         <div class="space-y-6">
@@ -487,42 +487,54 @@ export class HomeTab {
             </div>
           </div>
 
-          <!-- Live Feed of Past Quick Draw Winners -->
+          <!-- Live Feed of Past Completed Draw Winners -->
           <div class="space-y-3">
-            <h3 class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest">🏆 কুইক লটারি ফলাফল ফিড (Draw Results Feed)</h3>
+            <h3 class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <i class="fa-solid fa-trophy text-amber-400"></i> লটারি ড্র ফলাফল ফিড (Draw Results Feed)
+            </h3>
             <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
               <div class="divide-y divide-slate-800/60">
                 ${pastQuickDraws.map(l => {
-                  const drawTicket = appInstance.db.tickets.find(t => t.lotteryId === l.id && t.status === "won");
-                  let winnerName = "No active tickets sold";
-                  let winnerCode = "N/A";
-                  if (drawTicket) {
+                  const winnerRec = (l.drawnWinnersList && l.drawnWinnersList.length > 0) ? l.drawnWinnersList[0] : null;
+                  const drawTicket = !winnerRec ? appInstance.db.tickets.find(t => t.lotteryId === l.id && t.status === "won") : null;
+                  let winnerName = "ড্র সম্পন্ন";
+                  let winnerCode = "LW-FINAL";
+                  let prizeAmt = l.prizeAmount || l.prizePool || 0;
+
+                  if (winnerRec) {
+                    winnerName = winnerRec.username ? `@${winnerRec.username}` : "Winner";
+                    winnerCode = winnerRec.ticketCode || winnerRec.code || "LW-WIN";
+                    prizeAmt = winnerRec.prize || winnerRec.prizeAmount || prizeAmt;
+                  } else if (drawTicket) {
                     const u = appInstance.db.users.find(usr => usr.id === drawTicket.userId);
                     winnerName = u ? `@${u.username}` : "Anonymous";
-                    winnerCode = drawTicket.code;
+                    winnerCode = drawTicket.code || drawTicket.ticketNumber || "LW-WIN";
+                    prizeAmt = drawTicket.prizeAmount || prizeAmt;
                   }
+
+                  const lotCategory = l.category || "Main Draw";
 
                   return `
                     <div class="flex justify-between items-center p-3.5 hover:bg-slate-950/30 transition text-xs">
                       <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-red-600/10 flex items-center justify-center text-red-500">
-                          <i class="fa-solid fa-bolt text-xs"></i>
+                        <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                          <i class="fa-solid fa-ticket text-xs"></i>
                         </div>
                         <div>
-                          <strong class="text-white block">${l.name.split('(')[0]}</strong>
-                          <span class="text-[10px] text-slate-500">${new Date(l.drawTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'})}</span>
+                          <strong class="text-white block text-xs">${l.name.split('(')[0]}</strong>
+                          <span class="text-[9.5px] text-slate-500 font-mono">${lotCategory} · ${new Date(l.drawTime).toLocaleDateString()}</span>
                         </div>
                       </div>
                       <div class="text-right">
                         <div class="flex items-center gap-1.5 justify-end">
-                          <span class="bg-emerald-950 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-800/30">
+                          <span class="bg-emerald-950 text-emerald-400 text-[9.5px] font-bold px-2 py-0.5 rounded-full border border-emerald-800/30 font-mono">
                             ${winnerName}
                           </span>
-                          <span class="text-slate-400 font-mono text-[10px] bg-slate-950 px-1.5 py-0.5 rounded">
+                          <span class="text-amber-300 font-mono text-[10px] bg-slate-950 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold select-all">
                             ${winnerCode}
                           </span>
                         </div>
-                        <span class="text-emerald-400 font-mono font-bold text-xs mt-1 block">৳${l.prizeAmount || l.prizePool || 0} Prize</span>
+                        <span class="text-emerald-400 font-mono font-bold text-xs mt-1 block">৳${prizeAmt.toLocaleString()} Prize</span>
                       </div>
                     </div>
                   `;
@@ -530,7 +542,7 @@ export class HomeTab {
 
                 ${pastQuickDraws.length === 0 ? `
                   <div class="p-8 text-center text-slate-500 font-mono text-xs">
-                    Completed instant draw records will appear here as soon as they draw!
+                    ড্র সম্পন্ন হওয়া লটারির ফলাফল এখানে স্বয়ংক্রিয়ভাবে প্রদর্শিত হবে।
                   </div>
                 ` : ""}
               </div>

@@ -120,7 +120,7 @@ export class JackpotTab {
               <span class="w-2 h-2 rounded-full bg-purple-500"></span> ${appInstance.escapeHTML(reg.userName)}
             </td>
             <td class="py-2.5 text-center text-purple-300 font-bold font-mono">${reg.qty}x</td>
-            <td class="py-2.5 text-center text-emerald-400 font-bold font-mono">৳${(reg.spent || 0).toFixed(2)}</td>
+            <td class="py-2.5 text-center text-emerald-400 font-bold font-mono">৳${(Number(reg.spent) || 0).toFixed(2)}</td>
             <td class="py-2.5 text-right text-slate-500 text-[9px] font-mono">${reg.date || ''}</td>
           `;
           tbody.appendChild(tr);
@@ -137,24 +137,26 @@ export class JackpotTab {
 
     const bulkCostEl = document.getElementById("jackpot-bulk-cost");
     if (bulkCostEl) {
-      const ticketCost = s.jackpotTicketCost || 20.00;
+      const rawCost = Number(s.jackpotTicketCost);
+      const safeTicketCost = (!isNaN(rawCost) && rawCost > 0) ? rawCost : 20.00;
       const discountPercent = appInstance.currentUser ? appInstance.getUserTicketDiscount(appInstance.currentUser) : 0;
-      const finalCostPerTicket = ticketCost * (1 - discountPercent / 100);
+      const finalCostPerTicket = safeTicketCost * (1 - discountPercent / 100);
       const totalCost = qtyVal * finalCostPerTicket;
       if (discountPercent > 0) {
-        bulkCostEl.innerHTML = `<span class="line-through text-slate-500 mr-2 text-xs">৳${(qtyVal * ticketCost).toFixed(2)}</span> ৳${totalCost.toFixed(2)}`;
+        bulkCostEl.innerHTML = `<span class="line-through text-slate-500 mr-2 text-xs">৳${(qtyVal * safeTicketCost).toFixed(2)}</span> ৳${Number(totalCost || 0).toFixed(2)}`;
       } else {
-        bulkCostEl.innerText = `৳${totalCost.toFixed(2)}`;
+        bulkCostEl.innerText = `৳${Number(totalCost || 0).toFixed(2)}`;
       }
     }
 
     // 6. User Entries text bottom indicator
     const userEntriesEl = document.getElementById("tab-jackpot-user-entries");
     if (userEntriesEl && appInstance.currentUser) {
-      const ticketCost = s.jackpotTicketCost || 20.00;
+      const rawCost = Number(s.jackpotTicketCost);
+      const safeTicketCost = (!isNaN(rawCost) && rawCost > 0) ? rawCost : 20.00;
       userEntriesEl.innerHTML = `
         <span>Your Active Entries: <strong class="text-white font-mono">${userTickets} tickets</strong></span>
-        <span class="text-slate-500 font-normal">Ticket Price: <strong class="text-purple-300 font-mono">৳${ticketCost.toFixed(2)}</strong></span>
+        <span class="text-slate-500 font-normal">Ticket Price: <strong class="text-purple-300 font-mono">৳${safeTicketCost.toFixed(2)}</strong></span>
       `;
     }
   }
