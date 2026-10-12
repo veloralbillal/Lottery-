@@ -113,11 +113,6 @@ export const AgentModule = {
     const claimed = !!this.currentUser.monthlyTargetClaimed;
     const targetPct = target > 0 ? Math.min(100, Math.round((progress / target) * 100)) : 0;
 
-    // Trigger auto claim on workspace load if target is reached but not claimed
-    if (target > 0 && progress >= target && !claimed) {
-      this.checkAndClaimMonthlyTarget(this.currentUser);
-    }
-
     if (monthlyTargetContainer) {
       const progressTextEl = document.getElementById("agent-monthly-progress-text");
       const progressBarEl = document.getElementById("agent-monthly-progress-bar");
@@ -407,6 +402,16 @@ export const AgentModule = {
 
     // Render Cash Terminal Extensions
     AgentCashExtensions.render(this);
+
+    // Render Agent Suite Upgrade panels & metrics
+    if (typeof this.renderAllPanels === "function") {
+      this.renderAllPanels(this);
+    }
+
+    // Populate Agent Profile Form
+    if (typeof this.populateProfileForm === "function") {
+      this.populateProfileForm(this);
+    }
 
     // Setup Agent navigation and sidebar listeners
     if (typeof this.setupAllListeners === "function") {
@@ -1092,9 +1097,11 @@ export const AgentModule = {
             id: "t_" + Date.now() + "_" + i,
             userId: targetUser.id,
             lotteryId: lot.id,
+            code: "LW-" + numSeq,
             ticketNumber: numSeq,
             purchaseDate: new Date().toISOString(),
-            status: "active"
+            status: "pending",
+            prizeAmount: 0
           });
         }
 

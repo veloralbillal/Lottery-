@@ -3083,6 +3083,19 @@ export const AdminModule = {
         </div>`;
       }
 
+      let drawnResultsDetails = "";
+      if (lot.status === "drawn") {
+        const winnersList = (lot.drawnWinnersList && lot.drawnWinnersList.length > 0) ? lot.drawnWinnersList : [];
+        if (winnersList.length > 0) {
+          drawnResultsDetails = `<div class="bg-slate-950 p-2.5 rounded-2xl border border-green-900/50 text-[10px] space-y-1 font-mono">
+            <span class="text-green-400 font-bold uppercase tracking-wider block text-[9px] flex items-center gap-1">
+              <i class="fa-solid fa-trophy text-amber-400"></i> Finalized Draw Winner(s) Ledger:
+            </span>
+            ${winnersList.map((w, idx) => `<div class="flex justify-between items-center text-slate-300"><span>Rank #${w.rank || idx+1}: <strong class="text-white">@${w.username || 'Winner'}</strong> (${w.ticketCode || w.code || 'LW-WIN'})</span><span class="text-emerald-400 font-bold">৳${w.prize || w.prizeAmount || lot.prizeAmount}</span></div>`).join("")}
+          </div>`;
+        }
+      }
+
       card.innerHTML = `
 
           <div class="flex justify-between items-start gap-4">
@@ -3096,6 +3109,7 @@ export const AdminModule = {
         <p class="text-xs text-slate-400 leading-normal">${this.escapeHTML((lot.details && lot.details !== "undefined") ? lot.details : "Experience live payout lottery draws.")}</p>
 
         ${multiPrizesDetails}
+        ${drawnResultsDetails}
 
         <div class="grid grid-cols-2 gap-3 text-xs bg-slate-950/60 p-3 rounded-2xl border border-slate-850/30">
           <div><span class="text-slate-500 block text-[9.5px]">Entry Ticket Cost</span><span class="font-bold font-mono text-cyan-400">৳${lot.entryFee}</span></div>
@@ -3126,13 +3140,55 @@ export const AdminModule = {
         const pool = this.db.lotteries.find(l => l.id === lotId);
         if (!pool) return;
 
-        if (confirm(`Are you sure you want to permanently delete lottery pool "${pool.name}"?`)) {
+        const performDelete = () => {
           if (!this._deletedIds) this._deletedIds = new Set();
           this._deletedIds.add(lotId);
-          this.db.lotteries = this.db.lotteries.filter(l => l.id !== lotId);
+
+          // Cascade delete related tickets from database
+          const relatedTickets = (this.db.tickets || []).filter(t => t.lotteryId === lotId);
+          relatedTickets.forEach(t => {
+            if (t.id) this._deletedIds.add(t.id);
+          });
+          this.db.tickets = (this.db.tickets || []).filter(t => t.lotteryId !== lotId);
+
+          // Persist tombstoned IDs to localStorage
+          try {
+            const stored = JSON.parse(localStorage.getItem("lw_deleted_ids") || "[]");
+            const newSet = new Set([...stored, lotId, ...relatedTickets.map(t => t.id).filter(Boolean)]);
+            localStorage.setItem("lw_deleted_ids", JSON.stringify(Array.from(newSet)));
+          } catch (e) {}
+
+          // Remove lottery from database
+          this.db.lotteries = (this.db.lotteries || []).filter(l => l.id !== lotId);
           this.saveDB(true);
           this.renderAdminLotteries();
-          this.showToast(`Lottery pool "${pool.name}" has been deleted.`, "success");
+          this.showToast(`Lottery pool "${pool.name}" and associated tickets have been deleted.`, "success");
+        };
+
+        if (btn.getAttribute("data-confirm") === "true") {
+          performDelete();
+        } else {
+          let confirmed = false;
+          try {
+            confirmed = window.confirm(`Are you sure you want to permanently delete lottery pool "${pool.name}" and its tickets?`);
+          } catch (e) {
+            confirmed = false;
+          }
+          if (confirmed) {
+            performDelete();
+          } else {
+            btn.setAttribute("data-confirm", "true");
+            const originalText = btn.innerHTML;
+            btn.innerHTML = "⚠️ Click again to Confirm Delete";
+            btn.className = "admin-delete-pool-trigger bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-bold py-1.5 px-3 rounded-xl transition";
+            setTimeout(() => {
+              if (btn && btn.getAttribute("data-confirm") === "true") {
+                btn.removeAttribute("data-confirm");
+                btn.innerHTML = originalText;
+                btn.className = "admin-delete-pool-trigger bg-rose-955 hover:bg-rose-900 border border-rose-950 text-rose-400 text-[10px] font-bold py-1.5 px-3 rounded-xl transition";
+              }
+            }, 4000);
+          }
         }
       });
     });
@@ -3184,7 +3240,7 @@ export const AdminModule = {
       });
 
       tickets.forEach(t => {
-        if (t.status === "active") {
+        if (t.status !== "won") {
           t.status = "lost";
           const player = this.db.users.find(u => u.id === t.userId);
           if (player) {
@@ -3270,6 +3326,7 @@ export const AdminModule = {
 
     lot.status = "drawn";
     lot.drawnWinnersList = winnersArr;
+    lot.winningTicketCodes = winnersArr.map(w => w.ticketCode);
 
     this.saveDB();
     this.render();
@@ -4418,10 +4475,10 @@ export const AdminModule = {
     const exInput = document.getElementById("admin-jackpot-expiry-input");
 
     if (fundInput && document.activeElement !== fundInput) {
-      fundInput.value = (s.jackpotPool || 0).toFixed(2);
+      fundInput.value = (Number(s.jackpotPool) || 0).toFixed(2);
     }
     if (costInput && document.activeElement !== costInput) {
-      costInput.value = (s.jackpotTicketCost || 20.00).toFixed(2);
+      costInput.value = (Number(s.jackpotTicketCost) || 20.00).toFixed(2);
     }
     if (exInput && document.activeElement !== exInput) {
       exInput.value = s.jackpotExpiry || "";

@@ -1111,8 +1111,8 @@
                   <input id="agent-prof-email" type="email" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-emerald-500" />
                 </div>
                 <div class="space-y-1">
-                  <label class="text-slate-400 text-[10px] uppercase font-bold">Assigned District</label>
-                  <input id="agent-prof-district" type="text" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-emerald-500" />
+                  <label class="text-slate-400 text-[10px] uppercase font-bold">Assigned District (Read-Only - Assigned by Admin)</label>
+                  <input id="agent-prof-district" type="text" readonly class="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-2.5 px-3 text-slate-400 cursor-not-allowed" />
                 </div>
                 <div class="space-y-1">
                   <label class="text-slate-400 text-[10px] uppercase font-bold">Live Chat Availability</label>
