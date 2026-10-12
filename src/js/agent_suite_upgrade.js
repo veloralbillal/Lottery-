@@ -1111,7 +1111,17 @@ export const AgentSuiteUpgrade = {
     }
 
     const list = Array.from(threadMap.values());
-    list.sort((a, b) => String(b.lastTimestamp || "").localeCompare(String(a.lastTimestamp || "")));
+    list.sort((a, b) => {
+      const aIsNew = a.threadStatus === "open" && a.messages.length <= 2;
+      const bIsNew = b.threadStatus === "open" && b.messages.length <= 2;
+      if (aIsNew && !bIsNew) return -1;
+      if (!aIsNew && bIsNew) return 1;
+
+      if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+      if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
+
+      return String(b.lastTimestamp || "").localeCompare(String(a.lastTimestamp || ""));
+    });
     return list;
   },
 
@@ -1127,9 +1137,10 @@ export const AgentSuiteUpgrade = {
     }
 
     const filteredThreads = threads.filter(t => {
-      if (this.chatInboxFilter === "open" && t.threadStatus !== "open") return false;
-      if (this.chatInboxFilter === "pending" && t.threadStatus !== "pending") return false;
-      if (this.chatInboxFilter === "resolved" && t.threadStatus !== "resolved") return false;
+      const st = (t.threadStatus || "open").toLowerCase();
+      if (this.chatInboxFilter === "open" && st !== "open") return false;
+      if (this.chatInboxFilter === "pending" && st !== "pending") return false;
+      if (this.chatInboxFilter === "resolved" && st !== "resolved" && st !== "completed") return false;
       if (this.chatInboxFilter === "unread" && t.unreadCount === 0) return false;
 
       if (!searchQ) return true;
@@ -1149,6 +1160,7 @@ export const AgentSuiteUpgrade = {
     } else {
       listContainer.innerHTML = filteredThreads.map(t => {
         const isSelected = this.activeChatUser && t.username.toLowerCase() === this.activeChatUser.toLowerCase();
+        const isNewTicket = t.threadStatus === "open" && t.messages.length <= 2;
         const d = new Date(t.lastTimestamp);
         const timeStr = isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         const prioColor = t.priority === "urgent" ? "text-rose-400" : (t.priority === "high" ? "text-amber-400" : "text-slate-500");
@@ -1165,7 +1177,7 @@ export const AgentSuiteUpgrade = {
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5">
                     <strong class="text-xs font-black text-white font-mono truncate">@${app.escapeHTML(t.username)}</strong>
-                    <span class="text-[9px] font-mono text-slate-500">${app.escapeHTML(t.userId.slice(-6))}</span>
+                    ${isNewTicket ? '<span class="px-1.5 py-0.5 bg-cyan-950 border border-cyan-700 text-cyan-300 rounded text-[8px] font-mono font-bold">🆕 New Ticket</span>' : ''}
                   </div>
                   <p class="text-[11px] text-slate-400 truncate max-w-[170px]">${app.escapeHTML(t.lastMessage || "No messages yet")}</p>
                 </div>
@@ -1220,6 +1232,68 @@ export const AgentSuiteUpgrade = {
     if (changed) {
       app.saveDB(true);
     }
+  },
+
+  openWhatsAppFullscreenModal(app) {
+    if (!this.activeChatUser) {
+      app.showToast("Please select a conversation first!", "error");
+      return;
+    }
+    const modal = document.getElementById("agent-whatsapp-fullscreen-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      this.renderWhatsAppFullscreenModal(app);
+    }
+  },
+
+  closeWhatsAppFullscreenModal() {
+    const modal = document.getElementById("agent-whatsapp-fullscreen-modal");
+    if (modal) modal.classList.add("hidden");
+  },
+
+  renderWhatsAppFullscreenModal(app) {
+    const threads = this.getAgentChatThreads(app);
+    const thread = threads.find(t => t.username.toLowerCase() === this.activeChatUser.toLowerCase());
+    if (!thread) return;
+
+    const avEl = document.getElementById("wa-modal-avatar");
+    const nameEl = document.getElementById("wa-modal-username");
+    const statusEl = document.getElementById("wa-modal-status");
+    const msgContainer = document.getElementById("wa-modal-messages");
+
+    if (avEl) avEl.innerText = thread.username.slice(0, 2).toUpperCase();
+    if (nameEl) nameEl.innerText = `@${thread.username} · ID: ${thread.userId}`;
+    if (statusEl) statusEl.innerText = `${thread.isOnline ? '● Online' : '○ Offline'} · Phone: ${thread.phone} · Balance: ৳${(Number(thread.balance) || 0).toFixed(2)}`;
+
+    if (!msgContainer) return;
+    const agentUsernameLower = (app.currentUser?.username || "").toLowerCase();
+
+    msgContainer.innerHTML = thread.messages.map(m => {
+      if (m.isInternalNote) return ""; // Hide internal notes in WhatsApp view
+      const isMe = (m.sender || "").toLowerCase() === agentUsernameLower;
+      const d = new Date(m.timestamp);
+      const timeStr = isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const receipt = isMe ? (m.status === "read" ? `<span class="text-cyan-400 ml-1 font-bold">✓✓</span>` : `<span class="text-slate-400 ml-1">✓</span>`) : "";
+
+      let attHtml = "";
+      if (m.attachmentUrl) {
+        attHtml = `<div class="mt-2"><a href="${m.attachmentUrl}" target="_blank"><img src="${m.attachmentUrl}" class="max-h-48 rounded-xl border border-white/10" /></a></div>`;
+      }
+
+      return `
+        <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1">
+          <div class="text-[9.5px] font-mono text-slate-500 px-1">
+            ${isMe ? 'আপনি (Agent)' : '@' + app.escapeHTML(m.sender)} · ${timeStr} ${receipt}
+          </div>
+          <div class="max-w-[75%] rounded-2xl px-4 py-3 text-xs font-sans shadow-lg ${isMe ? 'bg-emerald-600 text-white rounded-tr-none' : 'bg-slate-900 border border-slate-800 text-slate-200 rounded-tl-none'}">
+            ${m.message ? `<div class="whitespace-pre-wrap break-words">${app.escapeHTML(m.message)}</div>` : ""}
+            ${attHtml}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    msgContainer.scrollTop = msgContainer.scrollHeight;
   },
 
   renderActiveAgentConversation(app, threads) {
@@ -2038,6 +2112,90 @@ export const AgentSuiteUpgrade = {
         await this.pollLatestChats(app);
         this.renderAllPanels(app);
         app.showToast("Live chat inbox synchronized!", "info");
+      });
+    }
+
+    const fsBtn = document.getElementById("agent-inbox-fullscreen-btn");
+    if (fsBtn && !fsBtn.dataset.bound) {
+      fsBtn.dataset.bound = "true";
+      fsBtn.addEventListener("click", () => this.openWhatsAppFullscreenModal(app));
+    }
+
+    const waClose = document.getElementById("wa-modal-close-btn");
+    if (waClose && !waClose.dataset.bound) {
+      waClose.dataset.bound = "true";
+      waClose.addEventListener("click", () => this.closeWhatsAppFullscreenModal());
+    }
+
+    const waFeedbackBtn = document.getElementById("wa-modal-feedback-btn");
+    if (waFeedbackBtn && !waFeedbackBtn.dataset.bound) {
+      waFeedbackBtn.dataset.bound = "true";
+      waFeedbackBtn.addEventListener("click", async () => {
+        if (!this.activeChatUser || !app.currentUser) return;
+        if (!Array.isArray(app.db.agentChats)) app.db.agentChats = [];
+        app.db.agentChats.push({
+          id: "chat_fb_" + Date.now(),
+          conversationId: [app.currentUser.username.toLowerCase(), this.activeChatUser.toLowerCase()].sort().join("__"),
+          sender: app.currentUser.username,
+          senderRole: app.currentUser.role || "agent",
+          recipient: this.activeChatUser,
+          message: "⭐ [FEEDBACK REQUEST] দয়া করে আমাদের সেবার মান রেটিং দিন (1 to 5 Stars) এবং আপনার মূল্যবান মতামত জানান।",
+          timestamp: new Date().toISOString(),
+          status: "sent",
+          threadStatus: "open",
+          priority: "normal",
+          isInternalNote: 0
+        });
+        await app.saveDB(true);
+        this.renderWhatsAppFullscreenModal(app);
+        this.renderAllPanels(app);
+        app.showToast("Feedback request sent to user successfully!", "success");
+      });
+    }
+
+    document.querySelectorAll(".wa-quick-reply").forEach(btn => {
+      if (btn.dataset.bound) return;
+      btn.dataset.bound = "true";
+      btn.addEventListener("click", () => {
+        const reply = btn.getAttribute("data-reply") || "";
+        const input = document.getElementById("wa-modal-input");
+        if (input) {
+          input.value = reply;
+          input.focus();
+        }
+      });
+    });
+
+    const waForm = document.getElementById("wa-modal-form");
+    const waInput = document.getElementById("wa-modal-input");
+    if (waForm && waInput && !waForm.dataset.bound) {
+      waForm.dataset.bound = "true";
+      waForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const text = waInput.value.trim();
+        if (!text || !this.activeChatUser || !app.currentUser) return;
+        waInput.value = "";
+
+        const sender = app.currentUser.username;
+        const recipient = this.activeChatUser;
+        if (!Array.isArray(app.db.agentChats)) app.db.agentChats = [];
+        app.db.agentChats.push({
+          id: "chat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+          conversationId: [sender.toLowerCase(), recipient.toLowerCase()].sort().join("__"),
+          sender,
+          senderRole: app.currentUser.role || "agent",
+          recipient,
+          message: text,
+          timestamp: new Date().toISOString(),
+          status: "sent",
+          threadStatus: "open",
+          priority: "normal",
+          isInternalNote: 0
+        });
+
+        await app.saveDB(true);
+        this.renderWhatsAppFullscreenModal(app);
+        this.renderAllPanels(app);
       });
     }
 

@@ -1238,21 +1238,13 @@ export const AgentModule = {
           return;
         }
 
-        // Dedect from agent funds
         if (app.currentUser.balance < amount) {
           app.showToast(`Load Failed: Insufficient Agent Wallet funds (Current Balance: ৳${(Number(app.currentUser.balance) || 0).toFixed(2)}). Contact Administrator for Agent Wallet limit refill!`, "error");
           return;
         }
 
-        const loadCommRate = (app.db && app.db.settings && app.db.settings.agentBalanceLoadCommission !== undefined)
-          ? parseFloat(app.db.settings.agentBalanceLoadCommission)
-          : 2.0;
-        const loadCommission = (amount * loadCommRate) / 100;
-
-        // Perform balance shift & add commission
+        // Dedect from agent funds (without adding commission to agent balance)
         app.currentUser.balance -= amount;
-        app.currentUser.balance += loadCommission;
-        app.currentUser.earnedCommission = (app.currentUser.earnedCommission || 0) + loadCommission;
         targetUser.balance = (targetUser.balance || 0) + amount;
         targetUser.totDeposit = (targetUser.totDeposit || 0) + amount;
 
@@ -1264,7 +1256,6 @@ export const AgentModule = {
         const dbAgent = app.db.users.find(u => u.id === app.currentUser.id);
         if (dbAgent) {
           dbAgent.balance = app.currentUser.balance;
-          dbAgent.earnedCommission = app.currentUser.earnedCommission;
         }
 
         // Record a deposit ledger transaction as automatically approved
@@ -1280,7 +1271,7 @@ export const AgentModule = {
           date: new Date().toISOString()
         });
 
-        // Log Agent activity ledger
+        // Log Agent activity ledger (no commission added)
         if (!app.db.agentLedger) app.db.agentLedger = [];
         const ledgerEntry = {
           id: "act_" + Date.now(),
@@ -1288,15 +1279,15 @@ export const AgentModule = {
           agentUsername: app.currentUser.username,
           timestamp: new Date().toISOString(),
           targetUser: targetUser.username,
-          description: `Wallet Cash Deposit Load Commission (${loadCommRate}%)`,
+          description: `Wallet Cash Deposit Load to @${targetUser.username}`,
           amount: amount,
-          commission: loadCommission
+          commission: 0
         };
         app.db.agentLedger.push(ledgerEntry);
         console.log("DEBUG: Ledger entry created:", ledgerEntry);
 
         app.saveDB();
-        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet. Earned ৳${loadCommission.toFixed(2)} balance load commission!`, "success");
+        app.showToast(`Successfully loaded ৳${amount.toFixed(2)} cash into @${targetUser.username}'s wallet.`, "success");
         agentCashDepositForm.reset();
         app.renderAgentWorkspace();
       });
