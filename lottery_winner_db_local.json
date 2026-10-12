@@ -763,7 +763,7 @@
       "totalTickets": "20",
       "soldTickets": "0",
       "category": "10 Taka Banner",
-      "drawTime": "2026-10-12T17:10:36.000Z",
+      "drawTime": "2026-10-12T17:46:19.000Z",
       "status": "active",
       "prizeAmount": "200.00",
       "drawMode": "auto"
@@ -843,6 +843,23 @@
       "threadStatus": "open",
       "priority": "normal",
       "isInternalNote": 0
+    },
+    {
+      "id": "chat_1791826688300_3pli",
+      "conversationId": "sujondh__winner_935791",
+      "sender": "sujondh",
+      "senderRole": "agent",
+      "recipient": "winner_935791",
+      "message": "ক্যাশ-আউট সম্পন্ন করার জন্য আপনার প্রোফাইল থেকে ৬-ডিজিট OTP কোডটি পাঠান।",
+      "attachmentUrl": null,
+      "attachmentName": null,
+      "attachmentType": null,
+      "timestamp": "2026-10-12T17:38:08.300Z",
+      "status": "sent",
+      "readAt": null,
+      "threadStatus": "open",
+      "priority": "normal",
+      "isInternalNote": 0
     }
   ],
   "settings": {
@@ -900,6 +917,23 @@
         "attachmentName": null,
         "attachmentType": null,
         "timestamp": "2026-10-12T16:28:54.929Z",
+        "status": "sent",
+        "readAt": null,
+        "threadStatus": "open",
+        "priority": "normal",
+        "isInternalNote": 0
+      },
+      {
+        "id": "chat_1791826688300_3pli",
+        "conversationId": "sujondh__winner_935791",
+        "sender": "sujondh",
+        "senderRole": "agent",
+        "recipient": "winner_935791",
+        "message": "ক্যাশ-আউট সম্পন্ন করার জন্য আপনার প্রোফাইল থেকে ৬-ডিজিট OTP কোডটি পাঠান।",
+        "attachmentUrl": null,
+        "attachmentName": null,
+        "attachmentType": null,
+        "timestamp": "2026-10-12T17:38:08.300Z",
         "status": "sent",
         "readAt": null,
         "threadStatus": "open",

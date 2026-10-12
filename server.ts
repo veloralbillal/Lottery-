@@ -582,8 +582,12 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
 
             await connection.execute(`CREATE TABLE IF NOT EXISTS settings (
                 setting_key VARCHAR(100) PRIMARY KEY,
-                setting_value TEXT NULL
+                setting_value LONGTEXT NULL
             ) ENGINE=InnoDB;`);
+
+            try {
+              await connection.execute(`ALTER TABLE settings MODIFY COLUMN setting_value LONGTEXT NULL;`);
+            } catch (altErr) {}
 
             await connection.execute(`CREATE TABLE IF NOT EXISTS transactions (
                 id VARCHAR(50) PRIMARY KEY,
@@ -688,26 +692,53 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
             return;
           }
           
-          const formatToMySqlDateTime = (val: any): any => {
-            if (val === null || val === undefined || val === '') return null;
-            if (val instanceof Date) {
-              try {
-                return val.toISOString().slice(0, 19).replace('T', ' ');
-              } catch { return null; }
+          const numericColumns = new Set([
+            'balance', 'earnedCommission', 'commissionRate', 'profit', 'totDeposit', 'totWithdraw',
+            'entryFee', 'prizeAmount', 'amount', 'bonusAmount', 'commission', 'price', 'stars',
+            'wins', 'loss', 'totalBookings', 'soldTickets', 'totalTickets', 'sales',
+            'download_count', 'max_downloads', 'rating', 'user_id', 'refersCount'
+          ]);
+
+          const formatColumnValue = (key: string, val: any): any => {
+            if (val === null || val === undefined || val === '') {
+              if (numericColumns.has(key)) return 0;
+              return null;
             }
-            if (typeof val === 'string') {
-              const trimmed = val.trim().replace(/^['"]|['"]$/g, '');
-              if (trimmed.includes('T')) {
+            if (numericColumns.has(key)) {
+              if (typeof val === 'number') {
+                return Number.isFinite(val) ? val : 0;
+              }
+              if (typeof val === 'string') {
+                const cleaned = val.replace(/[^\d.-]/g, '');
+                const num = parseFloat(cleaned);
+                return Number.isFinite(num) ? num : 0;
+              }
+              return 0;
+            }
+            if (['created_at', 'date', 'joinDate', 'expires_at', 'readAt', 'timestamp'].includes(key)) {
+              if (val instanceof Date) {
                 try {
-                  const d = new Date(trimmed);
-                  if (!isNaN(d.getTime())) {
-                    return d.toISOString().slice(0, 19).replace('T', ' ');
-                  }
-                } catch {}
+                  return val.toISOString().slice(0, 19).replace('T', ' ');
+                } catch { return null; }
               }
-              if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
-                return trimmed.replace('T', ' ').substring(0, 19);
+              if (typeof val === 'string') {
+                const trimmed = val.trim().replace(/^['"]|['"]$/g, '');
+                if (trimmed.includes('T')) {
+                  try {
+                    const d = new Date(trimmed);
+                    if (!isNaN(d.getTime())) {
+                      return d.toISOString().slice(0, 19).replace('T', ' ');
+                    }
+                  } catch {}
+                }
+                if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
+                  return trimmed.replace('T', ' ').substring(0, 19);
+                }
+                return trimmed;
               }
+            }
+            if (typeof val === 'object' && val !== null) {
+              return JSON.stringify(val);
             }
             return val;
           };
@@ -746,13 +777,8 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
                  const rowPlaceholders: string[] = [];
                  for (const key of validKeys) {
                    let val = item[key];
-                   val = formatToMySqlDateTime(val);
-                   
-                   if (typeof val === 'object' && val !== null) {
-                     flatValues.push(JSON.stringify(val));
-                   } else {
-                     flatValues.push(val !== undefined ? val : null);
-                   }
+                   val = formatColumnValue(key, val);
+                   flatValues.push(val !== undefined ? val : null);
                    rowPlaceholders.push('?');
                  }
                  valueRows.push(`(${rowPlaceholders.join(',')})`);
