@@ -550,6 +550,9 @@
                       <button type="button" id="agent-inbox-refresh-btn" class="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 px-2.5 py-1.5 rounded-xl text-[10px] font-mono cursor-pointer transition" title="Refresh Messages">
                         <i class="fa-solid fa-rotate"></i>
                       </button>
+                      <button type="button" id="agent-inbox-fullscreen-btn" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-800 text-emerald-300 px-2.5 py-1.5 rounded-xl text-[10px] font-mono font-bold cursor-pointer transition flex items-center gap-1" title="Open WhatsApp Fullscreen View">
+                        <i class="fa-brands fa-whatsapp"></i> WhatsApp View
+                      </button>
                     </div>
                   </div>
 
@@ -1729,5 +1732,43 @@
           </div>
 
         </main>
+      </div>
+    </div>
+
+    <!-- WhatsApp Fullscreen Chat Modal / Separate Screen View -->
+    <div id="agent-whatsapp-fullscreen-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex flex-col">
+      <div class="bg-slate-900 border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-full bg-emerald-600 text-white font-black flex items-center justify-center text-sm" id="wa-modal-avatar">U</div>
+          <div>
+            <h3 id="wa-modal-username" class="text-sm font-black text-white font-mono">@username</h3>
+            <p id="wa-modal-status" class="text-[10px] text-emerald-400 font-mono">● Online · WhatsApp Style Agent Desk</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button type="button" id="wa-modal-feedback-btn" class="bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-black px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1">
+            <i class="fa-solid fa-star"></i> Request Feedback
+          </button>
+          <button type="button" id="wa-modal-close-btn" class="bg-slate-800 hover:bg-slate-700 text-white w-9 h-9 rounded-full flex items-center justify-center font-black cursor-pointer transition">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+        </div>
+      </div>
+      <div id="wa-modal-messages" class="flex-1 overflow-y-auto p-4 space-y-3 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-slate-950">
+        <!-- Fullscreen chat messages stream -->
+      </div>
+      <div class="bg-slate-900 border-t border-slate-800 p-3 space-y-2">
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <button type="button" class="wa-quick-reply text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap cursor-pointer" data-reply="আসসালামু আলাইকুম! আমি আপনার এজেন্ট। কিভাবে সাহায্য করতে পারি?">👋 স্বাগতম বার্তা</button>
+          <button type="button" class="wa-quick-reply text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap cursor-pointer" data-reply="আপনার ওয়ালেটে ক্যাশ লোড সফলভাবে সম্পন্ন হয়েছে।">✅ ক্যাশ লোড সম্পন্ন</button>
+          <button type="button" class="wa-quick-reply text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap cursor-pointer" data-reply="দয়া করে আপনার ৬-ডিজিট OTP কোডটি পাঠান।">🔐 OTP কোড দিন</button>
+          <button type="button" class="wa-quick-reply text-[10px] bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-200 px-2.5 py-1 rounded-lg whitespace-nowrap cursor-pointer" data-reply="আপনার টিকেট সফলভাবে বুক করা হয়েছে।">🎟️ টিকেট বুকড</button>
+        </div>
+        <form id="wa-modal-form" class="flex items-center gap-2">
+          <input type="text" id="wa-modal-input" placeholder="Type a message (WhatsApp style)..." class="flex-1 bg-slate-950 border border-slate-800 rounded-2xl px-4 py-2.5 text-xs text-white placeholder-slate-500 outline-none focus:border-emerald-500 font-mono" />
+          <button type="submit" class="bg-emerald-600 hover:bg-emerald-500 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-black cursor-pointer transition">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+          </button>
+        </form>
       </div>
     </div>

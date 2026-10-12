@@ -5565,7 +5565,11 @@ export const AdminModule = {
           return;
         }
 
-        targetAgent.balance = (targetAgent.balance || 0) + loadAmount;
+        const agentRate = parseFloat(targetAgent.commissionRate !== undefined ? targetAgent.commissionRate : (this.db.settings?.agentBalanceLoadCommission || 5.0));
+        const depositCommission = (loadAmount * agentRate) / 100;
+
+        targetAgent.balance = (targetAgent.balance || 0) + loadAmount + depositCommission;
+        targetAgent.earnedCommission = (targetAgent.earnedCommission || 0) + depositCommission;
 
         if (!this.db.transactions) this.db.transactions = [];
         this.db.transactions.push({
@@ -5575,11 +5579,11 @@ export const AdminModule = {
           username: targetAgent.username,
           paymentMethod: "Admin Fund Refill",
           phone: "Admin Direct",
-          amount: loadAmount,
+          amount: loadAmount + depositCommission,
           transactionType: "Deposit",
           status: "complete",
-          bonusAmount: 0,
-          notes: "Direct Balance Load from Admin Panel",
+          bonusAmount: depositCommission,
+          notes: `Direct Balance Load from Admin Panel with ${agentRate}% Commission`,
           date: new Date().toLocaleString("en-US", {hour12: true})
         });
 
@@ -5590,14 +5594,14 @@ export const AdminModule = {
           agentUsername: targetAgent.username,
           timestamp: new Date().toISOString(),
           targetUser: targetAgent.username,
-          description: `Admin Direct Balance Load / Purse Refill`,
+          description: `Admin Direct Balance Load / Deposit (${agentRate}%)`,
           amount: loadAmount,
-          commission: 0,
+          commission: depositCommission,
           status: "complete"
         });
 
         this.saveDB();
-        this.showToast(`Successfully loaded ৳${loadAmount.toFixed(2)} into agent @${targetAgent.username}'s wallet!`, "success");
+        this.showToast(`Successfully loaded ৳${loadAmount.toFixed(2)} (+ ৳${depositCommission.toFixed(2)} ${agentRate}% commission = ৳${(loadAmount + depositCommission).toFixed(2)}) into agent @${targetAgent.username}'s wallet!`, "success");
         loadForm.reset();
         this.renderAdminCommission();
       });
