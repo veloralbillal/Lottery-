@@ -37,6 +37,21 @@
 
   <!-- Withdrawal Form -->
   <form id="wallet-withdraw-page-form" class="bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-4 rounded-2xl space-y-3.5 shadow-xl" onsubmit="event.preventDefault(); if(window.WalletExtensions){WalletExtensions.submitWithdrawalForm(event);}">
+    <!-- 24H Limit Allowance Status Box -->
+    <div id="wd-24h-limit-box" class="bg-slate-950/70 border border-slate-800/90 p-3 rounded-xl flex items-center justify-between text-[11px] font-mono">
+      <div class="flex items-center gap-2">
+        <i class="fa-solid fa-gauge-high text-emerald-400 text-xs"></i>
+        <div>
+          <span class="text-slate-400 font-bold uppercase text-[9px] block">24H Limit Allowance</span>
+          <span id="wd-24h-used-subtext" class="text-[8.5px] text-slate-500 block">৳0 used in last 24h</span>
+        </div>
+      </div>
+      <div class="text-right">
+        <span id="wd-24h-remaining-label" class="text-emerald-400 font-black block">৳100,000 available</span>
+        <span class="text-[8px] text-slate-500 uppercase tracking-wider">Rolling 24h</span>
+      </div>
+    </div>
+
     <div class="space-y-1.5">
       <label class="block text-[11px] uppercase font-mono text-slate-300 font-bold">Select Withdrawal Channel / উত্তোলনের মাধ্যম</label>
       <select id="wd-gateway" onchange="if(window.WalletExtensions){WalletExtensions.onWithdrawGatewayChange(this.value);}" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-3 text-xs text-white outline-none focus:border-rose-500 cursor-pointer font-mono">

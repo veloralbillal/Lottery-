@@ -333,6 +333,99 @@
         touch-action: manipulation;
       }
 
+      /* ================= GROUP CHAT MOBILE RESPONSIVENESS & BOUNDARY DEFENSE ================= */
+      #screen-group-chat {
+        width: 100% !important;
+        max-width: 32rem; /* max-w-lg mobile container */
+        margin-left: auto;
+        margin-right: auto;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+      }
+
+      #group-chat-messages-container {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: hidden !important;
+        box-sizing: border-box;
+        padding-left: 0.625rem;
+        padding-right: 0.625rem;
+      }
+
+      /* Specific margin-right and padding-left adjustments to eliminate excessive white space on the right side while preserving readability */
+      #group-chat-messages-container .group-msg-row {
+        display: flex;
+        align-items: flex-end;
+        max-width: 100%;
+        box-sizing: border-box;
+      }
+
+      #group-chat-messages-container .group-msg-container {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        box-sizing: border-box;
+      }
+
+      /* Other community members: eliminates right-side dead zone, preserves clean left spacing */
+      #group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
+        max-width: 86%;
+        margin-right: 0.5rem;
+        padding-left: 0.25rem;
+        align-items: flex-start;
+      }
+
+      /* Current user messages: snugly aligns on the right, prevents edge clipping */
+      #group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
+        max-width: 84%;
+        margin-right: 0.25rem;
+        padding-left: 1.25rem;
+        align-items: flex-end;
+      }
+
+      /* Ensure message bubbles do not overflow the right container boundary on smaller mobile viewports */
+      #screen-group-chat .group-msg-bubble,
+      #group-chat-messages-container .group-msg-bubble {
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        hyphens: auto;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        text-align: left;
+      }
+
+      #screen-group-chat .group-msg-bubble p,
+      #group-chat-messages-container .group-msg-bubble p {
+        word-break: break-word !important;
+        overflow-wrap: break-word !important;
+        overflow-wrap: anywhere !important;
+        margin: 0;
+        line-height: 1.45;
+      }
+
+      @media (max-width: 480px) {
+        #group-chat-messages-container {
+          padding-left: 0.5rem;
+          padding-right: 0.5rem;
+        }
+        #group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
+          max-width: 88%;
+          margin-right: 0.25rem;
+          padding-left: 0.125rem;
+        }
+        #group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
+          max-width: 86%;
+          margin-right: 0.125rem;
+          padding-left: 0.75rem;
+        }
+        #screen-group-chat .group-msg-bubble {
+          word-break: break-word !important;
+          overflow-wrap: break-word !important;
+          padding: 0.55rem 0.75rem !important;
+        }
+      }
+
       /* Prevent iOS Safari input zoom on focus */
       @media screen and (max-width: 768px) {
         input[type="text"],
@@ -1130,8 +1223,333 @@
     </div>
 
 
+    <!-- ================= SCREEN: GROUP CHAT (MESSENGER GROUP STYLE) ================= -->
+    <div id="screen-group-chat" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
+      <!-- Messenger Header -->
+      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-2.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 w-full max-w-full overflow-hidden">
+        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <button type="button" onclick="if(window.app){window.app.closeGroupChat();}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
+            <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
+          </button>
+          
+          <div class="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 cursor-pointer" onclick="if(window.app){window.app.openGroupInfoModal();}" title="Group Info">
+            <div class="relative shrink-0">
+              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-0.5 shadow-md flex items-center justify-center text-white font-bold">
+                <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                  <i class="fa-solid fa-users text-blue-400 text-xs sm:text-sm"></i>
+                </div>
+              </div>
+              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-[#121826]"></span>
+            </div>
+            <div class="min-w-0 flex-1 text-left">
+              <div class="flex items-center gap-1 min-w-0">
+                <h2 class="text-xs sm:text-sm font-bold text-white truncate">Lucky Community Messenger</h2>
+                <i class="fa-solid fa-circle-check text-blue-400 text-[10px] sm:text-xs shrink-0"></i>
+              </div>
+              <p class="text-[10px] text-slate-400 truncate">৬২৪ জন মেম্বার • অনলাইন ৮৮</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="relative flex items-center gap-1 shrink-0 ml-1">
+          <button type="button" onclick="if(window.app){window.app.openGroupInfoModal();}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Group Info">
+            <i class="fa-solid fa-circle-info text-sm sm:text-base text-blue-400"></i>
+          </button>
+          
+          <!-- 3-Dot Options Dropdown -->
+          <div class="relative">
+            <button type="button" onclick="if(window.app){window.app.toggleGroupMenu(event);}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Menu">
+              <i class="fa-solid fa-ellipsis-vertical text-sm sm:text-base"></i>
+            </button>
+            <div id="group-chat-dropdown-menu" class="hidden absolute right-0 top-10 sm:top-11 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs text-slate-200">
+              <button type="button" onclick="if(window.app){window.app.refreshGroupChat();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
+                <i class="fa-solid fa-rotate text-blue-400 w-4"></i>
+                <span>Refresh</span>
+              </button>
+              <button type="button" onclick="if(window.app){window.app.openGroupSettings();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
+                <i class="fa-solid fa-gear text-amber-400 w-4"></i>
+                <span>Settings</span>
+              </button>
+              <button type="button" onclick="if(window.app){window.app.openGroupProfile();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
+                <i class="fa-solid fa-user text-pink-400 w-4"></i>
+                <span>Profile</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Pinned Notice Subheader -->
+      <div class="bg-indigo-950/70 border-b border-indigo-500/25 px-3 sm:px-4 py-1.5 sm:py-2 flex items-center text-xs text-indigo-200 z-10 shrink-0 w-full overflow-hidden">
+        <div class="flex items-center gap-1.5 min-w-0 flex-1">
+          <i class="fa-solid fa-thumbtack text-amber-400 shrink-0 text-xs"></i>
+          <span class="truncate font-medium text-[11px] sm:text-xs">লাইভ আড্ডা: লটারি টিকেট, ড্র রেজাল্ট ও মেম্বারদের প্রফিট ডিসকাশন চলছে 💬</span>
+        </div>
+      </div>
+
+      <!-- Messages Area -->
+      <main class="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-2.5 sm:space-y-3 bg-[#0b0f19] relative w-full max-w-full overflow-x-hidden" id="group-chat-messages-container">
+        <!-- Messages rendered dynamically -->
+      </main>
+
+      <!-- Cooldown Banner -->
+      <div id="group-cooldown-banner" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl shadow-xl z-30 font-mono text-center max-w-[90%]">
+        ⏳ স্প্যাম প্রতিরোধে ৫ সেকেন্ডে ১টি বার্তা! অপেক্ষা করুন...
+      </div>
+
+      <!-- Messenger Footer / Input Area -->
+      <footer class="bg-[#121826] border-t border-slate-800 p-2 sm:p-3 z-20 relative w-full max-w-full overflow-hidden">
+        <div id="group-chat-typing-indicator" class="hidden mb-2 px-3 py-1 text-[11px] text-blue-400 italic bg-slate-950/80 border border-blue-500/30 rounded-xl flex items-center gap-2">
+          <div class="flex items-center gap-1">
+            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></span>
+            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+          </div>
+          <span id="group-typing-text" class="truncate text-[10px] sm:text-[11px]">কেউ একজন টাইপ করছেন...</span>
+        </div>
+
+        <!-- Quick Chips -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none w-full max-w-full">
+          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="আজকের ড্র-এর আপডেট দেখেছ? কার ভাগ্য খুললো বলো তো! 🎟️">
+            🎟️ আজকের ড্র আপডেট
+          </button>
+          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="কে কত প্রফিট করলো লটারিতে? কার কত লাভ হলো? 💰">
+            💰 কে কত প্রফিট করলো?
+          </button>
+          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="Hey guys, নতুন লটারি টিকেটগুলো চেক করেছ? এইবারের প্রাইজ কিন্তু চরম!">
+            🚀 নতুন টিকেট ও প্রাইজ
+          </button>
+          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="congratulations! দারুণ একটা উইন হলো আজ! 🥳🎉">
+            🥳 Congratulations!
+          </button>
+          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="বিকাশ বা নগদে ডিপোজিট ও উইথড্র কত সময় লাগে?">
+            💸 পেমেন্ট ও ক্যাশআউট
+          </button>
+        </div>
+
+        <div id="group-chat-attachment-preview" class="hidden mb-2 bg-slate-950 border border-blue-500/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200">
+          <div class="flex items-center gap-2 truncate min-w-0">
+            <i class="fa-solid fa-image text-blue-400 shrink-0"></i>
+            <span id="group-chat-attachment-name" class="truncate font-mono text-[11px]">image.png</span>
+          </div>
+          <button type="button" id="group-chat-attachment-remove" class="text-rose-400 hover:text-rose-300 text-xs px-2 cursor-pointer shrink-0">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div id="group-chat-reply-preview" class="hidden mb-2 bg-slate-950 border border-blue-500/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200">
+          <div class="flex items-center gap-1.5 truncate min-w-0 flex-1">
+            <i class="fa-solid fa-reply text-blue-400 shrink-0"></i>
+            <span class="text-slate-400 text-[10px] sm:text-[11px] shrink-0">Replying:</span>
+            <span id="group-chat-reply-sender" class="text-white font-bold text-[10px] sm:text-[11px] shrink-0">@user</span>
+            <span id="group-chat-reply-text" class="truncate text-slate-300 text-[10px] sm:text-[11px]">message</span>
+          </div>
+          <button type="button" onclick="if(window.app){window.app.cancelGroupReply();}" class="text-slate-400 hover:text-white text-xs px-2 cursor-pointer shrink-0">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Messenger Plus Attachment Popup Menu -->
+        <div id="group-chat-plus-menu" class="hidden absolute bottom-16 left-3 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-40 w-44 sm:w-48 space-y-1 text-xs text-slate-200">
+          <button type="button" onclick="if(window.app){window.app.triggerGroupAttachment('image');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
+            <i class="fa-solid fa-image text-blue-400 w-4"></i>
+            <span>ছবি / Photo</span>
+          </button>
+          <button type="button" onclick="if(window.app){window.app.triggerGroupAttachment('file');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
+            <i class="fa-solid fa-file-arrow-up text-emerald-400 w-4"></i>
+            <span>ফাইল / File</span>
+          </button>
+          <button type="button" onclick="if(window.app){window.app.openGroupPollCreator();}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
+            <i class="fa-solid fa-square-poll-vertical text-amber-400 w-4"></i>
+            <span>পোল তৈরি / Poll</span>
+          </button>
+          <button type="button" onclick="if(window.app){window.app.insertGroupEmoji('🔥');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
+            <i class="fa-solid fa-face-smile text-pink-400 w-4"></i>
+            <span>স্টিকার / Sticker</span>
+          </button>
+        </div>
+
+        <form id="group-chat-form" class="flex items-center gap-1.5 sm:gap-2 w-full max-w-full">
+          <input type="file" id="group-chat-file-input" accept="image/*" class="hidden" />
+          <button type="button" id="group-chat-attach-btn" onclick="if(window.app){window.app.toggleGroupPlusMenu(event);}" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-blue-400 flex items-center justify-center transition cursor-pointer shrink-0" title="Attach (Messenger Plus)">
+            <i class="fa-solid fa-circle-plus text-base sm:text-lg"></i>
+          </button>
+          <div class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 focus-within:border-blue-500">
+            <textarea id="group-chat-input" rows="1" placeholder="মেসেজ লিখুন..." class="w-full min-w-0 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none resize-none max-h-24 overflow-y-auto"></textarea>
+            <button type="button" class="text-slate-400 hover:text-amber-400 transition cursor-pointer shrink-0" onclick="if(window.app){window.app.insertGroupEmoji('😊');}">
+              <i class="fa-regular fa-face-smile text-sm sm:text-base"></i>
+            </button>
+          </div>
+          <button type="submit" id="group-chat-send-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition active:scale-95 shadow-md cursor-pointer shrink-0">
+            <i class="fa-solid fa-paper-plane text-xs"></i>
+          </button>
+        </form>
+      </footer>
+    </div>
+
+
+    <!-- ================= SCREEN: COMMUNITY HUB (SEPARATE PAGE) ================= -->
+    <div id="screen-community" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
+      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0">
+          <button type="button" onclick="if(window.app){window.app.closeCommunityPage();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back to Group">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+          </button>
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">
+              <i class="fa-solid fa-globe text-base"></i>
+            </div>
+            <div>
+              <h2 class="text-sm font-bold text-white">Lucky Community Hub</h2>
+              <p class="text-[11px] text-slate-400">অফিশিয়াল কমিউনিটি পোর্টাল ও মেম্বার ডিরেক্টরি</p>
+            </div>
+          </div>
+        </div>
+        <button type="button" onclick="if(window.app){window.app.openGroupChat();}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shrink-0">
+          <i class="fa-solid fa-comments mr-1"></i> গ্রুপ চ্যাট
+        </button>
+      </header>
+
+      <main class="flex-1 overflow-y-auto p-4 space-y-4 max-w-2xl mx-auto w-full">
+        <!-- Community Banner Card -->
+        <div class="bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 border border-blue-500/30 rounded-3xl p-5 shadow-xl space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-[10px] font-mono font-bold uppercase">Community Portal</span>
+            <span class="text-emerald-400 text-xs font-mono font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> লাইভ একটিভ</span>
+          </div>
+          <h3 class="text-base font-black text-white">স্বাগতম লাকি কমিউনিটি হাবে!</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            এখানে আমাদের সকল মেম্বার, নোটিশ, পোল, এবং কমিউনিটি রিসোর্স এক্টিভ রয়েছে। গ্রুপের নিয়মাবলী মেনে চলুন এবং মেম্বারদের সাথে যুক্ত থাকুন।
+          </p>
+        </div>
+
+        <!-- Community Tabs -->
+        <div class="grid grid-cols-3 gap-2">
+          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
+            <i class="fa-solid fa-users text-blue-400 text-base"></i>
+            <h4 class="text-xs font-bold text-white">মেম্বারগণ</h4>
+            <p id="community-member-count-badge" class="text-[10px] text-slate-400">রিয়েল মেম্বার</p>
+          </button>
+          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
+            <i class="fa-solid fa-bullhorn text-amber-400 text-base"></i>
+            <h4 class="text-xs font-bold text-white">অফিশিয়াল নোটিশ</h4>
+            <p class="text-[10px] text-slate-400">৩টি পিনড</p>
+          </button>
+          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
+            <i class="fa-solid fa-award text-pink-400 text-base"></i>
+            <h4 class="text-xs font-bold text-white">টপ উইনার্স</h4>
+            <p class="text-[10px] text-slate-400">লিডারবোর্ড</p>
+          </button>
+        </div>
+
+        <!-- Real Members Directory -->
+        <div class="space-y-3 pb-6">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">রিয়েল কমিউনিটি মেম্বারগণ (<span id="community-real-member-count">0</span> জন)</h4>
+            <span class="text-[10px] text-blue-400 font-mono">প্রফাইল দেখতে নামের উপর ক্লিক করুন</span>
+          </div>
+          <div id="community-real-members-list" class="space-y-2">
+            <!-- Dynamically populated real members -->
+          </div>
+        </div>
+
+        <!-- Recent Announcements -->
+        <div class="space-y-3 pb-6">
+          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">সর্বশেষ ঘোষণা</h4>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span class="font-bold text-amber-400">@Admin</span>
+              <span>আজ, ১০:৩০ AM</span>
+            </div>
+            <p class="text-xs text-slate-200 leading-relaxed">
+              আসন্ন মেগা জ্যাকপট ড্র এর টিকেটের জন্য এখনই আপনার ব্যালেন্স আপডেট করুন। ড্র সফলভাবে অনুষ্ঠিত হবে।
+            </p>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
+            <div class="flex items-center justify-between text-[11px] text-slate-400">
+              <span class="font-bold text-blue-400">@Support</span>
+              <span>গতকাল, ০৮:১৫ PM</span>
+            </div>
+            <p class="text-xs text-slate-200 leading-relaxed">
+              যেকোনো ডিপোজিট বা উইথড্র সমস্যার জন্য সরাসরি এজেন্ট চ্যাট বা আমাদের হেল্পলাইনে কল করুন।
+            </p>
+          </div>
+        </div>
+      </main>
+
+      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
+        Lucky Community Hub © 2026 • Secure Mobile Portal
+      </footer>
+    </div>
+
+
+    <!-- ================= SCREEN: MEMBER PROFILE (SEPARATE PAGE/FILE) ================= -->
+    <div id="screen-member-profile" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
+      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0">
+          <button type="button" onclick="if(window.app){window.app.openCommunityPage();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+          </button>
+          <div>
+            <h2 class="text-sm font-bold text-white">মেম্বার প্রফাইল ডিটেইলস</h2>
+            <p class="text-[11px] text-slate-400">কমিউনিটি ইউজার প্রফাইল</p>
+          </div>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full" id="member-profile-details-container">
+        <!-- Rendered dynamically -->
+      </main>
+
+      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
+        Lucky Community Portal © 2026
+      </footer>
+    </div>
+
+
+    <!-- ================= SCREEN: REAL MEMBERS LIST (DEDICATED PAGE) ================= -->
+    <div id="screen-members-list" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
+      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
+        <div class="flex items-center gap-3 min-w-0">
+          <button type="button" onclick="if(window.app){window.app.openGroupInfoModal();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
+            <i class="fa-solid fa-arrow-left text-sm"></i>
+          </button>
+          <div>
+            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+              <span>রিয়েল কমিউনিটি মেম্বারস</span>
+              <span id="real-members-count-badge" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-mono font-bold">৬২৪ জন</span>
+            </h2>
+            <p class="text-[11px] text-slate-400">অনলাইন ও অ্যাক্টিভ মেম্বার তালিকা</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="real-online-count-text" class="text-xs text-emerald-400 font-mono font-bold">৮৮ জন অনলাইন</span>
+        </div>
+      </header>
+
+      <main class="flex-1 overflow-y-auto p-4 space-y-3 max-w-lg mx-auto w-full" id="real-members-container">
+        <!-- Search filter bar -->
+        <div class="relative">
+          <input type="text" id="member-search-input" placeholder="মেম্বার নাম বা আইডি দিয়ে খুঁজুন..." class="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 pl-10 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500 text-xs"></i>
+        </div>
+
+        <!-- Members list content -->
+        <div id="real-members-list-content" class="space-y-2">
+          <!-- Dynamically populated real members -->
+        </div>
+      </main>
+
+      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
+        Lucky Community Members Portal © 2026 • Live Real-time Sync
+      </footer>
+    </div>
+
+
+
     <!-- ================= SCREEN: DEDICATED AGENT LIVE CHAT ================= -->
-    <div id="screen-agent-chat" class="hidden min-h-screen bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden font-sans z-50">
+    <div id="screen-agent-chat" class="hidden h-screen h-[100dvh] bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden font-sans z-50">
       <!-- Top Navigation / Header -->
       <header class="bg-slate-900/95 border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3 shadow-xl backdrop-blur-md z-20 max-w-3xl mx-auto w-full">
         <div class="flex items-center justify-between gap-2">
@@ -1285,6 +1703,7 @@
         <div id="tab-recovery" class="hidden space-y-6"></div>
         <div id="tab-video-bounty" class="hidden space-y-6"></div>
         <div id="tab-games" class="hidden space-y-6"></div>
+        <div id="tab-blog" class="hidden space-y-4"></div>
         <div id="tab-payment-success" class="hidden space-y-6"></div>
         <div id="tab-payment-cancel" class="hidden space-y-6"></div>
       </main>
@@ -1321,6 +1740,9 @@
     
     <!-- ================= SCREEN: LUCKYBOX SHOP (STANDALONE STORE APP) ================= -->
     <div id="screen-store" class="hidden min-h-screen bg-[#0a0a0c] text-slate-100 flex flex-col overflow-x-hidden font-sans"></div>
+
+    <!-- ================= SCREEN: BLOG PORTAL (STANDALONE SEPARATE SCREEN) ================= -->
+    <div id="screen-blog" class="hidden min-h-screen bg-[#090c14] text-slate-100 flex flex-col overflow-x-hidden font-sans"></div>
 
     <!-- ================= SCREEN 4: SYSTEM BACKDOOR CONTROL PANEL (ADMIN) ================= -->
     <div id="screen-admin" class="hidden min-h-screen bg-slate-950 text-slate-100 relative overflow-x-hidden flex flex-col lg:flex-row">
@@ -1600,6 +2022,10 @@
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="events">
                 <span><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i> Events & Banners</span>
+                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="blog">
+                <span><i class="fa-solid fa-newspaper text-amber-400 mr-2"></i> Blog Management</span>
                 <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="splash">
@@ -4140,6 +4566,9 @@
         </div>
       </div>
 
+      <!-- ================= ADMIN TAB: BLOG MANAGEMENT ================= -->
+      <div id="admin-tab-blog" class="hidden space-y-6"></div>
+
       <!-- ================= ADMIN TAB: SETTINGS APP CONFIGS ================= -->
       <div id="admin-tab-settings" class="hidden space-y-6">
         <!-- CORE APPLICATION SYSTEMS SETTINGS (CONSOLIDATED MAINTENANCE & APKS) -->
@@ -4303,6 +4732,85 @@
               Save Quick Draw Configuration
             </button>
           </form>
+        </div>
+
+        <!-- MIROFISH AI COMMUNITY CONTROL PANEL -->
+        <div class="bg-slate-900 border border-blue-500/30 p-5 rounded-3xl space-y-4 shadow-xl">
+          <h3 class="text-xs font-bold font-mono tracking-wider uppercase text-cyan-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-robot text-cyan-400 animate-pulse"></i> MiroFish AI Community & Multi-Agent Control
+          </h3>
+          <p class="text-[10px] text-slate-500 font-sans">
+            Control the MiroFish multi-agent digital world simulation, enable/disable community chat, or add new custom AI personas.
+          </p>
+          
+          <form id="admin-settings-mirofish-form" class="space-y-4 text-xs font-mono" onsubmit="event.preventDefault(); if(window.app && window.app.saveMirofishSettings){window.app.saveMirofishSettings(event);} return false;">
+            <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
+              <div>
+                <span class="text-xs font-bold text-white block">Enable MiroFish AI System</span>
+                <span class="text-[10px] text-slate-500 block font-sans">Master switch to turn MiroFish AI community engine online/offline</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input id="sys-mirofish-enabled-toggle" type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+              </label>
+            </div>
+
+            <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
+              <div>
+                <span class="text-xs font-bold text-white block">Enable Multi-Agent Auto Chat & Replies</span>
+                <span class="text-[10px] text-slate-500 block font-sans">Allow AI agents to chat periodically and reply to user messages in group</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input id="sys-mirofish-chat-toggle" type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+
+            <button type="button" id="save-mirofish-settings-btn" onclick="if(window.app && window.app.saveMirofishSettings){window.app.saveMirofishSettings(event);}" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer">
+              Save MiroFish Settings
+            </button>
+          </form>
+
+          <!-- Add New MiroFish Member Form -->
+          <div class="border-t border-slate-800 pt-4 space-y-3">
+            <h4 class="text-xs font-bold text-white uppercase flex items-center gap-1.5">
+              <i class="fa-solid fa-user-plus text-emerald-400"></i> নতুন AI মেম্বার যোগ করুন (Add Agent Persona)
+            </h4>
+            <form id="admin-add-mirofish-member-form" class="space-y-3" onsubmit="event.preventDefault(); if(window.app && window.app.addMirofishMember){window.app.addMirofishMember(event);} return false;">
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="block text-[10px] text-slate-400">পূর্ণ নাম (Full Name)</label>
+                  <input id="add-mf-name" type="text" required placeholder="যেমন: রাফিয়া সুলতানা" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div class="space-y-1">
+                  <label class="block text-[10px] text-slate-400">ইউজারনেম (Username)</label>
+                  <input id="add-mf-username" type="text" required placeholder="যেমন: rafia_pro" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" />
+                </div>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="space-y-1">
+                  <label class="block text-[10px] text-slate-400">ভূমিকা (Role)</label>
+                  <select id="add-mf-role" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500">
+                    <option value="VIP Member">VIP Member</option>
+                    <option value="Player">Player</option>
+                    <option value="Moderator">Moderator</option>
+                    <option value="Agent">Agent</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label class="block text-[10px] text-slate-400">শুরুর প্রফিট (Initial Profit ৳)</label>
+                  <input id="add-mf-profit" type="number" value="15000" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" />
+                </div>
+              </div>
+              <div class="space-y-1">
+                <label class="block text-[10px] text-slate-400">বায়োগ্রাফি ও ইন্ট্রো (Bio)</label>
+                <input id="add-mf-bio" type="text" placeholder="যেমন: লটারি এবং জ্যাকপট গেম লাভার। সবার জন্য শুভকামনা!" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500" />
+              </div>
+              <button type="button" id="add-mirofish-member-btn" onclick="if(window.app && window.app.addMirofishMember){window.app.addMirofishMember(event);}" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer">
+                + নতুন মেম্বার যুক্ত করুন
+              </button>
+            </form>
+          </div>
         </div>
 
         <!-- SEO & SOCIAL SHARE SETTINGS -->

@@ -26,6 +26,9 @@ function serveAndCopyAssetsPlugin() {
       { id: "tab-recovery", file: "src/dashboard_tabs/recovery.php" },
       { id: "tab-video-bounty", file: "src/dashboard_tabs/video_bounty.php" },
       { id: "tab-games", file: "src/dashboard_tabs/games.php" },
+      { id: "tab-group-chat", file: "src/dashboard_tabs/group_chat.php" },
+      { id: "tab-blog", file: "src/dashboard_tabs/blog_tab.php" },
+      { id: "admin-tab-blog", file: "src/admin_tabs/blog_admin.php" },
       { id: "admin-tab-video-bounty", file: "src/admin_tabs/video_bounty_admin.php" },
       { id: "admin-tab-agent-leaders", file: "src/admin_tabs/agent_leaders.php" },
       { id: "admin-tab-subagents-list", file: "src/admin_tabs/subagents_admin.php" }
@@ -538,7 +541,12 @@ export default defineConfig(({ mode }) => {
       reportCompressedSize: false,
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html')
+          main: path.resolve(__dirname, 'index.html'),
+          blog: path.resolve(__dirname, 'blog.html'),
+          comments: path.resolve(__dirname, 'comments.html'),
+          adminBlogEditor: path.resolve(__dirname, 'admin-blog-editor.html'),
+          adminCategories: path.resolve(__dirname, 'admin-categories.html'),
+          adminArticles: path.resolve(__dirname, 'admin-articles.html')
         },
         output: {
           entryFileNames: 'assets/[name]-[hash].js',

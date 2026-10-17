@@ -715,7 +715,12 @@ app.post('/api/sql/sync', async (req: Request, res: Response) => {
               }
               return 0;
             }
-            if (['created_at', 'date', 'joinDate', 'expires_at', 'readAt', 'timestamp'].includes(key)) {
+            if (
+              ['created_at', 'date', 'joinDate', 'expires_at', 'readAt', 'timestamp', 'drawTime', 'startDate', 'endDate', 'updatedAt', 'updated_at', 'draw_time', 'start_date', 'end_date'].includes(key) ||
+              key.toLowerCase().includes('date') ||
+              key.toLowerCase().includes('time') ||
+              key.toLowerCase().endsWith('at')
+            ) {
               if (val instanceof Date) {
                 try {
                   return val.toISOString().slice(0, 19).replace('T', ' ');

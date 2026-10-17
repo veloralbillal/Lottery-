@@ -174,6 +174,8 @@ export const AdminModule = {
         this.renderAdminCommission();
       } else if (this.currentAdminTab === "store") {
         this.renderAdminStore();
+      } else if (this.currentAdminTab === "blog") {
+        this.renderAdminBlog();
       } else if (this.currentAdminTab === "legal") {
         if (window.LegalPoliciesManager) {
           window.LegalPoliciesManager.renderAdminSection(this);
@@ -3798,6 +3800,12 @@ export const AdminModule = {
     const quickdrawToggle = document.getElementById("sys-quickdraw-toggle");
     if (quickdrawToggle) quickdrawToggle.checked = s.quickDrawEnabled !== false;
 
+    const mirofishEnabledToggle = document.getElementById("sys-mirofish-enabled-toggle");
+    if (mirofishEnabledToggle) mirofishEnabledToggle.checked = s.mirofishEnabled !== false;
+
+    const mirofishChatToggle = document.getElementById("sys-mirofish-chat-toggle");
+    if (mirofishChatToggle) mirofishChatToggle.checked = s.mirofishChatEnabled !== false;
+
     const maintenanceMsg = document.getElementById("sys-maintenance-msg");
     if (maintenanceMsg) maintenanceMsg.value = s.maintenanceMessage || "";
 
@@ -4376,13 +4384,13 @@ export const AdminModule = {
       drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
 
-    let defaultsDesc = desc;
+    let defaultsDesc = (desc && desc !== "undefined" && desc !== "null" && typeof desc === "string" && desc.trim() !== "") ? desc.trim() : "";
     if (!defaultsDesc) {
       if (multiWinnerPrizes && multiWinnerPrizes.length > 0) {
         const totalAward = multiWinnerPrizes.reduce((sum, p) => sum + p, 0);
         defaultsDesc = `Multiple Rank Winners Draw event! A total cash pool of ৳${totalAward} is distributed among top ${multiWinnerPrizes.length} lucky ticket holders! Rank prizes: ${multiWinnerPrizes.map((p, i) => `#${i+1} gets ৳${p}`).join(", ")}.`;
       } else {
-        defaultsDesc = `Exclusive ${safeFee} Taka lottery draw pool. The lucky winner receives ৳${safePrize}!`;
+        defaultsDesc = `Exclusive ৳${safeFee} lottery draw pool. The lucky winner receives ৳${safePrize}!`;
       }
     }
 
@@ -4390,6 +4398,7 @@ export const AdminModule = {
       id: "l" + Date.now(),
       name: name || "Special Lottery Pool",
       details: defaultsDesc,
+      description: defaultsDesc,
       entryFee: safeFee,
       totalTickets: safeTotal,
       soldTickets: 0,
@@ -5902,5 +5911,903 @@ export const AdminModule = {
         }
       });
     }
+  },
+
+  adminBlogSubTab: "articles",
+  adminEditingPostId: null,
+  adminCommentFilter: "all",
+
+  renderAdminBlog() {
+    if (!this.db) {
+      this.db = window.app?.db || window.db || {};
+    }
+    const container = document.getElementById("admin-tab-blog");
+    if (!container) return;
+
+    if (!this.db.blogs) this.db.blogs = [];
+    if (!this.db.blogComments) this.db.blogComments = [];
+    if (!this.db.blogCategories || this.db.blogCategories.length === 0) {
+      this.db.blogCategories = [
+        { id: "bcat-1", name: "Lottery Tips", slug: "lottery-tips", description: "Pro mathematical patterns & draw strategies" },
+        { id: "bcat-2", name: "Winners Stories", slug: "winners-stories", description: "Interviews with jackpot champions" },
+        { id: "bcat-3", name: "Platform Updates", slug: "platform-updates", description: "Gateway upgrades, cashouts & fee alerts" },
+        { id: "bcat-4", name: "Guides", slug: "guides", description: "Step-by-step app walkthroughs" }
+      ];
+    }
+
+    if (!this.adminBlogSubTab) this.adminBlogSubTab = "articles";
+
+    const pendingCommentsCount = this.db.blogComments.filter((c) => c.status === "pending").length;
+
+    container.innerHTML = `
+      <div class="space-y-6 animate-fade-in font-sans">
+        <!-- Header -->
+        <div class="flex items-center justify-between flex-wrap gap-3 bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-xl">
+          <div>
+            <h3 class="text-base font-black text-white flex items-center gap-2">
+              <i class="fa-solid fa-newspaper text-amber-400"></i> Blog & Content Control Suite (Standalone Page Architecture)
+            </h3>
+            <p class="text-xs text-slate-400 font-mono">Each module below opens in a dedicated standalone page file and screen.</p>
+          </div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-xs font-mono px-3 py-1 rounded-full font-bold">
+              ${this.db.blogs.length} Articles
+            </span>
+            <span class="bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-xs font-mono px-3 py-1 rounded-full font-bold">
+              ${this.db.blogCategories.length} Categories
+            </span>
+            ${pendingCommentsCount > 0 ? `
+              <span class="bg-rose-500/20 text-rose-300 border border-rose-500/40 text-xs font-mono px-3 py-1 rounded-full font-bold animate-pulse">
+                ${pendingCommentsCount} Pending Comments
+              </span>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Standalone Page Navigation Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- 1. Add Article -->
+          <a href="admin-blog-editor.html" class="bg-gradient-to-br from-amber-500/15 via-slate-900 to-slate-900 border border-amber-500/40 hover:border-amber-400 p-6 rounded-3xl space-y-3 transition group shadow-xl block cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-300 text-lg group-hover:scale-110 transition">
+              <i class="fa-solid fa-pen-nib"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-amber-300 transition flex items-center gap-2">
+                <span>Add & Edit Article Editor</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-amber-400"></i>
+              </h4>
+              <p class="text-xs text-slate-400 mt-1">Open standalone editor page with live SEO preview & cover image uploader.</p>
+            </div>
+          </a>
+
+          <!-- 2. Published Articles -->
+          <a href="admin-articles.html" class="bg-gradient-to-br from-cyan-500/15 via-slate-900 to-slate-900 border border-cyan-500/40 hover:border-cyan-400 p-6 rounded-3xl space-y-3 transition group shadow-xl block cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-300 text-lg group-hover:scale-110 transition">
+              <i class="fa-solid fa-newspaper"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-cyan-300 transition flex items-center gap-2">
+                <span>Published Articles Manager</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-cyan-400"></i>
+              </h4>
+              <p class="text-xs text-slate-400 mt-1">Open standalone articles list page to view, edit, or delete posts.</p>
+            </div>
+          </a>
+
+          <!-- 3. Categories -->
+          <a href="admin-categories.html" class="bg-gradient-to-br from-indigo-500/15 via-slate-900 to-slate-900 border border-indigo-500/40 hover:border-indigo-400 p-6 rounded-3xl space-y-3 transition group shadow-xl block cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 text-lg group-hover:scale-110 transition">
+              <i class="fa-solid fa-tags"></i>
+            </div>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-indigo-300 transition flex items-center gap-2">
+                <span>Category Taxonomy Screen</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-indigo-400"></i>
+              </h4>
+              <p class="text-xs text-slate-400 mt-1">Open standalone category taxonomy page with URL slug generation.</p>
+            </div>
+          </a>
+
+          <!-- 4. Comments -->
+          <a href="comments.html" class="bg-gradient-to-br from-rose-500/15 via-slate-900 to-slate-900 border border-rose-500/40 hover:border-rose-400 p-6 rounded-3xl space-y-3 transition group shadow-xl block cursor-pointer">
+            <div class="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-300 text-lg group-hover:scale-110 transition relative">
+              <i class="fa-solid fa-comments"></i>
+              ${pendingCommentsCount > 0 ? `<span class="absolute -top-1 -right-1 bg-rose-600 text-white text-[9px] w-5 h-5 rounded-full flex items-center justify-center font-mono font-bold">${pendingCommentsCount}</span>` : ''}
+            </div>
+            <div>
+              <h4 class="text-sm font-black text-white group-hover:text-rose-300 transition flex items-center gap-2">
+                <span>Comment Moderation Screen</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-rose-400"></i>
+              </h4>
+              <p class="text-xs text-slate-400 mt-1">Open standalone comment moderation & approval dashboard.</p>
+            </div>
+          </a>
+        </div>
+      </div>
+    `;
+
+    this.bindAdminBlogEvents(container);
+  },
+
+  getAdminBlogSubTabContentHTML() {
+    if (this.adminBlogSubTab === "categories") {
+      return this.renderAdminBlogCategoriesHTML();
+    } else if (this.adminBlogSubTab === "moderation") {
+      return this.renderAdminBlogModerationHTML();
+    } else {
+      return this.renderAdminBlogArticlesHTML();
+    }
+  },
+
+  renderAdminBlogArticlesHTML() {
+    const editingPost = this.adminEditingPostId 
+      ? this.db.blogs.find((b) => b.id === this.adminEditingPostId)
+      : null;
+
+    return `
+      <div class="space-y-6">
+        <!-- Create / Edit Article Card with Lightweight Rich Text Editor -->
+        <div class="bg-slate-900 border border-slate-800 p-5 sm:p-6 rounded-3xl space-y-4 shadow-xl">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-pen-to-square text-amber-400"></i>
+              <span>${editingPost ? 'Edit Blog Article' : 'Publish New Blog Article'}</span>
+            </h4>
+            ${editingPost ? `
+              <button id="admin-blog-cancel-edit-btn" class="text-xs text-rose-400 hover:text-rose-300 bg-rose-950/60 border border-rose-800/40 px-3 py-1 rounded-xl cursor-pointer">
+                Cancel Edit
+              </button>
+            ` : ''}
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Article Title *</label>
+              <input type="text" id="admin-blog-title" value="${editingPost ? this.escapeHTML(editingPost.title) : ''}" placeholder="e.g. How to Win Mega Progressive Jackpot" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition" />
+            </div>
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Category *</label>
+              <select id="admin-blog-category" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition">
+                ${(this.db.blogCategories || []).map((cat) => `
+                  <option value="${this.escapeHTML(cat.name)}" ${editingPost && editingPost.category === cat.name ? 'selected' : ''}>
+                    ${this.escapeHTML(cat.name)} (${cat.slug})
+                  </option>
+                `).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Author Name</label>
+              <input type="text" id="admin-blog-author" value="${editingPost ? this.escapeHTML(editingPost.author) : 'Admin Editorial'}" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition" />
+            </div>
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Cover Image (URL or Upload File)</label>
+              <div class="flex items-center gap-2">
+                <input type="text" id="admin-blog-image" value="${editingPost ? this.escapeHTML(editingPost.image) : 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=60'}" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition" />
+                <label class="shrink-0 bg-slate-800 hover:bg-slate-750 text-amber-300 border border-slate-700 text-xs font-bold px-3 py-2.5 rounded-xl cursor-pointer transition flex items-center gap-1.5">
+                  <i class="fa-solid fa-upload"></i> Upload
+                  <input type="file" id="admin-blog-image-file" accept="image/*" class="hidden" />
+                </label>
+              </div>
+            </div>
+            <div class="md:col-span-2">
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Short Excerpt (Feed Summary & Meta Description)</label>
+              <textarea id="admin-blog-excerpt" rows="2" placeholder="Brief summary displayed on article feed cards and Google search snippet..." class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3 text-xs text-white outline-none resize-none transition">${editingPost ? this.escapeHTML(editingPost.excerpt || '') : ''}</textarea>
+            </div>
+
+            <!-- Live Advanced SEO Preview Card -->
+            <div class="md:col-span-2 bg-slate-950 border border-slate-800 p-4 rounded-2xl space-y-2">
+              <div class="flex items-center justify-between">
+                <span class="text-[10px] font-mono font-bold text-amber-400 uppercase flex items-center gap-1.5">
+                  <i class="fa-solid fa-globe"></i> Live Advanced SEO & Search Snippet Preview
+                </span>
+                <span class="text-[9px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded">Active Live SEO</span>
+              </div>
+              <div class="bg-white/5 border border-slate-800 p-3 rounded-xl space-y-1 font-sans">
+                <div id="live-seo-title" class="text-xs font-bold text-cyan-400 truncate">${editingPost ? this.escapeHTML(editingPost.title) : 'Article Title Preview'}</div>
+                <div id="live-seo-url" class="text-[10px] font-mono text-emerald-400 truncate">https://luckybox.app/blog/${editingPost ? (editingPost.categorySlug || 'article') : 'article-slug'}</div>
+                <div id="live-seo-desc" class="text-[11px] text-slate-300 line-clamp-2">${editingPost ? this.escapeHTML(editingPost.excerpt || '') : 'Article meta description snippet preview will appear here as you type...'}</div>
+              </div>
+            </div>
+
+            <!-- Lightweight Rich Text Editor -->
+            <div class="md:col-span-2 space-y-2">
+              <div class="flex items-center justify-between flex-wrap gap-2">
+                <label class="text-[10px] font-mono text-slate-400 block">Article Content (Rich Text / Markdown) *</label>
+                <div class="flex items-center gap-1 bg-slate-950 border border-slate-800 p-0.5 rounded-lg text-xs">
+                  <button type="button" id="admin-editor-mode-write" class="px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500 text-slate-950 cursor-pointer">
+                    Edit
+                  </button>
+                  <button type="button" id="admin-editor-mode-preview" class="px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer">
+                    Preview
+                  </button>
+                </div>
+              </div>
+
+              <!-- Formatting Toolbar -->
+              <div id="admin-rich-toolbar" class="flex items-center gap-1.5 flex-wrap bg-slate-950 border border-slate-800 p-1.5 rounded-xl">
+                <button type="button" id="toolbar-bold" title="Bold" class="px-2 py-1 text-xs font-bold text-slate-300 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer">
+                  <b>B</b>
+                </button>
+                <button type="button" id="toolbar-italic" title="Italic" class="px-2 py-1 text-xs italic text-slate-300 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer">
+                  <i>I</i>
+                </button>
+                <button type="button" id="toolbar-h3" title="Heading 3" class="px-2 py-1 text-[11px] font-mono font-bold text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded transition cursor-pointer">
+                  H3
+                </button>
+                <span class="w-[1px] h-4 bg-slate-800"></span>
+                <button type="button" id="toolbar-bullet" title="Bullet List" class="px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer">
+                  <i class="fa-solid fa-list-ul"></i> List
+                </button>
+                <button type="button" id="toolbar-number" title="Numbered List" class="px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer">
+                  <i class="fa-solid fa-list-ol"></i> 1. List
+                </button>
+                <button type="button" id="toolbar-quote" title="Blockquote" class="px-2 py-1 text-[11px] text-slate-300 hover:text-white hover:bg-slate-800 rounded transition cursor-pointer">
+                  <i class="fa-solid fa-quote-left"></i> Quote
+                </button>
+                <button type="button" id="toolbar-link" title="Insert Link" class="px-2 py-1 text-[11px] text-cyan-400 hover:text-cyan-300 hover:bg-slate-800 rounded transition cursor-pointer">
+                  <i class="fa-solid fa-link"></i> Link
+                </button>
+              </div>
+
+              <!-- Editor Textarea -->
+              <textarea id="admin-blog-content" rows="8" placeholder="Type article content here. Use toolbar buttons to apply bold, italics, headings, lists, and links..." class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl p-3.5 text-xs text-white outline-none resize-none font-mono leading-relaxed transition">${editingPost ? this.escapeHTML(editingPost.content || '') : ''}</textarea>
+
+              <!-- Live Formatted Preview Container -->
+              <div id="admin-blog-preview-container" class="hidden w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-200 min-h-[190px] space-y-3 font-sans leading-relaxed">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3 pt-2">
+            <button id="admin-blog-publish-btn" class="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs px-6 py-3 rounded-xl transition hover:opacity-95 active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer">
+              ${editingPost ? 'Update Article 💾' : 'Publish Article 🚀'}
+            </button>
+          </div>
+        </div>
+
+        <!-- Published Articles List -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="text-sm font-bold text-white uppercase tracking-wider font-mono">
+              Published Blog Articles (${this.db.blogs.length})
+            </h4>
+            <span class="text-xs text-slate-500 font-mono">Tap Edit to modify content</span>
+          </div>
+
+          <div class="space-y-3">
+            ${this.db.blogs.length === 0 ? `
+              <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl text-center text-xs text-slate-500">
+                No blog articles published yet.
+              </div>
+            ` : `
+              ${this.db.blogs.map((b) => {
+                const commentCount = (this.db.blogComments || []).filter((c) => c.blogId === b.id).length;
+                return `
+                  <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition">
+                    <div class="flex items-center gap-3.5 min-w-0">
+                      <img src="${b.image}" alt="${b.title}" class="w-16 h-16 rounded-xl object-cover shrink-0" referrerPolicy="no-referrer" />
+                      <div class="space-y-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                          <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-mono px-2 py-0.5 rounded font-bold">${b.category}</span>
+                          <span class="text-[10px] text-slate-500 font-mono">${b.date} · ${b.views || 0} views · ${b.likes || 0} likes · ${commentCount} comments</span>
+                        </div>
+                        <h5 class="text-xs font-bold text-white truncate">${b.title}</h5>
+                        <p class="text-[10px] text-slate-400 truncate max-w-md">${b.excerpt || ''}</p>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                      <button class="admin-blog-edit-btn bg-slate-800 hover:bg-slate-750 text-amber-300 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${b.id}">
+                        <i class="fa-solid fa-pen"></i> Edit
+                      </button>
+                      <button class="admin-blog-delete-btn bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${b.id}">
+                        <i class="fa-solid fa-trash"></i> Delete
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join("")}
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderAdminBlogCategoriesHTML() {
+    return `
+      <div class="space-y-6 animate-fade-in">
+        <!-- Separate Screen Header with Back Button -->
+        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <button id="admin-blog-back-to-editor-btn" class="flex items-center gap-2 text-xs font-bold text-amber-300 hover:text-white bg-slate-950 border border-slate-800 px-3.5 py-2 rounded-xl transition cursor-pointer">
+            <i class="fa-solid fa-arrow-left"></i> Back to Add Article Editor
+          </button>
+          <div class="text-right">
+            <h4 class="text-xs font-black text-white uppercase font-mono">Category Taxonomy Screen</h4>
+            <span class="text-[10px] text-slate-400 font-mono">${this.db.blogCategories.length} Active Categories</span>
+          </div>
+        </div>
+
+        <!-- Add Category Form -->
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-folder-plus text-amber-400"></i> Create New Blog Category
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Category Name *</label>
+              <input type="text" id="admin-cat-name" placeholder="e.g. VIP Club Strategies" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition" />
+            </div>
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Unique Slug (URL friendly) *</label>
+              <input type="text" id="admin-cat-slug" placeholder="e.g. vip-club-strategies" class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none font-mono transition" />
+            </div>
+            <div>
+              <label class="text-[10px] font-mono text-slate-400 block mb-1">Description</label>
+              <input type="text" id="admin-cat-desc" placeholder="Brief purpose of category..." class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition" />
+            </div>
+          </div>
+          <button id="admin-cat-add-btn" class="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition hover:opacity-95 active:scale-95 shadow cursor-pointer">
+            Add Category 🏷️
+          </button>
+        </div>
+
+        <!-- Categories List -->
+        <div class="space-y-3">
+          <h4 class="text-sm font-bold text-white uppercase tracking-wider font-mono">
+            Active Categories (${this.db.blogCategories.length})
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ${this.db.blogCategories.map((cat) => {
+              const postsInCat = (this.db.blogs || []).filter((b) => b.category === cat.name || b.categorySlug === cat.slug).length;
+              return `
+                <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-2 flex flex-col justify-between">
+                  <div class="space-y-1.5">
+                    <div class="flex items-center justify-between">
+                      <h5 class="text-xs font-bold text-white flex items-center gap-2">
+                        <i class="fa-solid fa-tag text-amber-400"></i> ${this.escapeHTML(cat.name)}
+                      </h5>
+                      <span class="bg-slate-950 border border-slate-800 text-amber-300 text-[9px] font-mono px-2 py-0.5 rounded font-bold">
+                        ${postsInCat} articles
+                      </span>
+                    </div>
+                    <p class="text-[10px] font-mono text-cyan-400">Slug: /${cat.slug}</p>
+                    <p class="text-xs text-slate-400">${this.escapeHTML(cat.description || 'No description provided.')}</p>
+                  </div>
+                  <div class="pt-2 border-t border-slate-800/80 flex items-center justify-end gap-2">
+                    <button class="admin-cat-edit-btn text-xs text-slate-300 hover:text-white bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 cursor-pointer" data-id="${cat.id}">
+                      <i class="fa-solid fa-pen"></i> Edit
+                    </button>
+                    <button class="admin-cat-delete-btn text-xs text-rose-400 hover:text-rose-300 bg-rose-950/40 px-3 py-1 rounded-lg border border-rose-800/30 cursor-pointer" data-id="${cat.id}">
+                      <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      </div>
+    `;
+  },
+
+  renderAdminBlogModerationHTML() {
+    const filter = this.adminCommentFilter || "all";
+    const comments = (this.db.blogComments || []).filter((c) => {
+      if (filter === "all") return true;
+      return c.status === filter;
+    });
+    const pendingCount = (this.db.blogComments || []).filter(c => c.status === "pending").length;
+
+    return `
+      <div class="space-y-6 animate-fade-in">
+        <!-- Separate Screen Header with Back Button -->
+        <div class="flex items-center justify-between bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-lg">
+          <button id="admin-blog-back-to-editor-btn" class="flex items-center gap-2 text-xs font-bold text-amber-300 hover:text-white bg-slate-950 border border-slate-800 px-3.5 py-2 rounded-xl transition cursor-pointer">
+            <i class="fa-solid fa-arrow-left"></i> Back to Add Article Editor
+          </button>
+          <div class="text-right">
+            <h4 class="text-xs font-black text-white uppercase font-mono">Comment Moderation Screen</h4>
+            <span class="text-[10px] text-rose-400 font-mono">${pendingCount} Pending Reviews</span>
+          </div>
+        </div>
+
+        <!-- Moderation Filter -->
+        <div class="flex items-center justify-between flex-wrap gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl">
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold text-white font-mono">Filter Status:</span>
+            <div class="flex items-center gap-1.5">
+              ${["all", "pending", "approved", "rejected"].map((st) => `
+                <button class="admin-comment-filter-btn text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer capitalize ${filter === st ? 'bg-amber-500 text-slate-950' : 'bg-slate-950 border border-slate-800 text-slate-400 hover:text-white'}" data-filter="${st}">
+                  ${st} (${(this.db.blogComments || []).filter((c) => st === 'all' ? true : c.status === st).length})
+                </button>
+              `).join("")}
+            </div>
+          </div>
+          <span class="text-[10px] text-slate-400 font-mono">Showing ${comments.length} comments</span>
+        </div>
+
+        <!-- Comments Queue List -->
+        <div class="space-y-3">
+          ${comments.length === 0 ? `
+            <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center text-xs text-slate-500">
+              No comments found matching filter "${filter}".
+            </div>
+          ` : `
+            ${comments.map((c) => {
+              const post = (this.db.blogs || []).find((b) => b.id === c.blogId);
+              const postTitle = post ? post.title : 'Unknown Article';
+
+              return `
+                <div class="bg-slate-900 border border-slate-800 p-4 sm:p-5 rounded-2xl space-y-3">
+                  <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div class="flex items-center gap-2">
+                      <strong class="text-amber-300 font-mono">@${c.username}</strong>
+                      <span class="text-[10px] text-slate-500 font-mono">on "${this.escapeHTML(postTitle)}"</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="text-[10px] text-slate-500 font-mono">${c.date}</span>
+                      <span class="text-[9px] font-mono px-2 py-0.5 rounded font-bold uppercase ${c.status === 'approved' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : c.status === 'rejected' ? 'bg-rose-950 text-rose-400 border border-rose-800/40' : 'bg-amber-950 text-amber-400 border border-amber-800/40'}">
+                        ${c.status || 'pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p class="text-xs text-slate-200 bg-slate-950 p-3 rounded-xl border border-slate-800 font-sans leading-relaxed">
+                    ${this.escapeHTML(c.text)}
+                  </p>
+
+                  <div class="flex items-center justify-end gap-2 pt-1 border-t border-slate-800/60">
+                    <button class="admin-comment-approve-btn text-xs font-bold bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${c.id}">
+                      <i class="fa-solid fa-check"></i> Approve
+                    </button>
+                    <button class="admin-comment-reject-btn text-xs font-bold bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${c.id}">
+                      <i class="fa-solid fa-ban"></i> Reject
+                    </button>
+                    <button class="admin-comment-delete-btn text-xs font-bold bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${c.id}">
+                      <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          `}
+        </div>
+      </div>
+    `;
+  },
+
+  bindAdminBlogEvents(container) {
+    // Sub-tab switching
+    const btnArticles = document.getElementById("admin-blog-subtab-articles");
+    const btnCategories = document.getElementById("admin-blog-subtab-categories");
+    const btnModeration = document.getElementById("admin-blog-subtab-moderation");
+
+    if (btnArticles) {
+      btnArticles.onclick = () => {
+        this.adminBlogSubTab = "articles";
+        this.renderAdminBlog();
+      };
+    }
+    if (btnCategories) {
+      btnCategories.onclick = () => {
+        this.adminBlogSubTab = "categories";
+        this.renderAdminBlog();
+      };
+    }
+    if (btnModeration) {
+      btnModeration.onclick = () => {
+        this.adminBlogSubTab = "moderation";
+        this.renderAdminBlog();
+      };
+    }
+
+    const backToEditorBtn = document.getElementById("admin-blog-back-to-editor-btn");
+    if (backToEditorBtn) {
+      backToEditorBtn.onclick = () => {
+        this.adminBlogSubTab = "articles";
+        this.renderAdminBlog();
+      };
+    }
+
+    if (this.adminBlogSubTab === "articles") {
+      this.bindAdminArticleEvents(container);
+    } else if (this.adminBlogSubTab === "categories") {
+      this.bindAdminCategoryEvents(container);
+    } else if (this.adminBlogSubTab === "moderation") {
+      this.bindAdminModerationEvents(container);
+    }
+  },
+
+  bindAdminArticleEvents(container) {
+    const contentArea = document.getElementById("admin-blog-content");
+    const previewContainer = document.getElementById("admin-blog-preview-container");
+    const btnWrite = document.getElementById("admin-editor-mode-write");
+    const btnPreview = document.getElementById("admin-editor-mode-preview");
+    const toolbar = document.getElementById("admin-rich-toolbar");
+
+    // Preview / Write Toggle
+    if (btnWrite && btnPreview && contentArea && previewContainer) {
+      btnWrite.onclick = () => {
+        btnWrite.className = "px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500 text-slate-950 cursor-pointer";
+        btnPreview.className = "px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer";
+        contentArea.classList.remove("hidden");
+        if (toolbar) toolbar.classList.remove("hidden");
+        previewContainer.classList.add("hidden");
+      };
+
+      btnPreview.onclick = () => {
+        btnPreview.className = "px-2.5 py-1 rounded-md text-[10px] font-bold bg-amber-500 text-slate-950 cursor-pointer";
+        btnWrite.className = "px-2.5 py-1 rounded-md text-[10px] font-bold text-slate-400 hover:text-white cursor-pointer";
+        contentArea.classList.add("hidden");
+        if (toolbar) toolbar.classList.add("hidden");
+        previewContainer.classList.remove("hidden");
+
+        const raw = contentArea.value || "";
+        const formatted = this.formatBlogMarkdown(raw);
+        previewContainer.innerHTML = formatted || '<em class="text-slate-500">Preview is empty. Write some content first.</em>';
+      };
+    }
+
+    // Rich Text Editor Toolbar Actions
+    const insertFormat = (before, after = "") => {
+      if (!contentArea) return;
+      const start = contentArea.selectionStart;
+      const end = contentArea.selectionEnd;
+      const text = contentArea.value;
+      const selected = text.substring(start, end) || "text";
+      contentArea.value = text.substring(0, start) + before + selected + after + text.substring(end);
+      contentArea.focus();
+      contentArea.selectionStart = start + before.length;
+      contentArea.selectionEnd = start + before.length + selected.length;
+    };
+
+    const boldBtn = document.getElementById("toolbar-bold");
+    if (boldBtn) boldBtn.onclick = () => insertFormat("**", "**");
+
+    const italicBtn = document.getElementById("toolbar-italic");
+    if (italicBtn) italicBtn.onclick = () => insertFormat("*", "*");
+
+    const h3Btn = document.getElementById("toolbar-h3");
+    if (h3Btn) h3Btn.onclick = () => insertFormat("\n### ", "\n");
+
+    const bulletBtn = document.getElementById("toolbar-bullet");
+    if (bulletBtn) bulletBtn.onclick = () => insertFormat("\n- ", "");
+
+    const numberBtn = document.getElementById("toolbar-number");
+    if (numberBtn) numberBtn.onclick = () => insertFormat("\n1. ", "");
+
+    const quoteBtn = document.getElementById("toolbar-quote");
+    if (quoteBtn) quoteBtn.onclick = () => insertFormat("\n> ", "");
+
+    const linkBtn = document.getElementById("toolbar-link");
+    if (linkBtn) {
+      linkBtn.onclick = () => {
+        const url = prompt("Enter link URL (e.g. https://...):", "https://");
+        if (url) {
+          const title = prompt("Enter link text:", "Click here") || "link";
+          insertFormat(`[${title}](${url})`);
+        }
+      };
+    }
+
+    // Image file upload handler
+    const imageFileInp = document.getElementById("admin-blog-image-file");
+    const imageUrlInp = document.getElementById("admin-blog-image");
+    if (imageFileInp && imageUrlInp) {
+      imageFileInp.onchange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            imageUrlInp.value = event.target.result;
+            this.showToast("Cover image uploaded successfully! 📷", "success");
+          };
+          reader.readAsDataURL(file);
+        }
+      };
+    }
+
+    // Live SEO preview updater
+    const titleInp = document.getElementById("admin-blog-title");
+    const excerptInp = document.getElementById("admin-blog-excerpt");
+    const liveSeoTitle = document.getElementById("live-seo-title");
+    const liveSeoDesc = document.getElementById("live-seo-desc");
+    const liveSeoUrl = document.getElementById("live-seo-url");
+
+    if (titleInp && liveSeoTitle) {
+      titleInp.oninput = () => {
+        liveSeoTitle.innerText = titleInp.value || "Article Title Preview";
+        if (liveSeoUrl) {
+          const slug = (titleInp.value || "article").toLowerCase().replace(/[^a-z0-9]/g, '-');
+          liveSeoUrl.innerText = `https://luckybox.app/blog/${slug}`;
+        }
+      };
+    }
+    if (excerptInp && liveSeoDesc) {
+      excerptInp.oninput = () => {
+        liveSeoDesc.innerText = excerptInp.value || "Article meta description snippet preview will appear here as you type...";
+      };
+    }
+
+    // Cancel edit
+    const cancelEditBtn = document.getElementById("admin-blog-cancel-edit-btn");
+    if (cancelEditBtn) {
+      cancelEditBtn.onclick = () => {
+        this.adminEditingPostId = null;
+        this.renderAdminBlog();
+      };
+    }
+
+    // Publish / Update
+    const publishBtn = document.getElementById("admin-blog-publish-btn");
+    if (publishBtn) {
+      publishBtn.onclick = () => {
+        const title = document.getElementById("admin-blog-title")?.value.trim();
+        const category = document.getElementById("admin-blog-category")?.value;
+        const author = document.getElementById("admin-blog-author")?.value.trim() || "Admin";
+        const image = document.getElementById("admin-blog-image")?.value.trim();
+        const excerpt = document.getElementById("admin-blog-excerpt")?.value.trim();
+        const content = document.getElementById("admin-blog-content")?.value.trim();
+
+        if (!title || !content) {
+          this.showToast("Please provide article title and content.", "error");
+          return;
+        }
+
+        const matchedCat = (this.db.blogCategories || []).find((c) => c.name === category);
+        const categorySlug = matchedCat ? matchedCat.slug : category.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+        if (this.adminEditingPostId) {
+          const post = this.db.blogs.find((b) => b.id === this.adminEditingPostId);
+          if (post) {
+            post.title = title;
+            post.category = category;
+            post.categorySlug = categorySlug;
+            post.author = author;
+            post.image = image || post.image;
+            post.excerpt = excerpt || title;
+            post.content = content;
+            this.saveDB();
+            this.showToast("Article updated successfully! 💾", "success");
+            this.adminEditingPostId = null;
+            this.renderAdminBlog();
+            return;
+          }
+        }
+
+        const newPost = {
+          id: "blog-" + Date.now(),
+          title,
+          category,
+          categorySlug,
+          author,
+          date: new Date().toISOString().split("T")[0],
+          readTime: "3 min read",
+          views: 1,
+          likes: 0,
+          image: image || "https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=800&auto=format&fit=crop&q=60",
+          excerpt: excerpt || title,
+          content
+        };
+
+        if (!this.db.blogs) this.db.blogs = [];
+        this.db.blogs.unshift(newPost);
+        this.saveDB();
+        this.showToast("Blog article published successfully! 🎉", "success");
+        this.renderAdminBlog();
+      };
+    }
+
+    // Edit action on post cards
+    const editBtns = container.querySelectorAll(".admin-blog-edit-btn");
+    editBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        this.adminEditingPostId = id;
+        this.renderAdminBlog();
+      });
+    });
+
+    // Delete action on post cards
+    const delBtns = container.querySelectorAll(".admin-blog-delete-btn");
+    delBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        if (confirm("Are you sure you want to delete this blog article?")) {
+          this.db.blogs = this.db.blogs.filter((b) => b.id !== id);
+          if (this.adminEditingPostId === id) this.adminEditingPostId = null;
+          this.saveDB();
+          this.showToast("Blog article deleted.", "success");
+          this.renderAdminBlog();
+        }
+      });
+    });
+  },
+
+  bindAdminCategoryEvents(container) {
+    const addBtn = document.getElementById("admin-cat-add-btn");
+    const nameInput = document.getElementById("admin-cat-name");
+    const slugInput = document.getElementById("admin-cat-slug");
+    const descInput = document.getElementById("admin-cat-desc");
+
+    if (nameInput && slugInput) {
+      nameInput.addEventListener("input", () => {
+        if (!slugInput.value || slugInput.dataset.auto !== "false") {
+          slugInput.value = nameInput.value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-");
+        }
+      });
+      slugInput.addEventListener("input", () => {
+        slugInput.dataset.auto = "false";
+      });
+    }
+
+    if (addBtn) {
+      addBtn.onclick = () => {
+        const name = nameInput?.value.trim();
+        let slug = slugInput?.value.trim();
+        const description = descInput?.value.trim() || "";
+
+        if (!name) {
+          this.showToast("Please enter a category name.", "error");
+          return;
+        }
+
+        if (!slug) {
+          slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        }
+
+        // Validate unique slug
+        const slugExists = (this.db.blogCategories || []).some((c) => c.slug === slug);
+        if (slugExists) {
+          this.showToast(`Category slug "${slug}" already exists. Please choose a unique slug.`, "error");
+          return;
+        }
+
+        const newCat = {
+          id: "bcat-" + Date.now(),
+          name,
+          slug,
+          description
+        };
+
+        if (!this.db.blogCategories) this.db.blogCategories = [];
+        this.db.blogCategories.push(newCat);
+        this.saveDB();
+        this.showToast(`Category "${name}" created successfully! 🏷️`, "success");
+        this.renderAdminBlog();
+      };
+    }
+
+    // Edit Category
+    const editBtns = container.querySelectorAll(".admin-cat-edit-btn");
+    editBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const cat = (this.db.blogCategories || []).find((c) => c.id === id);
+        if (!cat) return;
+
+        const newName = prompt("Edit category name:", cat.name);
+        if (newName === null) return;
+        const newSlug = prompt("Edit category slug (unique):", cat.slug);
+        if (newSlug === null) return;
+        const newDesc = prompt("Edit category description:", cat.description || "");
+
+        if (!newName.trim() || !newSlug.trim()) {
+          this.showToast("Name and slug cannot be empty.", "error");
+          return;
+        }
+
+        // Check unique slug (excluding current category)
+        const conflict = (this.db.blogCategories || []).some((c) => c.id !== id && c.slug === newSlug.trim());
+        if (conflict) {
+          this.showToast("Slug already exists on another category.", "error");
+          return;
+        }
+
+        // Update assigned blogs
+        const oldName = cat.name;
+        cat.name = newName.trim();
+        cat.slug = newSlug.trim();
+        cat.description = newDesc ? newDesc.trim() : "";
+
+        (this.db.blogs || []).forEach((b) => {
+          if (b.category === oldName) {
+            b.category = cat.name;
+            b.categorySlug = cat.slug;
+          }
+        });
+
+        this.saveDB();
+        this.showToast("Category updated successfully! 💾", "success");
+        this.renderAdminBlog();
+      });
+    });
+
+    // Delete Category
+    const delBtns = container.querySelectorAll(".admin-cat-delete-btn");
+    delBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const cat = (this.db.blogCategories || []).find((c) => c.id === id);
+        if (!cat) return;
+
+        if (confirm(`Are you sure you want to delete category "${cat.name}"?`)) {
+          this.db.blogCategories = this.db.blogCategories.filter((c) => c.id !== id);
+          this.saveDB();
+          this.showToast(`Category "${cat.name}" deleted.`, "info");
+          this.renderAdminBlog();
+        }
+      });
+    });
+  },
+
+  bindAdminModerationEvents(container) {
+    const filterBtns = container.querySelectorAll(".admin-comment-filter-btn");
+    filterBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        this.adminCommentFilter = e.currentTarget.getAttribute("data-filter");
+        this.renderAdminBlog();
+      });
+    });
+
+    // Approve
+    const appBtns = container.querySelectorAll(".admin-comment-approve-btn");
+    appBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const comment = (this.db.blogComments || []).find((c) => c.id === id);
+        if (comment) {
+          comment.status = "approved";
+          this.saveDB();
+          this.showToast("Comment approved! It is now public. ✅", "success");
+          this.renderAdminBlog();
+        }
+      });
+    });
+
+    // Reject
+    const rejBtns = container.querySelectorAll(".admin-comment-reject-btn");
+    rejBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        const comment = (this.db.blogComments || []).find((c) => c.id === id);
+        if (comment) {
+          comment.status = "rejected";
+          this.saveDB();
+          this.showToast("Comment rejected. 🚫", "info");
+          this.renderAdminBlog();
+        }
+      });
+    });
+
+    // Delete
+    const delBtns = container.querySelectorAll(".admin-comment-delete-btn");
+    delBtns.forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        const id = e.currentTarget.getAttribute("data-id");
+        if (confirm("Delete this comment permanently?")) {
+          this.db.blogComments = (this.db.blogComments || []).filter((c) => c.id !== id);
+          this.saveDB();
+          this.showToast("Comment removed from queue.", "info");
+          this.renderAdminBlog();
+        }
+      });
+    });
+  },
+
+  formatBlogMarkdown(rawText = "") {
+    if (!rawText) return "";
+    let html = this.escapeHTML(rawText);
+    html = html.replace(/^### (.*$)/gim, '<h3 class="text-base font-black text-amber-300 mt-3 mb-1">$1</h3>');
+    html = html.replace(/^## (.*$)/gim, '<h2 class="text-lg font-black text-white mt-4 mb-2">$1</h2>');
+    html = html.replace(/\*\*(.*?)\*\*/gim, '<strong class="font-bold text-white">$1</strong>');
+    html = html.replace(/\*(.*?)\*/gim, '<em class="italic text-slate-300">$1</em>');
+    html = html.replace(/\[(.*?)\]\((https?:\/\/.*?)\)/gim, '<a href="$2" target="_blank" class="text-cyan-400 underline font-medium">$1</a>');
+    html = html.replace(/^> (.*$)/gim, '<blockquote class="border-l-2 border-amber-500/60 pl-3 py-1 my-2 italic text-slate-300 bg-amber-500/5 rounded-r">$1</blockquote>');
+    html = html.replace(/^\- (.*$)/gim, '<li class="ml-4 list-disc text-slate-300 my-0.5">$1</li>');
+    html = html.replace(/^\d+\. (.*$)/gim, '<li class="ml-4 list-decimal text-slate-300 my-0.5">$1</li>');
+    html = html.replace(/\n\n/g, '<div class="h-2"></div>');
+    html = html.replace(/\n/g, '<br/>');
+    return html;
   }
 };

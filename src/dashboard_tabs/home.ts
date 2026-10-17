@@ -6,6 +6,7 @@
  */
 
 import { HomeExtensions } from "./home_extensions.js";
+import { ThreeLotteryDrawScene } from "../components/ThreeLotteryDrawScene.js";
 
 export class HomeTab {
   static init(appInstance) {
@@ -452,6 +453,14 @@ export class HomeTab {
               </div>
             </div>
 
+            <!-- 3D Studio Live Trigger Bar (Full Screen) -->
+            <div class="flex items-center justify-center gap-2 max-w-xs mx-auto my-3">
+              <button id="quick-draw-3d-preview-btn" class="w-full bg-slate-900/90 hover:bg-amber-500/20 border border-slate-800 hover:border-amber-500/40 text-amber-300 text-xs font-mono font-bold py-2.5 px-4 rounded-2xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-95">
+                <i class="fa-solid fa-cube text-amber-400 text-sm"></i>
+                <span id="quick-draw-3d-btn-text">⚡ ফুলস্ক্রিন ৩ডি লাইভ ড্র দেখুন</span>
+              </button>
+            </div>
+
             <!-- Key metrics row -->
             <div class="max-w-md mx-auto grid grid-cols-2 gap-3 text-center">
               <div class="bg-slate-950/50 py-3 px-4 rounded-2xl border border-slate-900/80">
@@ -563,6 +572,23 @@ export class HomeTab {
         const drawTime = new Date(activeQuick.drawTime).getTime();
         const diff = drawTime - now;
 
+        const btnText = document.getElementById("quick-draw-3d-btn-text");
+
+        // Automatically launch full-screen interactive 3D scene when 30 seconds or less remain (if enabled in user settings)!
+        if (diff <= 30000 && diff > 0) {
+          const is3DEnabled = appInstance.currentUser?.enable3dDraw !== false;
+          if (is3DEnabled) {
+            if (!appInstance._autoLaunchedQuick3D) appInstance._autoLaunchedQuick3D = {};
+            if (!appInstance._autoLaunchedQuick3D[activeQuick.id]) {
+              appInstance._autoLaunchedQuick3D[activeQuick.id] = true;
+              appInstance.openThreeLotteryDraw(activeQuick.name);
+            }
+          }
+          if (btnText) {
+            btnText.innerHTML = `<span class="animate-pulse text-amber-300">⚡ ৩ডি লাইভ ড্র চলছে! (ফুলস্ক্রিন দেখুন)</span>`;
+          }
+        }
+
         if (diff <= 0) {
           timerEl.innerText = "DRAWING NOW... ⏳";
           clearInterval(appInstance.quickDrawInterval);
@@ -576,12 +602,30 @@ export class HomeTab {
           const totalSeconds = Math.ceil(diff / 1000);
           const mins = Math.floor(totalSeconds / 60);
           const secs = totalSeconds % 60;
-          timerEl.innerText = `⏱ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          if (totalSeconds <= 30) {
+            timerEl.innerText = `⏱ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} (৩ডি লাইভ ড্র!)`;
+            timerEl.className = "text-2xl sm:text-3xl font-black text-amber-400 tracking-tight font-mono animate-pulse";
+          } else {
+            timerEl.innerText = `⏱ ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            timerEl.className = "text-3xl font-black text-red-500 tracking-tight font-mono";
+          }
         }
       };
 
+      if (appInstance.quickDrawInterval) {
+        clearInterval(appInstance.quickDrawInterval);
+        appInstance.quickDrawInterval = null;
+      }
       updateTimer();
       appInstance.quickDrawInterval = setInterval(updateTimer, 1000);
+
+      // 3D Fullscreen Button event binder
+      const preview3dBtn = document.getElementById("quick-draw-3d-preview-btn");
+      if (preview3dBtn) {
+        preview3dBtn.addEventListener("click", () => {
+          appInstance.openThreeLotteryDraw(activeQuick.name);
+        });
+      }
 
       // Buy Ticket Button event binder
       const buyBtn = document.getElementById("quick-buy-btn");
@@ -695,7 +739,15 @@ export class HomeTab {
               <h3 class="text-sm font-black text-white mt-1.5 flex items-center gap-1.5">
                 ${lot.name}
               </h3>
-              <p class="text-[11px] text-slate-400 leading-normal mt-0.5 line-clamp-2">${lot.details}</p>
+              ${(() => {
+                const rawDetails = (lot.details && lot.details !== "undefined" && lot.details !== "null")
+                  ? String(lot.details).trim()
+                  : (lot.description && lot.description !== "undefined" && lot.description !== "null")
+                    ? String(lot.description).trim()
+                    : "";
+                const displayDetails = rawDetails || `Exclusive ৳${lot.entryFee || 10} lottery draw pool. The lucky winner receives ৳${(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}!`;
+                return `<p class="text-[11px] text-slate-400 leading-normal mt-0.5 line-clamp-2">${appInstance.escapeHTML ? appInstance.escapeHTML(displayDetails) : displayDetails}</p>`;
+              })()}
             </div>
           </div>
           
@@ -724,6 +776,7 @@ export class HomeTab {
             <div>
               <span class="text-[8.5px] font-mono text-slate-400 uppercase tracking-wider block">ড্র এর সময়</span>
               <span class="text-[10px] text-cyan-300 font-mono font-bold block">${cardDrawTime}</span>
+              <span class="lotto-card-countdown text-[9.5px] text-amber-400 font-mono font-bold block mt-0.5" data-drawtime="${lot.drawTime}">⏱ গণন হচ্ছে...</span>
             </div>
             <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 text-xs shrink-0">
               <i class="fa-regular fa-clock"></i>
@@ -757,19 +810,25 @@ export class HomeTab {
             <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>${lot.totalTickets - lot.soldTickets} টিকেট বাকি আছে</span>
           </div>
-          <button class="buy-pool-btn lottery-ticket-btn px-4 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs uppercase tracking-wide cursor-pointer active:scale-95" data-id="${lot.id}">
-            <i class="fa-solid fa-ticket"></i>
-            <span>টিকেট কিনুন (৳${lot.entryFee})</span>
-          </button>
+          <div class="flex items-center gap-2">
+            <button class="three-fullscreen-btn bg-slate-900/80 hover:bg-amber-500/20 border border-slate-800 hover:border-amber-500/40 text-amber-300 px-3 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs font-mono font-bold transition cursor-pointer active:scale-95" data-lotto-name="${lot.name}" title="ফুলস্ক্রিন ৩ডি লাইভ ড্র">
+              <i class="fa-solid fa-cube text-xs"></i> <span>৩ডি ড্র</span>
+            </button>
+            <button class="buy-pool-btn lottery-ticket-btn px-4 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs uppercase tracking-wide cursor-pointer active:scale-95" data-id="${lot.id}">
+              <i class="fa-solid fa-ticket"></i>
+              <span>টিকেট কিনুন (৳${lot.entryFee})</span>
+            </button>
+          </div>
         </div>
       `;
 
       card.setAttribute("data-lottery-id", lot.id);
       card.setAttribute("data-id", lot.id);
+      card.setAttribute("data-lottery-name", lot.name);
 
       card.addEventListener("click", (e) => {
         const target = e.target;
-        if (target && typeof target.closest === "function" && target.closest(".buy-pool-btn")) {
+        if (target && typeof target.closest === "function" && (target.closest(".buy-pool-btn") || target.closest(".three-fullscreen-btn"))) {
           return;
         }
         e.stopPropagation();
@@ -789,6 +848,78 @@ export class HomeTab {
         }
       });
     });
+
+    document.querySelectorAll(".three-fullscreen-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const lotName = (e.currentTarget as HTMLElement).getAttribute("data-lotto-name") || "Jackpot Pool";
+        if ((window as any).app && typeof (window as any).app.openThreeLotteryDraw === 'function') {
+          (window as any).app.openThreeLotteryDraw(lotName);
+        }
+      });
+    });
+
+    // Clear any previous home pool countdown interval
+    if (appInstance.homePoolsCountdownInterval) {
+      clearInterval(appInstance.homePoolsCountdownInterval);
+      appInstance.homePoolsCountdownInterval = null;
+    }
+
+    const updateHomePoolsCountdowns = () => {
+      const countdownEls = document.querySelectorAll(".lotto-card-countdown");
+      if (countdownEls.length === 0) {
+        if (appInstance.homePoolsCountdownInterval) {
+          clearInterval(appInstance.homePoolsCountdownInterval);
+          appInstance.homePoolsCountdownInterval = null;
+        }
+        return;
+      }
+
+      const now = Date.now();
+      countdownEls.forEach(el => {
+        const drawTimeStr = el.getAttribute("data-drawtime");
+        if (!drawTimeStr) return;
+        const drawTime = new Date(drawTimeStr).getTime();
+        const diff = drawTime - now;
+
+        const cardEl = el.closest(".lottery-ticket-card") as HTMLElement;
+
+        if (diff <= 30000 && diff > 0) {
+          const is3DEnabled = appInstance.currentUser?.enable3dDraw !== false;
+          if (is3DEnabled && !appInstance.activeThreeScene) {
+            if (!appInstance._autoLaunched3D) appInstance._autoLaunched3D = {};
+            if (!appInstance._autoLaunched3D[drawTimeStr]) {
+              appInstance._autoLaunched3D[drawTimeStr] = true;
+              const lotName = cardEl?.getAttribute("data-lottery-name") || "Lottery Draw";
+              appInstance.openThreeLotteryDraw(lotName);
+            }
+          }
+        }
+
+        if (diff <= 0) {
+          el.innerText = "⏱ সময় শেষ (ড্র চলছে)";
+          el.className = "lotto-card-countdown text-[9.5px] text-red-400 font-mono font-bold block mt-0.5 animate-pulse";
+        } else {
+          const totalSecs = Math.ceil(diff / 1000);
+          const hrs = Math.floor(totalSecs / 3600);
+          const mins = Math.floor((totalSecs % 3600) / 60);
+          const secs = totalSecs % 60;
+          if (totalSecs <= 30) {
+            el.innerText = `⏱ বাকি: ${secs.toString().padStart(2, '0')}সে (৩ডি লাইভ ড্র!)`;
+            el.className = "lotto-card-countdown text-[9.5px] text-amber-400 font-mono font-bold block mt-0.5 animate-pulse";
+          } else if (hrs > 0) {
+            el.innerText = `⏱ বাকি: ${hrs}ঘ ${mins}মি ${secs}সে`;
+            el.className = "lotto-card-countdown text-[9.5px] text-amber-400 font-mono font-bold block mt-0.5";
+          } else {
+            el.innerText = `⏱ বাকি: ${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            el.className = "lotto-card-countdown text-[9.5px] text-amber-400 font-mono font-bold block mt-0.5";
+          }
+        }
+      });
+    };
+
+    updateHomePoolsCountdowns();
+    appInstance.homePoolsCountdownInterval = setInterval(updateHomePoolsCountdowns, 1000);
 
     // Render Home Pools Tab extensions
     HomeExtensions.render(appInstance);
