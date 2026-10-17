@@ -358,6 +358,10 @@ export async function syncDatabaseDirectlyToBridge(dbToSync: any, customConfig?:
         const placeholders: string[] = [];
         for (const key of validKeys) {
           let val = formatToMySqlDateTime(item[key]);
+          if (tableName === "users" && key === "email" && (!val || typeof val !== "string" || !val.includes("@"))) {
+            const uname = item.username || item.name || item.id || "user";
+            val = `${String(uname).toLowerCase().replace(/[^a-z0-9]/g, "")}@lottery.local`;
+          }
           if (typeof val === "object" && val !== null) {
             flatValues.push(JSON.stringify(val));
           } else {

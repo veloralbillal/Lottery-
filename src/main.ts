@@ -18,6 +18,7 @@ import { LuckyWheelModule } from "./js/luckyWheel.js";
 import { GoogleDriveModule } from "./js/googleDrive.js";
 import { HomeTab } from "./dashboard_tabs/home.js";
 import { TicketsTab } from "./dashboard_tabs/tickets.js";
+import { BlogModule } from "./dashboard_tabs/blog.js";
 import { WalletTab } from "./dashboard_tabs/wallet.js";
 import { HistoryTab } from "./dashboard_tabs/history.js";
 import { ProfileTab } from "./dashboard_tabs/profile.js";
@@ -29,7 +30,10 @@ import { BadgeRequestTab } from "./dashboard_tabs/badge_request.js";
 import { VideoBountyTab } from "./dashboard_tabs/video_bounty.js";
 import { JackpotTab } from "./dashboard_tabs/jackpot.js";
 import { MissionsTab } from "./dashboard_tabs/missions.js";
+import { membersListManager } from "./dashboard_tabs/members_list.js";
+import { MirofishAgentSimulation, MIROFISH_PERSONAS } from "./js/mirofishAgentSimulation.js";
 import { FloatingToastNotification } from "./floating_toast.js";
+import { ThreeLotteryDrawScene } from "./components/ThreeLotteryDrawScene.js";
 import { NotificationEngine } from "./js/notificationEngine.js";
 import { GameHubModule } from "./js/gameHub.js";
 import { DeviceFingerprint } from "./js/deviceFingerprint.js";
@@ -300,12 +304,52 @@ export class StateManager {
     if (!this.db.pendingAdminToasts) this.db.pendingAdminToasts = [];
     if (!this.db.webPushAds) this.db.webPushAds = [];
 
+    // Ensure all users, staff, and agents have non-null email and password for SQL bulk-sync
+    [this.db.users, this.db.staff, this.db.agents].forEach((arr) => {
+      if (Array.isArray(arr)) {
+        arr.forEach((item: any) => {
+          if (item) {
+            if (!item.email) item.email = `${item.username || item.id || 'user'}@lotterywinner.app`;
+            if (!item.password) item.password = "password123";
+          }
+        });
+      }
+    });
+
     // 🛡️ CRITICAL: Ensure all syndicates have initialized arrays to prevent undefined .join/.includes/length crashes
     if (this.db.syndicates) {
       this.db.syndicates.forEach((s: any) => {
         if (!s.joinedUserIds) s.joinedUserIds = [];
         if (!s.joinedUsernames) s.joinedUsernames = [];
       });
+    }
+
+    // Ensure all existing lotteries have valid, clean details and descriptions (permanently remove 'undefined')
+    if (this.db && Array.isArray(this.db.lotteries)) {
+      let lotteriesCleaned = false;
+      this.db.lotteries.forEach((l: any) => {
+        if (!l) return;
+        const raw = l.details;
+        if (!raw || raw === "undefined" || raw === "null" || (typeof raw === "string" && raw.trim() === "")) {
+          if (l.description && l.description !== "undefined" && l.description !== "null" && String(l.description).trim() !== "") {
+            l.details = String(l.description).trim();
+          } else {
+            l.details = `Exclusive ৳${l.entryFee || 10} lottery draw pool. The lucky winner receives ৳${(l.prizeAmount || l.prizePool || 0).toLocaleString()}!`;
+          }
+          lotteriesCleaned = true;
+        }
+        if (!l.description || l.description === "undefined" || l.description === "null") {
+          l.description = l.details;
+          lotteriesCleaned = true;
+        }
+      });
+      if (lotteriesCleaned) {
+        try {
+          const serialized = StateManager.safeStringify(StateManager.removeCircularReferences(this.db));
+          localStorage.setItem(this.dbKey, serialized);
+          localStorage.setItem("lottery_winner_db_backup", serialized);
+        } catch (e) {}
+      }
     }
 
     // Guarantee Refer/IP configurations exist
@@ -315,6 +359,12 @@ export class StateManager {
       }
       if (this.db.settings.quickDrawEnabled === undefined) {
         this.db.settings.quickDrawEnabled = false;
+      }
+      if (this.db.settings.mirofishEnabled === undefined) {
+        this.db.settings.mirofishEnabled = true;
+      }
+      if (this.db.settings.mirofishChatEnabled === undefined) {
+        this.db.settings.mirofishChatEnabled = true;
       }
       if (this.db.settings.ipPreventionEnabled === undefined) {
         this.db.settings.ipPreventionEnabled = true;
@@ -759,6 +809,21 @@ export class StateManager {
     }
   }
 
+  async fetchAndUpdateLatestLotteryData() {
+    try {
+      if (typeof (this as any).loadFromCloud === "function") {
+        await (this as any).loadFromCloud();
+      }
+      this.checkAndExecuteAutoDraws();
+      this.cleanupExpiredAndDrawnLotteries();
+      if (this.currentTab === "home") {
+        this.renderHomeTab();
+      }
+    } catch (e) {
+      console.warn("Auto-sync lottery draw status notice:", e);
+    }
+  }
+
   startAutoDrawChecker() {
     setInterval(() => {
       // Performance Mode: Pause intensive checks if user switched away from the browser/tab
@@ -771,6 +836,12 @@ export class StateManager {
       this.checkCartAbandonmentNotification();
       this.tickProgressiveJackpot();
     }, 5000);
+
+    // Automatic background fetch & update for latest lottery draw status and pool data every 12 seconds
+    setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      this.fetchAndUpdateLatestLotteryData();
+    }, 12000);
   }
 
   checkFiveMinutesDrawAlerts() {
@@ -1537,7 +1608,7 @@ export class StateManager {
 
       const view = this.getAppView();
       // Safe screen hiding
-      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent", "screen-store", "screen-agent-chat"];
+      const screens = ["screen-maintenance", "screen-auth", "screen-dashboard", "screen-admin", "screen-agent", "screen-store", "screen-agent-chat", "screen-group-chat", "screen-community", "screen-member-profile", "screen-members-list", "screen-blog"];
       screens.forEach(s => {
         const el = document.getElementById(s);
         if (el) el.classList.add("hidden");
@@ -1555,6 +1626,25 @@ export class StateManager {
         const el = document.getElementById("screen-agent-chat");
         if (el) el.classList.remove("hidden");
         this.renderAgentChat();
+      } else if (this.currentTab === "group-chat") {
+        const el = document.getElementById("screen-group-chat");
+        if (el) el.classList.remove("hidden");
+        this.renderGroupChat();
+      } else if (this.currentTab === "blog") {
+        window.location.href = "blog.html";
+        return;
+      } else if (this.currentTab === "community") {
+        const el = document.getElementById("screen-community");
+        if (el) el.classList.remove("hidden");
+        this.renderCommunityHub();
+      } else if (this.currentTab === "members-list") {
+        const el = document.getElementById("screen-members-list");
+        if (el) el.classList.remove("hidden");
+        membersListManager.renderMembersScreen("");
+      } else if (this.currentTab === "member-profile") {
+        const el = document.getElementById("screen-member-profile");
+        if (el) el.classList.remove("hidden");
+        this.renderMemberProfile();
       } else if (view === "dashboard") {
         const isShopStaff = this.currentUser && (this.currentUser.role === "shop_admin" || this.currentUser.role === "shop_manager" || this.currentUser.role === "shop_owner");
         if (isShopStaff) {
@@ -1605,6 +1695,756 @@ export class StateManager {
         debugBox.classList.remove("hidden");
       }
     }
+  }
+
+  // ================= GROUP CHAT (MESSENGER STYLE) SYSTEM =================
+  lastGroupMsgTimestamp: number = 0;
+  groupPendingAttachment: { name: string; url: string; type: string } | null = null;
+  groupReplyingTo: { id: string; sender: string; message: string } | null = null;
+  mirofishSimulation: MirofishAgentSimulation | null = null;
+
+  openGroupChat() {
+    this.currentTab = "group-chat";
+    this.render();
+    this.setupGroupChatListeners();
+    if (this.mirofishSimulation) {
+      this.mirofishSimulation.ensurePersonasInDB();
+    }
+  }
+
+  openBlogPage() {
+    window.location.href = "blog.html";
+  }
+
+  closeBlogPage() {
+    this.currentTab = "home";
+    this.render();
+  }
+
+  mentionInGroupChat(username: string) {
+    this.openGroupChat();
+    setTimeout(() => {
+      const input = document.getElementById("group-chat-input") as HTMLInputElement | null;
+      if (input) {
+        input.value = `@${username} `;
+        input.focus();
+      }
+    }, 100);
+  }
+
+  closeGroupChat() {
+    this.currentTab = "home";
+    this.render();
+  }
+
+  activeThreeScene: ThreeLotteryDrawScene | null = null;
+
+  openThreeLotteryDraw(lotName: string = "Jackpot Pool") {
+    let modal = document.getElementById("three-lotto-modal");
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = "three-lotto-modal";
+      modal.className = "fixed inset-0 z-[9999] bg-slate-950 flex flex-col";
+      document.body.appendChild(modal);
+    }
+    modal.innerHTML = `<div id="three-lotto-container" class="relative w-full h-full"></div>`;
+    const container = modal.querySelector("#three-lotto-container") as HTMLElement;
+    if (container) {
+      if (this.activeThreeScene) {
+        this.activeThreeScene.destroy();
+        this.activeThreeScene = null;
+      }
+      this.activeThreeScene = new ThreeLotteryDrawScene(container, lotName, () => {
+        if (this.activeThreeScene) {
+          this.activeThreeScene.destroy();
+          this.activeThreeScene = null;
+        }
+        modal?.remove();
+      });
+    }
+  }
+
+  selectedMemberUsername: string | null = null;
+
+  openCommunityPage() {
+    this.currentTab = "community";
+    this.render();
+  }
+
+  openMemberProfile(memberOrUsername: any) {
+    if (typeof memberOrUsername === 'object' && memberOrUsername !== null) {
+      this.selectedMemberUsername = memberOrUsername.name || memberOrUsername.id || "user";
+    } else {
+      this.selectedMemberUsername = String(memberOrUsername || "user");
+    }
+    this.currentTab = "member-profile";
+    this.render();
+  }
+
+  renderCommunityHub() {
+    const users = this.db.users || [];
+    const countBadge = document.getElementById("community-member-count-badge");
+    const countHeader = document.getElementById("community-real-member-count");
+    if (countBadge) countBadge.innerText = `${users.length} জন মেম্বার`;
+    if (countHeader) countHeader.innerText = `${users.length}`;
+
+    const listContainer = document.getElementById("community-real-members-list");
+    if (!listContainer) return;
+
+    if (users.length === 0) {
+      listContainer.innerHTML = `<p class="text-xs text-slate-500 font-mono text-center py-4">কোনো রিয়েল মেম্বার পাওয়া যায়নি।</p>`;
+      return;
+    }
+
+    listContainer.innerHTML = users.map((u: any) => {
+      const initial = (u.username || "U").charAt(0).toUpperCase();
+      const isAdmin = u.role === "admin";
+      const isAgent = u.role === "agent";
+      const roleLabel = isAdmin ? "ADMIN" : (isAgent ? "AGENT" : "PLAYER");
+      const roleBg = isAdmin ? "bg-amber-950 text-amber-300 border-amber-500/30" : (isAgent ? "bg-cyan-950 text-cyan-300 border-cyan-500/30" : "bg-slate-800 text-slate-300 border-slate-700");
+
+      return `
+        <div onclick="if(window.app){window.app.openMemberProfile('${u.username}');}" class="bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-3 rounded-2xl flex items-center justify-between cursor-pointer transition shadow-sm">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-md">
+              ${u.photo ? `<img src="${u.photo}" class="w-full h-full object-cover rounded-full" />` : initial}
+            </div>
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs font-bold text-white hover:underline">@${u.username}</span>
+                <span class="px-1.5 py-0.5 rounded-full text-[8px] font-mono border ${roleBg}">${roleLabel}</span>
+              </div>
+              <p class="text-[10px] text-slate-400">ব্যালেন্স: ৳${(Number(u.balance) || 0).toLocaleString()} • যোগদানের তারিখ: ${new Date(u.joinDate || Date.now()).toLocaleDateString()}</p>
+            </div>
+          </div>
+          <div class="text-slate-400 text-xs">
+            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  renderMemberProfile() {
+    const container = document.getElementById("member-profile-details-container");
+    if (!container) return;
+
+    const users = this.db.users || [];
+    const searchStr = typeof this.selectedMemberUsername === 'string' 
+      ? this.selectedMemberUsername.toLowerCase().replace(/^@/, '').trim() 
+      : String(this.selectedMemberUsername || "").toLowerCase().trim();
+
+    // 1. Check in registered DB users
+    let targetUser: any = users.find((u: any) => 
+      (u.username && u.username.toLowerCase() === searchStr) ||
+      (u.name && u.name.toLowerCase() === searchStr) ||
+      (u.id && u.id.toLowerCase() === searchStr)
+    );
+
+    // 2. Check in MiroFish AI Personas
+    if (!targetUser) {
+      const persona = MIROFISH_PERSONAS.find(p => 
+        p.username.toLowerCase() === searchStr || 
+        p.name.toLowerCase() === searchStr || 
+        p.id.toLowerCase() === searchStr
+      );
+      if (persona) {
+        targetUser = {
+          id: persona.id,
+          username: persona.username,
+          name: persona.name,
+          role: persona.role === 'Agent' ? 'agent' : (persona.role === 'VIP Member' ? 'vip' : (persona.role === 'Moderator' ? 'moderator' : 'player')),
+          balance: persona.balance,
+          totDeposit: persona.totalProfit + 15000,
+          wins: persona.totalWins,
+          ticketsCount: persona.ticketsCount,
+          totalProfit: persona.totalProfit,
+          photo: persona.avatar,
+          bio: persona.bio,
+          favoriteLottery: persona.favoriteLottery,
+          joinDate: "2026-01-15"
+        };
+      }
+    }
+
+    // 3. Check in MembersListManager
+    if (!targetUser && membersListManager && membersListManager.members) {
+      const mem = membersListManager.members.find(m => 
+        (m.username && m.username.toLowerCase() === searchStr) ||
+        (m.name && m.name.toLowerCase() === searchStr) ||
+        (m.id && m.id.toLowerCase() === searchStr)
+      );
+      if (mem) {
+        targetUser = {
+          id: mem.id,
+          username: mem.username || mem.name,
+          name: mem.name,
+          role: mem.role.toLowerCase(),
+          balance: Math.floor(mem.winAmount * 0.4),
+          totDeposit: Math.floor(mem.winAmount * 0.6),
+          wins: Math.floor(mem.ticketsCount / 3),
+          ticketsCount: mem.ticketsCount,
+          totalProfit: mem.winAmount,
+          photo: mem.avatar,
+          joinDate: mem.joinedDate
+        };
+      }
+    }
+
+    if (!targetUser) {
+      targetUser = this.currentUser;
+    }
+
+    if (!targetUser) {
+      container.innerHTML = `<p class="text-xs text-slate-400 text-center py-10 font-mono">মেম্বার প্রফাইল পাওয়া যায়নি।</p>`;
+      return;
+    }
+
+    const isAdmin = targetUser.role === "admin";
+    const isAgent = targetUser.role === "agent";
+    const isVip = targetUser.role === "vip" || targetUser.role === "VIP Member";
+    const roleLabel = isAdmin ? "অফিসিয়াল অ্যাডমিন (Admin)" : (isAgent ? "অনুমোদিত এজেন্ট (Agent)" : (isVip ? "ভিআইপি মেম্বার (VIP)" : "রেজিস্টার্ড প্লেয়ার (Player)"));
+    const initial = (targetUser.username || targetUser.name || "U").charAt(0).toUpperCase();
+    const profitVal = Number(targetUser.totalProfit) || (targetUser.wins ? targetUser.wins * 3500 : 0);
+
+    container.innerHTML = `
+      <div class="space-y-4">
+        <!-- Profile Card Header -->
+        <div class="bg-gradient-to-br from-slate-900 via-slate-950 to-blue-950/40 border border-blue-500/30 rounded-3xl p-6 text-center space-y-4 shadow-2xl relative overflow-hidden">
+          <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 text-white font-black text-2xl flex items-center justify-center mx-auto shadow-xl ring-4 ring-blue-500/20 overflow-hidden">
+            ${targetUser.photo ? `<img src="${targetUser.photo}" class="w-full h-full object-cover rounded-full" />` : initial}
+          </div>
+          <div class="space-y-1">
+            <h3 class="text-lg font-black text-white flex items-center justify-center gap-1.5">
+              <span>${targetUser.name ? targetUser.name : `@${targetUser.username}`}</span>
+              ${isAgent || isAdmin || isVip ? '<i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>' : ''}
+            </h3>
+            <p class="text-xs text-slate-400 font-mono">@${targetUser.username}</p>
+            <span class="inline-block px-3 py-1 ${isAdmin ? 'bg-amber-950 text-amber-300 border-amber-500/30' : (isAgent ? 'bg-cyan-950 text-cyan-300 border-cyan-500/30' : (isVip ? 'bg-purple-950 text-purple-300 border-purple-500/30' : 'bg-blue-950 text-blue-300 border-blue-500/30'))} border rounded-full text-[10px] font-mono font-bold">${roleLabel}</span>
+          </div>
+          ${targetUser.bio ? `<p class="text-xs text-slate-300 bg-slate-900/80 border border-slate-800 p-2.5 rounded-xl max-w-sm mx-auto leading-relaxed italic">"${targetUser.bio}"</p>` : ''}
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] text-slate-500 font-mono block">মোট লটারি প্রফিট (Profit)</span>
+            <strong class="text-sm text-emerald-400 font-mono font-black">৳${profitVal.toLocaleString()}</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] text-slate-500 font-mono block">মোট জয় (Wins)</span>
+            <strong class="text-sm text-amber-400 font-mono font-black">${targetUser.wins || targetUser.totalWins || 0} টি</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] text-slate-500 font-mono block">কেনা টিকেট (Tickets)</span>
+            <strong class="text-sm text-cyan-400 font-mono font-black">${targetUser.ticketsCount || Math.floor((targetUser.wins || 5) * 3)} টি</strong>
+          </div>
+          <div class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-1">
+            <span class="text-[10px] text-slate-500 font-mono block">বর্তমান ব্যালেন্স</span>
+            <strong class="text-sm text-white font-mono font-black">৳${(Number(targetUser.balance) || 0).toLocaleString()}</strong>
+          </div>
+        </div>
+
+        <!-- Action Mention in Group Chat Button -->
+        <button type="button" onclick="if(window.app){window.app.mentionInGroupChat('${targetUser.username}');}" class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-2xl transition cursor-pointer shadow-lg flex items-center justify-center gap-2">
+          <i class="fa-solid fa-comment-dots text-sm"></i> @${targetUser.username} কে গ্রুপ চ্যাটে মেনশন করুন
+        </button>
+
+        <!-- Action Back Button -->
+        <button type="button" onclick="if(window.app){window.app.openGroupChat();}" class="w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 font-bold text-xs py-3 rounded-2xl transition cursor-pointer flex items-center justify-center gap-2">
+          <i class="fa-solid fa-arrow-left text-xs"></i> গ্রুপ চ্যাটে ফিরে যান
+        </button>
+      </div>
+    `;
+  }
+
+  closeCommunityPage() {
+    this.currentTab = "group-chat";
+    this.render();
+  }
+
+  toggleGroupPlusMenu(e: Event) {
+    e.stopPropagation();
+    const plusMenu = document.getElementById("group-chat-plus-menu");
+    const dropdownMenu = document.getElementById("group-chat-dropdown-menu");
+    if (dropdownMenu) dropdownMenu.classList.add("hidden");
+    if (plusMenu) {
+      plusMenu.classList.toggle("hidden");
+    }
+  }
+
+  triggerGroupAttachment(type: string) {
+    const plusMenu = document.getElementById("group-chat-plus-menu");
+    if (plusMenu) plusMenu.classList.add("hidden");
+    const fileInput = document.getElementById("group-chat-file-input") as HTMLInputElement | null;
+    if (fileInput) fileInput.click();
+  }
+
+  openGroupPollCreator() {
+    const plusMenu = document.getElementById("group-chat-plus-menu");
+    if (plusMenu) plusMenu.classList.add("hidden");
+    this.showToast("📊 পোল ক্রিয়েটর: আজকের লটারি উইনার নিয়ে নতুন পোল চালু করা হয়েছে!", "success");
+  }
+
+  openMessageActionModal(msgId: string) {
+    const modalId = "msg-action-modal-" + msgId;
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = modalId;
+      modal.className = "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in";
+      modal.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-5 shadow-2xl space-y-3 text-slate-200">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-800">
+            <h4 class="text-xs font-bold text-white uppercase tracking-wider">মেসেজ অপশন (Messenger)</h4>
+            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">
+              <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+          </div>
+          <div class="space-y-1.5 text-xs">
+            <button type="button" onclick="if(window.app){window.app.likeGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-pink-400">
+              <i class="fa-solid fa-heart w-4"></i>
+              <span>লাইক দিন (Like 👍)</span>
+            </button>
+            <button type="button" onclick="if(window.app){window.app.replyGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-blue-400">
+              <i class="fa-solid fa-reply w-4"></i>
+              <span>রিপ্লাই দিন (Reply 💬)</span>
+            </button>
+            <button type="button" onclick="if(window.app){window.app.reportGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-amber-400">
+              <i class="fa-solid fa-triangle-exclamation w-4"></i>
+              <span>রিপোর্ট করুন (Report ⚠️)</span>
+            </button>
+            <button type="button" onclick="if(window.app){window.app.deleteGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-rose-950/40 hover:bg-rose-900/40 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-rose-400">
+              <i class="fa-solid fa-trash w-4"></i>
+              <span>ডিলিট করুন (Delete 🗑️)</span>
+            </button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+  }
+
+  likeGroupMessage(msgId: string) {
+    if (!this.db.groupChats) return;
+    const msg = this.db.groupChats.find(c => c && c.id === msgId);
+    if (!msg) return;
+    if (!msg.reactions) {
+      msg.reactions = [];
+    }
+    const username = this.currentUser?.username || "guest";
+    const existingIndex = msg.reactions.findIndex((r: any) => r.user === username);
+    if (existingIndex >= 0) {
+      msg.reactions.splice(existingIndex, 1);
+      this.showToast("❤️ লাভ রিয়েকশন উঠিয়ে নেওয়া হয়েছে।", "info");
+    } else {
+      msg.reactions.push({ emoji: '❤️', user: username });
+      this.showToast("❤️ মেসেজে লাভ রিয়েকশন দেওয়া হয়েছে!", "success");
+    }
+    this.saveDB(true);
+    this.renderGroupChat();
+  }
+
+  replyGroupMessage(msgId: string) {
+    if (!this.db.groupChats) return;
+    const msg = this.db.groupChats.find(c => c && c.id === msgId);
+    if (!msg) return;
+    this.groupReplyingTo = {
+      id: msg.id,
+      sender: msg.sender,
+      message: msg.message || (msg.attachmentName ? `[Image: ${msg.attachmentName}]` : '[Media]')
+    };
+    const preview = document.getElementById("group-chat-reply-preview");
+    const senderEl = document.getElementById("group-chat-reply-sender");
+    const textEl = document.getElementById("group-chat-reply-text");
+    if (senderEl) senderEl.innerText = `@${msg.sender}`;
+    if (textEl) textEl.innerText = this.groupReplyingTo.message;
+    if (preview) preview.classList.remove("hidden");
+    const input = document.getElementById("group-chat-input") as HTMLInputElement | null;
+    if (input) input.focus();
+    this.showToast("💬 রিপ্লাই মোড এক্টিভ।", "info");
+  }
+
+  cancelGroupReply() {
+    this.groupReplyingTo = null;
+    const preview = document.getElementById("group-chat-reply-preview");
+    if (preview) preview.classList.add("hidden");
+  }
+
+  reportGroupMessage(msgId: string) {
+    this.showToast("⚠️ মেসেজটি অ্যাডমিনের কাছে রিপোর্ট করা হয়েছে।", "warning");
+  }
+
+  deleteGroupMessage(msgId: string) {
+    if (!this.db.groupChats) return;
+    this.db.groupChats = this.db.groupChats.filter(c => c && c.id !== msgId);
+    this.saveDB(true);
+    this.renderGroupChat();
+    this.showToast("🗑️ বার্তা সফলভাবে মুছে ফেলা হয়েছে।", "success");
+  }
+
+
+
+  setupGroupChatListeners() {
+    setTimeout(() => {
+      const form = document.getElementById("group-chat-form");
+      const input = document.getElementById("group-chat-input") as HTMLInputElement | null;
+      const fileInput = document.getElementById("group-chat-file-input") as HTMLInputElement | null;
+      const attachBtn = document.getElementById("group-chat-attach-btn");
+      const removeAttach = document.getElementById("group-chat-attachment-remove");
+      const previewBox = document.getElementById("group-chat-attachment-preview");
+      const previewName = document.getElementById("group-chat-attachment-name");
+
+      if (input && !input.dataset.typingListener) {
+        input.dataset.typingListener = "true";
+        let typingTimer: any = null;
+        const typingIndicator = document.getElementById("group-chat-typing-indicator");
+        const typingText = document.getElementById("group-typing-text");
+
+        input.addEventListener("input", () => {
+          if (typingIndicator) typingIndicator.classList.remove("hidden");
+          if (typingText) {
+            const username = this.currentUser ? this.currentUser.username : "কেউ একজন";
+            typingText.innerText = `@${username} টাইপ করছেন...`;
+          }
+
+          if (typingTimer) clearTimeout(typingTimer);
+          typingTimer = setTimeout(() => {
+            if (typingIndicator) typingIndicator.classList.add("hidden");
+          }, 3000);
+        });
+
+        input.addEventListener("focus", () => {
+          if (typingIndicator) typingIndicator.classList.remove("hidden");
+          if (typingText) {
+            const username = this.currentUser ? this.currentUser.username : "কেউ একজন";
+            typingText.innerText = `@${username} চ্যাট বক্সে আছেন...`;
+          }
+        });
+
+        input.addEventListener("blur", () => {
+          if (typingIndicator) typingIndicator.classList.add("hidden");
+        });
+      }
+
+      if (attachBtn && fileInput) {
+        attachBtn.onclick = () => fileInput.click();
+        fileInput.onchange = (e: any) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            this.showToast("ফাইলের সাইজ ২MB এর বেশি হতে পারবে না।", "error");
+            return;
+          }
+          const reader = new FileReader();
+          reader.onload = (evt) => {
+            this.groupPendingAttachment = {
+              name: file.name,
+              url: evt.target?.result as string,
+              type: file.type
+            };
+            if (previewBox && previewName) {
+              previewName.innerText = file.name;
+              previewBox.classList.remove("hidden");
+            }
+          };
+          reader.readAsDataURL(file);
+        };
+      }
+
+      if (removeAttach) {
+        removeAttach.onclick = () => {
+          this.groupPendingAttachment = null;
+          if (previewBox) previewBox.classList.add("hidden");
+          if (fileInput) fileInput.value = "";
+        };
+      }
+
+      // Close dropdown on outside click
+      if (!window.groupMenuListenerAdded) {
+        window.groupMenuListenerAdded = true;
+        window.addEventListener("click", () => {
+          const menu = document.getElementById("group-chat-dropdown-menu");
+          if (menu && !menu.classList.contains("hidden")) {
+            menu.classList.add("hidden");
+          }
+        });
+      }
+
+      document.querySelectorAll(".group-quick-chip").forEach(btn => {
+        if (!btn.dataset.listenerAttached) {
+          btn.dataset.listenerAttached = "true";
+          btn.addEventListener("click", () => {
+            const msg = btn.getAttribute("data-msg");
+            if (input && msg) {
+              input.value = msg;
+              input.focus();
+            }
+          });
+        }
+      });
+
+      if (form && !form.dataset.listenerAttached) {
+        form.dataset.listenerAttached = "true";
+        form.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const text = input ? input.value.trim() : "";
+          if (!text && !this.groupPendingAttachment) return;
+
+          // 5-second per message cooldown rule
+          const now = Date.now();
+          const diff = now - this.lastGroupMsgTimestamp;
+          if (diff < 5000) {
+            const remaining = Math.ceil((5000 - diff) / 1000);
+            this.showToast(`দয়া করে ${remaining} সেকেন্ড অপেক্ষা করুন (৫ সেকেন্ডে ১টি বার্তা)।`, "warning");
+            const banner = document.getElementById("group-cooldown-banner");
+            if (banner) {
+              banner.classList.remove("hidden");
+              setTimeout(() => banner.classList.add("hidden"), 3000);
+            }
+            return;
+          }
+
+          this.lastGroupMsgTimestamp = now;
+          if (input) input.value = "";
+
+          if (!this.db.groupChats) this.db.groupChats = [];
+          this.db.groupChats.push({
+            id: "gchat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+            sender: this.currentUser ? this.currentUser.username : "guest",
+            senderRole: this.currentUser?.role || "user",
+            message: text,
+            replyTo: this.groupReplyingTo ? { ...this.groupReplyingTo } : null,
+            attachmentUrl: this.groupPendingAttachment ? this.groupPendingAttachment.url : null,
+            attachmentName: this.groupPendingAttachment ? this.groupPendingAttachment.name : null,
+            timestamp: new Date().toISOString()
+          });
+
+          this.groupPendingAttachment = null;
+          this.cancelGroupReply();
+          if (previewBox) previewBox.classList.add("hidden");
+          if (fileInput) fileInput.value = "";
+
+          this.saveDB(true);
+          this.renderGroupChat();
+          this.showToast("বার্তা সফলভাবে গ্রুপে পাঠানো হয়েছে! ✓", "success");
+
+          // Trigger MiroFish Multi-Agent simulation reply
+          if (this.mirofishSimulation) {
+            this.mirofishSimulation.handleUserMessage(text, this.currentUser ? this.currentUser.username : "guest");
+          }
+        });
+      }
+
+      this.renderGroupChat();
+    }, 50);
+  }
+
+  insertGroupEmoji(emoji: string) {
+    const input = document.getElementById("group-chat-input") as HTMLInputElement | null;
+    if (input) {
+      input.value += emoji;
+      input.focus();
+    }
+  }
+
+  openGroupInfoModal() {
+    // Show Messenger group info modal
+    const modalId = "messenger-group-info-modal";
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+      modal = document.createElement("div");
+      modal.id = modalId;
+      modal.className = "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in";
+      modal.innerHTML = `
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5 text-slate-200">
+          <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
+                <i class="fa-solid fa-users"></i>
+              </div>
+              <div>
+                <h3 class="text-base font-bold text-white">Lucky Community Group</h3>
+                <p class="text-xs text-slate-400">অফিশিয়াল মেসেঞ্জার গ্রুপ</p>
+              </div>
+            </div>
+            <button type="button" onclick="document.getElementById('${modalId}').remove()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="space-y-3 text-xs">
+            <div onclick="if(window.app){window.app.openMembersList();}" class="bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-3.5 rounded-2xl space-y-2 cursor-pointer transition group">
+              <div class="flex justify-between text-slate-400">
+                <span>মোট মেম্বার (তালিকা দেখুন):</span>
+                <span class="text-white font-bold group-hover:text-blue-400 transition">৬২৪ জন <i class="fa-solid fa-chevron-right text-[10px] ml-1"></i></span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>অনলাইন মেম্বার (রিয়েলটাইম):</span>
+                <span class="text-emerald-400 font-bold flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  ${membersListManager.getOnlineCount()} জন
+                </span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>বার্তা পাঠানোর নিয়ম:</span>
+                <span class="text-amber-400 font-bold">প্রতি ৫ সেকেন্ডে ১টি</span>
+              </div>
+            </div>
+
+            <div class="bg-blue-950/40 border border-blue-500/30 p-3.5 rounded-2xl space-y-1.5">
+              <h4 class="font-bold text-blue-300 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved"></i> গ্রুপের নিয়মাবলী
+              </h4>
+              <p class="text-[11px] text-slate-300 leading-relaxed">
+                ১. সবাই একে অপরের প্রতি শ্রদ্ধাশীল থাকুন。<br>
+                ২. লটারি ড্র এবং পেমেন্ট সংক্রান্ত যেকোনো সহায়তায় অ্যাডমিনদের সাথে যোগাযোগ করুন。<br>
+                ৩. স্প্যাম বা ডুপ্লিকেট মেসেজ থেকে বিরত থাকুন।
+              </p>
+            </div>
+          </div>
+
+          <button type="button" onclick="document.getElementById('${modalId}').remove()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-xs">
+            ঠিক আছে
+          </button>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+  }
+
+  openMembersList() {
+    const modal = document.getElementById("messenger-group-info-modal");
+    if (modal) modal.remove();
+
+    this.currentTab = "members-list";
+    this.render();
+    membersListManager.startRealtimeFluctuation();
+
+    setTimeout(() => {
+      membersListManager.renderMembersScreen("");
+      const searchInput = document.getElementById("member-search-input") as HTMLInputElement | null;
+      if (searchInput) {
+        searchInput.oninput = (e) => {
+          const val = (e.target as HTMLInputElement).value;
+          membersListManager.renderMembersScreen(val);
+        };
+      }
+    }, 50);
+  }
+
+  toggleGroupMenu(e: Event) {
+    e.stopPropagation();
+    const menu = document.getElementById("group-chat-dropdown-menu");
+    if (menu) {
+      menu.classList.toggle("hidden");
+    }
+  }
+
+  refreshGroupChat() {
+    this.renderGroupChat();
+    this.showToast("গ্রুপ চ্যাট রিফ্রেশ করা হয়েছে।", "success");
+    const menu = document.getElementById("group-chat-dropdown-menu");
+    if (menu) menu.classList.add("hidden");
+  }
+
+  openGroupSettings() {
+    const menu = document.getElementById("group-chat-dropdown-menu");
+    if (menu) menu.classList.add("hidden");
+    this.showToast("গ্রুপ সেটিংস: সমস্ত নোটিফিকেশন অন আছে।", "info");
+    this.openGroupInfoModal();
+  }
+
+  openGroupProfile() {
+    const menu = document.getElementById("group-chat-dropdown-menu");
+    if (menu) menu.classList.add("hidden");
+    if (this.currentUser) {
+      this.showToast(`প্রোফাইল: @${this.currentUser.username} (${this.currentUser.role})`, "info");
+    } else {
+      this.showToast("অনুগ্রহ করে প্রথমে লগইন করুন।", "warning");
+    }
+  }
+
+  renderGroupChat() {
+    const container = document.getElementById("group-chat-messages-container");
+    if (!container) return;
+
+    if (!this.db.groupChats) {
+      this.db.groupChats = [];
+    }
+
+    const chats = this.db.groupChats.filter(c => !!c);
+
+    if (chats.length === 0) {
+      container.innerHTML = `
+        <div class="text-center py-16 space-y-3">
+          <div class="w-14 h-14 bg-blue-950/40 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto text-blue-400 text-xl animate-pulse">
+            <i class="fa-solid fa-comments"></i>
+          </div>
+          <h3 class="text-xs font-bold text-white">কোনো বার্তা পাওয়া যায়নি</h3>
+          <p class="text-[10px] text-slate-400 max-w-xs mx-auto">
+            মেসেঞ্জার গ্রুপে প্রথম বার্তাটি পাঠিয়ে কথোপকথন শুরু করুন!
+          </p>
+        </div>
+      `;
+      return;
+    }
+
+    const currentName = this.currentUser?.username || "guest";
+    container.innerHTML = chats.map(c => {
+      const isMe = c.sender === currentName;
+      const isAdmin = c.senderRole === "admin" || c.sender === "admin";
+      const isVip = c.senderRole === "vip";
+      const isAgent = c.senderRole === "agent";
+      const persona = MIROFISH_PERSONAS.find(p => p.username === c.sender);
+      const timeStr = new Date(c.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const initial = (c.sender || "U").charAt(0).toUpperCase();
+
+      return `
+        <div class="group-msg-row flex items-end gap-2 sm:gap-2.5 ${isMe ? 'flex-row-reverse group-msg-me' : 'flex-row group-msg-other'} my-2 sm:my-2.5 max-w-full">
+          ${!isMe ? `
+            <div onclick="if(window.app){window.app.openMemberProfile('${c.sender}');}" title="প্রোফাইল দেখুন" class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-md ring-2 ring-blue-500/20 cursor-pointer overflow-hidden hover:scale-105 transition">
+              ${persona ? `<img src="${persona.avatar}" alt="${persona.name}" class="w-full h-full object-cover" />` : initial}
+            </div>
+          ` : ''}
+
+          <div class="group-msg-container flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[86%] sm:max-w-[80%] min-w-0 space-y-1">
+            <div class="flex items-center gap-1 sm:gap-1.5 px-1 text-[10px] text-slate-400 flex-wrap max-w-full">
+              <span onclick="if(window.app){window.app.openMemberProfile('${c.sender}');}" class="font-bold cursor-pointer hover:underline truncate max-w-[120px] sm:max-w-none ${isAdmin ? 'text-amber-400' : (isVip ? 'text-purple-300' : (isAgent ? 'text-cyan-300' : 'text-slate-300'))}">@${c.sender}</span>
+              ${isAdmin ? '<span class="bg-amber-950/80 text-amber-300 border border-amber-500/30 px-1.5 rounded-full text-[8px] font-mono shrink-0">ADMIN</span>' : ''}
+              ${isVip ? '<span class="bg-purple-950/80 text-purple-300 border border-purple-500/30 px-1.5 rounded-full text-[8px] font-mono shrink-0">VIP</span>' : ''}
+              ${isAgent ? '<span class="bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 px-1.5 rounded-full text-[8px] font-mono shrink-0">AGENT</span>' : ''}
+              ${persona ? `<span class="bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 px-1.5 rounded-full text-[8px] font-mono font-bold shrink-0">৳${persona.totalProfit.toLocaleString()} লাভ</span>` : ''}
+              <span class="text-[9px] text-slate-500 shrink-0">${timeStr}</span>
+            </div>
+
+            <div onclick="if(window.app){window.app.openMessageActionModal('${c.id}');}" title="মেসেজ অপশন (Like, Reply, Report, Delete)" class="group-msg-bubble relative px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-sans shadow-lg cursor-pointer transition hover:opacity-95 text-left break-words [overflow-wrap:anywhere] max-w-full ${isMe ? 'bg-[#0084ff] text-white rounded-2xl rounded-br-xs' : 'bg-[#2b3548] text-slate-100 rounded-2xl rounded-bl-xs'}" style="word-break: break-word; overflow-wrap: break-word;">
+              ${c.replyTo ? `
+                <div class="bg-black/30 border-l-2 border-blue-400 pl-2 py-0.5 mb-1.5 rounded-r-lg text-[10px] opacity-95 max-w-full truncate break-words" style="word-break: break-word; overflow-wrap: break-word;">
+                  <span class="font-bold text-blue-300">@${c.replyTo.sender}</span>: ${this.escapeHTML(c.replyTo.message)}
+                </div>
+              ` : ''}
+              ${c.message ? `<p class="whitespace-pre-wrap leading-relaxed break-words [overflow-wrap:anywhere]" style="word-break: break-word; overflow-wrap: break-word;">${this.escapeHTML(c.message)}</p>` : ''}
+              ${c.attachmentUrl ? `
+                <div class="mt-2 rounded-xl overflow-hidden border border-white/20 bg-slate-950 max-w-full">
+                  <a href="${c.attachmentUrl}" target="_blank">
+                    <img src="${c.attachmentUrl}" alt="Attachment" class="max-h-48 w-full object-cover hover:scale-102 transition" />
+                  </a>
+                </div>
+              ` : ''}
+              ${c.reactions && c.reactions.length > 0 ? `
+                <div class="absolute -bottom-2.5 ${isMe ? '-left-2' : '-right-2'} bg-slate-900 border border-slate-700/80 rounded-full px-2 py-0.5 text-[10px] flex items-center gap-1 shadow-md text-slate-200 z-10">
+                  <span>❤️</span>
+                  <span class="font-bold">${c.reactions.length}</span>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    container.scrollTop = container.scrollHeight;
   }
 
   // ================= AGENT LIVE CHAT SYSTEM =================
@@ -2044,8 +2884,53 @@ export class StateManager {
     }
 
     if (navigator.vibrate) {
-      navigator.vibrate(100);
+      navigator.vibrate([100, 50, 100]);
     }
+
+    // GSAP Ticket Purchase Success Animation & Lottery-Themed Confetti Burst
+    import("gsap").then(gsapModule => {
+      const gsap = gsapModule.default || gsapModule.gsap;
+      import("canvas-confetti").then(confettiModule => {
+        const confetti = confettiModule.default;
+
+        // 1. Trigger realistic luxury lottery confetti burst
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: ['#fbbf24', '#f59e0b', '#10b981', '#ef4444', '#6366f1']
+          });
+          setTimeout(() => {
+            confetti({
+              particleCount: 50,
+              angle: 60,
+              spread: 55,
+              origin: { x: 0, y: 0.7 },
+              colors: ['#fbbf24', '#10b981', '#3b82f6']
+            });
+            confetti({
+              particleCount: 50,
+              angle: 120,
+              spread: 55,
+              origin: { x: 1, y: 0.7 },
+              colors: ['#ef4444', '#f59e0b', '#a855f7']
+            });
+          }, 250);
+        } catch (e) {
+          console.error("Confetti error:", e);
+        }
+
+        // 2. Animate active screen container or modal with GSAP
+        const activeContainer = document.querySelector(".max-w-lg.mx-auto") || document.body;
+        if (activeContainer) {
+          gsap.fromTo(activeContainer, 
+            { scale: 0.97, opacity: 0.8 }, 
+            { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.7)" }
+          );
+        }
+      });
+    });
 
     // Clear Cart Abandonment states on successful ticket checkout
     localStorage.removeItem("cart_abandoned_status");
@@ -4081,13 +4966,13 @@ export class StateManager {
       drawTimeDate = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
 
-    let defaultsDesc = desc;
+    let defaultsDesc = (desc && desc !== "undefined" && desc !== "null" && typeof desc === "string" && desc.trim() !== "") ? desc.trim() : "";
     if (!defaultsDesc) {
       if (multiWinnerPrizes && multiWinnerPrizes.length > 0) {
         const totalAward = multiWinnerPrizes.reduce((sum, p) => sum + p, 0);
         defaultsDesc = `Multiple Rank Winners Draw event! A total cash pool of ৳${totalAward} is distributed among top ${multiWinnerPrizes.length} lucky ticket holders! Rank prizes: ${multiWinnerPrizes.map((p, i) => `#${i+1} gets ৳${p}`).join(", ")}.`;
       } else {
-        defaultsDesc = `Exclusive ${safeFee} Taka lottery draw pool. The lucky winner receives ৳${safePrize}!`;
+        defaultsDesc = `Exclusive ৳${safeFee} lottery draw pool. The lucky winner receives ৳${safePrize}!`;
       }
     }
 
@@ -4095,6 +4980,7 @@ export class StateManager {
       id: "l" + Date.now(),
       name: name || "Special Lottery Pool",
       details: defaultsDesc,
+      description: defaultsDesc,
       entryFee: safeFee,
       totalTickets: safeTotal,
       soldTickets: 0,
@@ -4159,7 +5045,12 @@ export class StateManager {
 
     setTxt("detail-lot-category", lot.category || "Lottery Pool");
     setTxt("detail-lot-name", lot.name || "Draw Pool");
-    setTxt("detail-lot-desc", lot.details || "Experience live high-payout draws.");
+    const cleanModalDesc = (lot.details && lot.details !== "undefined" && lot.details !== "null" && String(lot.details).trim() !== "")
+      ? String(lot.details).trim()
+      : (lot.description && lot.description !== "undefined" && lot.description !== "null" && String(lot.description).trim() !== "")
+        ? String(lot.description).trim()
+        : `Exclusive ৳${lot.entryFee || 10} lottery draw pool. The lucky winner receives ৳${(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}!`;
+    setTxt("detail-lot-desc", cleanModalDesc);
     setTxt("detail-lot-fee", `৳${lot.entryFee || 0}`);
     setTxt("detail-lot-prize", `৳${(lot.prizeAmount || lot.prizePool || 0).toLocaleString()}`);
     setTxt("detail-lot-sales", `${lot.soldTickets || 0} / ${lot.totalTickets || 100}`);
@@ -4645,6 +5536,8 @@ function initApplicationLoader() {
   const app = new StateManager();
   window.appInstance = app; // expose global handler helper
   (window as any).app = app;
+  app.mirofishSimulation = new MirofishAgentSimulation(app);
+  app.mirofishSimulation.init();
   window.chatProfileHelper = new ChatProfileSystem(app);
   (window as any).AffiliateAgentSystem = AffiliateAgentSystem;
   (window as any).WalletExtensions = WalletExtensions;
@@ -6559,6 +7452,13 @@ function initApplicationLoader() {
       return;
     }
 
+    const blogBtn = e.target.closest("#home-blog-posts-btn");
+    if (blogBtn) {
+      e.preventDefault();
+      window.location.href = "blog.html";
+      return;
+    }
+
     const comingSoonBtn = e.target.closest("#home-coming-soon-2-btn");
     if (comingSoonBtn) {
       app.showToast("This feature is coming soon! Stay tuned! 🚀", "info");
@@ -7660,6 +8560,98 @@ function initApplicationLoader() {
       app.showToast("Quick Draw game configurations updated successfully.", "success");
       app.render();
     });
+  }
+
+  // -------------------------------------------------------------------------
+  // MIROFISH AI SETTINGS & PERSONA MANAGEMENT CONTROLS
+  // -------------------------------------------------------------------------
+  const saveMirofishSettingsHandler = (e?: Event) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const enabledToggle = document.getElementById("sys-mirofish-enabled-toggle") as HTMLInputElement | null;
+    const chatToggle = document.getElementById("sys-mirofish-chat-toggle") as HTMLInputElement | null;
+
+    if (!app.db.settings) app.db.settings = {};
+    app.db.settings.mirofishEnabled = enabledToggle ? enabledToggle.checked : true;
+    app.db.settings.mirofishChatEnabled = chatToggle ? chatToggle.checked : true;
+
+    app.saveDB();
+    app.showToast(
+      app.db.settings.mirofishEnabled
+        ? "🤖 MiroFish AI সক্রিয় ও কনফিগারেশন সেভ হয়েছে!"
+        : "⏸️ MiroFish AI সফলভাবে নিষ্ক্রিয় (Disabled) করা হয়েছে!",
+      "success"
+    );
+    return false;
+  };
+
+  (app as any).saveMirofishSettings = saveMirofishSettingsHandler;
+
+  const saveMirofishForm = document.getElementById("admin-settings-mirofish-form");
+  if (saveMirofishForm) {
+    saveMirofishForm.addEventListener("submit", saveMirofishSettingsHandler);
+  }
+  const saveMirofishBtn = document.getElementById("save-mirofish-settings-btn");
+  if (saveMirofishBtn) {
+    saveMirofishBtn.addEventListener("click", saveMirofishSettingsHandler);
+  }
+
+  const addMirofishMemberHandler = (e?: Event) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    const nameInput = document.getElementById("add-mf-name") as HTMLInputElement | null;
+    const usernameInput = document.getElementById("add-mf-username") as HTMLInputElement | null;
+    const roleSelect = document.getElementById("add-mf-role") as HTMLSelectElement | null;
+    const profitInput = document.getElementById("add-mf-profit") as HTMLInputElement | null;
+    const bioInput = document.getElementById("add-mf-bio") as HTMLInputElement | null;
+
+    const name = nameInput?.value.trim() || "";
+    let username = usernameInput?.value.trim() || "";
+    username = username.toLowerCase().replace(/[^a-z0-9_]/g, "");
+
+    if (!username) {
+      app.showToast("অনুগ্রহ করে একটি সঠিক ইউজারনেম দিন!", "error");
+      return false;
+    }
+
+    const role = (roleSelect?.value || "VIP Member") as any;
+    const profit = parseFloat(profitInput?.value || "15000") || 15000;
+    const bio = bioInput?.value.trim() || "লটারি এবং জ্যাকপট গেম লাভার। সবার জন্য শুভকামনা!";
+
+    if (app.mirofishSimulation) {
+      app.mirofishSimulation.addPersona({
+        name: name || username,
+        username,
+        role,
+        totalProfit: profit,
+        bio
+      });
+      app.showToast(`🎉 নতুন AI সদস্য @${username} সফলভাবে যুক্ত করা হয়েছে!`, "success");
+
+      if (nameInput) nameInput.value = "";
+      if (usernameInput) usernameInput.value = "";
+      if (profitInput) profitInput.value = "15000";
+      if (bioInput) bioInput.value = "";
+    } else {
+      app.showToast("MiroFish AI ইঞ্জিন সক্রিয় নয়!", "error");
+    }
+
+    return false;
+  };
+
+  (app as any).addMirofishMember = addMirofishMemberHandler;
+
+  const addMirofishMemberForm = document.getElementById("admin-add-mirofish-member-form");
+  if (addMirofishMemberForm) {
+    addMirofishMemberForm.addEventListener("submit", addMirofishMemberHandler);
+  }
+  const addMirofishMemberBtn = document.getElementById("add-mirofish-member-btn");
+  if (addMirofishMemberBtn) {
+    addMirofishMemberBtn.addEventListener("click", addMirofishMemberHandler);
   }
 
   const saveCheckinSponsorForm = document.getElementById("admin-settings-checkin-sponsor-form");

@@ -12,8 +12,9 @@
  */
 
 export class WalletExtensions {
-  static init(appInstance) {
+  static init(appInstance: any) {
     console.log("Wallet Extensions Module successfully initialized.");
+    (window as any).WalletExtensions = WalletExtensions;
 
     // Immediate sync on load
     setTimeout(() => {
@@ -160,34 +161,245 @@ export class WalletExtensions {
     });
 
     // Intercept withdrawal submissions to require PIN verification
-    const withdrawForm = document.getElementById("wallet-withdraw-form");
-    if (withdrawForm) {
-      withdrawForm.addEventListener("submit", (e) => {
-        const user = appInstance.currentUser;
-        if (!user) return;
-
-        if (user.pinLockEnabled && user.securityPin) {
-          const pinInput = document.getElementById("wallet-withdraw-pin-input");
-          const enteredPin = pinInput ? pinInput.value.trim() : "";
-
-          if (enteredPin !== user.securityPin) {
+    const bindWithdrawInterceptors = () => {
+      const forms = [
+        document.getElementById("wallet-withdraw-page-form"),
+        document.getElementById("wallet-withdraw-form")
+      ];
+      forms.forEach(form => {
+        if (form && !(form as any)._hasWalletExtListener) {
+          (form as any)._hasWalletExtListener = true;
+          form.addEventListener("submit", (e) => {
             e.preventDefault();
-            e.stopImmediatePropagation(); // Block further handlers
-            
-            // Highlight/Shake PIN field
-            if (pinInput) {
-              pinInput.classList.add("border-rose-500", "animate-shake");
-              setTimeout(() => pinInput.classList.remove("animate-shake"), 500);
-            }
-            appInstance.showToast("CRITICAL SECURITY ERROR: Invalid Withdrawal PIN code!", "error");
-            return false;
-          }
+            WalletExtensions.submitWithdrawalForm(e);
+          });
         }
-      }, { capture: true }); // Intercept early in capture phase
+      });
+    };
+    bindWithdrawInterceptors();
+    setTimeout(bindWithdrawInterceptors, 200);
+  }
+
+  static get24HLimitData(appInstance: any) {
+    const user = appInstance?.currentUser;
+    if (!user) {
+      return { used24h: 0, wdUsed24h: 0, depUsed24h: 0, dailyLimit: 100000, remaining: 100000, percentage: 0, level: 1 };
+    }
+
+    const now = Date.now();
+    const since24h = now - 24 * 60 * 60 * 1000;
+
+    // Filter withdrawals from the last 24 hours (approved or pending)
+    const recentWds = (appInstance.db?.withdrawals || []).filter((w: any) => {
+      if (!w || w.username !== user.username) return false;
+      if (w.status !== "approved" && w.status !== "pending") return false;
+      const t = new Date(w.date || 0).getTime();
+      return !isNaN(t) && t >= since24h;
+    });
+    const wdUsed24h = recentWds.reduce((sum: number, w: any) => sum + (Number(w.amount) || 0), 0);
+
+    // Filter deposits from the last 24 hours (approved)
+    const recentDeps = (appInstance.db?.deposits || []).filter((d: any) => {
+      if (!d || d.username !== user.username) return false;
+      if (d.status !== "approved") return false;
+      const t = new Date(d.date || 0).getTime();
+      return !isNaN(t) && t >= since24h;
+    });
+    const depUsed24h = recentDeps.reduce((sum: number, d: any) => sum + (Number(d.amount) || 0), 0);
+
+    const used24h = wdUsed24h;
+
+    const userLevel = Number(user.level) || 1;
+    const adminMaxSpend = Number(appInstance.db?.securityRules?.maxDailySpend) || 50000;
+    
+    // Tiered disbursement limit: Level 1: ৳100,000; Level 2: ৳150,000; Level 3: ৳250,000; Level 4+: ৳500,000
+    const tierAllowance = userLevel >= 4 ? 500000 : userLevel === 3 ? 250000 : userLevel === 2 ? 150000 : 100000;
+    const dailyLimit = Math.max(adminMaxSpend, tierAllowance);
+    const remaining = Math.max(0, dailyLimit - used24h);
+    const percentage = Math.min(100, Math.max(0, (used24h / dailyLimit) * 100));
+
+    return {
+      used24h,
+      wdUsed24h,
+      depUsed24h,
+      dailyLimit,
+      remaining,
+      percentage,
+      level: userLevel
+    };
+  }
+
+  static render24HLimit(appInstance: any) {
+    const data = WalletExtensions.get24HLimitData(appInstance);
+    
+    const limitText = document.getElementById("wallet-24h-limit-text");
+    if (limitText) {
+      limitText.innerText = `৳${data.used24h.toLocaleString()} / ৳${data.dailyLimit.toLocaleString()}`;
+    }
+
+    const limitBar = document.getElementById("wallet-24h-limit-bar");
+    if (limitBar) {
+      limitBar.style.width = `${data.percentage}%`;
+      if (data.percentage >= 90) {
+        limitBar.className = "bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-full transition-all duration-500";
+      } else if (data.percentage >= 60) {
+        limitBar.className = "bg-gradient-to-r from-amber-500 to-yellow-400 h-full rounded-full transition-all duration-500";
+      } else {
+        limitBar.className = "bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500";
+      }
+    }
+
+    const tierEl = document.getElementById("wallet-24h-limit-tier");
+    if (tierEl) {
+      tierEl.innerText = `Standard Tier (Level ${data.level})`;
+    }
+
+    const remainingEl = document.getElementById("wallet-24h-limit-remaining");
+    if (remainingEl) {
+      remainingEl.innerText = `৳${data.remaining.toLocaleString()} available`;
     }
   }
 
-  static render(appInstance) {
+  static renderWithdrawLimit(appInstance: any) {
+    const data = WalletExtensions.get24HLimitData(appInstance);
+
+    const remEl = document.getElementById("wd-24h-remaining-label");
+    if (remEl) {
+      remEl.innerText = `৳${data.remaining.toLocaleString()} available`;
+      if (data.remaining <= 0) {
+        remEl.className = "text-rose-400 font-black block";
+      } else if (data.percentage >= 75) {
+        remEl.className = "text-amber-400 font-black block";
+      } else {
+        remEl.className = "text-emerald-400 font-black block";
+      }
+    }
+
+    const usedEl = document.getElementById("wd-24h-used-subtext");
+    if (usedEl) {
+      usedEl.innerText = `৳${data.used24h.toLocaleString()} of ৳${data.dailyLimit.toLocaleString()} used in last 24h`;
+    }
+  }
+
+  static onWithdrawGatewayChange(gwValue: string) {
+    const wdRowDistrictAgents = document.getElementById("user-wd-row-district-agents");
+    if (wdRowDistrictAgents) {
+      if (gwValue === "Agent Withdraw") {
+        wdRowDistrictAgents.classList.remove("hidden");
+      } else {
+        wdRowDistrictAgents.classList.add("hidden");
+      }
+    }
+  }
+
+  static submitWithdrawalForm(e?: Event) {
+    if (e && e.preventDefault) e.preventDefault();
+    const appRef = (window as any).app || (window as any).appInstance;
+    if (!appRef || !appRef.currentUser) {
+      if (appRef?.showToast) appRef.showToast("Please log in first to request cashouts.", "error");
+      return;
+    }
+
+    const user = appRef.currentUser;
+    const amountInput = document.getElementById("wd-amount") as HTMLInputElement | null;
+    const gatewayInput = document.getElementById("wd-gateway") as HTMLSelectElement | null;
+    const accountInput = document.getElementById("wd-account") as HTMLInputElement | null;
+
+    const amountVal = parseFloat(amountInput?.value || "0");
+    const gateway = gatewayInput?.value || "bKash";
+    const targetVal = (accountInput?.value || "").trim();
+
+    const isMasterOn = appRef.db?.settings?.payMasterEnabled !== false && appRef.db?.settings?.payMasterEnabled !== 'false';
+    if (!gateway || !isMasterOn) {
+      appRef.showToast("All payout withdrawal channels are currently paused by the administrator.", "error");
+      return;
+    }
+
+    if (isNaN(amountVal) || amountVal < 100) {
+      appRef.showToast("Minimum withdrawal is ৳100.", "error");
+      return;
+    }
+
+    // Security PIN check
+    if (user.pinLockEnabled && user.securityPin) {
+      const pinInput = document.getElementById("wallet-withdraw-pin-input") as HTMLInputElement | null;
+      const enteredPin = pinInput ? pinInput.value.trim() : "";
+      if (enteredPin !== user.securityPin) {
+        if (pinInput) {
+          pinInput.classList.add("border-rose-500", "animate-shake");
+          setTimeout(() => pinInput.classList.remove("animate-shake"), 500);
+        }
+        appRef.showToast("CRITICAL SECURITY ERROR: Invalid Withdrawal PIN code!", "error");
+        return;
+      }
+    }
+
+    const settings = appRef.db?.settings || {};
+    const withdrawFeePct = (settings.withdrawFeePct !== undefined) ? parseFloat(settings.withdrawFeePct) : 2.0;
+    const feeAmount = (amountVal * withdrawFeePct) / 100;
+    const totalDebit = amountVal + feeAmount;
+
+    if (user.balance < totalDebit) {
+      appRef.showToast(`Insufficient balance! Payout of ৳${amountVal} + ৳${feeAmount.toFixed(1)} (${withdrawFeePct}% fee) requires ৳${totalDebit.toFixed(1)} Taka balance.`, "error");
+      return;
+    }
+
+    // --- ENFORCE 24-HOUR LIMIT ALLOWANCE ---
+    const limitData = WalletExtensions.get24HLimitData(appRef);
+    if (limitData.used24h + amountVal > limitData.dailyLimit) {
+      const remaining = Math.max(0, limitData.dailyLimit - limitData.used24h);
+      appRef.showToast(`🚫 24-Hour Limit Reached! You have used ৳${limitData.used24h.toLocaleString()} of your ৳${limitData.dailyLimit.toLocaleString()} daily quota. Available 24h allowance: ৳${remaining.toLocaleString()}.`, "error");
+      return;
+    }
+
+    if (targetVal.length < 8) {
+      appRef.showToast("Please enter a valid cash transfer recipient account or number.", "error");
+      return;
+    }
+
+    // Deduct user balance
+    user.balance -= totalDebit;
+    if (user.profit !== undefined) user.profit -= totalDebit;
+
+    const newWd = {
+      id: "w" + Date.now(),
+      username: user.username,
+      amount: amountVal,
+      fee: feeAmount,
+      totalDebit: totalDebit,
+      method: gateway,
+      targetAccount: targetVal,
+      status: "pending",
+      date: new Date().toISOString()
+    };
+
+    if (!appRef.db.withdrawals) appRef.db.withdrawals = [];
+    appRef.db.withdrawals.unshift(newWd);
+    appRef.saveDB();
+
+    if (!navigator.onLine && appRef.offlineQueue) {
+      appRef.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
+        withdrawal: newWd
+      });
+    }
+
+    appRef.showToast(`Payout request of ৳${amountVal} submitted successfully! 24H limit allowance updated.`, "success");
+    
+    // Refresh 24H limit UI
+    WalletExtensions.render24HLimit(appRef);
+    WalletExtensions.renderWithdrawLimit(appRef);
+
+    // Reset inputs
+    if (amountInput) amountInput.value = "";
+    if (accountInput) accountInput.value = "";
+    const pinInput = document.getElementById("wallet-withdraw-pin-input") as HTMLInputElement | null;
+    if (pinInput) pinInput.value = "";
+
+    appRef.currentTab = "history";
+    appRef.render();
+  }
+
+  static render(appInstance: any) {
     const user = appInstance.currentUser;
     if (!user) return;
 
@@ -197,6 +409,10 @@ export class WalletExtensions {
 
     // Sync deposit gateways with admin settings
     WalletExtensions.syncDepositGatewaysWithAdminSettings(appInstance);
+
+    // 24H Limit Renders
+    WalletExtensions.render24HLimit(appInstance);
+    WalletExtensions.renderWithdrawLimit(appInstance);
 
     // Run sub-renders
     WalletExtensions.renderDashboardExtensions(appInstance);

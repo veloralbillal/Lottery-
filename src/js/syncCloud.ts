@@ -750,6 +750,14 @@ export const SyncCloudModule = {
       l.drawDuration = parseInt(l.drawDuration) || 10;
       if (!l.status) l.status = "active";
       if (!l.drawMode) l.drawMode = "manual";
+      if (!l.details || l.details === "undefined" || l.details === "null" || (typeof l.details === "string" && l.details.trim() === "")) {
+        l.details = (l.description && l.description !== "undefined" && l.description !== "null" && String(l.description).trim() !== "")
+          ? String(l.description).trim()
+          : `Exclusive ৳${l.entryFee || 10} lottery draw pool. The lucky winner receives ৳${(l.prizeAmount || l.prizePool || 0).toLocaleString()}!`;
+      }
+      if (!l.description || l.description === "undefined" || l.description === "null") {
+        l.description = l.details;
+      }
       if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
         try { l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes); } catch { l.multiWinnerPrizes = null; }
       }

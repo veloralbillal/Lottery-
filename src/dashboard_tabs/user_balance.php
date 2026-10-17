@@ -38,19 +38,26 @@
   </div>
 
   <!-- 24H Transaction Limit Allowance -->
-  <div class="flex flex-col rounded-2xl bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-4 shadow-sm space-y-3">
+  <div class="flex flex-col rounded-2xl bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-4 shadow-sm space-y-3" id="wallet-24h-limit-card">
     <div class="flex items-center justify-between">
       <h2 class="text-xs font-bold uppercase text-white font-mono flex items-center gap-1.5">
         <i class="fa-solid fa-gauge-high text-emerald-400 text-xs"></i>
         <span>24H Limit Allowance</span>
       </h2>
-      <span class="text-xs text-emerald-400 font-mono font-bold">৳0 / ৳100,000</span>
+      <span id="wallet-24h-limit-text" class="text-xs text-emerald-400 font-mono font-bold">৳0 / ৳100,000</span>
     </div>
     <div class="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden border border-slate-800">
-      <div class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full w-[0%] rounded-full transition-all"></div>
+      <div id="wallet-24h-limit-bar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
     </div>
-    <p class="text-[10px] text-slate-400 font-sans leading-relaxed">Standard Tier (Level 1). Complete additional lottery draws to increase your daily disbursement quota.</p>
+    <div class="flex items-center justify-between text-[10px] text-slate-400 font-sans">
+      <span id="wallet-24h-limit-tier">Standard Tier (Level 1)</span>
+      <span id="wallet-24h-limit-remaining" class="text-emerald-400 font-mono font-bold">৳100,000 available</span>
+    </div>
+    <p class="text-[9.5px] text-slate-500 font-sans leading-relaxed">Rolling 24-hour disbursement & transaction allowance. Complete additional lottery draws to level up and expand your quota.</p>
   </div>
+
+  <!-- Wallet Extensions Dashboard Placeholder (Savings Vault, Analytics) -->
+  <div id="wallet-extensions-dashboard-placeholder" class="space-y-3"></div>
 
   <!-- Quick Transaction History Entry -->
   <div class="flex items-center justify-between p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800/80 cursor-pointer hover:border-slate-700 transition" onclick="if(window.app){window.app.currentTab='history'; window.app.render();}">

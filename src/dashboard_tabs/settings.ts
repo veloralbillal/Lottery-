@@ -278,6 +278,13 @@ export class SettingsTab {
         appInstance.showToast(`Sound Effects ${e.target.checked ? "enabled" : "disabled"}`, "info");
       }
 
+      // 3D Live Draw Animation Toggle
+      if (e.target.id === "settings-toggle-3d-draw") {
+        appInstance.currentUser.enable3dDraw = e.target.checked;
+        appInstance.saveDB();
+        appInstance.showToast(`লটারি ৩ডি লাইভ ড্র ${e.target.checked ? "সক্রিয় (Enabled)" : "নিষ্ক্রিয় (Disabled)"}`, "info");
+      }
+
       // Node Switcher
       if (e.target.id === "settings-select-node") {
         appInstance.currentUser.preferredNode = e.target.value;
@@ -458,6 +465,9 @@ export class SettingsTab {
 
     const toggleSound = document.getElementById("settings-toggle-sound");
     if (toggleSound) toggleSound.checked = user.soundEnabled !== false;
+
+    const toggle3D = document.getElementById("settings-toggle-3d-draw") as HTMLInputElement;
+    if (toggle3D) toggle3D.checked = user.enable3dDraw !== false;
 
     // 5. API Token
     const apiTokenInput = document.getElementById("settings-api-token");

@@ -242,6 +242,17 @@
               <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-purple-500"></div>
             </label>
           </div>
+
+          <div class="flex items-center justify-between p-2.5 bg-slate-950 rounded-xl border border-slate-850">
+            <div>
+              <span class="text-slate-300 text-[11px] block font-bold">লটারি ৩০-সেকেন্ড ৩ডি লাইভ ড্র (Full Screen)</span>
+              <span class="text-slate-500 text-[8.5px] block">কাউন্টডাউন ৩০ সেকেন্ড বাকি থাকলে স্বয়ংক্রিয় ফুলস্ক্রিন ৩ডি ড্র প্রদর্শন</span>
+            </div>
+            <label class="relative inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="settings-toggle-3d-draw" class="sr-only peer" checked />
+              <div class="w-8 h-4 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-amber-500"></div>
+            </label>
+          </div>
         </div>
       </div>
     </div>

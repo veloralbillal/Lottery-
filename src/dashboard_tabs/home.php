@@ -168,13 +168,46 @@
       <span class="text-[7px] text-rose-400 font-mono font-bold mt-0.5 bg-rose-950/60 px-1.5 py-0.2 rounded border border-rose-500/20">Control</span>
     </button>
 
-    <!-- Coming Soon 2 -->
-    <button id="home-coming-soon-2-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#0e1220] to-[#080a14] border border-slate-800/60 p-2 sm:p-2.5 rounded-2xl opacity-60 text-center group transition active:scale-95 shadow-md">
-      <div class="w-8 h-8 rounded-full bg-slate-900 border border-slate-700/60 text-slate-400 flex items-center justify-center mb-1.5">
-        <i class="fa-solid fa-dice text-[10px]"></i>
+    <!-- Group Chat / Group Add Button -->
+    <button id="home-group-chat-btn" onclick="if(window.app){window.app.openGroupChat();}" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-pink-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-pink-600 via-rose-500 to-amber-400 text-white flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(225,29,72,0.45)] border border-pink-200/60 group-hover:scale-110 transition duration-200">
+        <i class="fa-solid fa-comments text-[11px]"></i>
       </div>
-      <span class="text-[9.5px] font-bold text-slate-400 block truncate">Live Poker</span>
-      <span class="text-[7px] text-slate-500 font-mono mt-0.5">Locked</span>
+      <span class="text-[9.5px] font-black text-white block truncate group-hover:text-pink-300 transition">Group Add</span>
+      <span class="text-[7px] text-pink-400 font-mono font-bold mt-0.5 bg-pink-950/60 px-1.5 py-0.2 rounded border border-pink-500/20">Live Chat</span>
+    </button>
+  </div>
+
+  <!-- Dedicated Feature Grid Line (Row 3 - Community Blog & Live Discussion) -->
+  <div class="grid grid-cols-2 gap-2 mb-3">
+    <!-- Community Blog Option (Separate Page, Screen, and File: blog.html) -->
+    <a href="blog.html" id="home-blog-posts-btn" onclick="if(window.app){window.app.openBlogPage();}" class="flex items-center gap-2.5 bg-gradient-to-r from-[#141b34] via-[#0f152b] to-[#0a0e1f] border border-amber-500/35 hover:border-amber-400 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-left group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_14px_rgba(0,0,0,0.5)]">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 via-orange-500 to-yellow-400 text-slate-950 flex items-center justify-center shrink-0 shadow-[0_3px_10px_rgba(245,158,11,0.45)] border border-amber-200/60 group-hover:scale-110 transition duration-200">
+        <i class="fa-solid fa-newspaper text-xs"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1">
+          <span class="text-[9.5px] font-black text-white truncate group-hover:text-amber-300 transition">Lottery Blog</span>
+          <span class="text-[6.5px] text-amber-400 font-mono font-bold bg-amber-950/80 px-1 py-0.2 rounded border border-amber-500/30">Articles</span>
+        </div>
+        <span class="text-[7.5px] text-slate-400 font-mono block truncate">Win Stories & Guides</span>
+      </div>
+      <i class="fa-solid fa-arrow-right text-[9px] text-amber-400/70 group-hover:translate-x-0.5 transition"></i>
+    </a>
+
+    <!-- Winner Hall / Community Highlights Button -->
+    <button type="button" onclick="if(window.app){window.app.currentTab='history'; window.app.render(); document.getElementById('history-subtab-community')?.click();}" class="flex items-center gap-2.5 bg-gradient-to-r from-[#17132a] via-[#100f24] to-[#0a0e1f] border border-purple-500/35 hover:border-purple-400 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-left group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_14px_rgba(0,0,0,0.5)]">
+      <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 via-fuchsia-500 to-pink-400 text-white flex items-center justify-center shrink-0 shadow-[0_3px_10px_rgba(168,85,247,0.45)] border border-purple-200/60 group-hover:scale-110 transition duration-200">
+        <i class="fa-solid fa-trophy text-xs"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1">
+          <span class="text-[9.5px] font-black text-white truncate group-hover:text-purple-300 transition">Winner Hall</span>
+          <span class="text-[6.5px] text-purple-400 font-mono font-bold bg-purple-950/80 px-1 py-0.2 rounded border border-purple-500/30">Live</span>
+        </div>
+        <span class="text-[7.5px] text-slate-400 font-mono block truncate">Champion Stories</span>
+      </div>
+      <i class="fa-solid fa-arrow-right text-[9px] text-purple-400/70 group-hover:translate-x-0.5 transition"></i>
     </button>
   </div>
 
