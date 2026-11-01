@@ -6,11 +6,11 @@
 - **JavaScript (ES6+)**:
   - *Purpose*: Core execution language for browser runtime scripts in `src/js/` (e.g. `admin.js`, `luckyWheel.js`, `syncVault.js`, `notificationEngine.js`) and game modules (`src/games/`).
 - **HTML5**:
-  - *Purpose*: Document structuring for the primary SPA shell (`index.html`), standalone blog viewer (`blog.html`), and auxiliary dialogs/templates (`forgot_password.html`, `otp.html`, `404.html`).
+  - *Purpose*: Document structuring for the primary SPA shell (`index.html`), standalone blog viewer (`blog.html`), dedicated admin article editor (`admin-blog-editor.html`), published articles manager (`admin-articles.html`), category taxonomy (`admin-categories.html`), and comments desk (`comments.html`).
 - **PHP (Template Source Markup)**:
   - *Purpose*: Template markup in `src/dashboard_tabs/*.php` and `src/admin_tabs/*.php`. These files contain HTML/PHP template blocks that are read and packaged at build time by Vite into JavaScript string dictionaries (`src/js/bundledTabs.ts`). Also present as legacy root files (`index.php`, `login.php`, `deposit.php`, etc.).
 - **CSS3 / PostCSS**:
-  - *Purpose*: Visual layout and utility-first styling rules processed via `@tailwindcss/vite` and scoped stylesheets (`src/index.css`, `src/dashboard_tabs/*.css`).
+  - *Purpose*: Visual layout and utility-first styling rules processed via `@tailwindcss/vite` and scoped stylesheets (`src/index.css`, `src/dashboard_tabs/*.css`, `src/store/store.css`).
 
 ---
 
@@ -21,7 +21,7 @@
 - **Node.js (v20+ Runtime)**:
   - *Purpose*: Server execution environment for Express, TSX, and ESBuild.
 - **React (`^19.0.1`, `react-dom`) [DECLARED / UNUSED IN RUNTIME]**:
-  - *Verification*: Declared in `package.json`, but **not imported or used in the application codebase**. The frontend uses vanilla TypeScript DOM manipulation (`document.getElementById`, `innerHTML`, class toggles) and template string injection via `StateManager` in `src/main.ts`.
+  - *Verification*: Declared in `package.json`, but **not imported or mounted in the application codebase**. The frontend uses vanilla TypeScript DOM manipulation (`document.getElementById`, `innerHTML`, class toggles) and template string injection via `StateManager` in `src/main.ts`.
 
 ---
 
@@ -31,6 +31,9 @@
 - **Tailwind CSS (`^4.3.1`, `@tailwindcss/vite`)**:
   - *Purpose*: Utility-first styling engine integrated directly into the Vite compilation pipeline (`@import "tailwindcss";` in `src/index.css`).
   - *Trade-off*: Eliminates custom CSS bloat and accelerates UI styling, but results in verbose HTML class attributes.
+- **Lucide (`^1.63.0`)**:
+  - *Purpose*: Modern client-side SVG icon library imported in `src/main.ts` and rendered via `createIcons({ icons })` using the full 2,000+ icon dictionary for UI glyphs (`<i data-lucide="...">`). Includes an automatic FontAwesome-to-Lucide bridge.
+  - *Trade-off*: Bundled locally to ensure 100% offline availability without external font CDN dependencies, though requires explicit SVG sizing.
 - **Three.js (`^0.186.1`, `@types/three`)**:
   - *Purpose*: WebGL 3D graphics rendering used in `src/components/ThreeLotteryDrawScene.ts` to create interactive 3D lottery balls, particle effects, and lottery drawing scenes.
 - **GSAP (`^3.15.0`)**:
@@ -39,6 +42,8 @@
   - *Purpose*: Particle celebration effects dynamically triggered upon ticket wins, daily check-in rewards, and lucky wheel jackpot spins (`src/main.ts`).
 - **MySQL2 (`^3.24.4`)**:
   - *Purpose*: MySQL database client used in `server.ts` (`mysql2/promise`) for executing queries, connection testing, and cloud synchronization against MySQL 8.0 / MariaDB.
+- **Web-Push (`^3.6.7`, `@types/web-push`)**:
+  - *Purpose*: Encrypted Web Push notification delivery in `server.ts` using VAPID keys to send system alerts to subscribed client browsers.
 - **Multer (`^2.4.0`, `@types/multer`)**:
   - *Purpose*: Multipart form-data middleware used in `server.ts` (`/api/plugins/upload`) to handle memory-buffered zip file uploads for store plugins.
 - **JSZip (`^3.10.2`, `@types/jszip`)**:
@@ -48,13 +53,13 @@
 - **Dotenv (`^17.2.3`)**:
   - *Purpose*: Loads environment configuration variables (`PORT`, `SQL_BRIDGE_URL`, `DB_NAME`, `DB_USER`, `DB_PASS`, `SMTP_*`) into `process.env`.
 - **FontAwesome 6 (`6.4.0`, CDN via cdnjs)**:
-  - *Purpose*: Vector icon system linked in `index.html` providing glyphs across the entire application interface (`<i class="fa-solid ...">`).
+  - *Purpose*: Legacy vector icon stylesheet linked in `index.html` providing glyphs across legacy badges and templates (`<i class="fa-solid ...">`).
 - **Chart.js (CDN via jsdelivr)**:
-  - *Purpose*: Financial metrics, player activity, and deposit/withdrawal performance charts in `index.html`.
+  - *Purpose*: Financial metrics, player activity, and deposit/withdrawal performance charts loaded via script tag in `index.html`.
 
 ### Declared in `package.json` but Unused / Inert:
 - **`@google/genai` (`^2.4.0`)**: Declared in `package.json` and `metadata.json` capability (`MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API`), but has no active import statements in `src/` or `server.ts`.
-- **`lucide-react` (`^0.546.0`)**: Declared in `package.json`; unused because the frontend is non-React and renders vector icons via FontAwesome CDN classes.
+- **`lucide-react` (`^0.546.0`)**: Declared in `package.json`; unused because the frontend is vanilla TypeScript and uses `lucide` core instead.
 - **`motion` (`^12.23.24`)**: Declared in `package.json`; not imported in application source files.
 - **`@vitejs/plugin-react` (`^5.0.4`)**: Declared in `package.json`; not registered in `vite.config.ts`.
 
@@ -62,10 +67,10 @@
 
 ## 4. Database & Storage
 - **MySQL 8.0 / MariaDB (`veloralb_Digital`)**:
-  - *Purpose*: Primary remote relational database holding server records (`users`, `lotteries`, `tickets`, `deposits`, `withdrawals`, `settings`, `notifications`, `push_subscriptions`).
-  - *Access Method*: HTTP PHP Database Bridge (`https://api.veloralbillal.top/db_bridge.php`) authenticated via security token (`Billal50598326`) and fallback connection via `mysql2/promise`.
+  - *Purpose*: Primary remote relational database holding server records (`users`, `lotteries`, `tickets`, `deposits`, `withdrawals`, `settings`, `notifications`, `push_subscriptions`, `blogs`).
+  - *Access Method*: HTTP PHP Database Bridge (`https://api.veloralbillal.top/db_bridge.php`) authenticated via security token (`Billal50598326`) and fallback direct connection via `mysql2/promise`.
 - **Browser `localStorage`**:
-  - *Purpose*: Primary client-side datastore (`lottery_winner_db`). Stores full application state locally for instant reads and writes without network latency.
+  - *Purpose*: Primary client-side datastore (`lottery_winner_db` / `lw_lottery_db_v3`). Stores full application state locally for instant reads and writes without network latency.
 - **Browser IndexedDB**:
   - *Purpose*: Offline queue storage managed via `OfflineQueueManager` (`src/js/syncQueue.js`) to stage mutations when offline.
 - **Server Local File System**:
@@ -76,6 +81,8 @@
 ## 5. Authentication & Security
 - **Custom Client/Server Session State**:
   - *Purpose*: Authenticates users by matching credentials against local and remote SQL database records; stores authenticated session in `db.currentUser`.
+- **Password Salting and Hashing**:
+  - *Purpose*: Custom unique-salt password verification implemented in `src/js/passwordSecurity.ts` (`hashPasswordWithUniqueSalt`, `verifyPasswordWithSalt`).
 - **4-Digit Cashout Security PIN**:
   - *Purpose*: Required secondary security barrier before initiating withdrawal transactions (`src/dashboard_tabs/wallet_extensions.ts`).
 - **TOTP (Time-Based One-Time Password)**:
@@ -105,7 +112,7 @@
 
 ## 7. Build & Development Tools
 - **Vite (`^6.2.3`)**:
-  - *Purpose*: Frontend build tool and development server. Configured with a multi-page rollup entry (`index.html`, `blog.html`) and custom PHP template pre-bundling plugin.
+  - *Purpose*: Frontend build tool and development server. Configured with a multi-page rollup entry (`index.html`, `blog.html`, `comments.html`, `admin-blog-editor.html`, etc.) and custom PHP template pre-bundling plugin.
 - **TSX (`^4.21.0`)**:
   - *Purpose*: Zero-config TypeScript execution engine for Node.js development (`"dev": "tsx server.ts"`).
 - **ESBuild (`^0.25.0`)**:
@@ -137,3 +144,5 @@
   - Enables seamless database integration with cPanel shared hosting servers without firewall reconfiguration, but adds HTTP serialization latency and reliance on a static token.
 - **Dynamic Imports (`gsap`, `canvas-confetti`)**:
   - Reduces initial load time by deferring heavy animation libraries until a celebratory event actually occurs in the UI.
+- **Local Lucide Package vs. CDN Icon Fonts**:
+  - Bundling `lucide` locally prevents network-induced icon invisibility in offline and restricted network environments, though requires SVG dimension handling.

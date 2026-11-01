@@ -328,7 +328,7 @@ export class ProfileTab {
       const mins = Math.floor((remaining % (3600 * 1000)) / (60 * 1000));
       const secs = Math.floor((remaining % (60 * 1000)) / 1000);
 
-      claimStatusEl.innerHTML = `<span class="text-rose-500 font-mono"><i class="fa-solid fa-hourglass-half"></i> Claim lock: ${hrs.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s remaining</span>`;
+      claimStatusEl.innerHTML = `<span class="text-rose-500 font-mono"><i data-lucide="hourglass" class="w-3.5 h-3.5 inline mr-1"></i> Claim lock: ${hrs.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s remaining</span>`;
       if (claimBtn) {
         claimBtn.innerText = "Claimed Today";
         claimBtn.disabled = true;
@@ -336,13 +336,16 @@ export class ProfileTab {
         claimBtn.classList.add("from-slate-800", "to-slate-900", "text-slate-500", "cursor-not-allowed");
       }
     } else {
-      claimStatusEl.innerHTML = `<span class="text-emerald-400 font-mono"><i class="fa-solid fa-circle-check"></i> Reward is ready for collection!</span>`;
+      claimStatusEl.innerHTML = `<span class="text-emerald-400 font-mono"><i data-lucide="check-circle" class="w-3.5 h-3.5 inline mr-1"></i> Reward is ready for collection!</span>`;
       if (claimBtn) {
-        claimBtn.innerHTML = `<i class="fa-solid fa-circle-dollar-to-slot"></i> Claim Now`;
+        claimBtn.innerHTML = `<i data-lucide="wallet" class="w-3.5 h-3.5 inline mr-1"></i> Claim Now`;
         claimBtn.disabled = false;
         claimBtn.classList.remove("from-slate-800", "to-slate-900", "text-slate-500", "cursor-not-allowed");
         claimBtn.classList.add("from-emerald-600", "to-teal-600");
       }
+    }
+    if (appInstance && typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
     }
   }
 
@@ -442,7 +445,7 @@ export class ProfileTab {
       } else {
         luckyResultEl.classList.add("hidden");
         if (luckyBtn) {
-          luckyBtn.innerHTML = `<i class="fa-solid fa-dice"></i> Predict Luck`;
+          luckyBtn.innerHTML = `<i data-lucide="dice-5" class="w-3.5 h-3.5 inline mr-1"></i> Predict Luck`;
           luckyBtn.disabled = false;
           luckyBtn.className = "w-full sm:w-auto bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-rose-400 font-bold py-2.5 px-4 rounded-xl transition cursor-pointer text-[10px] flex items-center justify-center gap-1.5 whitespace-nowrap";
         }
@@ -451,16 +454,13 @@ export class ProfileTab {
 
     // 5. Security PIN Badge setup rendering
     const pinBadgeEl = document.getElementById("profile-security-pin-badge");
-    const togglePinBtn = document.getElementById("profile-toggle-pin-setup");
     if (pinBadgeEl) {
       if (user.securityPin) {
         pinBadgeEl.innerText = "🛡️ SECURED PIN ACTIVE";
-        pinBadgeEl.className = "px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-955 text-emerald-400 border border-emerald-900/40";
-        if (togglePinBtn) togglePinBtn.innerHTML = `<i class="fa-solid fa-rotate"></i> Change PIN`;
+        pinBadgeEl.className = "px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900/40";
       } else {
         pinBadgeEl.innerText = "⚠️ PIN SECURITY NOT SET";
-        pinBadgeEl.className = "px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-955 text-amber-500 border border-amber-900/40 animate-pulse";
-        if (togglePinBtn) togglePinBtn.innerHTML = `<i class="fa-solid fa-key"></i> Setup PIN`;
+        pinBadgeEl.className = "px-1.5 py-0.5 rounded text-[8px] font-bold bg-amber-950 text-amber-500 border border-amber-900/40 animate-pulse";
       }
     }
 
@@ -496,10 +496,10 @@ export class ProfileTab {
       }
 
       if (isLuckyWinner) {
-        badgesHtml += `<span class="bg-amber-955/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md animate-pulse" title="Unlocked by winning active lotteries"><i class="fa-solid fa-trophy text-amber-500 text-[8px]"></i> Lucky Winner (${winCounts})</span>`;
+        badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md animate-pulse" title="Unlocked by winning active lotteries"><i data-lucide="trophy" class="w-3 h-3 text-amber-500 inline mr-1"></i> Lucky Winner (${winCounts})</span>`;
       }
       if (isTopContributor) {
-        badgesHtml += `<span class="bg-emerald-955/70 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md" title="Unlocked with 3+ shares/replies"><i class="fa-solid fa-medal text-emerald-400 text-[8px]"></i> Top Contributor (${totalContribution})</span>`;
+        badgesHtml += `<span class="bg-emerald-950/70 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md" title="Unlocked with 3+ shares/replies"><i data-lucide="medal" class="w-3 h-3 text-emerald-400 inline mr-1"></i> Top Contributor (${totalContribution})</span>`;
       }
       
       // Default baseline standard badge
@@ -584,6 +584,7 @@ export class ProfileTab {
 
     appInstance.renderProfileChart();
     appInstance.renderUserInbox();
+    appInstance.refreshIcons();
   }
 
   static getFrameOverlayHTML(frame) {

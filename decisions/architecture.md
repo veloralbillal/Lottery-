@@ -1,61 +1,74 @@
 # Architectural Decisions
 
-## Architecture Pattern
-- **CONFIRMED**: **Single Page Application (SPA) with Multi-Entry Build**: The frontend is a client-side TypeScript application bundled with Vite. It features a primary entry point (`index.html`) managing the main lottery portal and an isolated secondary entry point (`blog.html`) for the standalone blog reader (`vite.config.ts` Rollup input config).
-- **CONFIRMED**: **Centralized Singleton State Management (`StateManager`)**: Global client state is orchestrated via `StateManager` in `src/main.ts`. State includes user session data, active tabs, lottery pools, transaction history, notification queues, and wallet balances.
-- **CONFIRMED**: **Offline-First & Local Persistence**: Primary runtime state is persisted locally in browser `localStorage` under the key `lottery_winner_db`. Mutating actions trigger `app.saveDB()` for instant local durability. Offline tasks (ticket purchases, deposits, withdrawals) are captured by `OfflineQueueManager` (`src/js/syncQueue.js`) backed by IndexedDB and synchronized once connectivity resumes.
-- **CONFIRMED**: **Build-Time Template Bundling**: User dashboard screens (`src/dashboard_tabs/*.php`) and admin panels (`src/admin_tabs/*.php`) are written in PHP/HTML markup. A custom Vite plugin (`serveAndCopyAssetsPlugin` in `vite.config.ts`) pre-bundles these templates into a static TypeScript map (`src/js/bundledTabs.ts`). They are lazily loaded into the DOM on-demand via `LazyTabManager.loadTabTemplate` (`src/js/performanceOptimizer.ts`), avoiding server-side PHP execution.
-- **INFERRED**: Direct DOM manipulation with template string interpolation was chosen over a virtual DOM framework to provide fine-grained control over animations, dynamic DOM swaps, and legacy PHP UI markup without framework migration overhead.
+## 1. Architecture Pattern
+- **CONFIRMED**: **Hybrid Single Page Application (SPA) with Multi-Entry Standalone Pages**:
+  - The primary application shell is a client-side Single Page Application bundled with Vite (`index.html` -> `src/main.ts`).
+  - Standalone dedicated HTML entry points exist to isolate heavy content management and moderation tasks from the main lottery portal without incurring monolithic bundle overhead (`blog.html`, `comments.html`, `admin-blog-editor.html`, `admin-categories.html`, `admin-category-editor.html`, `admin-articles.html`), configured as multi-page inputs in `vite.config.ts`.
+- **CONFIRMED**: **Centralized Singleton State Management (`StateManager`)**:
+  - Global client state is orchestrated via `StateManager` in `src/main.ts`. State includes user session data, active tabs, lottery pools, transaction history, notification queues, and wallet balances.
+- **CONFIRMED**: **Multi-Tier Offline-First & Real-Time State Persistence**:
+  - **Tier 1 (Local Storage)**: Primary runtime state is persisted locally in browser `localStorage` under the key `lottery_winner_db` (with backup keys `lw_lottery_db_v3` and `lottery_winner_db_backup`). Mutating actions trigger `app.saveDB()` for instant local durability.
+  - **Tier 2 (BroadcastChannel API)**: Cross-tab / cross-window state synchronization is broadcasted in real time via the HTML5 `BroadcastChannel` (`lw_realtime_db_sync`), notifying open tabs to update immediately without full page reloads.
+  - **Tier 3 (Storage Event Listener)**: Fallback cross-window listener `window.addEventListener("storage", ...)` detects modifications to database storage keys.
+  - **Tier 4 (Cloud SQL Synchronization)**: Asynchronous background sync (`/api/sql/sync`, `/api/sql/db`) and external HTTP PHP bridge queries (`db_bridge.php`) synchronize records across MySQL tables.
+  - **Tier 5 (Offline Action Queue)**: Offline mutations (ticket purchases, deposits, withdrawals) are captured by `OfflineQueueManager` (`src/js/syncQueue.js`) backed by browser IndexedDB and replayed once connectivity resumes.
+- **CONFIRMED**: **Build-Time PHP Template Bundling**:
+  - User dashboard screens (`src/dashboard_tabs/*.php`) and admin panels (`src/admin_tabs/*.php`) are authored in PHP/HTML markup.
+  - A custom Vite build plugin (`serveAndCopyAssetsPlugin` in `vite.config.ts`) pre-bundles these templates into a static TypeScript string dictionary (`src/js/bundledTabs.ts`). They are lazily injected into the DOM on-demand via `LazyTabManager.loadTabTemplate` (`src/js/performanceOptimizer.ts`), completely removing the requirement for a server-side PHP runtime.
+- **INFERRED**: Direct DOM manipulation with template string interpolation was chosen over virtual DOM frameworks to preserve legacy PHP/HTML UI templates without rewriting entire screens into JSX components.
 
 ---
 
-## Frontend / Backend Separation
+## 2. Frontend / Backend Separation
 - **CONFIRMED**:
-  - **Frontend Client**: Pure client-side TypeScript and JavaScript executing in the browser. Uses Vite for asset compilation, Tailwind CSS v4 (`@tailwindcss/vite`) for styling, FontAwesome 6 (CDN) for icons, Chart.js (CDN) for charts, Three.js (`src/components/ThreeLotteryDrawScene.ts`) for 3D drawing visuals, and GSAP/Canvas Confetti for celebration effects.
-  - **Backend Server**: Node.js Express application (`server.ts`) listening on port 3000. Acts as a decoupled API gateway, SQL bridge executor, payment webhook receiver, plugin extractor, and static asset server. In development, it integrates Vite via `vite.middlewares`. In production, it serves pre-compiled assets from `dist/` and falls back to `dist/index.html`.
+  - **Frontend Client**: Pure client-side TypeScript and JavaScript executing in the browser. Uses Vite for asset compilation, Tailwind CSS v4 (`@tailwindcss/vite`) for utility styling, Lucide (`lucide: ^1.63.0`) for local vector icons, FontAwesome 6 (CDN) for legacy icon classes, Chart.js (CDN) for financial data visualization, Three.js (`src/components/ThreeLotteryDrawScene.ts`) for 3D drawing canvas scenes, and GSAP/Canvas Confetti for celebration visual effects.
+  - **Backend Server**: Node.js Express application (`server.ts`) listening on port 3000. Serves as a decoupled API gateway, SQL bridge executor, payment webhook receiver, plugin extractor, Web Push manager, and static asset server. In development, it integrates Vite development middleware via `vite.middlewares`. In production, it serves pre-compiled assets from `dist/` and falls back to `dist/index.html` for client-side routing.
 
 ---
 
-## Major Modules and Responsibilities
+## 3. Major Modules and Responsibilities
 - **CONFIRMED**:
-  - `src/main.ts`: Application kernel; houses `StateManager`, screen routing (`screen-dashboard`, `screen-auth`, `screen-maintenance`, `screen-blog`), authentication sessions, lottery ticket purchase pipeline, cart abandonment tracking, and global event delegation.
-  - `server.ts`: Backend API hub; exposes SQL bridge synchronization endpoints (`/api/sql/*`), payment gateway handlers (`/api/uddoktapay/*`, `/api/zinipay/*`), email dispatch (`/api/send-reset-email`), plugin archive upload and extraction (`/api/plugins/upload`), notifications, and push subscription storage.
-  - `src/dashboard_tabs/`: User-facing modular tabs including Home (`home.ts`/`home.php`), Wallet (`wallet.ts`/`user_balance.php`), Tickets (`tickets.ts`/`tickets.php`), Deposit (`deposit.php`), Withdraw (`withdraw.php`), Profile (`profile.ts`/`profile.php`), Games Hub (`games.php`), Jackpot (`jackpot.ts`/`jackpot.php`), Missions/Tasks (`missions.ts`/`missions.php`), Refer & Earn (`share_earn.ts`), Group Chat (`group_chat.php`), and Blog (`blog.ts`/`blog_tab.php`).
+  - `src/main.ts`: Application core kernel; houses `StateManager`, screen routing (`screen-dashboard`, `screen-auth`, `screen-maintenance`, `screen-blog`), authentication sessions, lottery ticket purchase pipeline, cart abandonment tracking, and global event delegation.
+  - `server.ts`: Backend API hub; exposes SQL bridge synchronization endpoints (`/api/sql/*`), payment gateway handlers (`/api/uddoktapay/*`, `/api/zinipay/*`), email dispatch (`/api/send-reset-email`), plugin archive upload and extraction (`/api/plugins/upload`), notifications, and push subscription storage (`/api/push/subscribe`).
+  - `src/dashboard_tabs/`: User-facing modular tabs:
+    - Home (`home.ts`/`home.php`), Wallet (`wallet.ts`/`user_balance.php`), Tickets (`tickets.ts`/`tickets.php`), Deposit (`deposit.php`), Withdraw (`withdraw.php`), Profile (`profile.ts`/`profile.php`), Games Hub (`games.php`), Jackpot (`jackpot.ts`/`jackpot.php`), Missions/Tasks (`missions.ts`/`missions.php`), Refer & Earn (`share_earn.ts`), Group Chat (`group_chat.php`), and Blog (`blog.ts`/`blog_tab.php`).
   - `src/admin_tabs/`: Comprehensive administrator control panel modules for lottery pools, manual draw triggers, transaction verification (deposits/withdrawals), player management, gateway toggles, agent hierarchies, and blog management (`blogManager.ts`/`blog_admin.php`).
-  - `src/js/syncCloud.ts`: Client-side remote cloud synchronizer; executes direct HTTP SQL bridge queries (`executeDirectBridgeQuery`), pushes database snapshots, and handles conflict resolution.
+  - `src/js/syncCloud.ts` & `src/js/sqlBridgeClient.ts`: Client-side remote cloud synchronizer; executes direct HTTP SQL bridge queries (`executeDirectBridgeQuery`), pushes database snapshots, and handles conflict resolution.
   - `src/js/syncVault.js` & `src/js/syncQueue.js`: High-availability failover engine simulation, cluster node diagnostics, and offline action queuing.
-  - `src/js/apiUddoktaPay.ts` & `src/js/apiZiniPay.ts`: Server-side instant payment checkout and verification adapters for Bangladeshi payment rails (bKash, Nagad, Rocket).
-  - `src/js/apiEmailSender.ts`: Nodemailer transport for transactional password reset and OTP verification emails.
+  - `src/js/apiUddoktaPay.ts` & `src/js/apiZiniPay.ts`: Payment checkout and verification adapters for Bangladeshi payment rails (bKash, Nagad, Rocket).
+  - `src/js/apiEmailSender.ts`: Nodemailer SMTP transport for transactional password reset and OTP verification emails.
   - `src/js/performanceOptimizer.ts`: Performance infrastructure featuring `LazyTabManager`, `GlobalCache`, debounce, throttle, and tab lifecycle observers.
   - `src/store/`: In-app digital marketplace and plugin management subsystem (`StoreManager.ts`, `AdminStoreManager.ts`, `PluginManager`).
   - `src/components/ThreeLotteryDrawScene.ts`: Three.js WebGL canvas rendering 3D lottery spheres and particles.
 
 ---
 
-## Data Flow
+## 4. Data Flow
 - **CONFIRMED**:
   1. **User Interaction**: User interacts with a UI control (e.g., purchasing a lottery ticket, submitting a deposit slip, changing profile avatar, or rolling dice).
   2. **In-Memory State Mutation**: Event listeners invoke methods on `StateManager` or tab modules, directly updating `this.db`.
   3. **Local Persistence**: State changes immediately invoke `this.saveDB()`, serializing the database tree to browser `localStorage` (`lottery_winner_db`).
-  4. **DOM Re-Rendering**: The active view is updated via template re-rendering, class toggling, or dynamic innerHTML updates.
-  5. **Remote SQL Synchronization**: Asynchronously or periodically, `SyncCloudModule.syncToCloud()` sends state deltas or full database payloads to `/api/sql/sync` or the remote PHP bridge (`db_bridge.php`), synchronizing records across MySQL tables.
-  6. **Offline Fallback**: If an API or network operation fails while disconnected, `OfflineQueueManager` enqueues the transaction in IndexedDB and replays it upon the browser's `online` event.
+  4. **Cross-Tab Synchronization**: `BroadcastChannel` sends message `{ type: "database_updated", timestamp: Date.now() }`, reloading state across open windows.
+  5. **DOM Re-Rendering**: The active view is updated via template re-rendering, class toggling, or dynamic innerHTML updates.
+  6. **Remote SQL Synchronization**: Asynchronously or periodically, `SyncCloudModule.syncToCloud()` sends state deltas or full database payloads to `/api/sql/sync` or the remote PHP bridge (`db_bridge.php`), synchronizing records across MySQL tables.
+  7. **Offline Fallback**: If an API or network operation fails while disconnected, `OfflineQueueManager` enqueues the transaction in IndexedDB and replays it upon the browser's `online` event.
 
 ---
 
-## API Communication
+## 5. API Communication
 - **CONFIRMED**:
   - **Internal REST APIs**: Frontend communicates with the Express backend over HTTP/JSON (`/api/*`).
   - **SQL Bridge Gateway**: Server queries remote MySQL either through direct `mysql2/promise` connection pooling or via HTTP POST requests to an external PHP bridge script (`https://api.veloralbillal.top/db_bridge.php`) authenticated with a security token (`Billal50598326`).
   - **Fetch Interceptor**: `installUniversalSqlBridgeFetchInterceptor()` (`src/js/sqlBridgeClient.ts`) intercepts client queries to route them through the active SQL bridge.
   - **Payment Webhooks**: Inbound asynchronous webhook endpoints (`/api/uddoktapay/webhook`, `/api/zinipay/webhook`) process payment confirmation signals.
-  - **Push Notification Service**: Browser Web Push subscription registration via `/api/push/subscribe`.
+  - **Web Push Service**: Multi-device push notification subscription registration via `/api/push/subscribe` using VAPID keys and browser Service Worker (`sw.js`).
+  - **Live Draw Broadcast**: Endpoints `/api/draws/broadcast` and `/api/draws/latest` stream lottery drawing events and winners to connected clients.
 
 ---
 
-## Authentication & Authorization Architecture
+## 6. Authentication & Authorization Architecture
 - **CONFIRMED**:
-  - **Authentication Mechanism**: Custom session-based authentication managed client-side in `StateManager` and validated against MySQL / `localStorage` user records.
+  - **Authentication Mechanism**: Custom session-based authentication managed client-side in `StateManager` and validated against MySQL / `localStorage` user records with salted password verification (`hashPasswordWithUniqueSalt`).
   - **Role-Based Access Control (RBAC)**: Distinct authorization tiers:
     - `user`: Standard player account (ticket purchases, deposits, withdrawals, profile customization).
     - `agent` / `subagent`: Payout distribution, referral tracking, and agent chat workspaces (`src/dashboard_tabs/agent.php`, `affiliate_agent_system.ts`).
@@ -63,11 +76,11 @@
     - `admin`: Full administrative access to the admin dashboard (`src/admin_tabs/`, `src/js/admin.js`, `src/admin_tabs/admin.ts`).
   - **Multi-Factor / Cashout Security PIN**: 4-digit security PIN lock enforced before withdrawal requests can be submitted (`src/dashboard_tabs/wallet_extensions.ts`).
   - **Time-Based One-Time Password (TOTP)**: Dynamic 6-digit rolling OTP algorithm with 30-second expiry cycles (`src/js/totp.ts`, `src/dashboard_tabs/otp.php`) for physical agent cashout verification.
-  - **Bot Mitigation**: Client-side mathematical captcha challenge integrated into sign-in and registration forms.
+  - **Bot Mitigation**: Client-side mathematical captcha challenge (`window.generateMathCaptcha`) integrated into sign-in and registration forms.
 
 ---
 
-## Database Architecture
+## 7. Database Architecture
 - **CONFIRMED**:
   - **Dual-Layer Architecture**:
     1. **Client Storage**: Browser `localStorage` holding a JSON state graph (`lottery_winner_db`), enabling zero-latency reads and offline functionality.
@@ -82,12 +95,12 @@
     - `notifications`: Push and in-app user notifications.
     - `push_subscriptions`: Web Push endpoint subscriptions with encryption keys (`p256dh`, `auth`).
     - `settings`: Global site configuration, banner announcements, payment gateway keys.
-    - Additional tables: `staff`, `agents`, `agentLedger`, `agentChats`, `categories`.
+    - Additional tables: `staff`, `agents`, `agentLedger`, `agentChats`, `categories`, `blogs`, `blogCategories`, `blogComments`.
   - **Local Offline Failover**: IndexedDB instance managed via `OfflineQueueManager` for staging mutations during network dropouts.
 
 ---
 
-## External Services & Integrations
+## 8. External Services & Integrations
 - **CONFIRMED**:
   - **UddoktaPay**: Automated payment checkout gateway for Bangladeshi payment rails (`src/js/apiUddoktaPay.ts`).
   - **ZiniPay**: Secondary instant payment gateway provider (`src/js/apiZiniPay.ts`).
@@ -95,23 +108,25 @@
   - **Remote PHP SQL Bridge**: External database bridge endpoint (`https://api.veloralbillal.top/db_bridge.php`).
   - **FontAwesome 6**: CDN-hosted vector icon library loaded in `index.html`.
   - **Chart.js**: CDN-hosted financial and activity charting library in `index.html`.
+  - **Web Push (VAPID)**: Standard Web Push protocol for background browser notifications.
 
 ---
 
-## Deployment & Infrastructure Architecture
+## 9. Deployment & Infrastructure Architecture
 - **CONFIRMED**:
   - **Runtime**: Node.js environment (v20+).
   - **Development Mode**: Launched via `npm run dev`, which runs `tsx server.ts`. Express boots on port 3000 and attaches Vite development middleware with HMR disabled (`hmr: false` in `vite.config.ts`).
   - **Production Build**: Executed via `npm run build`:
-    1. `vite build`: Compiles `index.html` and `blog.html` into optimized static assets under `dist/`.
+    1. `vite build`: Compiles `index.html`, `blog.html`, and standalone admin entry points into optimized static assets under `dist/`.
     2. `esbuild server.ts`: Bundles the Express backend into a single CommonJS file (`dist/server.cjs`) with externalized node_modules.
   - **Production Execution**: Started via `npm start` (`node dist/server.cjs`). Express serves static files from `dist/` and provides SPA routing fallback to `dist/index.html`.
+  - **Static Hosting & GitHub Pages Compatibility**: `vite.config.ts` synchronizes compiled assets to root `./assets`, `CNAME`, `404.html` (for SPA path decoding), and `.nojekyll`.
 - **UNKNOWN**:
   - Specific cloud hosting provider or container orchestrator for production deployment (e.g. Google Cloud Run, AWS EC2, VPS, or Docker container).
 
 ---
 
-## Important Architectural Trade-offs
+## 10. Important Architectural Trade-offs
 - **CONFIRMED**:
   - **Client-Side State Persistence vs. Pure Server-Authoritative API**:
     - *Advantage*: Near-instantaneous UI transitions, resilient offline operation, and reduced server load.
@@ -125,7 +140,7 @@
 
 ---
 
-## Why the Current Architecture Appears to Have Been Chosen
+## 11. Why the Current Architecture Appears to Have Been Chosen
 - **INFERRED**:
   - The project originated as a classic PHP/cPanel web application with multiple standalone screens (`index.php`, `login.php`, `deposit.php`, `src/dashboard_tabs/*.php`).
   - To modernize the user experience without rewriting all frontend markup, the architecture was converted to a Vite-powered Single Page Application (SPA).
@@ -134,8 +149,8 @@
 
 ---
 
-## Evidence
-- `package.json`: Scripts (`dev`, `build`, `start`), core dependencies (`express`, `mysql2`, `vite`, `esbuild`, `tsx`).
+## 12. Evidence
+- `package.json`: Scripts (`dev`, `build`, `start`), core dependencies (`express`, `mysql2`, `vite`, `esbuild`, `tsx`, `web-push`, `lucide`).
 - `vite.config.ts`: Multi-page build configuration, custom `serveAndCopyAssetsPlugin`, output paths.
 - `server.ts`: Express API routes, SQL bridge executor, payment gateway webhooks, static serving.
 - `src/main.ts`: `StateManager`, routing, authentication, ticket purchasing, and global event bindings.

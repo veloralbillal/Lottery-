@@ -480,7 +480,16 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
         }
         const assetFiles = fs.readdirSync(distAssetsDir);
         for (const file of assetFiles) {
-          fs.copyFileSync(path.join(distAssetsDir, file), path.join(rootAssetsDir, file));
+          const srcItem = path.join(distAssetsDir, file);
+          const destItem = path.join(rootAssetsDir, file);
+          const stat = fs.statSync(srcItem);
+          if (stat.isDirectory()) {
+            if (fs.cpSync) {
+              fs.cpSync(srcItem, destItem, { recursive: true, force: true });
+            }
+          } else if (stat.isFile()) {
+            fs.copyFileSync(srcItem, destItem);
+          }
         }
         console.log('Synced compiled assets to root ./assets/');
 
@@ -493,9 +502,7 @@ export const fallbackFirebaseConfig: any = ${JSON.stringify(firebaseConfig, null
           fs.copyFileSync(srcCssPath, path.join(distAssetsDir, 'main.css'));
           // Ensure root assets/main.css exists
           fs.copyFileSync(srcCssPath, path.join(rootAssetsDir, 'main.css'));
-          // Sync to src/tailwind-built.css
-          fs.copyFileSync(srcCssPath, path.resolve(process.cwd(), 'src/tailwind-built.css'));
-          console.log(`Synced CSS (${primaryCss}) to main.css and src/tailwind-built.css`);
+          console.log(`Synced CSS (${primaryCss}) to main.css`);
         }
 
         // Find any generated JS file for main in dist/assets and create predictable main.js aliases
@@ -546,6 +553,7 @@ export default defineConfig(({ mode }) => {
           comments: path.resolve(__dirname, 'comments.html'),
           adminBlogEditor: path.resolve(__dirname, 'admin-blog-editor.html'),
           adminCategories: path.resolve(__dirname, 'admin-categories.html'),
+          adminCategoryEditor: path.resolve(__dirname, 'admin-category-editor.html'),
           adminArticles: path.resolve(__dirname, 'admin-articles.html')
         },
         output: {

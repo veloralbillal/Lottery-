@@ -123,12 +123,12 @@ export class ChatProfileSystem {
 
             <div class="absolute top-4 left-5 z-20">
               <span class="text-[9px] bg-slate-950/90 text-cyan-300 border border-cyan-800/80 px-2.5 py-0.5 rounded-full font-black select-none flex items-center gap-1 backdrop-blur-sm shadow-md animate-pulse">
-                <i class="fa-solid fa-cube text-cyan-400 text-[9px] animate-spin-slow"></i> 3D DECOR ACTIVE
+                <i data-lucide="box" class="text-cyan-400 text-[9px] animate-spin-slow"></i> 3D DECOR ACTIVE
               </span>
             </div>
 
             <button id="profile-detail-close-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white transition w-8 h-8 rounded-full bg-slate-950/60 hover:bg-slate-950 border border-slate-800 flex items-center justify-center cursor-pointer z-30 shadow-md">
-              <i class="fa-solid fa-xmark text-sm"></i>
+              <i data-lucide="x" class="text-sm"></i>
             </button>
           </div>
 
@@ -147,7 +147,7 @@ export class ChatProfileSystem {
               <div class="text-center space-y-1">
                 <div class="flex items-center justify-center gap-1.5">
                   <h3 id="profile-detail-username" class="text-lg font-black text-white leading-none font-sans">@username</h3>
-                  <i class="fa-solid fa-circle-check text-cyan-400 text-xs shadow-sm shadow-cyan-400/20"></i>
+                  <i data-lucide="circle-check" class="text-cyan-400 text-xs shadow-sm shadow-cyan-400/20"></i>
                 </div>
                 <p id="profile-detail-email" class="text-[10px] text-slate-500 font-mono tracking-tight">user@winnerlottery.app</p>
               </div>
@@ -164,7 +164,7 @@ export class ChatProfileSystem {
             <div class="space-y-2.5">
               <div class="flex items-center justify-between pl-1">
                 <h4 class="text-[9.5px] uppercase tracking-widest text-slate-400 font-mono font-black flex items-center gap-1.5">
-                  <i class="fa-solid fa-chart-simple text-blue-400 text-[8px]"></i> Performance Stats
+                  <i data-lucide="bar-chart-2" class="text-blue-400 text-[8px]"></i> Performance Stats
                 </h4>
                 <span class="text-[8.5px] text-slate-600 font-mono select-none">Updated Realtime</span>
               </div>
@@ -173,7 +173,7 @@ export class ChatProfileSystem {
                 <div class="bg-slate-950/60 hover:bg-slate-950 hover:border-slate-805/80 border border-slate-900 p-3 rounded-2xl space-y-1 transition-all duration-200 hover:-translate-y-0.5 flex flex-col justify-between">
                   <div class="flex items-center justify-between">
                     <span class="text-[8.5px] font-mono uppercase tracking-wider text-slate-500">Tickets</span>
-                    <i class="fa-solid fa-ticket text-slate-600 text-[10px]"></i>
+                    <i data-lucide="ticket" class="text-slate-600 text-[10px]"></i>
                   </div>
                   <span id="profile-detail-lotteries-count" class="block text-base font-black text-slate-200">0</span>
                 </div>
@@ -181,7 +181,7 @@ export class ChatProfileSystem {
                 <div class="bg-slate-950/60 hover:bg-slate-950 hover:border-slate-805/80 border border-slate-900 p-3 rounded-2xl space-y-1 transition-all duration-200 hover:-translate-y-0.5 flex flex-col justify-between">
                   <div class="flex items-center justify-between">
                     <span class="text-[8.5px] font-mono uppercase tracking-wider text-slate-500">Wins</span>
-                    <i class="fa-solid fa-trophy text-amber-500/80 text-[10px]"></i>
+                    <i data-lucide="trophy" class="text-amber-500/80 text-[10px]"></i>
                   </div>
                   <span id="profile-detail-wins-count" class="block text-base font-black text-amber-400 leading-none">0</span>
                 </div>
@@ -189,7 +189,7 @@ export class ChatProfileSystem {
                 <div class="bg-slate-950/60 hover:bg-slate-950 hover:border-slate-805/80 border border-slate-900 p-3 rounded-2xl space-y-1 transition-all duration-200 hover:-translate-y-0.5 flex flex-col justify-between">
                   <div class="flex items-center justify-between">
                     <span class="text-[8.5px] font-mono uppercase tracking-wider text-slate-500">Loss / Spent</span>
-                    <i class="fa-solid fa-wallet text-rose-500/80 text-[10px]"></i>
+                    <i data-lucide="wallet" class="text-rose-500/80 text-[10px]"></i>
                   </div>
                   <span id="profile-detail-loss" class="block text-sm font-extrabold text-rose-405 leading-none">৳0.00</span>
                 </div>
@@ -197,7 +197,7 @@ export class ChatProfileSystem {
                 <div class="bg-slate-950/60 hover:bg-slate-950 hover:border-slate-805/80 border border-slate-900 p-3 rounded-2xl space-y-1 transition-all duration-200 hover:-translate-y-0.5 flex flex-col justify-between">
                   <div class="flex items-center justify-between">
                     <span class="text-[8.5px] font-mono uppercase tracking-wider text-slate-500">Net Profit</span>
-                    <i class="fa-solid fa-money-bill-trend-up text-emerald-500/80 text-[10px]"></i>
+                    <i data-lucide="trending-up" class="text-emerald-500/80 text-[10px]"></i>
                   </div>
                   <span id="profile-detail-profit" class="block text-sm font-extrabold text-emerald-405 leading-none">৳0.00</span>
                 </div>
@@ -207,10 +207,10 @@ export class ChatProfileSystem {
             <!-- Actions Buttons -->
             <div class="grid grid-cols-2 gap-3 pt-1">
               <button id="profile-detail-add-friend-btn" class="w-full bg-slate-950 hover:bg-slate-850 hover:border-slate-700/85 border border-slate-800 text-white font-bold text-xs h-[44px] px-3 rounded-2xl transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-md">
-                <i class="fa-solid fa-user-plus text-emerald-450"></i> Add Friend
+                <i data-lucide="user-plus" class="text-emerald-450"></i> Add Friend
               </button>
               <button id="profile-detail-message-btn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs h-[44px] px-3 rounded-2xl transition flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer shadow-lg shadow-emerald-600/15">
-                <i class="fa-solid fa-feather"></i> Message
+                <i data-lucide="feather" class="text-white"></i> Message
               </button>
             </div>
           </div>
@@ -230,12 +230,12 @@ export class ChatProfileSystem {
           <div id="chat-main-header" class="bg-slate-950 border-b border-slate-850 py-3.5 px-4 sm:px-5 flex items-center justify-between shrink-0 z-20">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-cyan-500 flex items-center justify-center text-slate-950 text-base shadow-lg shadow-emerald-500/20 font-black">
-                <i class="fa-solid fa-comments text-slate-950"></i>
+                <i data-lucide="message-square" class="text-slate-950"></i>
               </div>
               <div class="text-left">
                 <div class="flex items-center gap-1.5">
                   <span class="text-[9px] bg-gradient-to-r from-emerald-950 to-teal-950 text-emerald-400 border border-emerald-800/40 px-2 py-0.5 rounded-md font-extrabold select-none flex items-center gap-1 shadow-sm">
-                    <i class="fa-solid fa-lock text-[8px] animate-pulse text-emerald-400"></i> Encrypted Messenger Pro
+                    <i data-lucide="lock" class="text-[8px] animate-pulse text-emerald-400"></i> Encrypted Messenger Pro
                   </span>
                   <span id="chat-center-subtitle-tag" class="text-[9px] text-slate-500 font-mono tracking-wider hidden sm:inline">12ms • HD Voice Sync</span>
                 </div>
@@ -247,7 +247,7 @@ export class ChatProfileSystem {
               <!-- VIP Theme Picker Toggle -->
               <div class="relative">
                 <button id="chat-theme-toggle-btn" title="Change Messenger Theme" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-amber-400 hover:text-amber-300 rounded-xl py-2 px-3 text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer shadow-md">
-                  <i class="fa-solid fa-palette text-amber-400"></i>
+                  <i data-lucide="palette" class="text-amber-400"></i>
                   <span class="hidden md:inline">Theme</span>
                 </button>
 
@@ -277,7 +277,7 @@ export class ChatProfileSystem {
 
               <!-- Close button -->
               <button id="chat-modal-close-btn" class="bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-350 hover:text-white rounded-xl py-2 px-3.5 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
-                <i class="fa-solid fa-xmark"></i> <span class="hidden sm:inline">Close</span>
+                <i data-lucide="x"></i> <span class="hidden sm:inline">Close</span>
               </button>
             </div>
           </div>
@@ -289,7 +289,7 @@ export class ChatProfileSystem {
               <!-- Search Bar -->
               <div class="p-2.5 border-b border-slate-850 bg-slate-950/70">
                 <div class="relative">
-                  <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                  <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
                   <input type="text" id="chats-search-input" placeholder="Search contacts & messages..." class="w-full bg-slate-900 border border-slate-800 rounded-xl py-1.5 pl-8 pr-3 text-xs text-white outline-none placeholder-slate-500 focus:border-emerald-500/80 transition" />
                 </div>
               </div>
@@ -297,10 +297,10 @@ export class ChatProfileSystem {
               <!-- Inline Tabs Toggle -->
               <div class="grid grid-cols-2 border-b border-slate-850/80 bg-slate-950/50 p-2 gap-2 shrink-0">
                 <button id="chat-tab-selector-chats" class="py-2.5 rounded-2xl text-center text-xs font-extrabold cursor-pointer transition-all duration-200 bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/15" data-chat-tab="chats">
-                  <i class="fa-solid fa-envelope mr-1.5 text-[11px]"></i> Chats
+                  <i data-lucide="mail" class="mr-1.5 text-[11px]"></i> Chats
                 </button>
                 <button id="chat-tab-selector-friends" class="py-2.5 rounded-2xl text-center text-xs font-extrabold cursor-pointer transition-all duration-200 text-slate-400 hover:text-white" data-chat-tab="friends">
-                  <i class="fa-solid fa-user-group mr-1.5 text-[11px]"></i> Friends
+                  <i data-lucide="users" class="mr-1.5 text-[11px]"></i> Friends
                 </button>
               </div>
 
@@ -344,7 +344,7 @@ export class ChatProfileSystem {
                   <!-- Quick Add -->
                   <div class="bg-slate-950/60 p-3.5 rounded-[24px] border border-slate-850 space-y-2.5 shadow-sm">
                     <h4 class="text-[9px] uppercase tracking-widest text-slate-400 font-mono font-black flex items-center gap-1">
-                      <i class="fa-solid fa-user-plus text-cyan-400 text-[8px]"></i> Invite User Instantly
+                      <i data-lucide="user-plus" class="text-cyan-400 text-[8px]"></i> Invite User Instantly
                     </h4>
                     <div class="flex gap-2">
                       <input type="text" id="quick-add-username-input" placeholder="Type username..." class="flex-1 bg-slate-950 hover:bg-slate-900 border border-slate-805 text-xs text-white h-[40px] px-3.5 rounded-xl outline-none font-sans focus:border-cyan-500 transition" />
@@ -361,7 +361,7 @@ export class ChatProfileSystem {
               <div id="chat-active-recipient-banner" class="bg-slate-950/70 border-b border-slate-850/60 py-2.5 sm:py-3 px-3 sm:px-4 flex items-center justify-between shrink-0 z-20 w-full max-w-full overflow-hidden">
                 <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                   <button id="chat-mobile-back-btn" class="sm:hidden text-slate-300 hover:text-white bg-slate-900 hover:bg-slate-850 border border-slate-800 w-9 h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center transition active:scale-95 shrink-0 cursor-pointer">
-                    <i class="fa-solid fa-chevron-left text-xs sm:text-sm"></i>
+                    <i data-lucide="chevron-left" class="text-xs sm:text-sm"></i>
                   </button>
 
                   <div id="active-user-avatar-container" class="relative w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-slate-900 to-slate-850 text-white border border-slate-800 font-black flex items-center justify-center text-xs sm:text-sm uppercase shadow shrink-0 select-none">
@@ -380,13 +380,13 @@ export class ChatProfileSystem {
                 <!-- Action Tools (Voice Call, Video Call, Stats) -->
                 <div class="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   <button id="chat-header-call-btn" title="Start HD Voice Call" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-950/60 border border-emerald-800/50 text-emerald-400 hover:text-white hover:bg-emerald-600 transition flex items-center justify-center text-xs active:scale-95 cursor-pointer shadow-sm">
-                    <i class="fa-solid fa-phone"></i>
+                    <i data-lucide="phone"></i>
                   </button>
                   <button id="chat-header-video-btn" title="Start HD Video Call" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-cyan-950/60 border border-cyan-800/50 text-cyan-400 hover:text-white hover:bg-cyan-600 transition flex items-center justify-center text-xs active:scale-95 cursor-pointer shadow-sm">
-                    <i class="fa-solid fa-video"></i>
+                    <i data-lucide="video"></i>
                   </button>
                   <button id="chat-view-active-profile-btn" title="View Stats & Profile" class="text-[10px] sm:text-[10.5px] text-slate-200 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-850 py-1.5 sm:py-2 px-2.5 sm:px-3 rounded-xl transition cursor-pointer shrink-0 shadow-sm flex items-center gap-1 sm:gap-1.5 active:scale-95 font-bold">
-                    <i class="fa-solid fa-user-circle text-amber-400 text-xs"></i> <span class="hidden md:inline">Stats</span>
+                    <i data-lucide="user-circle" class="text-amber-400 text-xs"></i> <span class="hidden md:inline">Stats</span>
                   </button>
                 </div>
               </div>
@@ -398,7 +398,7 @@ export class ChatProfileSystem {
 
               <!-- Typing Indicator -->
               <div id="chat-typing-feedback" class="hidden text-[10px] font-sans italic text-slate-500 bg-slate-950/40 border-t border-slate-900/60 px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 font-mono tracking-tight select-none shrink-0 text-left">
-                <i class="fa-solid fa-circle-notch animate-spin text-[10px] text-emerald-400"></i> <span id="typing-feedback-username" class="font-bold text-slate-300">@username</span> is typing...
+                <i data-lucide="loader-2" class="animate-spin text-[10px] text-emerald-400"></i> <span id="typing-feedback-username" class="font-bold text-slate-300">@username</span> is typing...
               </div>
 
               <!-- Voice Recording Bar (shows during voice record) -->
@@ -410,7 +410,7 @@ export class ChatProfileSystem {
                 </div>
                 <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
                   <button id="chat-voice-cancel-btn" class="px-2.5 py-1 bg-slate-900 text-slate-400 hover:text-white rounded-lg text-[10px] font-bold">Cancel</button>
-                  <button id="chat-voice-send-btn" class="px-3 py-1 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg text-[10px] font-black shadow-md">Send <i class="fa-solid fa-paper-plane text-[9px] ml-1"></i></button>
+                  <button id="chat-voice-send-btn" class="px-3 py-1 bg-gradient-to-r from-red-600 to-rose-600 text-white rounded-lg text-[10px] font-black shadow-md">Send <i data-lucide="send" class="text-[9px] ml-1"></i></button>
                 </div>
               </div>
 
@@ -419,22 +419,22 @@ export class ChatProfileSystem {
                 
                 <!-- Send Gift/Tip Cash Button -->
                 <button id="chat-send-gift-btn" title="Send Tip / Cash Gift ৳" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-amber-950/40 border border-amber-800/50 text-amber-400 hover:bg-amber-600 hover:text-slate-950 transition flex items-center justify-center text-xs sm:text-sm shrink-0 cursor-pointer shadow-md shadow-amber-950/20 active:scale-95">
-                  <i class="fa-solid fa-gift text-amber-400"></i>
+                  <i data-lucide="gift" class="text-amber-400"></i>
                 </button>
 
                 <!-- Stickers & Emojis Tray Button -->
                 <div class="relative shrink-0">
                   <button id="chat-stickers-btn" title="Send VIP Stickers & Emojis" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-indigo-950/40 border border-indigo-800/50 text-indigo-400 hover:bg-indigo-600 hover:text-white transition flex items-center justify-center text-xs sm:text-sm shrink-0 cursor-pointer shadow-md shadow-indigo-950/20 active:scale-95">
-                    <i class="fa-solid fa-face-smile text-indigo-400"></i>
+                    <i data-lucide="smile" class="text-indigo-400"></i>
                   </button>
 
                   <!-- Stickers Popover Tray -->
                   <div id="chat-stickers-popover" class="hidden absolute left-0 bottom-11 sm:bottom-12 w-64 sm:w-80 max-w-[calc(100vw-24px)] bg-slate-950 border border-slate-800 rounded-2xl sm:rounded-3xl p-2.5 sm:p-3 shadow-2xl z-50 text-left space-y-2 font-sans">
                     <div class="flex items-center justify-between border-b border-slate-850 pb-2">
                       <span class="text-[10px] uppercase font-mono font-black text-amber-400 flex items-center gap-1">
-                        <i class="fa-solid fa-crown text-[9px]"></i> VIP Expressive Tray
+                        <i data-lucide="crown" class="text-[9px]"></i> VIP Expressive Tray
                       </span>
-                      <button id="chat-stickers-close-btn" class="text-slate-500 hover:text-white text-xs"><i class="fa-solid fa-xmark"></i></button>
+                      <button id="chat-stickers-close-btn" class="text-slate-500 hover:text-white text-xs"><i data-lucide="x"></i></button>
                     </div>
 
                     <!-- Category Pills -->
@@ -454,7 +454,7 @@ export class ChatProfileSystem {
 
                 <!-- Voice Note Button -->
                 <button id="chat-voice-note-btn" title="Record Voice Memo" class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-rose-950/40 border border-rose-800/50 text-rose-400 hover:bg-rose-600 hover:text-white transition flex items-center justify-center text-xs sm:text-sm shrink-0 cursor-pointer shadow-md active:scale-95">
-                  <i class="fa-solid fa-microphone text-rose-400"></i>
+                  <i data-lucide="mic" class="text-rose-400"></i>
                 </button>
 
                 <!-- Input Field -->
@@ -462,7 +462,7 @@ export class ChatProfileSystem {
                 
                 <!-- Send Button -->
                 <button id="chat-message-send-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs sm:text-sm h-[36px] sm:h-[42px] px-3 sm:px-5 rounded-xl sm:rounded-2xl transition active:scale-95 cursor-pointer shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-1 sm:gap-1.5 shrink-0">
-                  <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                  <i data-lucide="send" class="text-[10px]"></i>
                   <span class="hidden sm:inline">Send</span>
                 </button>
               </div>
@@ -471,7 +471,7 @@ export class ChatProfileSystem {
             <!-- Empty Conversation placeholder -->
             <div class="flex-1 flex flex-col items-center justify-center text-center p-8 text-slate-500 space-y-2.5 select-none" id="chat-empty-panel">
               <div class="w-16 h-16 rounded-[24px] bg-slate-950 border border-slate-850 flex items-center justify-center text-slate-500 text-xl shadow-inner">
-                <i class="fa-solid fa-comments"></i>
+                <i data-lucide="message-square"></i>
               </div>
               <div class="space-y-1 max-w-xs text-center">
                 <div class="text-xs sm:text-sm font-bold text-slate-200 font-sans">Select Conversation</div>
@@ -496,14 +496,14 @@ export class ChatProfileSystem {
           <div class="flex items-center justify-between border-b border-slate-800 pb-3">
             <div class="flex items-center gap-2">
               <div class="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center">
-                <i class="fa-solid fa-gift text-sm"></i>
+                <i data-lucide="gift" class="text-sm"></i>
               </div>
               <div>
                 <h3 class="text-sm font-black text-white leading-none">Send Cash Gift / Tip</h3>
                 <span class="text-[9px] text-amber-400 font-mono">INSTANT_TRANSFER</span>
               </div>
             </div>
-            <button id="chat-gift-close-btn" class="text-slate-400 hover:text-white text-sm"><i class="fa-solid fa-xmark"></i></button>
+            <button id="chat-gift-close-btn" class="text-slate-400 hover:text-white text-sm"><i data-lucide="x"></i></button>
           </div>
 
           <!-- Gift Preset Amounts -->
@@ -541,7 +541,7 @@ export class ChatProfileSystem {
 
           <!-- Send Gift Submit -->
           <button id="chat-gift-submit-btn" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/20 active:scale-95 transition cursor-pointer">
-            Send Gift Card Now <i class="fa-solid fa-paper-plane ml-1"></i>
+            Send Gift Card Now <i data-lucide="send" class="ml-1"></i>
           </button>
         </div>
       `;
@@ -556,7 +556,7 @@ export class ChatProfileSystem {
       callModal.innerHTML = `
         <div class="w-full max-w-md flex items-center justify-between text-xs font-mono text-slate-400">
           <span class="flex items-center gap-1.5 text-emerald-400 font-bold bg-emerald-950/60 border border-emerald-800/40 px-3 py-1 rounded-full">
-            <i class="fa-solid fa-shield-halved text-[10px]"></i> Encrypted HD Link
+            <i data-lucide="shield-check" class="text-[10px]"></i> Encrypted HD Link
           </span>
           <span id="chat-call-status-label" class="tracking-wider">Ringing...</span>
         </div>
@@ -594,15 +594,15 @@ export class ChatProfileSystem {
         <!-- Call Action Controls -->
         <div class="w-full max-w-sm flex items-center justify-center gap-6 pb-4">
           <button id="chat-call-mute-btn" title="Mute Mic" class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center justify-center text-base transition active:scale-95">
-            <i class="fa-solid fa-microphone-slash"></i>
+            <i data-lucide="mic-off"></i>
           </button>
 
           <button id="chat-call-end-btn" title="End Call" class="w-16 h-16 rounded-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white flex items-center justify-center text-xl shadow-xl shadow-red-600/30 transition active:scale-95 cursor-pointer">
-            <i class="fa-solid fa-phone-slash"></i>
+            <i data-lucide="phone-off"></i>
           </button>
 
           <button id="chat-call-speaker-btn" title="Speaker" class="w-12 h-12 rounded-full bg-slate-900 border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 flex items-center justify-center text-base transition active:scale-95">
-            <i class="fa-solid fa-volume-high"></i>
+            <i data-lucide="volume-2"></i>
           </button>
         </div>
       `;
@@ -618,7 +618,7 @@ export class ChatProfileSystem {
       messagesBtn.innerHTML = `
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-emerald-950/40 border border-emerald-800/30 flex items-center justify-center shrink-0">
-            <i class="fa-solid fa-comments text-emerald-400 text-xs text-center"></i>
+            <i data-lucide="message-square" class="text-emerald-400 text-xs text-center"></i>
           </div>
           <div>
             <span class="text-xs font-bold text-white block">VIP Messages Hub</span>
@@ -627,7 +627,7 @@ export class ChatProfileSystem {
         </div>
         <div class="flex items-center gap-2">
           <span id="profile-messages-unread-tag" class="hidden text-[8px] font-black bg-rose-600 text-white px-2 py-0.5 rounded-full animate-bounce">0 NEW</span>
-          <span class="text-[9px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900/40 px-2 py-0.5 rounded-lg font-mono">Open <i class="fa-solid fa-chevron-right text-[8px] pl-0.5"></i></span>
+          <span class="text-[9px] font-bold bg-emerald-950 text-emerald-400 border border-emerald-900/40 px-2 py-0.5 rounded-lg font-mono">Open <i data-lucide="chevron-right" class="text-[8px] pl-0.5"></i></span>
         </div>
       `;
       badgeBtn.parentNode.insertBefore(messagesBtn, badgeBtn.nextSibling);
@@ -970,7 +970,7 @@ export class ChatProfileSystem {
       }
 
       if (winCounts > 0) {
-        badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[8px] font-bold flex items-center gap-1 shadow-md"><i class="fa-solid fa-trophy text-amber-500 text-[7px]"></i> Lucky Winner (${winCounts})</span>`;
+        badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[8px] font-bold flex items-center gap-1 shadow-md"><i data-lucide="trophy" class="text-amber-500 text-[7px]"></i> Lucky Winner (${winCounts})</span>`;
       }
       
       badgesHtml += `<span class="bg-slate-950 border border-slate-800/85 text-slate-400 px-2 py-0.5 rounded-lg text-[8px] font-mono shadow-sm">🎖️ Active Player</span>`;
@@ -988,17 +988,17 @@ export class ChatProfileSystem {
         addFriendBtn.classList.remove("hidden");
         const rel = this.getFriendshipRelation(u.username);
         if (!rel) {
-          addFriendBtn.innerHTML = `<i class="fa-solid fa-user-plus text-emerald-400"></i> Add Friend`;
+          addFriendBtn.innerHTML = `<i data-lucide="user-plus" class="text-emerald-400"></i> Add Friend`;
           addFriendBtn.disabled = false;
         } else if (rel.status === "accepted") {
-          addFriendBtn.innerHTML = `<i class="fa-solid fa-user-check text-indigo-400"></i> Friends ✓`;
+          addFriendBtn.innerHTML = `<i data-lucide="user-check" class="text-indigo-400"></i> Friends ✓`;
           addFriendBtn.disabled = true;
         } else {
           if (rel.fromId === currentLoggedInUser.id || rel.fromId === currentLoggedInUser.username) {
-            addFriendBtn.innerHTML = `<i class="fa-solid fa-clock text-slate-500 animate-pulse"></i> Sent (Pending)`;
+            addFriendBtn.innerHTML = `<i data-lucide="clock" class="text-slate-500 animate-pulse"></i> Sent (Pending)`;
             addFriendBtn.disabled = true;
           } else {
-            addFriendBtn.innerHTML = `<i class="fa-solid fa-check text-emerald-400 animate-bounce"></i> Accept Invite`;
+            addFriendBtn.innerHTML = `<i data-lucide="check" class="text-emerald-400 animate-bounce"></i> Accept Invite`;
             addFriendBtn.disabled = false;
           }
         }
@@ -1377,7 +1377,7 @@ export class ChatProfileSystem {
           </div>
           <div class="flex gap-1.5 shrink-0">
             <button class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[10px] font-black h-8 px-3 rounded-xl transition cursor-pointer accept-invite-trigger flex items-center gap-1">
-              <i class="fa-solid fa-check text-[9px]"></i> Accept
+              <i data-lucide="check" class="text-[9px]"></i> Accept
             </button>
             <button class="bg-slate-900/80 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-rose-450 text-[10px] font-bold h-8 px-2.5 rounded-xl transition cursor-pointer reject-invite-trigger">
               Ignore
@@ -1432,7 +1432,7 @@ export class ChatProfileSystem {
           </div>
         </div>
         <button class="bg-gradient-to-r from-emerald-600/10 to-teal-600/10 hover:from-emerald-600 hover:to-teal-650/40 text-emerald-400 hover:text-white border border-emerald-950 text-xs font-black h-8 px-3.5 rounded-xl active:scale-95 transition cursor-pointer open-chat-direct-trigger flex items-center gap-1.5 shrink-0">
-          <i class="fa-solid fa-comment-dots text-[10px]"></i> Chat
+          <i data-lucide="message-square" class="text-[10px]"></i> Chat
         </button>
       `;
 
@@ -1846,7 +1846,7 @@ export class ChatProfileSystem {
       stream.innerHTML = `
         <div class="text-center py-10 opacity-70 font-sans space-y-2 my-auto select-none">
           <div class="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-emerald-400 mx-auto text-lg shadow-lg animate-bounce">
-            <i class="fa-solid fa-lock"></i>
+            <i data-lucide="lock"></i>
           </div>
           <span class="text-xs font-black text-slate-300 block">End-to-End Encrypted Tunnel Active</span>
           <p class="text-[9.5px] max-w-[220px] mx-auto leading-normal text-slate-500">Secure message node connected. Say hello, send a voice note or tip a lucky gift card to @${peer.username}!</p>
@@ -1888,7 +1888,7 @@ export class ChatProfileSystem {
           <div class="p-3.5 bg-gradient-to-br from-amber-950 via-slate-900 to-amber-950/80 border border-amber-500/50 rounded-2xl space-y-2 text-left max-w-xs shadow-xl gift-card-shine">
             <div class="flex items-center justify-between">
               <span class="text-[9px] uppercase font-mono font-black text-amber-400 flex items-center gap-1">
-                <i class="fa-solid fa-gift"></i> VIP Cash Gift
+                <i data-lucide="gift"></i> VIP Cash Gift
               </span>
               <span class="text-xs font-black text-amber-300">৳${msg.amount || 100}</span>
             </div>
@@ -1907,7 +1907,7 @@ export class ChatProfileSystem {
         bodyHtml = `
           <div class="p-3 bg-slate-900 border border-slate-800 rounded-2xl flex items-center gap-3 shadow-md w-56">
             <button class="w-8 h-8 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-xs shrink-0 shadow">
-              <i class="fa-solid fa-play ml-0.5"></i>
+              <i data-lucide="play" class="ml-0.5"></i>
             </button>
             <div class="flex-1 space-y-1">
               <div class="flex items-end gap-1 h-4">
@@ -1942,7 +1942,7 @@ export class ChatProfileSystem {
 
         <div class="flex items-center gap-1 text-[7.5px] font-mono text-slate-600 px-1 select-none">
           <span>${timeStr}</span>
-          ${isMe ? `<i class="fa-solid fa-check-double text-[7px] ${msg.status === "read" ? "text-emerald-400" : "text-slate-600"}"></i>` : ""}
+          ${isMe ? `<i data-lucide="check-check" class="text-[7px] ${msg.status === "read" ? "text-emerald-400" : "text-slate-600"}"></i>` : ""}
         </div>
       `;
 

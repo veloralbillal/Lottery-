@@ -41,7 +41,12 @@ try {
     $stmt_p->execute([$product_id]);
     $product = $stmt_p->fetch();
     
-    $filename = $product ? $product['file_path'] : "digital_asset.zip";
+    $raw_filename = $product ? $product['file_path'] : "digital_asset.zip";
+    // Strip any path traversal characters (../, ..\, etc.)
+    $filename = basename($raw_filename);
+    if (empty($filename) || $filename === '.' || $filename === '..') {
+        $filename = "digital_asset.zip";
+    }
     
     // Private storage root path
     $private_dir = pathinfo(__DIR__, PATHINFO_DIRNAME) . "/../private_storage/products/";

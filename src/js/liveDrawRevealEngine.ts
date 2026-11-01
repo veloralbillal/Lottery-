@@ -5,6 +5,7 @@
 // ========================================================
 
 import { UIEffectsModule } from "./uiEffects.js";
+import { FloatingToastNotification } from "../floating_toast.js";
 
 export interface WinnerProfileItem {
   userId?: string;
@@ -439,6 +440,44 @@ export class LiveDrawRevealEngine {
       UIEffectsModule.triggerConfetti();
     } catch (e) {
       console.warn("UIEffectsModule confetti error:", e);
+    }
+
+    // --- AUTOMATED CELEBRATION TRIGGERS ---
+
+    // 1. Broadcast Global Victory Toasts for all winners (Social Proof & Engagement)
+    if (drawEvent.winners && drawEvent.winners.length > 0) {
+      drawEvent.winners.forEach((winner, idx) => {
+        setTimeout(() => {
+          FloatingToastNotification.broadcastCustom(
+            "WINNER ANNOUNCED! 🏆",
+            `@<span class="text-white font-bold">${winner.username}</span> won <strong class="text-emerald-400">৳${winner.prizeAmount.toLocaleString()}</strong> in ${drawEvent.lotteryName} ড্রতে জিতেছেন!`,
+            "success"
+          );
+        }, idx * 1500); // Stagger toasts if multiple winners
+      });
+    }
+
+    // 2. Grand Splash Overlay for the Current User if they won
+    const currentUser = this.app?.currentUser || (window as any).app?.currentUser;
+    if (currentUser && drawEvent.winners) {
+      const myWin = drawEvent.winners.find(w => 
+        w.userId === currentUser.id || 
+        (w.username && w.username.toLowerCase() === currentUser.username.toLowerCase())
+      );
+
+      if (myWin) {
+        setTimeout(() => {
+          UIEffectsModule.showCongratsSplash(
+            "CONGRATULATIONS! 🏆",
+            `আপনি <strong>${drawEvent.lotteryName}</strong> ড্রতে বিজয়ী হয়েছেন! আপনার পুরস্কারের টাকা ওয়ালেটে জমা হয়েছে। 🎉`,
+            `৳${myWin.prizeAmount.toLocaleString()}`
+          );
+          
+          // Triple confetti for the winner!
+          setTimeout(() => UIEffectsModule.triggerConfetti(), 1500);
+          setTimeout(() => UIEffectsModule.triggerConfetti(), 3000);
+        }, 2500); // Trigger after user sees their code on reels
+      }
     }
   }
 

@@ -2,17 +2,23 @@
 /**
  * Lottery Winner - Secure Session Termination (logout.php)
  * 
- * Safely clears active login tokens, releases all memory associated
- * with the current user or administrator session, and redirects to the portal.
+ * Safely clears active login tokens, audits the sign-out event, releases all memory associated
+ * with the current user or administrator session, destroys the session cookie, and redirects to portal.
  */
 
 // Load centralized configurations
 require_once __DIR__ . '/config.php';
 
-// Unset all session variables representing user logins or admins
-$_SESSION = array();
+if (isset($_SESSION['user_id'])) {
+    $actor_id = $_SESSION['user_id'];
+    $actor_username = $_SESSION['username'] ?? 'User';
+    record_audit_log($conn, $actor_id, $actor_username, 'LOGOUT', ['ip' => get_client_ip()]);
+}
 
-// If it's desired to kill the session cookie, destroy it completely
+// Unset all session variables
+$_SESSION = [];
+
+// Destroy the session cookie
 if (ini_get("session.use_cookies")) {
     $params = session_get_cookie_params();
     setcookie(
@@ -27,9 +33,11 @@ if (ini_get("session.use_cookies")) {
 }
 
 // Destroy session entirely on the host
-session_destroy();
+if (session_status() === PHP_SESSION_ACTIVE) {
+    @session_destroy();
+}
 
-// Redirect back to main page or a landing login portal with logout success context
+// Redirect back to landing login portal with logout success context
 header("Location: login_page.php?success=logged_out");
 exit;
 ?>

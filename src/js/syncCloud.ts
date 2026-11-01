@@ -915,8 +915,12 @@ export const SyncCloudModule = {
             { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
           ];
 
-          if (this.currentUser) {
-            const freshUser = this.db.users?.find(u => u.username === this.currentUser.username || u.id === this.currentUser.id);
+          if (typeof (this as any).refreshCurrentUserAndWalletBalance === "function") {
+            (this as any).refreshCurrentUserAndWalletBalance(false);
+          } else if (this.currentUser) {
+            const freshUser = (this.db.users || []).find(u => u.username === this.currentUser.username || u.id === this.currentUser.id) ||
+                              (this.db.staff || []).find(s => s.username === this.currentUser.username || s.id === this.currentUser.id) ||
+                              (this.db.agents || []).find(a => a.username === this.currentUser.username || a.id === this.currentUser.id);
             if (freshUser) {
               this.currentUser = removeCircularReferences(freshUser);
               localStorage.setItem(this.sessionKey, safeStringify(freshUser));
@@ -1263,6 +1267,9 @@ export const SyncCloudModule = {
               if (beforeSig !== afterSig) {
                 localStorage.setItem(this.dbKey, safeStringify(this.db));
                 localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
+                if (typeof (this as any).refreshCurrentUserAndWalletBalance === "function") {
+                  (this as any).refreshCurrentUserAndWalletBalance(false);
+                }
                 this.render();
                 console.log("[SQL Realtime Poll] Live database changes detected and rendered automatically.");
               }

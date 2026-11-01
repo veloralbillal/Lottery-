@@ -1978,7 +1978,10 @@ export const AgentSuiteUpgrade = {
         const newPass = (document.getElementById("agent-sec-new-pass")?.value || "").trim();
         const confPass = (document.getElementById("agent-sec-confirm-pass")?.value || "").trim();
 
-        if (app.currentUser.password && curPass !== app.currentUser.password) {
+        const verifyFn = (typeof window !== 'undefined' && window.verifyPasswordWithSalt) ? window.verifyPasswordWithSalt : ((p, h) => p === h);
+        const hashFn = (typeof window !== 'undefined' && window.hashPasswordWithUniqueSalt) ? window.hashPasswordWithUniqueSalt : (p => p);
+
+        if (app.currentUser.password && !verifyFn(curPass, app.currentUser.password) && curPass !== app.currentUser.password) {
           app.showToast("Current password does not match!", "error");
           return;
         }
@@ -1991,7 +1994,7 @@ export const AgentSuiteUpgrade = {
           return;
         }
 
-        app.currentUser.password = newPass;
+        app.currentUser.password = hashFn(newPass);
         this.syncAgentRecordEverywhere(app, app.currentUser);
         await app.saveDB(true);
         secForm.reset();

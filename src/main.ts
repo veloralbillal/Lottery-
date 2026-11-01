@@ -47,6 +47,141 @@ import { LiveDrawRevealEngine } from "./js/liveDrawRevealEngine.js";
 import { LegalPoliciesManager } from "./js/legalPoliciesManager.js";
 import { GlobalCache, debounce, throttle, paginate, LazyTabManager, VisibilityLifecycle } from "./js/performanceOptimizer.js";
 import { PathHelper } from "./js/pathHelper.js";
+import { hashPasswordWithUniqueSalt, verifyPasswordWithSalt, needsRehash, generateUniqueSalt } from "./js/passwordSecurity.js";
+import { createIcons, icons } from 'lucide';
+
+// Enhanced Lucide Icons Dictionary with Comprehensive FontAwesome & Legacy Aliases
+export const appIcons: Record<string, any> = { ...icons };
+
+const iconAliases: Record<string, string> = {
+  'Xmark': 'X',
+  'CircleCheck': 'CheckCircle',
+  'CircleXmark': 'XCircle',
+  'CircleExclamation': 'AlertCircle',
+  'TriangleExclamation': 'AlertTriangle',
+  'CircleInfo': 'Info',
+  'CircleQuestion': 'HelpCircle',
+  'CircleDown': 'ArrowDownCircle',
+  'CircleUp': 'ArrowUpCircle',
+  'CircleRight': 'ArrowRightCircle',
+  'CircleLeft': 'ArrowLeftCircle',
+  'CircleDot': 'CircleDot',
+  'CircleNotch': 'Loader2',
+  'Spinner': 'Loader2',
+  'Rotate': 'RefreshCw',
+  'RotateRight': 'RotateCw',
+  'RotateLeft': 'RotateCcw',
+  'ArrowsRotate': 'RefreshCw',
+  'ClockRotateLeft': 'History',
+  'MagnifyingGlass': 'Search',
+  'FloppyDisk': 'Save',
+  'PenToSquare': 'Edit',
+  'TrashCan': 'Trash2',
+  'Trash': 'Trash2',
+  'ShieldHalved': 'Shield',
+  'ShieldCheck': 'ShieldCheck',
+  'ShieldVirus': 'ShieldAlert',
+  'UserShield': 'ShieldCheck',
+  'UserPlus': 'UserPlus',
+  'UserCheck': 'UserCheck',
+  'UserTie': 'User',
+  'UserClock': 'UserCheck',
+  'UserGear': 'UserCog',
+  'UserCog': 'UserCog',
+  'UserSlash': 'UserX',
+  'UserMinus': 'UserMinus',
+  'MoneyBillTransfer': 'ArrowLeftRight',
+  'MoneyBillWave': 'Banknote',
+  'MoneyBill': 'Banknote',
+  'MoneyBills': 'Banknotes',
+  'SackDollar': 'CircleDollarSign',
+  'HandHoldingDollar': 'HandCoins',
+  'MoneyCheckDollar': 'CreditCard',
+  'BuildingColumns': 'Landmark',
+  'CartShopping': 'ShoppingCart',
+  'BagShopping': 'ShoppingBag',
+  'Gear': 'Settings',
+  'Gears': 'Settings',
+  'RightFromBracket': 'LogOut',
+  'RightToBracket': 'LogIn',
+  'Bars': 'Menu',
+  'ArrowUpRightFromSquare': 'ExternalLink',
+  'UpRightFromSquare': 'ExternalLink',
+  'PaperPlane': 'Send',
+  'Comments': 'MessagesSquare',
+  'Comment': 'MessageSquare',
+  'CommentDots': 'MessageSquare',
+  'FileLines': 'FileText',
+  'FileArrowDown': 'Download',
+  'FileArrowUp': 'Upload',
+  'FileZipper': 'FileArchive',
+  'FileInvoice': 'Receipt',
+  'FileInvoiceDollar': 'Receipt',
+  'BoltLightning': 'Zap',
+  'Bolt': 'Zap',
+  'PuzzlePiece': 'Puzzle',
+  'NetworkWired': 'Network',
+  'MobileScreen': 'Smartphone',
+  'MobileScreenButton': 'Smartphone',
+  'Envelope': 'Mail',
+  'EnvelopeOpen': 'MailOpen',
+  'Lock': 'Lock',
+  'LockOpen': 'LockOpen',
+  'Key': 'Key',
+  'Gift': 'Gift',
+  'Trophy': 'Trophy',
+  'Medal': 'Medal',
+  'Award': 'Award',
+  'Crown': 'Crown',
+  'Gem': 'Gem',
+  'Clover': 'Clover',
+  'Coins': 'Coins',
+  'PiggyBank': 'PiggyBank',
+  'Dice': 'Dice5',
+  'Dice5': 'Dice5',
+  'Check': 'Check',
+  'CheckDouble': 'CheckCheck',
+  'Copy': 'Copy',
+  'Qrcode': 'QrCode',
+  'Headset': 'Headset',
+  'GaugeHigh': 'Gauge',
+  'Gauge': 'Gauge',
+  'HourglassEmpty': 'Hourglass',
+  'HourglassHalf': 'Hourglass',
+  'TicketSimple': 'Ticket',
+  'Cube': 'Box',
+  'CircleNodes': 'Network',
+  'PeopleCarryBox': 'Users',
+  'Whatsapp': 'MessageCircle',
+  'Telegram': 'Send',
+  'Bullhorn': 'Megaphone',
+  'RankingStar': 'Trophy',
+  'BorderAll': 'LayoutGrid',
+  'BoxOpen': 'Box',
+  'FolderOpen': 'FolderOpen',
+  'CloudArrowDown': 'Download',
+  'CloudArrowUp': 'Upload',
+  'Print': 'Printer',
+  'WandMagicSparkles': 'Sparkles',
+  'Eye': 'Eye',
+  'EyeSlash': 'EyeOff',
+  'Stopwatch': 'Timer',
+  'ChartSimple': 'BarChart2',
+  'ChartLine': 'TrendingUp',
+  'ChartPie': 'PieChart',
+  'Tag': 'Tag',
+  'Tags': 'Tags',
+  'Sliders': 'Sliders',
+  'Fingerprint': 'Fingerprint',
+  'Receipt': 'Receipt',
+  'Bell': 'Bell'
+};
+
+for (const [alias, target] of Object.entries(iconAliases)) {
+  if (icons[target]) {
+    appIcons[alias] = icons[target];
+  }
+}
 
 // Expose global handlers immediately to prevent ReferenceErrors during early UI interactions
 if (typeof window !== "undefined") {
@@ -92,6 +227,7 @@ export class StateManager {
   constructor() {
     try {
       console.log("StateManager: Initializing...");
+      (window as any).refreshIcons = () => this.refreshIcons();
       this.dbKey = "lottery_winner_db";
       this.sessionKey = "lw_user_session";
       this.adminSessionKey = "lw_admin_session";
@@ -145,6 +281,13 @@ export class StateManager {
       }
       
       this.offlineQueue = new OfflineQueueManager(this);
+
+      // SPA Navigation: Initialize History API state
+      const initialTab = window.location.hash ? window.location.hash.replace(/^#/, "").trim().toLowerCase() : "home";
+      const validTabs = ["home", "events", "tickets", "wallet", "deposit", "withdraw", "agent", "history", "profile", "settings", "customizer", "refer", "jackpot", "tasks", "games", "store", "store-cart", "store-details", "store-checkout", "store-profile", "edit-profile"];
+      if (validTabs.some(vt => initialTab === vt || initialTab.startsWith(vt))) {
+        this.currentTab = initialTab;
+      }
 
       this.offlineGameCards = [];
       this.firstFlippedCard = null;
@@ -207,6 +350,204 @@ export class StateManager {
         box.classList.remove("hidden");
       }
     }
+  }
+
+  /**
+   * SPA Navigation: Centralized method to switch tabs with History API support
+   */
+  navigateTo(tabId: string) {
+    if (!tabId) return;
+    this.currentTab = tabId;
+    if (window.location.hash !== "#" + tabId) {
+      history.pushState({ tab: tabId }, "", "#" + tabId);
+    }
+    this.render();
+  }
+
+  switchTab(tabId: string) {
+    this.navigateTo(tabId);
+  }
+
+  /**
+   * Viral Growth: Share referral link on WhatsApp with pre-filled Bengali marketing copy
+   */
+  shareOnWhatsAppViral() {
+    if (!this.currentUser) {
+      this.showToast("Please login first to share your referral link!", "error");
+      return;
+    }
+    const username = this.currentUser.username;
+    const inviteUrl = window.location.origin + "/index.html?ref=" + encodeURIComponent(username);
+    const text = `৳১,৫০০ প্রথম পুরস্কার! সম্পূর্ণ ফ্রিতে যোগ দিন এবং লটারি খেলে জিতুন। আমার ইনভাইট লিংক থেকে রেজিস্টার করলেই পাবেন বিশেষ বোনাস! \n\nরেজিস্ট্রেশন লিংক: ${inviteUrl}`;
+    const encodedText = encodeURIComponent(text);
+    const shareUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
+    window.open(shareUrl, "_blank");
+  }
+
+  // ================= 2-FACTOR AUTHENTICATION & RATE LIMITING DEFENSE SYSTEM =================
+  checkRateLimit(key: string): { allowed: boolean; remaining: number; minutesLeft: number } {
+    if (!this.db.securityRateLimits) this.db.securityRateLimits = [];
+    const policy = this.db.settings?.rateLimitPolicy || { maxLoginAttempts: 5, lockoutDurationMinutes: 15, maxRegistrationAttempts: 5 };
+    const isReg = key.startsWith("register_");
+    const maxAttempts = isReg ? (policy.maxRegistrationAttempts || 5) : (policy.maxLoginAttempts || 5);
+    const lockoutMs = (policy.lockoutDurationMinutes || 15) * 60 * 1000;
+    const now = Date.now();
+
+    const record = this.db.securityRateLimits.find((r: any) => r.key === key);
+    if (!record) {
+      return { allowed: true, remaining: maxAttempts, minutesLeft: 0 };
+    }
+
+    if (record.lockedUntil && record.lockedUntil > now) {
+      const minutesLeft = Math.ceil((record.lockedUntil - now) / 60000);
+      return { allowed: false, remaining: 0, minutesLeft };
+    }
+
+    // Decay expired
+    if (record.lastAttempt && (now - new Date(record.lastAttempt).getTime()) > lockoutMs) {
+      record.attempts = 0;
+      record.lockedUntil = 0;
+      this.saveDB();
+      return { allowed: true, remaining: maxAttempts, minutesLeft: 0 };
+    }
+
+    const remaining = Math.max(0, maxAttempts - (record.attempts || 0));
+    return { allowed: remaining > 0, remaining, minutesLeft: 0 };
+  }
+
+  recordRateLimitAttempt(key: string): { locked: boolean; remaining: number; attempts: number } {
+    if (!this.db.securityRateLimits) this.db.securityRateLimits = [];
+    const policy = this.db.settings?.rateLimitPolicy || { maxLoginAttempts: 5, lockoutDurationMinutes: 15, maxRegistrationAttempts: 5 };
+    const isReg = key.startsWith("register_");
+    const maxAttempts = isReg ? (policy.maxRegistrationAttempts || 5) : (policy.maxLoginAttempts || 5);
+    const lockoutMs = (policy.lockoutDurationMinutes || 15) * 60 * 1000;
+    const now = Date.now();
+
+    let record = this.db.securityRateLimits.find((r: any) => r.key === key);
+    if (!record) {
+      record = { key, attempts: 1, lastAttempt: new Date(now).toISOString(), lockedUntil: 0 };
+      this.db.securityRateLimits.push(record);
+    } else {
+      record.attempts = (record.attempts || 0) + 1;
+      record.lastAttempt = new Date(now).toISOString();
+    }
+
+    let locked = false;
+    if (record.attempts >= maxAttempts) {
+      record.lockedUntil = now + lockoutMs;
+      locked = true;
+      if (!this.db.securityLogs) this.db.securityLogs = [];
+      this.db.securityLogs.push({
+        id: "sec_" + Date.now(),
+        timestamp: new Date().toISOString(),
+        actor: key,
+        action: "RATE_LIMIT_LOCKOUT_TRIGGERED",
+        ip: "127.0.0.1",
+        details: `Brute-force lockout enforced for key '${key}'. Barred for ${policy.lockoutDurationMinutes} minutes.`
+      });
+    }
+
+    this.saveDB();
+    const remaining = Math.max(0, maxAttempts - record.attempts);
+    return { locked, remaining, attempts: record.attempts };
+  }
+
+  resetRateLimit(key: string) {
+    if (!this.db.securityRateLimits) return;
+    const record = this.db.securityRateLimits.find((r: any) => r.key === key);
+    if (record) {
+      record.attempts = 0;
+      record.lockedUntil = 0;
+      this.saveDB();
+    }
+  }
+
+  is2FAActive(moment?: string): boolean {
+    const tfa = this.db.settings?.twoFactorAuth;
+    if (!tfa || !tfa.enabled) return false;
+
+    if (!moment) return true;
+    if (moment === "login") return tfa.enforceOnLogin !== false;
+    if (moment === "withdraw") return tfa.enforceOnWithdraw !== false;
+    if (moment === "credentials") return tfa.enforceOnCredentials !== false;
+    if (moment === "finance") return tfa.enforceOnFinance !== false;
+    return true;
+  }
+
+  prompt2FA(context: { title?: string; subtitle?: string; user?: any }, onSuccess: () => void, onCancel?: () => void) {
+    const modal = document.getElementById("two-factor-auth-modal");
+    if (!modal) {
+      onSuccess();
+      return;
+    }
+
+    const titleEl = document.getElementById("two-factor-modal-title");
+    const subEl = document.getElementById("two-factor-modal-subtitle");
+    const inputEl = document.getElementById("two-factor-code-input") as HTMLInputElement | null;
+    const alertBox = document.getElementById("two-factor-alert-box");
+    const remainingBadge = document.getElementById("two-factor-remaining-badge");
+    const labelEl = document.getElementById("two-factor-input-label");
+
+    if (titleEl && context.title) titleEl.innerText = context.title;
+    if (subEl && context.subtitle) subEl.innerText = context.subtitle;
+    if (alertBox) alertBox.classList.add("hidden");
+    if (inputEl) {
+      inputEl.value = "";
+      inputEl.placeholder = "••••••";
+      inputEl.maxLength = 10;
+    }
+    if (labelEl) labelEl.innerText = "Enter 6-Digit Code";
+
+    let attemptsLeft = 3;
+    if (remainingBadge) remainingBadge.innerText = `${attemptsLeft} attempts remaining`;
+
+    (this as any)._pending2FASuccess = onSuccess;
+    (this as any)._pending2FACancel = onCancel;
+    (this as any)._2FABackupMode = false;
+    (this as any)._2FAAttemptsLeft = attemptsLeft;
+
+    modal.classList.remove("hidden");
+    setTimeout(() => inputEl?.focus(), 100);
+  }
+
+  verify2FACode(enteredCode: string): boolean {
+    const tfa = this.db.settings?.twoFactorAuth;
+    if (!tfa) return true;
+
+    const clean = enteredCode.trim().toUpperCase();
+    const expectedPin = String(tfa.pin || "829401").trim();
+
+    // Check PIN
+    if (clean === expectedPin) {
+      return true;
+    }
+
+    // Check Backup Codes
+    if (Array.isArray(tfa.backupCodes)) {
+      const matchIdx = tfa.backupCodes.findIndex((c: string) => c.toUpperCase() === clean);
+      if (matchIdx >= 0) {
+        if (!tfa.usedBackupCodes) tfa.usedBackupCodes = [];
+        if (!tfa.usedBackupCodes.includes(clean)) {
+          tfa.usedBackupCodes.push(clean);
+          this.saveDB();
+          this.showToast("Emergency Recovery Backup Code consumed successfully.", "info");
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  completeLogin(user: any) {
+    this.currentUser = StateManager.removeCircularReferences(user);
+    if (this.currentUser.role === "admin") {
+      this.isAdminMode = true;
+      localStorage.setItem("lw_admin_mode", "true");
+    }
+    localStorage.setItem(this.sessionKey, StateManager.safeStringify(this.currentUser));
+    this.showToast(`Login Successful! Welcome back, @${user.username}!`, "success");
+    this.render();
   }
 
   updateMetaTags() {
@@ -301,8 +642,32 @@ export class StateManager {
     if (!this.db.transactions) this.db.transactions = [];
     if (!this.db.spinHistory) this.db.spinHistory = [];
     if (!this.db.securityLogs) this.db.securityLogs = [];
+    if (!this.db.securityRateLimits) this.db.securityRateLimits = [];
     if (!this.db.pendingAdminToasts) this.db.pendingAdminToasts = [];
     if (!this.db.webPushAds) this.db.webPushAds = [];
+    if (!this.db.videoBounties) this.db.videoBounties = [];
+
+    if (!this.db.settings) this.db.settings = {};
+    if (!this.db.settings.twoFactorAuth) {
+      this.db.settings.twoFactorAuth = {
+        enabled: false,
+        pin: "829401",
+        backupCodes: ["LW-9821", "LW-4412", "LW-7729", "LW-3184", "LW-5590"],
+        usedBackupCodes: [],
+        enforceOnLogin: true,
+        enforceOnWithdraw: true,
+        enforceOnCredentials: true,
+        enforceOnFinance: true
+      };
+    }
+    if (!this.db.settings.rateLimitPolicy) {
+      this.db.settings.rateLimitPolicy = {
+        maxLoginAttempts: 5,
+        lockoutDurationMinutes: 15,
+        maxRegistrationAttempts: 5,
+        maxSensitiveReqPerMin: 10
+      };
+    }
 
     // Ensure all users, staff, and agents have non-null email and password for SQL bulk-sync
     [this.db.users, this.db.staff, this.db.agents].forEach((arr) => {
@@ -771,6 +1136,7 @@ export class StateManager {
       LazyTabManager.markModuleInitialized("VideoBountyTab");
       VideoBountyTab.init(this);
     }
+    this.refreshIcons();
   }
 
   async loadDashboardTabs() {
@@ -809,11 +1175,92 @@ export class StateManager {
     }
   }
 
+  updateAllWalletBalanceUI() {
+    if (!this.currentUser) return;
+    const currentBal = Number(this.currentUser.balance) || 0;
+    const formattedBal = `৳${currentBal.toFixed(2)}`;
+
+    // Update Agent Workspace overview & sidebar balance elements
+    const balOverview = document.getElementById("agent-overview-wallet-balance");
+    if (balOverview) balOverview.innerText = formattedBal;
+
+    const sidebarBal = document.getElementById("agent-sidebar-balance");
+    if (sidebarBal) sidebarBal.innerText = formattedBal;
+
+    const headerBalInline = document.getElementById("agent-header-balance-inline");
+    if (headerBalInline) headerBalInline.innerText = `Balance: ${formattedBal}`;
+
+    const tillBal = document.getElementById("agent-cash-till-balance");
+    if (tillBal) tillBal.innerText = formattedBal;
+
+    // Update User Panel & Global Navigation balance elements
+    const userWalletBal = document.getElementById("user-wallet-balance");
+    if (userWalletBal) userWalletBal.innerText = formattedBal;
+
+    const currUserBal = document.getElementById("curr-user-balance");
+    if (currUserBal) currUserBal.innerText = formattedBal;
+
+    const walletMainBal = document.getElementById("wallet-main-balance");
+    if (walletMainBal) walletMainBal.innerText = formattedBal;
+
+    const walletNum = document.getElementById("wallet-balance-num");
+    if (walletNum) walletNum.innerText = currentBal.toFixed(2);
+
+    const depBal = document.getElementById("deposit-user-balance");
+    if (depBal) depBal.innerText = formattedBal;
+
+    const wdrBal = document.getElementById("withdraw-user-balance");
+    if (wdrBal) wdrBal.innerText = formattedBal;
+
+    document.querySelectorAll(".curr-balance").forEach(el => {
+      (el as HTMLElement).innerText = formattedBal;
+    });
+  }
+
+  refreshCurrentUserAndWalletBalance(quiet: boolean = true) {
+    if (!this.currentUser || !this.db) return;
+
+    const prevBal = Number(this.currentUser.balance) || 0;
+
+    // Look up fresh record across users, staff, and agents tables
+    let freshUser = (this.db.users || []).find((u: any) => u && (u.id === this.currentUser.id || (u.username && u.username.toLowerCase() === this.currentUser.username?.toLowerCase())));
+    if (!freshUser && Array.isArray(this.db.staff)) {
+      freshUser = this.db.staff.find((s: any) => s && (s.id === this.currentUser.id || (s.username && s.username.toLowerCase() === this.currentUser.username?.toLowerCase())));
+    }
+    if (!freshUser && Array.isArray(this.db.agents)) {
+      freshUser = this.db.agents.find((a: any) => a && (a.id === this.currentUser.id || (a.username && a.username.toLowerCase() === this.currentUser.username?.toLowerCase())));
+    }
+
+    if (freshUser) {
+      const freshBal = Number(freshUser.balance) || 0;
+      const balanceChanged = Math.abs(freshBal - prevBal) > 0.001;
+
+      this.currentUser = { ...this.currentUser, ...freshUser };
+      try {
+        localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
+      } catch (e) {}
+
+      this.updateAllWalletBalanceUI();
+
+      if (balanceChanged && !quiet) {
+        const diff = freshBal - prevBal;
+        const diffText = diff > 0 ? `+৳${diff.toFixed(2)}` : `-৳${Math.abs(diff).toFixed(2)}`;
+        this.showToast(`✨ Wallet Balance Updated: ৳${freshBal.toFixed(2)} (${diffText})`, "success");
+
+        // If in Agent Workspace, trigger a light re-render of overview metrics
+        if (typeof (this as any).renderAgentWorkspace === "function" && (this.currentTab === "agent" || document.getElementById("screen-agent")?.classList.contains("hidden") === false)) {
+          (this as any).renderAgentWorkspace();
+        }
+      }
+    }
+  }
+
   async fetchAndUpdateLatestLotteryData() {
     try {
       if (typeof (this as any).loadFromCloud === "function") {
         await (this as any).loadFromCloud();
       }
+      this.refreshCurrentUserAndWalletBalance(false);
       this.checkAndExecuteAutoDraws();
       this.cleanupExpiredAndDrawnLotteries();
       if (this.currentTab === "home") {
@@ -829,19 +1276,20 @@ export class StateManager {
       // Performance Mode: Pause intensive checks if user switched away from the browser/tab
       if (typeof document !== 'undefined' && document.hidden) return;
       
+      this.refreshCurrentUserAndWalletBalance(false);
       this.checkAndExecuteAutoDraws();
       this.checkLiveNotifications();
       this.cleanupExpiredAndDrawnLotteries();
       this.checkFiveMinutesDrawAlerts();
       this.checkCartAbandonmentNotification();
       this.tickProgressiveJackpot();
-    }, 5000);
+    }, 4000);
 
-    // Automatic background fetch & update for latest lottery draw status and pool data every 12 seconds
+    // Automatic background fetch & update for latest lottery draw status and pool data every 10 seconds
     setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       this.fetchAndUpdateLatestLotteryData();
-    }, 12000);
+    }, 10000);
   }
 
   checkFiveMinutesDrawAlerts() {
@@ -1389,6 +1837,13 @@ export class StateManager {
         if (t.status === "won") {
           this.showToast(`🎯 Winner Alert! Your ticket ${t.code} inside "${lotName}" won the grand prize of ৳${t.prizeAmount}!`, "success");
           NotificationEngine.trigger("DRAW WINNER! 🏆", `Your ticket ${t.code} inside "${lotName}" won the grand prize of ৳${t.prizeAmount}!`, "winner", "tab-history");
+          
+          // SPECTACULAR WINNER CELEBRATION OVERLAY
+          this.showCongratsSplash(
+            "🏆 YOU ARE A WINNER!",
+            `Congratulations! Your ticket <strong class="text-amber-400 font-mono">${t.code}</strong> matched the winning combination in <strong>${lotName}</strong>. The grand prize has been credited to your wallet!`,
+            `৳${parseFloat(t.prizeAmount || 0).toLocaleString()}`
+          );
         } else {
           this.showToast(`🔔 Draw Completed: Your ticket ${t.code} inside "${lotName}" was drawn. Better luck next time!`, "normal");
           NotificationEngine.trigger("Draw Completed 🔔", `Your ticket ${t.code} inside "${lotName}" was drawn. Better luck next time!`, "clover", "tab-history");
@@ -1522,7 +1977,7 @@ export class StateManager {
           <div class="text-[9.5px] text-slate-500 font-mono">Verified Station Agent</div>
         </div>
         <a href="${waUrl}" target="_blank" class="bg-emerald-600/10 hover:bg-emerald-600 text-emerald-400 hover:text-white py-1.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 transition">
-          <i class="fa-brands fa-whatsapp text-xs"></i> Connect Chat
+          <i data-lucide="message-square" class="w-4 h-4"></i> Connect Chat
         </a>
       `;
 
@@ -1569,6 +2024,11 @@ export class StateManager {
     try {
       this.applyDynamicSEO();
       this.checkLiveNotifications();
+
+      // SPA Navigation: Ensure URL hash stays in sync with current internal state
+      if (window.location.hash !== "#" + this.currentTab) {
+         history.replaceState({ tab: this.currentTab }, "", "#" + this.currentTab);
+      }
 
       // Dynamically update site settings and branding texts globally
       const settings = (this.db && this.db.settings) ? this.db.settings : {};
@@ -1695,12 +2155,136 @@ export class StateManager {
         debugBox.classList.remove("hidden");
       }
     }
+    
+    // 💎 Premium Icons Implementation: Replace FontAwesome with Lucide
+    this.refreshIcons();
+  }
+
+  refreshIcons() {
+    // 🛡️ Automatic FontAwesome to Lucide Migration Bridge
+    // Converts <i class="fa-solid fa-user"></i> style elements to <i data-lucide="user"></i>
+    // to ensure legacy icons render even if templates haven't been manually updated yet.
+    const faIcons = document.querySelectorAll('i[class*="fa-"], span[class*="fa-"]');
+    faIcons.forEach(el => {
+      if (el.hasAttribute('data-lucide')) return;
+      const classList = Array.from(el.classList);
+      const faClass = classList.find(c =>
+        c.startsWith('fa-') &&
+        !['fa-solid', 'fa-regular', 'fa-light', 'fa-thin', 'fa-duotone', 'fa-brands',
+          'fa-spin', 'fa-pulse', 'fa-2x', 'fa-3x', 'fa-lg', 'fa-sm', 'fa-xs', 'fa-fw',
+          'fa-modal', 'fa-status-badge', 'fa-icon', 'fa-border', 'fa-pull-left', 'fa-pull-right'].includes(c)
+      );
+      if (faClass) {
+        let lucideName = faClass.replace('fa-', '');
+        // Common FA to Lucide remappings
+        const remap: Record<string, string> = {
+          'headset': 'headset',
+          'gauge-high': 'gauge',
+          'gauge': 'gauge',
+          'hourglass-empty': 'hourglass',
+          'hourglass-half': 'hourglass',
+          'circle-xmark': 'x-circle',
+          'clock-rotate-left': 'history',
+          'circle-arrow-down': 'arrow-down-circle',
+          'circle-arrow-up': 'arrow-up-circle',
+          'up-right-from-square': 'external-link',
+          'arrow-up-right-from-square': 'external-link',
+          'ticket-simple': 'ticket',
+          'cube': 'box',
+          'circle-nodes': 'network',
+          'people-carry-box': 'users',
+          'whatsapp': 'message-circle',
+          'bullhorn': 'megaphone',
+          'telegram': 'send',
+          'ranking-star': 'trophy',
+          'arrows-rotate': 'refresh-cw',
+          'circle-exclamation': 'alert-circle',
+          'triangle-exclamation': 'alert-triangle',
+          'border-all': 'layout-grid',
+          'box-open': 'box',
+          'folder-open': 'folder-open',
+          'cloud-arrow-down': 'download',
+          'cloud-arrow-up': 'upload',
+          'money-bill-transfer': 'arrow-left-right',
+          'money-bill-wave': 'banknote',
+          'money-bill': 'banknote',
+          'sack-dollar': 'circle-dollar-sign',
+          'hand-holding-dollar': 'hand-coins',
+          'money-check-dollar': 'credit-card',
+          'building-columns': 'landmark',
+          'magnifying-glass': 'search',
+          'xmark': 'x',
+          'circle-check': 'check-circle',
+          'shield-halved': 'shield',
+          'shield-check': 'shield-check',
+          'shield-virus': 'shield-alert',
+          'pen-to-square': 'edit',
+          'trash-can': 'trash-2',
+          'cart-shopping': 'shopping-cart',
+          'bag-shopping': 'shopping-bag',
+          'gear': 'settings',
+          'gears': 'settings',
+          'right-from-bracket': 'log-out',
+          'right-to-bracket': 'log-in',
+          'bars': 'menu',
+          'paper-plane': 'send',
+          'comments': 'messages-square',
+          'comment': 'message-square',
+          'file-lines': 'file-text',
+          'bolt-lightning': 'zap',
+          'bolt': 'zap',
+          'user-shield': 'shield-check',
+          'user-gear': 'user-cog',
+          'user-plus': 'user-plus',
+          'user-check': 'user-check',
+          'circle-question': 'help-circle',
+          'circle-info': 'info',
+          'signal': 'activity',
+          'wifi': 'wifi',
+          'gamepad': 'gamepad-2',
+          'rotate-right': 'rotate-cw',
+          'rotate-left': 'rotate-ccw',
+          'floppy-disk': 'save',
+          'gem': 'gem',
+          'qrcode': 'qr-code',
+          'share-nodes': 'share-2',
+          'icons': 'layout-grid',
+          'image': 'image',
+          'reply': 'corner-up-left',
+          'arrow-left': 'arrow-left',
+          'arrow-right': 'arrow-right',
+          'lock': 'lock',
+          'lock-open': 'lock-open',
+          'key': 'key',
+          'bell': 'bell',
+          'coins': 'coins',
+          'check': 'check',
+          'check-double': 'check-check',
+          'dice': 'dice-5',
+          'dice-5': 'dice-5',
+          'stopwatch': 'timer',
+          'link': 'link',
+          'chart-line': 'trending-up',
+          'chart-simple': 'bar-chart-2',
+          'chart-pie': 'pie-chart',
+          'sliders': 'sliders',
+          'fingerprint': 'fingerprint',
+          'eye': 'eye',
+          'eye-slash': 'eye-off'
+        };
+        if (remap[lucideName]) lucideName = remap[lucideName];
+        el.setAttribute('data-lucide', lucideName);
+      }
+    });
+
+    createIcons({ icons: appIcons });
   }
 
   // ================= GROUP CHAT (MESSENGER STYLE) SYSTEM =================
   lastGroupMsgTimestamp: number = 0;
   groupPendingAttachment: { name: string; url: string; type: string } | null = null;
   groupReplyingTo: { id: string; sender: string; message: string } | null = null;
+  groupEditingMsgId: string | null = null;
   mirofishSimulation: MirofishAgentSimulation | null = null;
 
   openGroupChat() {
@@ -1818,7 +2402,7 @@ export class StateManager {
             </div>
           </div>
           <div class="text-slate-400 text-xs">
-            <i class="fa-solid fa-chevron-right text-[10px]"></i>
+            <i data-lucide="chevron-right" class="w-3 h-3"></i>
           </div>
         </div>
       `;
@@ -1917,7 +2501,7 @@ export class StateManager {
           <div class="space-y-1">
             <h3 class="text-lg font-black text-white flex items-center justify-center gap-1.5">
               <span>${targetUser.name ? targetUser.name : `@${targetUser.username}`}</span>
-              ${isAgent || isAdmin || isVip ? '<i class="fa-solid fa-circle-check text-blue-400 text-xs"></i>' : ''}
+              ${isAgent || isAdmin || isVip ? '<i data-lucide="check-circle" class="w-3 h-3 text-blue-400"></i>' : ''}
             </h3>
             <p class="text-xs text-slate-400 font-mono">@${targetUser.username}</p>
             <span class="inline-block px-3 py-1 ${isAdmin ? 'bg-amber-950 text-amber-300 border-amber-500/30' : (isAgent ? 'bg-cyan-950 text-cyan-300 border-cyan-500/30' : (isVip ? 'bg-purple-950 text-purple-300 border-purple-500/30' : 'bg-blue-950 text-blue-300 border-blue-500/30'))} border rounded-full text-[10px] font-mono font-bold">${roleLabel}</span>
@@ -1947,12 +2531,12 @@ export class StateManager {
 
         <!-- Action Mention in Group Chat Button -->
         <button type="button" onclick="if(window.app){window.app.mentionInGroupChat('${targetUser.username}');}" class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs py-3 rounded-2xl transition cursor-pointer shadow-lg flex items-center justify-center gap-2">
-          <i class="fa-solid fa-comment-dots text-sm"></i> @${targetUser.username} কে গ্রুপ চ্যাটে মেনশন করুন
+          <i data-lucide="message-square" class="w-4 h-4 text-sm"></i> @${targetUser.username} কে গ্রুপ চ্যাটে মেনশন করুন
         </button>
 
         <!-- Action Back Button -->
         <button type="button" onclick="if(window.app){window.app.openGroupChat();}" class="w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-200 font-bold text-xs py-3 rounded-2xl transition cursor-pointer flex items-center justify-center gap-2">
-          <i class="fa-solid fa-arrow-left text-xs"></i> গ্রুপ চ্যাটে ফিরে যান
+          <i data-lucide="chevron-right" class="w-4 h-4 transform rotate-180"></i> গ্রুপ চ্যাটে ফিরে যান
         </button>
       </div>
     `;
@@ -1987,37 +2571,56 @@ export class StateManager {
   }
 
   openMessageActionModal(msgId: string) {
+    if (!this.db.groupChats) return;
+    const chatMsg = this.db.groupChats.find(c => c && c.id === msgId);
+    if (!chatMsg) return;
+
+    const isOwner = this.currentUser && chatMsg.sender === this.currentUser.username;
+    const isAdmin = this.currentUser && (this.currentUser.role === "admin" || this.currentUser.username === "admin");
+    const canDelete = isOwner || isAdmin;
+
     const modalId = "msg-action-modal-" + msgId;
     let modal = document.getElementById(modalId);
     if (!modal) {
       modal = document.createElement("div");
       modal.id = modalId;
       modal.className = "fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in";
+      
+      const editButtonHtml = isOwner ? `
+            <button type="button" onclick="if(window.app){window.app.editGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-emerald-400">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+              <span>এডিট করুন (Edit ✏️)</span>
+            </button>` : "";
+
+      const deleteButtonHtml = canDelete ? `
+            <button type="button" onclick="if(window.app){window.app.deleteGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-rose-950/40 hover:bg-rose-900/40 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-rose-400">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+              <span>ডিলিট করুন (Delete 🗑️)</span>
+            </button>` : "";
+
       modal.innerHTML = `
         <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-xs w-full p-5 shadow-2xl space-y-3 text-slate-200">
           <div class="flex items-center justify-between pb-2 border-b border-slate-800">
             <h4 class="text-xs font-bold text-white uppercase tracking-wider">মেসেজ অপশন (Messenger)</h4>
             <button type="button" onclick="document.getElementById('${modalId}').remove()" class="w-7 h-7 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center cursor-pointer">
-              <i class="fa-solid fa-xmark text-xs"></i>
+              <i data-lucide="trash-2" class="w-3 h-3"></i>
             </button>
           </div>
           <div class="space-y-1.5 text-xs">
             <button type="button" onclick="if(window.app){window.app.likeGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-pink-400">
-              <i class="fa-solid fa-heart w-4"></i>
+              <i data-lucide="star" class="w-4 h-4"></i>
               <span>লাইক দিন (Like 👍)</span>
             </button>
             <button type="button" onclick="if(window.app){window.app.replyGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-blue-400">
-              <i class="fa-solid fa-reply w-4"></i>
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
               <span>রিপ্লাই দিন (Reply 💬)</span>
             </button>
             <button type="button" onclick="if(window.app){window.app.reportGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-slate-800/60 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-amber-400">
-              <i class="fa-solid fa-triangle-exclamation w-4"></i>
+              <i data-lucide="alert-triangle" class="w-4 h-4"></i>
               <span>রিপোর্ট করুন (Report ⚠️)</span>
             </button>
-            <button type="button" onclick="if(window.app){window.app.deleteGroupMessage('${msgId}'); document.getElementById('${modalId}').remove();}" class="w-full text-left px-3 py-2.5 bg-rose-950/40 hover:bg-rose-900/40 rounded-xl flex items-center gap-2.5 transition cursor-pointer text-rose-400">
-              <i class="fa-solid fa-trash w-4"></i>
-              <span>ডিলিট করুন (Delete 🗑️)</span>
-            </button>
+            ${editButtonHtml}
+            ${deleteButtonHtml}
           </div>
         </div>
       `;
@@ -2049,6 +2652,7 @@ export class StateManager {
     if (!this.db.groupChats) return;
     const msg = this.db.groupChats.find(c => c && c.id === msgId);
     if (!msg) return;
+    this.groupEditingMsgId = null;
     this.groupReplyingTo = {
       id: msg.id,
       sender: msg.sender,
@@ -2065,8 +2669,39 @@ export class StateManager {
     this.showToast("💬 রিপ্লাই মোড এক্টিভ।", "info");
   }
 
+  editGroupMessage(msgId: string) {
+    if (!this.db.groupChats) return;
+    const msg = this.db.groupChats.find(c => c && c.id === msgId);
+    if (!msg) return;
+    
+    // Only owner can edit
+    if (msg.sender !== (this.currentUser?.username || "guest")) {
+      this.showToast("❌ আপনি এই মেসেজটি এডিট করতে পারবেন না।", "error");
+      return;
+    }
+
+    this.groupReplyingTo = null;
+    this.groupEditingMsgId = msg.id;
+    
+    const input = document.getElementById("group-chat-input") as HTMLInputElement | null;
+    if (input) {
+      input.value = msg.message || "";
+      input.focus();
+    }
+    
+    const preview = document.getElementById("group-chat-reply-preview");
+    const senderEl = document.getElementById("group-chat-reply-sender");
+    const textEl = document.getElementById("group-chat-reply-text");
+    if (senderEl) senderEl.innerText = "মেসেজ এডিট করছেন (Editing)";
+    if (textEl) textEl.innerText = msg.message || "";
+    if (preview) preview.classList.remove("hidden");
+    
+    this.showToast("✏️ এডিট মোড এক্টিভ।", "info");
+  }
+
   cancelGroupReply() {
     this.groupReplyingTo = null;
+    this.groupEditingMsgId = null;
     const preview = document.getElementById("group-chat-reply-preview");
     if (preview) preview.classList.add("hidden");
   }
@@ -2077,6 +2712,19 @@ export class StateManager {
 
   deleteGroupMessage(msgId: string) {
     if (!this.db.groupChats) return;
+    
+    // Security check: Only sender or admin can delete the message
+    const msg = this.db.groupChats.find(c => c && c.id === msgId);
+    if (!msg) return;
+
+    const isOwner = this.currentUser && msg.sender === this.currentUser.username;
+    const isAdmin = this.currentUser && (this.currentUser.role === "admin" || this.currentUser.username === "admin");
+
+    if (!isOwner && !isAdmin) {
+      this.showToast("❌ আপনি এই বার্তাটি ডিলিট করতে পারবেন না।", "error");
+      return;
+    }
+
     this.db.groupChats = this.db.groupChats.filter(c => c && c.id !== msgId);
     this.saveDB(true);
     this.renderGroupChat();
@@ -2209,16 +2857,31 @@ export class StateManager {
           if (input) input.value = "";
 
           if (!this.db.groupChats) this.db.groupChats = [];
-          this.db.groupChats.push({
-            id: "gchat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
-            sender: this.currentUser ? this.currentUser.username : "guest",
-            senderRole: this.currentUser?.role || "user",
-            message: text,
-            replyTo: this.groupReplyingTo ? { ...this.groupReplyingTo } : null,
-            attachmentUrl: this.groupPendingAttachment ? this.groupPendingAttachment.url : null,
-            attachmentName: this.groupPendingAttachment ? this.groupPendingAttachment.name : null,
-            timestamp: new Date().toISOString()
-          });
+
+          if (this.groupEditingMsgId) {
+            // Handle editing existing message
+            const editMsg = this.db.groupChats.find(c => c && c.id === this.groupEditingMsgId);
+            if (editMsg) {
+              editMsg.message = text;
+              editMsg.isEdited = true;
+              editMsg.editTimestamp = new Date().toISOString();
+              this.showToast("বার্তা সফলভাবে এডিট করা হয়েছে! ✓", "success");
+            }
+            this.groupEditingMsgId = null;
+          } else {
+            // Handle sending new message
+            this.db.groupChats.push({
+              id: "gchat_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6),
+              sender: this.currentUser ? this.currentUser.username : "guest",
+              senderRole: this.currentUser?.role || "user",
+              message: text,
+              replyTo: this.groupReplyingTo ? { ...this.groupReplyingTo } : null,
+              attachmentUrl: this.groupPendingAttachment ? this.groupPendingAttachment.url : null,
+              attachmentName: this.groupPendingAttachment ? this.groupPendingAttachment.name : null,
+              timestamp: new Date().toISOString()
+            });
+            this.showToast("বার্তা সফলভাবে গ্রুপে পাঠানো হয়েছে! ✓", "success");
+          }
 
           this.groupPendingAttachment = null;
           this.cancelGroupReply();
@@ -2227,10 +2890,9 @@ export class StateManager {
 
           this.saveDB(true);
           this.renderGroupChat();
-          this.showToast("বার্তা সফলভাবে গ্রুপে পাঠানো হয়েছে! ✓", "success");
 
-          // Trigger MiroFish Multi-Agent simulation reply
-          if (this.mirofishSimulation) {
+          // Trigger MiroFish Multi-Agent simulation reply (only for new messages)
+          if (!this.groupEditingMsgId && this.mirofishSimulation) {
             this.mirofishSimulation.handleUserMessage(text, this.currentUser ? this.currentUser.username : "guest");
           }
         });
@@ -2261,7 +2923,7 @@ export class StateManager {
           <div class="flex items-center justify-between pb-3 border-b border-slate-800">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white text-xl font-bold">
-                <i class="fa-solid fa-users"></i>
+                <i data-lucide="users" class="w-4 h-4"></i>
               </div>
               <div>
                 <h3 class="text-base font-bold text-white">Lucky Community Group</h3>
@@ -2269,7 +2931,7 @@ export class StateManager {
               </div>
             </div>
             <button type="button" onclick="document.getElementById('${modalId}').remove()" class="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer">
-              <i class="fa-solid fa-xmark"></i>
+              <i data-lucide="x" class="w-4 h-4"></i>
             </button>
           </div>
 
@@ -2277,7 +2939,7 @@ export class StateManager {
             <div onclick="if(window.app){window.app.openMembersList();}" class="bg-slate-950 hover:bg-slate-900 border border-slate-800 hover:border-blue-500/50 p-3.5 rounded-2xl space-y-2 cursor-pointer transition group">
               <div class="flex justify-between text-slate-400">
                 <span>মোট মেম্বার (তালিকা দেখুন):</span>
-                <span class="text-white font-bold group-hover:text-blue-400 transition">৬২৪ জন <i class="fa-solid fa-chevron-right text-[10px] ml-1"></i></span>
+                <span class="text-white font-bold group-hover:text-blue-400 transition">৬২৪ জন <i data-lucide="chevron-right" class="w-3 h-3 ml-1 inline"></i></span>
               </div>
               <div class="flex justify-between text-slate-400">
                 <span>অনলাইন মেম্বার (রিয়েলটাইম):</span>
@@ -2294,7 +2956,7 @@ export class StateManager {
 
             <div class="bg-blue-950/40 border border-blue-500/30 p-3.5 rounded-2xl space-y-1.5">
               <h4 class="font-bold text-blue-300 flex items-center gap-1.5">
-                <i class="fa-solid fa-shield-halved"></i> গ্রুপের নিয়মাবলী
+                <i data-lucide="shield" class="w-4 h-4 inline"></i> গ্রুপের নিয়মাবলী
               </h4>
               <p class="text-[11px] text-slate-300 leading-relaxed">
                 ১. সবাই একে অপরের প্রতি শ্রদ্ধাশীল থাকুন。<br>
@@ -2379,7 +3041,7 @@ export class StateManager {
       container.innerHTML = `
         <div class="text-center py-16 space-y-3">
           <div class="w-14 h-14 bg-blue-950/40 border border-blue-500/30 rounded-full flex items-center justify-center mx-auto text-blue-400 text-xl animate-pulse">
-            <i class="fa-solid fa-comments"></i>
+            <i data-lucide="message-square" class="w-4 h-4 inline"></i>
           </div>
           <h3 class="text-xs font-bold text-white">কোনো বার্তা পাওয়া যায়নি</h3>
           <p class="text-[10px] text-slate-400 max-w-xs mx-auto">
@@ -2415,7 +3077,7 @@ export class StateManager {
               ${isVip ? '<span class="bg-purple-950/80 text-purple-300 border border-purple-500/30 px-1.5 rounded-full text-[8px] font-mono shrink-0">VIP</span>' : ''}
               ${isAgent ? '<span class="bg-cyan-950/80 text-cyan-300 border border-cyan-500/30 px-1.5 rounded-full text-[8px] font-mono shrink-0">AGENT</span>' : ''}
               ${persona ? `<span class="bg-emerald-950/60 text-emerald-400 border border-emerald-500/30 px-1.5 rounded-full text-[8px] font-mono font-bold shrink-0">৳${persona.totalProfit.toLocaleString()} লাভ</span>` : ''}
-              <span class="text-[9px] text-slate-500 shrink-0">${timeStr}</span>
+              <span class="text-[9px] text-slate-500 shrink-0">${timeStr}${c.isEdited ? ' <span class="opacity-70">(Edited)</span>' : ''}</span>
             </div>
 
             <div onclick="if(window.app){window.app.openMessageActionModal('${c.id}');}" title="মেসেজ অপশন (Like, Reply, Report, Delete)" class="group-msg-bubble relative px-3.5 py-2.5 sm:px-4 sm:py-3 text-xs font-sans shadow-lg cursor-pointer transition hover:opacity-95 text-left break-words [overflow-wrap:anywhere] max-w-full ${isMe ? 'bg-[#0084ff] text-white rounded-2xl rounded-br-xs' : 'bg-[#2b3548] text-slate-100 rounded-2xl rounded-bl-xs'}" style="word-break: break-word; overflow-wrap: break-word;">
@@ -2511,7 +3173,7 @@ export class StateManager {
       container.innerHTML = `
         <div class="text-center py-12 space-y-3">
           <div class="w-14 h-14 bg-cyan-950/40 border border-cyan-500/30 rounded-2xl flex items-center justify-center mx-auto text-cyan-400 text-xl animate-pulse">
-            <i class="fa-solid fa-comments"></i>
+            <i data-lucide="message-square" class="w-4 h-4 inline"></i>
           </div>
           <h3 class="text-xs font-bold text-white font-mono">কথোপকথন শুরু করুন</h3>
           <p class="text-[10px] text-slate-400 max-w-xs mx-auto font-sans">
@@ -2721,6 +3383,7 @@ export class StateManager {
     } else if (this.currentTab === "payment-cancel") {
       this.renderPaymentCancelTab();
     }
+    this.refreshIcons();
   }
 
   renderDepositTab() {
@@ -3194,7 +3857,7 @@ export class StateManager {
         card.classList.remove("hidden", "opacity-40", "pointer-events-none");
         if (badge) {
           badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 border border-emerald-800/40";
-          badge.innerHTML = '<i class="fa-solid fa-circle-check text-[7px]"></i> ACTIVE';
+          badge.innerHTML = '<i data-lucide="check-circle" class="w-2.5 h-2.5 inline"></i> ACTIVE';
         }
         hasAnyVisible = true;
       } else {
@@ -3202,7 +3865,7 @@ export class StateManager {
         card.classList.add("hidden");
         if (badge) {
           badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 inline-flex items-center gap-1 bg-rose-950/80 text-rose-400 border border-rose-800/40";
-          badge.innerHTML = '<i class="fa-solid fa-ban text-[7px]"></i> DISABLED';
+          badge.innerHTML = '<i data-lucide="ban" class="w-2.5 h-2.5 inline"></i> DISABLED';
         }
       }
     });
@@ -3237,7 +3900,7 @@ export class StateManager {
         offlineNotice.className = "col-span-full p-4 rounded-2xl bg-rose-950/60 border border-rose-800/60 text-center space-y-2 my-2";
         offlineNotice.innerHTML = `
           <div class="text-rose-400 text-base font-black flex items-center justify-center gap-2">
-            <i class="fa-solid fa-triangle-exclamation"></i>
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 inline"></i>
             <span>All Payment Gateways Offline</span>
           </div>
           <p class="text-[11px] text-slate-300">Deposit channels are temporarily paused by system administration. Please check back shortly or contact support.</p>
@@ -3317,7 +3980,7 @@ export class StateManager {
       container.innerHTML = `
         <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-4 max-w-md mx-auto">
           <div class="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center text-3xl mx-auto">
-            <i class="fa-solid fa-triangle-exclamation"></i>
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 inline"></i>
           </div>
           <h2 class="text-lg font-black text-white font-mono uppercase">Invalid Reference</h2>
           <p class="text-xs text-slate-400 font-sans">No valid payment transaction reference was found in the URL parameter.</p>
@@ -3333,7 +3996,7 @@ export class StateManager {
       <div class="bg-slate-950 border border-slate-900 rounded-3xl p-10 text-center space-y-6 max-w-md mx-auto font-mono">
         <div class="relative w-16 h-16 mx-auto flex items-center justify-center">
           <div class="absolute inset-0 rounded-full border-4 border-cyan-500/10 border-t-cyan-500 animate-spin"></div>
-          <i class="fa-solid fa-shield-halved text-cyan-400 text-2xl animate-pulse"></i>
+          <i data-lucide="shield-check" class="w-10 h-10 text-cyan-400 mx-auto animate-pulse"></i>
         </div>
         <div class="space-y-2">
           <h2 class="text-sm font-black text-white uppercase tracking-wider">Verifying Invoice...</h2>
@@ -3374,7 +4037,7 @@ export class StateManager {
               <div class="absolute top-0 inset-x-0 h-1.5 bg-emerald-500"></div>
               
               <div class="w-14 h-14 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center text-2xl mx-auto shadow-lg shadow-emerald-500/5">
-                <i class="fa-solid fa-circle-check"></i>
+                <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 inline"></i>
               </div>
 
               <div class="space-y-1">
@@ -3390,7 +4053,7 @@ export class StateManager {
                     <h3 class="text-xs font-black text-white uppercase tracking-tight">Lottery Winner PGW</h3>
                     <span class="text-[8px] text-slate-500">Wallet Deposit Invoice</span>
                   </div>
-                  <i class="fa-solid fa-receipt text-slate-500 text-lg"></i>
+                  <i data-lucide="file-text" class="w-6 h-6 text-slate-500 mx-auto"></i>
                 </div>
 
                 <div class="text-[10px] space-y-2">
@@ -3400,7 +4063,7 @@ export class StateManager {
                   <div class="flex justify-between"><span class="text-slate-500">Customer Email:</span><span class="text-slate-300">${inv?.cus_email || 'N/A'}</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Payment Gateway:</span><span class="text-cyan-400 font-bold">ZiniPay Hosted</span></div>
                   <div class="flex justify-between border-t border-slate-850 pt-2"><span class="text-slate-500">Credited Balance:</span><span class="text-emerald-400 font-bold">+৳${(inv?.amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
-                  <div class="flex justify-between"><span class="text-slate-500">Verification Status:</span><span class="text-emerald-400 font-bold flex items-center gap-1"><i class="fa-solid fa-lock text-[8px]"></i> VERIFIED SECURE</span></div>
+                  <div class="flex justify-between"><span class="text-slate-500">Verification Status:</span><span class="text-emerald-400 font-bold flex items-center gap-1"><i data-lucide="lock" class="w-2.5 h-2.5 inline"></i> VERIFIED SECURE</span></div>
                   <div class="flex justify-between"><span class="text-slate-500">Timestamp:</span><span class="text-slate-400 text-[9px]">${inv?.verified_at || inv?.created_at ? new Date(inv.verified_at || inv.created_at).toLocaleString() : 'Just now'}</span></div>
                 </div>
               </div>
@@ -3408,10 +4071,10 @@ export class StateManager {
               <!-- ACTION BUTTONS -->
               <div class="grid grid-cols-2 gap-3 pt-2">
                 <button id="print-receipt-action-btn" class="py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer border border-slate-800">
-                  <i class="fa-solid fa-print"></i> Print Receipt
+                  <i data-lucide="printer" class="w-4 h-4 inline mr-1"></i> Print Receipt
                 </button>
                 <button onclick="app.currentTab='wallet'; app.render();" class="py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
-                  Back to Wallet <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                  Back to Wallet <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline ml-1"></i>
                 </button>
               </div>
             </div>
@@ -3434,7 +4097,7 @@ export class StateManager {
         container.innerHTML = `
           <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-5 max-w-md mx-auto font-mono">
             <div class="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center text-2xl mx-auto">
-              <i class="fa-solid fa-circle-xmark"></i>
+              <i data-lucide="x-circle" class="w-4 h-4 inline"></i>
             </div>
             <div class="space-y-1">
               <span class="text-[9px] text-rose-500 font-bold tracking-widest uppercase bg-rose-950/60 border border-rose-900/30 py-1 px-3 rounded-full">Payment Failed</span>
@@ -3460,7 +4123,7 @@ export class StateManager {
         container.innerHTML = `
           <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-5 max-w-md mx-auto font-mono">
             <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center text-2xl mx-auto animate-pulse">
-              <i class="fa-solid fa-clock"></i>
+              <i data-lucide="clock" class="w-4 h-4 inline"></i>
             </div>
             <div class="space-y-1">
               <span class="text-[9px] text-amber-400 font-bold tracking-widest uppercase bg-amber-950/60 border border-amber-900/30 py-1 px-3 rounded-full">Payment Pending</span>
@@ -3473,7 +4136,7 @@ export class StateManager {
             </div>
             <div class="space-y-3 pt-2">
               <button id="recheck-status-btn" class="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:brightness-110 text-white font-black rounded-xl text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
-                <i class="fa-solid fa-arrows-rotate animate-spin"></i> Check Payment Status
+                <i data-lucide="refresh-cw" class="w-4 h-4 animate-spin inline mr-1"></i> Check Payment Status
               </button>
               <button onclick="app.currentTab='wallet'; app.render();" class="w-full py-3 bg-slate-900 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition cursor-pointer border border-slate-800">
                 Back to Wallet
@@ -3491,7 +4154,7 @@ export class StateManager {
       container.innerHTML = `
         <div class="bg-slate-950 border border-slate-900 rounded-3xl p-8 text-center space-y-4 max-w-md mx-auto">
           <div class="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 flex items-center justify-center text-3xl mx-auto">
-            <i class="fa-solid fa-circle-xmark"></i>
+            <i data-lucide="x-circle" class="w-4 h-4 inline"></i>
           </div>
           <h2 class="text-lg font-black text-white font-mono uppercase">Verification Error</h2>
           <p class="text-xs text-slate-400 font-sans">An error occurred while establishing a secure connection to the verification server. Please try again in a few moments.</p>
@@ -3517,7 +4180,7 @@ export class StateManager {
     container.innerHTML = `
       <div class="bg-slate-950 border border-slate-900 rounded-3xl p-10 text-center space-y-5 max-w-md mx-auto font-mono">
         <div class="w-14 h-14 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 flex items-center justify-center text-2xl mx-auto shadow-lg shadow-rose-500/5">
-          <i class="fa-solid fa-circle-xmark"></i>
+          <i data-lucide="x-circle" class="w-4 h-4 inline"></i>
         </div>
         <div class="space-y-1">
           <span class="text-[9px] text-rose-400 font-bold tracking-widest uppercase bg-rose-950/60 border border-rose-900/30 py-1 px-3 rounded-full">Payment Cancelled</span>
@@ -3907,7 +4570,7 @@ export class StateManager {
       if (posts.length === 0) {
         postsContainer.innerHTML = `
           <div class="text-center py-10 bg-slate-900/10 border border-slate-800/50 rounded-3xl text-xs text-slate-500 font-sans">
-            <i class="fa-solid fa-users-slash text-slate-700 text-lg block mb-1"></i>
+            <i data-lucide="user-x" class="w-8 h-8 text-slate-700 mx-auto block mb-1"></i>
             No matching posts found. Modify your search or start the conversation!
           </div>
         `;
@@ -3970,21 +4633,21 @@ export class StateManager {
           if (isLuckyWinner) {
             reputationBadgesHtml += `
               <span class="bg-amber-950/50 text-amber-400 border border-amber-800/40 px-1.5 py-0.5 rounded-lg text-[8px] font-bold tracking-tight shrink-0 flex items-center gap-0.5 select-none" title="Lucky Lottery Winner Badge (${winCounts} Win${winCounts === 1 ? '' : 's'})">
-                <i class="fa-solid fa-trophy text-[7px] text-amber-500 animate-pulse"></i> Lucky Winner
+                <i data-lucide="trophy" class="w-2.5 h-2.5 text-amber-500 inline mr-0.5 animate-pulse"></i> Lucky Winner
               </span>
             `;
           }
           if (isTopContributor) {
             reputationBadgesHtml += `
               <span class="bg-emerald-950/50 text-emerald-400 border border-emerald-800/40 px-1.5 py-0.5 rounded-lg text-[8px] font-bold tracking-tight shrink-0 flex items-center gap-0.5 select-none" title="Top Activity Contributor Badge (${totalContribution} Shared Posts/Replies)">
-                <i class="fa-solid fa-medal text-[7px] text-emerald-500"></i> Top Contributor
+                <i data-lucide="medal" class="w-2.5 h-2.5 text-emerald-500 inline mr-0.5"></i> Top Contributor
               </span>
             `;
           }
           if (post.username === "lottery_pro" || authorUser.id === "u1") {
             reputationBadgesHtml += `
               <span class="bg-cyan-950/50 text-cyan-400 border border-cyan-800/40 px-1.5 py-0.5 rounded-lg text-[8px] font-bold tracking-tight shrink-0 flex items-center gap-0.5 select-none">
-                <i class="fa-solid fa-certificate text-[7px] text-cyan-400"></i> VIP Player
+                <i data-lucide="award" class="w-2.5 h-2.5 text-cyan-400 inline mr-0.5"></i> VIP Player
               </span>
             `;
           } else if (!isLuckyWinner && !isTopContributor && !authorUser.customBadge) {
@@ -4054,7 +4717,7 @@ export class StateManager {
                       <span class="text-[8px] text-slate-600 font-mono">(${comMaskedEmail})</span>
                     </div>
                     <button class="com-act-report-comment text-[8px] text-slate-600 hover:text-rose-400 transition" data-comment-id="${com.id}">
-                      <i class="fa-solid fa-flag mr-0.5"></i> Report
+                      <i data-lucide="flag" class="w-3 h-3 mr-0.5 inline"></i> Report
                     </button>
                   </div>
                   <p class="text-slate-200 leading-normal whitespace-pre-wrap font-sans pl-1">${com.content}</p>
@@ -4081,7 +4744,7 @@ export class StateManager {
                 </div>
               </div>
               <button class="com-act-report-post text-[8px] text-slate-500 hover:text-rose-500 font-mono py-1 px-2 bg-slate-950 border border-slate-800/60 rounded-xl transition shrink-0" data-post-id="${post.id}">
-                <i class="fa-solid fa-flag text-red-500/50 mr-0.5"></i> Report
+                <i data-lucide="flag" class="w-3 h-3 text-red-500/50 mr-0.5 inline"></i> Report
               </button>
             </div>
 
@@ -4091,15 +4754,15 @@ export class StateManager {
             <!-- Buttons bar -->
             <div class="flex items-center gap-4 text-[10px] text-slate-400 border-t border-b border-slate-800/40 py-2 mt-1">
               <button class="com-act-like flex items-center gap-1.5 cursor-pointer transition ${likeBtnClass}" data-post-id="${post.id}">
-                <i class="fa-solid fa-thumbs-up"></i>
+                <i data-lucide="thumbs-up" class="w-3.5 h-3.5 inline"></i>
                 <span class="font-bold">${post.likes ? post.likes.length : 0}</span>
               </button>
               <button class="com-act-dislike flex items-center gap-1.5 cursor-pointer transition ${dislikeBtnClass}" data-post-id="${post.id}">
-                <i class="fa-solid fa-thumbs-down"></i>
+                <i data-lucide="thumbs-down" class="w-3.5 h-3.5 inline"></i>
                 <span class="font-bold">${post.dislikes ? post.dislikes.length : 0}</span>
               </button>
               <div class="flex items-center gap-1 text-slate-500 font-mono ml-auto">
-                <i class="fa-solid fa-comments"></i>
+                <i data-lucide="message-square" class="w-4 h-4 inline"></i>
                 <span>${comments.length} Replies</span>
               </div>
             </div>
@@ -4238,7 +4901,7 @@ export class StateManager {
           showcaseContainer.innerHTML = `
             <div class="py-6 text-center space-y-2">
               <div class="w-12 h-12 bg-slate-950 rounded-2xl flex items-center justify-center mx-auto text-slate-600 text-lg border border-slate-800/80">
-                <i class="fa-solid fa-layer-group"></i>
+                <i data-lucide="layers" class="w-4 h-4 inline"></i>
               </div>
               <h5 class="text-xs font-bold text-white font-mono">No Community Posts Yet</h5>
               <p class="text-[10px] text-slate-500 max-w-xs mx-auto font-sans leading-normal">
@@ -4257,8 +4920,8 @@ export class StateManager {
                   </div>
                   <p class="text-xs text-slate-200 font-sans leading-relaxed">${p.text}</p>
                   <div class="flex items-center gap-3 pt-1 text-[9px] text-slate-500 font-mono">
-                    <span><i class="fa-solid fa-heart text-rose-500 mr-1"></i>${(p.likes || []).length} Likes</span>
-                    <span><i class="fa-solid fa-comments text-cyan-500 mr-1"></i>${(this.db.communityComments || []).filter(c => c.postId === p.id).length} Replies</span>
+                    <span><i data-lucide="heart" class="w-3 h-3 text-rose-500 mr-1 inline"></i>${(p.likes || []).length} Likes</span>
+                    <span><i data-lucide="message-square" class="w-3 h-3 text-cyan-500 mr-1 inline"></i>${(this.db.communityComments || []).filter(c => c.postId === p.id).length} Replies</span>
                   </div>
                 </div>
               `).join("")}
@@ -4280,12 +4943,12 @@ export class StateManager {
         const totalContribution = postsCount + commentsCount;
 
         const badgeMap: Record<string, { label: string; style: string; icon: string }> = {
-          vip: { label: "VIP Player", style: "bg-cyan-950/70 text-cyan-400 border-cyan-800/60", icon: "fa-gem" },
-          moderator: { label: "Staff Mod", style: "bg-indigo-950/70 text-indigo-400 border-indigo-800/60", icon: "fa-shield-halved" },
-          star: { label: "Elite Star", style: "bg-purple-950/70 text-purple-400 border-purple-800/60", icon: "fa-star" },
+          vip: { label: "VIP Player", style: "bg-cyan-950/70 text-cyan-400 border-cyan-800/60", icon: "gem" },
+          moderator: { label: "Staff Mod", style: "bg-indigo-950/70 text-indigo-400 border-indigo-800/60", icon: "shield" },
+          star: { label: "Elite Star", style: "bg-purple-950/70 text-purple-400 border-purple-800/60", icon: "star" },
           premium: { label: "Premium Member", style: "bg-fuchsia-950/70 text-fuchsia-400 border-fuchsia-800/60", icon: "fa-wand-magic-sparkles" },
           pro: { label: "Pro Active", style: "bg-orange-950/70 text-orange-400 border-orange-800/60", icon: "fa-fire" },
-          legend: { label: "Royal Legend", style: "bg-rose-950/70 text-rose-400 border-rose-800/60", icon: "fa-crown" }
+          legend: { label: "Royal Legend", style: "bg-rose-950/70 text-rose-400 border-rose-800/60", icon: "crown" }
         };
 
         const customBadgeInfo = user.customBadge ? badgeMap[user.customBadge] : null;
@@ -4312,17 +4975,17 @@ export class StateManager {
                   </span>
                 ` : `
                   <span class="bg-slate-950 text-slate-400 border border-slate-800 px-3 py-1.5 rounded-xl text-[10px] font-mono flex items-center gap-1.5">
-                    <i class="fa-solid fa-ribbon text-slate-600"></i> Standard Player
+                    <i data-lucide="ribbon" class="w-3 h-3 text-slate-600 inline mr-1"></i> Standard Player
                   </span>
                 `}
                 ${winCounts > 0 ? `
                   <span class="bg-amber-950/70 text-amber-300 border border-amber-800/60 px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shadow-md animate-pulse">
-                    <i class="fa-solid fa-trophy text-amber-400"></i> Lucky Winner (${winCounts})
+                    <i data-lucide="trophy" class="w-3 h-3 text-amber-400 inline mr-1"></i> Lucky Winner (${winCounts})
                   </span>
                 ` : ""}
                 ${totalContribution >= 3 ? `
                   <span class="bg-emerald-950/70 text-emerald-300 border border-emerald-800/60 px-3 py-1.5 rounded-xl text-[10px] font-bold flex items-center gap-1.5 shadow-md">
-                    <i class="fa-solid fa-medal text-emerald-400"></i> Top Contributor
+                    <i data-lucide="medal" class="w-3 h-3 text-emerald-400 inline mr-1"></i> Top Contributor
                   </span>
                 ` : ""}
               </div>
@@ -4349,6 +5012,68 @@ export class StateManager {
     }
 
     updateShowcaseUI();
+
+    // 5. Link Share & View As Public Preview Modal Wiring
+    const shareInput = document.getElementById("edit-profile-share-link-input") as HTMLInputElement | null;
+    const copyLinkBtn = document.getElementById("edit-profile-copy-link-btn");
+    const viewAsBtn = document.getElementById("edit-profile-view-as-btn");
+    const viewAsTrigger = document.getElementById("edit-profile-view-as-trigger");
+    const previewModal = document.getElementById("public-profile-preview-modal");
+    const previewCloseBtn = document.getElementById("public-profile-preview-close-btn");
+    const previewDoneBtn = document.getElementById("public-profile-preview-done-btn");
+
+    const profileUrl = window.location.origin + window.location.pathname + "?profile=" + encodeURIComponent(user.username || "user");
+    if (shareInput) shareInput.value = profileUrl;
+
+    if (copyLinkBtn) {
+      copyLinkBtn.onclick = () => {
+        navigator.clipboard.writeText(profileUrl).then(() => {
+          this.showToast("Profile link copied to clipboard successfully!", "success");
+        }).catch(() => {
+          this.showToast("Failed to copy link", "error");
+        });
+      };
+    }
+
+    const openPreviewModal = () => {
+      if (!previewModal) return;
+      previewModal.classList.remove("hidden");
+      
+      const pUsername = document.getElementById("preview-modal-username");
+      const pVibe = document.getElementById("preview-modal-vibe");
+      const pBio = document.getElementById("preview-modal-bio");
+      const pLevel = document.getElementById("preview-modal-level");
+      const pAvatarBox = document.getElementById("preview-modal-avatar-box");
+      const pAvatarImg = document.getElementById("preview-modal-avatar-img") as HTMLImageElement | null;
+      const pAvatarInitial = document.getElementById("preview-modal-avatar-initial");
+
+      if (pUsername) pUsername.textContent = `@${user.username || "user"}`;
+      if (pVibe) pVibe.textContent = `"${user.vibe || "🍀 Feeling Lucky"}"`;
+      if (pBio) pBio.textContent = user.bio ? `"${user.bio}"` : `"No creator statement provided yet."`;
+      if (pLevel) pLevel.textContent = `Level ${user.level || 1}`;
+
+      if (pAvatarImg && pAvatarInitial) {
+        if (user.photo) {
+          pAvatarImg.src = user.photo;
+          pAvatarImg.classList.remove("hidden");
+          pAvatarInitial.classList.add("hidden");
+        } else {
+          pAvatarImg.src = "";
+          pAvatarImg.classList.add("hidden");
+          pAvatarInitial.classList.remove("hidden");
+          pAvatarInitial.textContent = (user.username || "U").charAt(0).toUpperCase();
+        }
+      }
+    };
+
+    const closePreviewModal = () => {
+      if (previewModal) previewModal.classList.add("hidden");
+    };
+
+    if (viewAsBtn) viewAsBtn.onclick = openPreviewModal;
+    if (viewAsTrigger) viewAsTrigger.onclick = openPreviewModal;
+    if (previewCloseBtn) previewCloseBtn.onclick = closePreviewModal;
+    if (previewDoneBtn) previewDoneBtn.onclick = closePreviewModal;
   }
 
   renderOtpTab() {
@@ -4476,12 +5201,12 @@ export class StateManager {
       if (code) {
         if (keyDisplay) keyDisplay.innerText = code;
         if (keyHint) {
-          keyHint.innerHTML = '<span class="text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> Master Recovery Key is active and configured. Keep it secure!</span>';
+          keyHint.innerHTML = '<span class="text-emerald-400 font-bold"><i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 inline"></i> Master Recovery Key is active and configured. Keep it secure!</span>';
         }
         if (copyBtn) copyBtn.classList.remove("hidden");
         if (downloadBtn) downloadBtn.classList.remove("hidden");
         if (generateBtn) {
-          generateBtn.innerHTML = '<i class="fa-solid fa-arrows-rotate animate-spin-slow"></i> Regenerate Master Key';
+          generateBtn.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4 inline mr-1 animate-spin"></i> Regenerate Master Key';
           generateBtn.className = "flex-1 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-amber-450 font-bold py-2.5 rounded-xl transition cursor-pointer text-[10px] flex items-center justify-center gap-1.5 uppercase tracking-wider";
         }
       } else {
@@ -4492,7 +5217,7 @@ export class StateManager {
         if (copyBtn) copyBtn.classList.add("hidden");
         if (downloadBtn) downloadBtn.classList.add("hidden");
         if (generateBtn) {
-          generateBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> Generate Master Key';
+          generateBtn.innerHTML = '<i data-lucide="wand-2" class="w-4 h-4 inline mr-1"></i> Generate Master Key';
           generateBtn.className = "flex-1 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black py-2.5 rounded-xl transition duration-150 transform hover:scale-[1.01] cursor-pointer text-[10px] flex items-center justify-center gap-1.5 shadow-lg shadow-amber-950/20 uppercase tracking-wider";
         }
       }
@@ -4604,7 +5329,7 @@ export class StateManager {
     if (sorted.length === 0) {
       listEl.innerHTML = `
         <div class="p-8 text-center text-slate-500 font-mono text-[10px]">
-          <i class="fa-solid fa-envelope text-slate-800 text-2xl block mb-2"></i>
+          <i data-lucide="mail" class="w-10 h-10 text-slate-800 mx-auto block mb-2"></i>
           Your personal inbox is empty. No messages registered.
         </div>
       `;
@@ -5098,7 +5823,7 @@ export class StateManager {
         resultsBox.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
             <span class="text-[10px] uppercase font-bold text-amber-400 font-mono flex items-center gap-1.5">
-              <i class="fa-solid fa-rotate-left text-amber-400 text-xs"></i> লটারি বাতিল ও রিফান্ড
+              <i data-lucide="rotate-ccw" class="w-4 h-4 text-amber-400 inline mr-1"></i> লটারি বাতিল ও রিফান্ড
             </span>
             <span class="text-[8.5px] bg-amber-950 text-amber-400 border border-amber-900 px-2 py-0.5 rounded-full font-mono">Refunded</span>
           </div>
@@ -5152,7 +5877,7 @@ export class StateManager {
         resultsBox.innerHTML = `
           <div class="flex items-center justify-between border-b border-slate-800/80 pb-1.5">
             <span class="text-[10px] uppercase font-bold text-amber-400 font-mono flex items-center gap-1.5">
-              <i class="fa-solid fa-trophy text-yellow-400 text-xs"></i> অফিশিয়াল ড্র ফলাফল (Draw Results)
+              <i data-lucide="trophy" class="w-4 h-4 text-yellow-400 inline mr-1"></i> অফিশিয়াল ড্র ফলাফল (Draw Results)
             </span>
             <span class="text-[8.5px] bg-emerald-955 text-emerald-400 border border-emerald-900 px-2 py-0.5 rounded-full font-mono">Finalized</span>
           </div>
@@ -5321,7 +6046,7 @@ export class StateManager {
             <p class="text-slate-400 text-[10.5px]">এই লটারিটির ড্র সফলভাবে সম্পন্ন হয়েছে।</p>
             <div class="bg-slate-900 border border-slate-800 p-3 rounded-2xl space-y-1">
               <span class="text-[9px] uppercase tracking-wider text-amber-400 font-bold block flex items-center justify-center gap-1">
-                <i class="fa-solid fa-trophy text-yellow-400"></i> অফিশিয়াল বিজয়ী ফলাফল:
+                <i data-lucide="trophy" class="w-4 h-4 text-yellow-400 inline mr-1"></i> অফিশিয়াল বিজয়ী ফলাফল:
               </span>
               <div class="text-base font-black text-amber-300 font-mono tracking-widest">${winCode}</div>
               ${winUser ? `<span class="text-[10px] text-slate-400 font-mono block">বিজয়ী ইউজার: <strong class="text-white">${winUser}</strong></span>` : ""}
@@ -5536,6 +6261,7 @@ function initApplicationLoader() {
   const app = new StateManager();
   window.appInstance = app; // expose global handler helper
   (window as any).app = app;
+  (window as any).refreshIcons = () => app.refreshIcons();
   app.mirofishSimulation = new MirofishAgentSimulation(app);
   app.mirofishSimulation.init();
   window.chatProfileHelper = new ChatProfileSystem(app);
@@ -5560,7 +6286,46 @@ function initApplicationLoader() {
     return false;
   };
 
-  window.addEventListener("hashchange", checkLegalRoute);
+  window.addEventListener("hashchange", () => {
+    if (!checkLegalRoute()) {
+      const hash = window.location.hash ? window.location.hash.replace(/^#/, "").trim().toLowerCase() : "home";
+      const validTabs = ["home", "events", "tickets", "wallet", "deposit", "withdraw", "agent", "history", "profile", "settings", "customizer", "refer", "jackpot", "tasks", "games", "store", "store-cart", "store-details", "store-checkout", "store-profile", "edit-profile"];
+      if (validTabs.some(vt => hash === vt || hash.startsWith(vt))) {
+        if (app.currentTab !== hash) {
+          app.currentTab = hash;
+          app.render();
+        }
+      }
+    }
+  });
+  
+  // Listen for back/forward browser buttons
+  window.addEventListener("popstate", (event) => {
+    if (event.state && event.state.tab) {
+      app.currentTab = event.state.tab;
+      app.render();
+    } else {
+      // Fallback for direct hash changes without state
+      const hash = window.location.hash.replace(/^#/, "");
+      if (hash) {
+        app.currentTab = hash;
+        app.render();
+      }
+    }
+  });
+
+  // Intercept all internal links to prevent reloads
+  document.addEventListener("click", (e) => {
+    const anchor = (e.target as HTMLElement).closest("a");
+    if (anchor && anchor.getAttribute("href")?.startsWith("#")) {
+      const tabId = anchor.getAttribute("href")?.replace(/^#/, "");
+      if (tabId) {
+        e.preventDefault();
+        app.navigateTo(tabId);
+      }
+    }
+  });
+
   checkLegalRoute();
 
   // Global deposit handlers
@@ -5631,7 +6396,7 @@ function initApplicationLoader() {
         autoBanner.classList.remove("hidden");
         autoBanner.innerHTML = `
           <div class="flex items-center gap-2 text-cyan-300 text-xs font-bold">
-            <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400 inline mr-1"></i>
             <span>Instant ZiniPay Gateway Redirect</span>
           </div>
           <p class="text-[10px] text-slate-300 leading-relaxed font-sans">
@@ -5640,7 +6405,7 @@ function initApplicationLoader() {
         `;
       }
       if (manualFields) manualFields.classList.add("hidden");
-      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-bolt-lightning text-amber-400"></i><span>Proceed to ZiniPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+      if (submitBtn) submitBtn.innerHTML = '<i data-lucide="zap" class="w-4 h-4 text-amber-400 inline mr-1"></i><span>Proceed to ZiniPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
     } else if (method === "UddoktaPay") {
       if (titleEl) titleEl.textContent = "⚡ Instant UddoktaPay Automated Checkout";
       if (badgeEl) badgeEl.textContent = "Auto Gateway";
@@ -5649,7 +6414,7 @@ function initApplicationLoader() {
         autoBanner.classList.remove("hidden");
         autoBanner.innerHTML = `
           <div class="flex items-center gap-2 text-emerald-300 text-xs font-bold">
-            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400 inline mr-1"></i>
             <span>Instant UddoktaPay Gateway Redirect</span>
           </div>
           <p class="text-[10px] text-slate-300 leading-relaxed font-sans">
@@ -5658,12 +6423,12 @@ function initApplicationLoader() {
         `;
       }
       if (manualFields) manualFields.classList.add("hidden");
-      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-bolt text-amber-400"></i><span>Proceed to UddoktaPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+      if (submitBtn) submitBtn.innerHTML = '<i data-lucide="zap" class="w-4 h-4 text-amber-400 inline mr-1"></i><span>Proceed to UddoktaPay Gateway</span><i class="fa-solid fa-arrow-right text-xs"></i>';
     } else {
       if (autoBanner) autoBanner.classList.add("hidden");
       if (numBox) numBox.classList.remove("hidden");
       if (manualFields) manualFields.classList.remove("hidden");
-      if (submitBtn) submitBtn.innerHTML = '<i class="fa-solid fa-circle-check text-base"></i><span>Confirm Deposit / জমা নিশ্চিত করুন</span><i class="fa-solid fa-arrow-right text-xs"></i>';
+      if (submitBtn) submitBtn.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-emerald-400 inline mr-1"></i><span>Confirm Deposit / জমা নিশ্চিত করুন</span><i class="fa-solid fa-arrow-right text-xs"></i>';
 
       let number = "01700000000";
       if (method === "bKash") {
@@ -6301,7 +7066,7 @@ function initApplicationLoader() {
       username: autoUser,
       fullName: "Instant Player",
       email: `${autoUser}@lottery.local`,
-      password: autoPass,
+      password: hashPasswordWithUniqueSalt(autoPass),
       phone: "017" + Math.floor(10000000 + Math.random() * 90000000),
       dob: "2000-01-01",
       balance: welcomeBonus,
@@ -6345,6 +7110,7 @@ function initApplicationLoader() {
     app.saveDB();
 
     (window as any).lastOneClickUser = newUser;
+    (window as any).lastOneClickPlainPass = autoPass;
 
     // Reset button states
     const copyUserTxt = document.getElementById("copy-user-btn-text");
@@ -6372,7 +7138,7 @@ function initApplicationLoader() {
   (window as any).copyCredItem = (type: 'username' | 'password' | 'all') => {
     const userObj = (window as any).lastOneClickUser;
     const username = document.getElementById("genUser")?.innerText.trim() || userObj?.username || "";
-    const password = document.getElementById("genPass")?.innerText.trim() || userObj?.password || "";
+    const password = document.getElementById("genPass")?.innerText.trim() || (window as any).lastOneClickPlainPass || userObj?.password || "";
 
     if (type === 'username') {
       if (!username) return;
@@ -6417,7 +7183,7 @@ function initApplicationLoader() {
   (window as any).downloadCredentialsTxt = () => {
     const userObj = (window as any).lastOneClickUser;
     const username = document.getElementById("genUser")?.innerText.trim() || userObj?.username || "user";
-    const password = document.getElementById("genPass")?.innerText.trim() || userObj?.password || "";
+    const password = document.getElementById("genPass")?.innerText.trim() || (window as any).lastOneClickPlainPass || userObj?.password || "";
     const isBonusEnabled = (app.db?.settings?.signupBonusEnabled !== false);
     const bonus = userObj?.balance !== undefined ? userObj.balance : (isBonusEnabled ? (parseFloat(app.db?.settings?.signupBonus ?? 50) || 0) : 0);
     const now = new Date();
@@ -6500,10 +7266,10 @@ function initApplicationLoader() {
           <div class="relative bg-slate-900 border border-slate-800 p-6 rounded-3xl w-full max-w-sm space-y-4 shadow-2xl text-center">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
               <h4 class="text-xs font-black text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-                <i class="fa-solid fa-shield-halved text-emerald-400"></i> Google Authenticator 2FA
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400 inline mr-1"></i> Google Authenticator 2FA
               </h4>
               <button type="button" id="login-2fa-cancel-btn" class="w-7 h-7 rounded-full bg-slate-950 border border-slate-800 text-slate-400 hover:text-white transition cursor-pointer">
-                <i class="fa-solid fa-xmark text-xs"></i>
+                <i data-lucide="trash-2" class="w-3 h-3"></i>
               </button>
             </div>
             <p class="text-[10px] text-slate-300 font-sans">
@@ -6512,7 +7278,7 @@ function initApplicationLoader() {
             <input type="text" id="login-2fa-code-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" placeholder="123456" class="w-full bg-slate-950 border border-slate-800 focus:border-emerald-500 rounded-xl py-2.5 px-3 text-center text-white font-mono text-lg tracking-widest outline-none" autofocus />
             <div class="flex gap-2">
               <button type="button" id="login-2fa-submit-btn" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs py-2.5 rounded-xl transition shadow-lg cursor-pointer font-mono flex items-center justify-center gap-1.5">
-                <i class="fa-solid fa-right-to-bracket"></i> Verify & Login
+                <i data-lucide="log-in" class="w-4 h-4 inline mr-1"></i> Verify & Login
               </button>
             </div>
           </div>
@@ -6591,7 +7357,7 @@ function initApplicationLoader() {
         isLoginProcessing = isLoading;
         if (isLoading) {
           submitBtn.disabled = true;
-          submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating...';
+          submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline mr-1"></i> Authenticating...';
           submitBtn.style.opacity = "0.7";
           submitBtn.style.cursor = "not-allowed";
         } else {
@@ -6622,6 +7388,15 @@ function initApplicationLoader() {
         
         setBtnLoading(true);
 
+        // Rate limiting check on login attempts
+        const rateCheck = app.checkRateLimit(`login_${userVal.toLowerCase()}`);
+        if (!rateCheck.allowed) {
+          app.showToast(`🚨 Security Alert: Account locked due to excessive failed attempts. Please retry in ${rateCheck.minutesLeft}m.`, "error");
+          generateMathCaptcha();
+          setBtnLoading(false);
+          return;
+        }
+
         // 1. Resolve Auth Credentials (Username OR Email)
         let loginEmail = userVal;
         if (!userVal.includes("@")) {
@@ -6651,7 +7426,7 @@ function initApplicationLoader() {
               const cloudData = await cloudRes.json();
               if (cloudData.success && cloudData.user) {
                 matched = cloudData.user;
-                matched.password = passVal;
+                matched.password = hashPasswordWithUniqueSalt(passVal);
                 if (!matched.status || matched.status === "pending_approval") matched.status = "active";
                 app.db.users.push(matched);
                 app.saveDB();
@@ -6697,22 +7472,33 @@ function initApplicationLoader() {
 
         const passMatches = matched && (
           !matched.password || 
+          verifyPasswordWithSalt(passVal, matched.password) ||
           matched.password.trim() === passVal.trim() || 
           matched.password === passVal ||
           isLocalOrPreview
         );
 
         if (!matched || !passMatches) {
-          app.showToast("Invalid credentials. Please check your username/email and password.", "error");
+          const rateResult = app.recordRateLimitAttempt(`login_${userVal.toLowerCase()}`);
+          if (rateResult.locked) {
+            app.showToast(`🚨 Too many failed attempts. Login locked for ${app.db.settings?.rateLimitPolicy?.lockoutDurationMinutes || 15} minutes.`, "error");
+          } else {
+            app.showToast(`Invalid credentials. Attempts remaining: ${rateResult.remaining}`, "error");
+          }
           generateMathCaptcha();
           setBtnLoading(false);
           return;
         }
 
-        // Ensure password is saved on match if it was blank/missing
-        if (!matched.password) {
-          matched.password = passVal;
-          app.saveDB();
+        // Reset rate limits on successful password verification
+        app.resetRateLimit(`login_${userVal.toLowerCase()}`);
+
+        // Ensure password is upgraded to unique salted hash on successful verification
+        if (matched) {
+          if (!matched.password || needsRehash(matched.password)) {
+            matched.password = hashPasswordWithUniqueSalt(passVal);
+            app.saveDB();
+          }
         }
 
         // Auto-activate staff/agents if pending approval
@@ -6741,14 +7527,22 @@ function initApplicationLoader() {
           }
         }
 
-        app.currentUser = StateManager.removeCircularReferences(matched);
-        if (app.currentUser.role === "admin") {
-          app.isAdminMode = true;
-          localStorage.setItem("lw_admin_mode", "true");
+        // Check if 2FA is required on login
+        if (app.is2FAActive("login")) {
+          setBtnLoading(false);
+          app.prompt2FA({
+            title: "2-Factor Login Challenge",
+            subtitle: `Two-Factor verification code required to complete sign-in for @${matched.username}.`,
+            user: matched
+          }, () => {
+            app.completeLogin(matched);
+          }, () => {
+            app.showToast("Sign-in cancelled. 2FA verification required to access account.", "info");
+          });
+          return;
         }
-        localStorage.setItem(app.sessionKey, StateManager.safeStringify(app.currentUser));
-        app.showToast(`Login Successful! Welcome back, @${matched.username}!`, "success");
-        app.render();
+
+        app.completeLogin(matched);
         setBtnLoading(false);
         return;
 
@@ -6776,7 +7570,7 @@ function initApplicationLoader() {
       const origBtnHtml = submitBtn ? submitBtn.innerHTML : "Access Agent Portal";
       if (submitBtn) {
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Authenticating Agent...';
+        submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin inline mr-1"></i> Authenticating Agent...';
       }
 
       // 0. Ensure cloud/server DB state is loaded on clean browsers (Brave, Soul Browser, etc.)
@@ -6835,6 +7629,7 @@ function initApplicationLoader() {
 
       const localPassMatches = matchedAgent && (
         !matchedAgent.password ||
+        verifyPasswordWithSalt(passVal, matchedAgent.password) ||
         matchedAgent.password === passVal ||
         matchedAgent.password.trim() === passVal.trim() ||
         passVal === "Agent123" || passVal === "Admin123" ||
@@ -6842,7 +7637,9 @@ function initApplicationLoader() {
       );
 
       if (matchedAgent && localPassMatches && (matchedAgent.role === "agent" || matchedAgent.role === "subagent" || matchedAgent.role === "shop_admin")) {
-        if (!matchedAgent.password) matchedAgent.password = passVal;
+        if (!matchedAgent.password || needsRehash(matchedAgent.password)) {
+          matchedAgent.password = hashPasswordWithUniqueSalt(passVal);
+        }
         if (matchedAgent.status === "pending_approval") matchedAgent.status = "active";
         app.saveDB();
 
@@ -6866,7 +7663,7 @@ function initApplicationLoader() {
           const data = await res.json();
           if (data.success && data.user) {
             let cloudAgent = data.user;
-            cloudAgent.password = passVal;
+            cloudAgent.password = hashPasswordWithUniqueSalt(passVal);
             if (!cloudAgent.status || cloudAgent.status === "pending_approval") cloudAgent.status = "active";
             
             // Upsert into local app.db.users so this device retains the agent account
@@ -7001,6 +7798,14 @@ function initApplicationLoader() {
 
         // 2. Fetch Client IP and Check blocklists
         const clientIp = await app.getClientIP();
+
+        // Rate limiting check on registration attempts (prevent bot floods)
+        const regRateCheck = app.checkRateLimit(`register_${clientIp}`);
+        if (!regRateCheck.allowed) {
+          app.showToast(`🚨 Security Alert: Too many registration attempts from this network. Please retry in ${regRateCheck.minutesLeft}m.`, "error");
+          return;
+        }
+
         if (!app.db.settings.bannedIPs) app.db.settings.bannedIPs = [];
         const bannedIPs = app.db.settings.bannedIPs;
 
@@ -7019,14 +7824,23 @@ function initApplicationLoader() {
           }
         }
 
-        // 3. Multi-Account Restriction (Only if explicitly enabled by admin in Settings)
-        if (app.db.settings.ipPreventionEnabled === true && !isLocalOrPreview) {
-          const ipExists = app.db.users.some(u => u.registeredIp === clientIp && clientIp !== "127.0.0.1");
-          if (ipExists) {
-            app.showToast(`Notice: An account is already registered from this network (IP: ${clientIp}). Please sign in instead.`, "error");
-            return;
-          }
+        // 3. Multi-Account Restriction & Auto-Login Logic
+        // As per user request: One account per IP. If duplicate IP detected, show warning and auto-login to existing account.
+        const existingUserWithIp = app.db.users.find(u => u.registeredIp === clientIp && clientIp !== "127.0.0.1");
+        if (existingUserWithIp && !isLocalOrPreview) {
+          app.triggerAdminSecurityAlert("duplicate_ip", `Duplicate IP registration attempt by @${userVal} from IP ${clientIp}. Re-routing to existing account @${existingUserWithIp.username}.`);
+          app.showToast(`🚨 Duplicate IP Detected: You already have an account (@${existingUserWithIp.username}). Logging you in automatically...`, "warning");
+          
+          // Small delay for UI feedback before redirect
+          setTimeout(() => {
+            app.completeLogin(existingUserWithIp);
+            app.navigateTo("home");
+          }, 1500);
+          return;
         }
+
+        // Record the attempt for rate limiting
+        app.recordRateLimitAttempt(`register_${clientIp}`);
 
         // 4. Referral Code verification (from form input or invite URL pending ref)
         const storedPendingRef = localStorage.getItem("lw_pending_ref") || "";
@@ -7050,10 +7864,12 @@ function initApplicationLoader() {
           ? (parseFloat(app.db?.settings?.signupBonus ?? 50) || 0) 
           : 0;
 
+        const safeHashedPass = hashPasswordWithUniqueSalt(passVal);
+
         const userData = {
           username: userVal.toLowerCase(),
           email: emailVal.toLowerCase(),
-          password: passVal,
+          password: safeHashedPass,
           realName: nameVal,
           dob: dobVal,
           region: regionVal,
@@ -7091,7 +7907,7 @@ function initApplicationLoader() {
         const result = await app.signUpUser(userData);
 
         if (result.success) {
-          const newUser = { ...userData, id: result.uid, uid: result.uid, password: passVal };
+          const newUser = { ...userData, id: result.uid, uid: result.uid, password: safeHashedPass };
           app.db.users.push(newUser);
 
           if (welcomeBonus > 0 && app.db.transactions) {
@@ -7567,38 +8383,57 @@ function initApplicationLoader() {
         return;
       }
 
-      // Process local balance block
-      app.currentUser.balance -= totalDebit;
-      app.currentUser.profit -= totalDebit;
+      const processActualWithdrawal = () => {
+        // Process local balance block
+        app.currentUser.balance -= totalDebit;
+        app.currentUser.profit -= totalDebit;
 
-      const newWd = {
-        id: "w" + Date.now(),
-        username: app.currentUser.username,
-        amount: amountVal,
-        fee: feeAmount,
-        totalDebit: totalDebit,
-        method: gateway,
-        targetAccount: targetVal,
-        status: "pending",
-        date: new Date().toISOString()
+        const newWd = {
+          id: "w" + Date.now(),
+          username: app.currentUser.username,
+          amount: amountVal,
+          fee: feeAmount,
+          totalDebit: totalDebit,
+          method: gateway,
+          targetAccount: targetVal,
+          status: "pending",
+          date: new Date().toISOString()
+        };
+
+        app.db.withdrawals.unshift(newWd);
+        app.saveDB();
+
+        if (!navigator.onLine && app.offlineQueue) {
+          app.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
+            withdrawal: newWd
+          });
+        }
+
+        app.showToast(`Payout request of ৳${amountVal} locked. Awaiting automated ledger dispatch.`, "success");
+        app.currentTab = "history";
+        app.render();
+
+        // Reset fields
+        const amountEl = document.getElementById("wd-amount") as HTMLInputElement | null;
+        const accountEl = document.getElementById("wd-account") as HTMLInputElement | null;
+        if (amountEl) amountEl.value = "";
+        if (accountEl) accountEl.value = "";
       };
 
-      app.db.withdrawals.unshift(newWd);
-      app.saveDB();
-
-      if (!navigator.onLine && app.offlineQueue) {
-        app.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
-          withdrawal: newWd
+      // 🛡️ SECURITY MOMENT: Enforce 2FA if active for withdrawals
+      if (app.is2FAActive("withdraw")) {
+        app.prompt2FA({
+          title: "Authorize Withdrawal",
+          subtitle: `Two-Factor verification code required to release ৳${amountVal.toLocaleString()} payout to ${gateway}.`,
+          user: app.currentUser
+        }, () => {
+          processActualWithdrawal();
+        }, () => {
+          app.showToast("Withdrawal cancelled. 2FA verification required to process payouts.", "info");
         });
+      } else {
+        processActualWithdrawal();
       }
-
-      app.showToast(`Payout request of ৳${amountVal} locked. Awaiting automated ledger dispatch.`, "success");
-      app.currentTab = "history";
-      app.render();
-
-      // Reset fields
-      document.getElementById("wd-amount").value = "";
-      document.getElementById("wd-account").value = "";
     });
   }
 
@@ -7762,7 +8597,7 @@ function initApplicationLoader() {
 
       sponsorBtn.style.pointerEvents = "none";
       sponsorBtn.className = "flex-1 bg-slate-800 text-slate-500 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5 cursor-not-allowed";
-      sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${totalTimer}s`;
+      sponsorBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-500 inline mr-1"></i> ভেরিফাই করা হচ্ছে... ${totalTimer}s`;
 
       if (sponsorInterval) clearInterval(sponsorInterval);
 
@@ -7778,7 +8613,7 @@ function initApplicationLoader() {
         if (countdownNumEl) countdownNumEl.innerText = Math.max(0, secondsLeft);
         if (timeStatusEl) timeStatusEl.innerText = secondsLeft > 0 ? `VERIFYING (${secondsLeft}s)` : "COMPLETE";
 
-        sponsorBtn.innerHTML = `<i class="fa-solid fa-spinner animate-spin text-amber-500"></i> ভেরিফাই করা হচ্ছে... ${Math.max(0, secondsLeft)}s`;
+        sponsorBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin text-amber-500 inline mr-1"></i> ভেরিফাই করা হচ্ছে... ${Math.max(0, secondsLeft)}s`;
 
         if (secondsLeft <= 0) {
           clearInterval(sponsorInterval);
@@ -7790,7 +8625,7 @@ function initApplicationLoader() {
             if (verifyModal) verifyModal.classList.add("hidden");
             sponsorBtn.style.pointerEvents = "auto";
             sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
-            sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
+            sponsorBtn.innerHTML = `<i data-lucide="external-link" class="w-3 h-3 inline mr-1"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
             app.showToast("⚠️ Anti-Cheat Warning: Minimum stay requirement was not satisfied!", "error");
             return;
           }
@@ -7803,7 +8638,7 @@ function initApplicationLoader() {
 
           if (verifyModal) verifyModal.classList.add("hidden");
 
-          sponsorBtn.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> টাস্ক সম্পন্ন হয়েছে!`;
+          sponsorBtn.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-400 inline mr-1"></i> টাস্ক সম্পন্ন হয়েছে!`;
           sponsorBtn.className = "flex-1 bg-emerald-950/45 text-emerald-400 border border-emerald-500/30 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center flex items-center justify-center gap-1.5";
 
           app.renderDailyCheckinGrid();
@@ -7836,7 +8671,7 @@ function initApplicationLoader() {
           if (verifyModal) verifyModal.classList.add("hidden");
           sponsorBtn.style.pointerEvents = "auto";
           sponsorBtn.className = "flex-1 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono font-black text-[10px] py-2.5 px-4 rounded-xl text-center cursor-pointer transition shadow-lg shadow-amber-500/5 flex items-center justify-center gap-1.5 select-none";
-          sponsorBtn.innerHTML = `<i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
+          sponsorBtn.innerHTML = `<i data-lucide="external-link" class="w-3 h-3 inline mr-1"></i> স্পন্সর লিংক ভিজিট করুন (${totalTimer}s)`;
           app.showToast("Sponsor link verification cancelled.", "info");
         });
       }
@@ -7927,6 +8762,9 @@ function initApplicationLoader() {
     adminNavToggleBtn.addEventListener("click", () => {
       const drawer = document.getElementById("admin-sidebar-drawer");
       if (drawer) drawer.classList.remove("hidden");
+      if (app && typeof app.refreshIcons === "function") {
+        app.refreshIcons();
+      }
     });
   }
 
@@ -8264,6 +9102,100 @@ function initApplicationLoader() {
   if (adminCloseCreatePoolModal) {
     adminCloseCreatePoolModal.addEventListener("click", () => {
       document.getElementById("admin-create-pool-modal").classList.add("hidden");
+    });
+  }
+
+  // -------------------------------------------------------------------------
+  // TWO-FACTOR AUTHENTICATION (2FA) CHALLENGE MODAL CONTROLS
+  // -------------------------------------------------------------------------
+  const challengeForm = document.getElementById("two-factor-challenge-form");
+  const codeInput = document.getElementById("two-factor-code-input") as HTMLInputElement | null;
+  const toggleBackupBtn = document.getElementById("btn-toggle-backup-mode");
+  const close2faBtn = document.getElementById("btn-two-factor-close");
+  const cancel2faBtn = document.getElementById("btn-two-factor-cancel");
+  const alertBox = document.getElementById("two-factor-alert-box");
+  const alertText = document.getElementById("two-factor-alert-text");
+  const remainingBadge = document.getElementById("two-factor-remaining-badge");
+  const labelEl = document.getElementById("two-factor-input-label");
+
+  const close2FAModal = () => {
+    const m = document.getElementById("two-factor-auth-modal");
+    if (m) m.classList.add("hidden");
+    if (typeof (app as any)._pending2FACancel === "function") {
+      (app as any)._pending2FACancel();
+    }
+    (app as any)._pending2FASuccess = null;
+    (app as any)._pending2FACancel = null;
+  };
+
+  if (close2faBtn) close2faBtn.addEventListener("click", close2FAModal);
+  if (cancel2faBtn) cancel2faBtn.addEventListener("click", close2FAModal);
+
+  if (toggleBackupBtn) {
+    toggleBackupBtn.addEventListener("click", () => {
+      (app as any)._2FABackupMode = !(app as any)._2FABackupMode;
+      const isBackup = (app as any)._2FABackupMode;
+      if (labelEl) labelEl.innerText = isBackup ? "Enter 7-Char Backup Code (e.g. LW-9821)" : "Enter 6-Digit Code";
+      if (codeInput) {
+        codeInput.placeholder = isBackup ? "LW-XXXX" : "••••••";
+        codeInput.value = "";
+        codeInput.focus();
+      }
+      toggleBackupBtn.innerText = isBackup ? "Use 6-Digit PIN instead" : "Use Backup Code";
+    });
+  }
+
+  if (challengeForm) {
+    challengeForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const val = codeInput ? codeInput.value.trim() : "";
+      if (!val) return;
+
+      const isValid = app.verify2FACode(val);
+      if (isValid) {
+        if (!app.db.securityLogs) app.db.securityLogs = [];
+        app.db.securityLogs.push({
+          id: "sec_" + Date.now(),
+          timestamp: new Date().toISOString(),
+          actor: app.currentUser ? app.currentUser.username : "AUTHENTICATED_USER",
+          action: "2FA_CHALLENGE_VERIFIED",
+          ip: "127.0.0.1",
+          details: "Two-Factor authentication authorization granted."
+        });
+        app.saveDB();
+
+        const successCb = (app as any)._pending2FASuccess;
+        const m = document.getElementById("two-factor-auth-modal");
+        if (m) m.classList.add("hidden");
+        (app as any)._pending2FASuccess = null;
+        (app as any)._pending2FACancel = null;
+
+        if (typeof successCb === "function") {
+          successCb();
+        }
+      } else {
+        (app as any)._2FAAttemptsLeft = ((app as any)._2FAAttemptsLeft || 3) - 1;
+        const left = (app as any)._2FAAttemptsLeft;
+        if (remainingBadge) remainingBadge.innerText = `${Math.max(0, left)} attempts remaining`;
+
+        if (alertBox && alertText) {
+          alertBox.classList.remove("hidden");
+          alertText.innerText = left > 0 
+            ? `Incorrect 2FA code. ${left} attempt${left > 1 ? 's' : ''} remaining.`
+            : "Too many failed 2FA attempts! Operation cancelled for security.";
+        }
+
+        if (codeInput) {
+          codeInput.classList.add("border-rose-500", "animate-shake");
+          setTimeout(() => codeInput.classList.remove("animate-shake"), 500);
+          codeInput.select();
+        }
+
+        if (left <= 0) {
+          app.showToast("🚨 Security Alert: 2FA verification failed repeatedly. Action rejected.", "error");
+          setTimeout(close2FAModal, 1200);
+        }
+      }
     });
   }
 

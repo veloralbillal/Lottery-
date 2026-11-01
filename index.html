@@ -209,12 +209,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <!-- FontAwesome Vector Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" />
+
     <!-- Chart.js for data visualization (deferred) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
     
     <!-- Master Tailwind CSS v4 Production & Theme Stylesheet -->
-    <link rel="stylesheet" href="/src/tailwind-built.css" id="lw-main-css" />
+    <link rel="stylesheet" href="/src/index.css" id="lw-main-css" />
     
     <style>
       /* Image layout safeguard for static hosting */
@@ -494,6 +495,29 @@
         100% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5)); transform: scale(1); }
       }
       .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
+
+      /* Subtle Fade-In Transition Effect for Blog Post Items */
+      @keyframes blogItemFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .blog-fade-in {
+        animation: blogItemFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        will-change: opacity, transform;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .blog-fade-in {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      }
     </style>
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
@@ -530,7 +554,7 @@
       <!-- Skip / Dismiss Quick Button -->
       <button id="splash-skip-btn" type="button" class="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-amber-400/50 text-amber-300 hover:text-white rounded-full text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer z-40 shadow-[0_0_15px_rgba(251,191,36,0.3)]">
         <span>Skip</span>
-        <i class="fa-solid fa-angles-right text-[10px]"></i>
+        <i data-lucide="chevron-right" class="w-4 h-4"></i>
       </button>
 
       <div id="emergency-bypass" class="hidden absolute bottom-6 right-6 z-[3000]">
@@ -581,7 +605,7 @@
             <!-- Floating Animated Golden Crown & 777 Jackpot Emblem -->
             <div class="absolute -top-6 sm:-top-7 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center animate-bounce" style="animation-duration: 2.2s;">
               <div class="relative">
-                <i class="fa-solid fa-crown text-amber-300 text-2xl sm:text-3xl drop-shadow-[0_0_15px_rgba(251,191,36,1)]"></i>
+                <i data-lucide="crown" class="w-8 h-8 text-amber-300 drop-shadow-[0_0_15px_rgba(251,191,36,1)]"></i>
                 <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-rose-600 text-white font-black text-[7px] font-mono px-1 rounded-full border border-yellow-300">777</span>
               </div>
             </div>
@@ -597,10 +621,10 @@
 
             <!-- SVIP Golden Side Wings (Angel VIP Tier) -->
             <div class="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-              <i class="fa-solid fa-feather text-amber-300 text-lg sm:text-xl drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform -rotate-[35deg]"></i>
+              <i data-lucide="feather" class="w-5 h-5 text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform -rotate-[35deg]"></i>
             </div>
             <div class="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-              <i class="fa-solid fa-feather text-amber-300 text-lg sm:text-xl drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform rotate-[35deg] scale-x-[-1]"></i>
+              <i data-lucide="feather" class="w-5 h-5 text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform rotate-[35deg] scale-x-[-1]"></i>
             </div>
 
             <!-- User Profile Photo -->
@@ -610,7 +634,7 @@
 
             <!-- Voice Club Studio Mic Floating Badge -->
             <div class="absolute -bottom-1 -right-1 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 border-2 border-slate-950 flex items-center justify-center text-white shadow-[0_0_15px_rgba(244,63,94,0.9)] animate-pulse">
-              <i class="fa-solid fa-microphone-lines text-xs"></i>
+              <i data-lucide="mic-2" class="w-4 h-4"></i>
             </div>
 
             <!-- Bottom SVIP Voice Room Tag Badge -->
@@ -641,7 +665,7 @@
           <!-- WINNER DETAILS SECTION -->
           <div class="space-y-1 sm:space-y-1.5 text-center relative z-10 w-full pt-0.5">
             <div class="inline-flex items-center gap-1.5 bg-amber-950/90 border border-amber-600/60 px-3 py-0.5 sm:py-1 rounded-full text-amber-300 font-mono text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider shadow">
-              <i class="fa-solid fa-trophy text-amber-400"></i> TOP 1 LOTTERY CHAMPION
+              <i data-lucide="trophy" class="w-3 h-3 text-amber-400"></i> TOP 1 LOTTERY CHAMPION
             </div>
             
             <h2 id="splash-winner-username" class="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-white to-amber-300 tracking-tight font-sans drop-shadow">
@@ -662,7 +686,7 @@
               <div>
                 <span class="block text-[8px] sm:text-[8.5px] font-mono text-slate-400 uppercase tracking-wider">Mega Jackpot Profit</span>
                 <span class="text-[8.5px] sm:text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                  <i class="fa-solid fa-shield-check text-emerald-400"></i> Official Winner Verified
+                  <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i> Official Winner Verified
                 </span>
               </div>
             </div>
@@ -687,7 +711,7 @@
 
             <div class="space-y-0.5 text-left z-10 pl-2">
               <span class="text-[8px] font-mono text-amber-400/80 block tracking-widest uppercase flex items-center gap-1">
-                <i class="fa-solid fa-ticket text-amber-400"></i> VIP LOTTERY PASS
+                <i data-lucide="ticket" class="w-3 h-3 text-amber-400"></i> VIP LOTTERY PASS
               </span>
               <span class="text-[11px] sm:text-xs font-black font-mono text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-cyan-300 tracking-wider">
                 LUCKY-777-VOICE-VIP
@@ -695,7 +719,7 @@
             </div>
             
             <div class="font-mono text-[8px] text-cyan-400 font-extrabold uppercase bg-cyan-950/60 border border-cyan-500/40 px-2.5 py-1 rounded-lg tracking-wider animate-pulse z-10 flex items-center gap-1 mr-2">
-              <i class="fa-solid fa-circle-check text-cyan-300"></i> TICKET VERIFIED
+              <i data-lucide="check-circle" class="w-3 h-3 text-cyan-300"></i> TICKET VERIFIED
             </div>
           </div>
         </div>
@@ -711,16 +735,16 @@
 
         <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
           <span id="splash-timer-text" class="flex items-center gap-1.5 text-amber-300 font-bold">
-            <i class="fa-solid fa-clock animate-spin text-amber-400"></i> Auto-closing in 2s
+            <i data-lucide="clock" class="w-4 h-4 text-amber-400 animate-spin"></i> Auto-closing in 2s
           </span>
           <span id="splash-percent" class="font-bold text-cyan-400">0%</span>
         </div>
 
         <!-- Prominent Enter App Action Button -->
         <button id="splash-enter-btn" type="button" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black font-mono text-xs rounded-xl shadow-[0_0_20px_rgba(251,191,36,0.5)] transition cursor-pointer active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2 mt-1 z-30">
-          <i class="fa-solid fa-microphone-lines text-xs"></i>
+          <i data-lucide="mic-2" class="w-4 h-4"></i>
           <span>ENTER LOTTERY APP NOW</span>
-          <i class="fa-solid fa-arrow-right text-[11px]"></i>
+          <i data-lucide="chevron-right" class="w-4 h-4"></i>
         </button>
         <p class="text-[9px] font-mono text-slate-500 pt-0.5">Tap anywhere on screen to enter immediately</p>
       </div>
@@ -1020,7 +1044,7 @@
               <!-- Agent Portal Login Trigger -->
               <div class="pt-2">
                 <button type="button" onclick="document.getElementById('auth-login-box').classList.add('hidden'); document.getElementById('auth-agent-login-box').classList.remove('hidden');" class="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-mono font-bold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer text-xs shadow">
-                  <i class="fa-solid fa-user-tie text-xs"></i>
+                  <i data-lucide="user" class="w-4 h-4"></i>
                   <span>Agent / Dealer Portal Login (এজেন্ট লগইন)</span>
                 </button>
               </div>
@@ -1084,7 +1108,7 @@
                 <!-- Dynamic Agent Recruitment Header Banner -->
                 <div id="reg-agent-apply-banner" class="hidden p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 font-sans space-y-1 mb-4">
                   <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-400">
-                    <i class="fa-solid fa-user-shield text-xs"></i>
+                    <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
                     <span>Sub-Agent Field Registration</span>
                   </div>
                   <p class="text-[11px] leading-relaxed">
@@ -1127,7 +1151,7 @@
                 <input type="hidden" id="reg-dob" value="2000-01-01">
                 <div class="input-group">
                   <label class="flex items-center gap-1.5 text-amber-400 font-bold">
-                    <i class="fa-solid fa-user-plus text-[10px]"></i>
+                    <i data-lucide="user-plus" class="w-4 h-4 text-amber-400"></i>
                     <span>Referral Code (Optional)</span>
                   </label>
                   <input type="text" id="reg-refer-by" class="input-field border-amber-500/30 focus:border-amber-500" placeholder="Enter recruiter username" autocomplete="off">
@@ -1182,7 +1206,7 @@
                 <span id="genUser" class="font-mono font-bold text-xs text-amber-300 truncate block select-all"></span>
               </div>
               <button type="button" id="btn-copy-username" onclick="copyCredItem('username')" class="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white rounded-lg text-[10px] font-mono font-bold transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer" title="Copy Username">
-                <i class="fa-solid fa-copy text-[10px]"></i>
+                <i data-lucide="clipboard" class="w-4 h-4"></i>
                 <span id="copy-user-btn-text">Copy</span>
               </button>
             </div>
@@ -1214,7 +1238,7 @@
 
           <!-- Primary Submit Button -->
           <button class="btn-submit !py-3 !rounded-xl !text-xs !font-black !tracking-wide flex items-center justify-center gap-2 cursor-pointer transition active:scale-98" type="button" onclick="closeModal()">
-            <i class="fa-solid fa-play text-[10px]"></i>
+            <i data-lucide="zap" class="w-4 h-4"></i>
             <span>START PLAYING</span>
           </button>
         </div>
@@ -1263,15 +1287,15 @@
             </button>
             <div id="group-chat-dropdown-menu" class="hidden absolute right-0 top-10 sm:top-11 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs text-slate-200">
               <button type="button" onclick="if(window.app){window.app.refreshGroupChat();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i class="fa-solid fa-rotate text-blue-400 w-4"></i>
+                <i data-lucide="refresh-cw" class="w-4 h-4 text-blue-400"></i>
                 <span>Refresh</span>
               </button>
               <button type="button" onclick="if(window.app){window.app.openGroupSettings();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i class="fa-solid fa-gear text-amber-400 w-4"></i>
+                <i data-lucide="settings" class="w-4 h-4 text-amber-400"></i>
                 <span>Settings</span>
               </button>
               <button type="button" onclick="if(window.app){window.app.openGroupProfile();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i class="fa-solid fa-user text-pink-400 w-4"></i>
+                <i data-lucide="user" class="w-4 h-4 text-pink-400"></i>
                 <span>Profile</span>
               </button>
             </div>
@@ -1282,7 +1306,7 @@
       <!-- Pinned Notice Subheader -->
       <div class="bg-indigo-950/70 border-b border-indigo-500/25 px-3 sm:px-4 py-1.5 sm:py-2 flex items-center text-xs text-indigo-200 z-10 shrink-0 w-full overflow-hidden">
         <div class="flex items-center gap-1.5 min-w-0 flex-1">
-          <i class="fa-solid fa-thumbtack text-amber-400 shrink-0 text-xs"></i>
+          <i data-lucide="star" class="w-4 h-4 text-amber-400"></i>
           <span class="truncate font-medium text-[11px] sm:text-xs">লাইভ আড্ডা: লটারি টিকেট, ড্র রেজাল্ট ও মেম্বারদের প্রফিট ডিসকাশন চলছে 💬</span>
         </div>
       </div>
@@ -1329,7 +1353,7 @@
 
         <div id="group-chat-attachment-preview" class="hidden mb-2 bg-slate-950 border border-blue-500/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200">
           <div class="flex items-center gap-2 truncate min-w-0">
-            <i class="fa-solid fa-image text-blue-400 shrink-0"></i>
+            <i data-lucide="image" class="w-4 h-4 text-blue-400"></i>
             <span id="group-chat-attachment-name" class="truncate font-mono text-[11px]">image.png</span>
           </div>
           <button type="button" id="group-chat-attachment-remove" class="text-rose-400 hover:text-rose-300 text-xs px-2 cursor-pointer shrink-0">
@@ -1381,7 +1405,7 @@
             </button>
           </div>
           <button type="submit" id="group-chat-send-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition active:scale-95 shadow-md cursor-pointer shrink-0">
-            <i class="fa-solid fa-paper-plane text-xs"></i>
+            <i data-lucide="paper-plane" class="w-4 h-4"></i>
           </button>
         </form>
       </footer>
@@ -1397,7 +1421,7 @@
           </button>
           <div class="flex items-center gap-2.5">
             <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">
-              <i class="fa-solid fa-globe text-base"></i>
+              <i data-lucide="globe" class="w-5 h-5 text-blue-400"></i>
             </div>
             <div>
               <h2 class="text-sm font-bold text-white">Lucky Community Hub</h2>
@@ -1406,7 +1430,7 @@
           </div>
         </div>
         <button type="button" onclick="if(window.app){window.app.openGroupChat();}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shrink-0">
-          <i class="fa-solid fa-comments mr-1"></i> গ্রুপ চ্যাট
+          <i data-lucide="message-square" class="w-3 h-3 mr-1 inline"></i> গ্রুপ চ্যাট
         </button>
       </header>
 
@@ -1426,17 +1450,17 @@
         <!-- Community Tabs -->
         <div class="grid grid-cols-3 gap-2">
           <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i class="fa-solid fa-users text-blue-400 text-base"></i>
+            <i data-lucide="users" class="w-5 h-5 text-blue-400 inline"></i>
             <h4 class="text-xs font-bold text-white">মেম্বারগণ</h4>
             <p id="community-member-count-badge" class="text-[10px] text-slate-400">রিয়েল মেম্বার</p>
           </button>
           <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i class="fa-solid fa-bullhorn text-amber-400 text-base"></i>
+            <i data-lucide="bell" class="w-5 h-5 text-amber-400 inline"></i>
             <h4 class="text-xs font-bold text-white">অফিশিয়াল নোটিশ</h4>
             <p class="text-[10px] text-slate-400">৩টি পিনড</p>
           </button>
           <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i class="fa-solid fa-award text-pink-400 text-base"></i>
+            <i data-lucide="award" class="w-5 h-5 text-pink-400 inline"></i>
             <h4 class="text-xs font-bold text-white">টপ উইনার্স</h4>
             <p class="text-[10px] text-slate-400">লিডারবোর্ড</p>
           </button>
@@ -1711,27 +1735,27 @@
       <!-- Bottom System Navigation tab bar -->
       <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="home">
-          <i class="fa-solid fa-clover text-base"></i>
+          <i data-lucide="clover" class="w-5 h-5"></i>
           <span>Pools</span>
         </button>
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="jackpot">
-          <i class="fa-solid fa-gem text-base text-purple-400 animate-pulse"></i>
+          <i data-lucide="gem" class="w-5 h-5 text-purple-400 animate-pulse"></i>
           <span>Jackpot</span>
         </button>
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="tickets">
-          <i class="fa-solid fa-receipt text-base"></i>
+          <i data-lucide="ticket" class="w-5 h-5"></i>
           <span>Tickets</span>
         </button>
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="wallet">
-          <i class="fa-solid fa-wallet text-base"></i>
+          <i data-lucide="wallet" class="w-5 h-5"></i>
           <span>Wallet</span>
         </button>
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="history">
-          <i class="fa-solid fa-clock-rotate-left text-base"></i>
+          <i data-lucide="history" class="w-5 h-5"></i>
           <span>Ledgers</span>
         </button>
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="profile">
-          <i class="fa-solid fa-user-shield text-base"></i>
+          <i data-lucide="user" class="w-5 h-5"></i>
           <span>Profile</span>
         </button>
       </nav>
@@ -1756,7 +1780,7 @@
         <div class="space-y-4">
           <!-- Sidebar Header -->
           <div class="flex items-center gap-2.5 pb-3 border-b border-slate-800">
-            <i class="fa-solid fa-shield-halved text-rose-500 text-base"></i>
+            <i data-lucide="shield" class="w-5 h-5 text-rose-500"></i>
             <div>
               <h2 class="font-black text-rose-400 uppercase tracking-wider text-xs">Admin Control Room</h2>
               <p class="text-[9px] text-slate-400">Secure Management Suite</p>
@@ -1766,112 +1790,116 @@
           <!-- Vertical Sidebar Menu List -->
           <div class="flex flex-col gap-1.5 max-h-[calc(100vh-170px)] overflow-y-auto pr-1">
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="stats">
-              <span><i class="fa-solid fa-chart-pie mr-2"></i> Dashboard</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="bar-chart" class="w-4 h-4 mr-2 inline"></i> Dashboard</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="users">
-              <span><i class="fa-solid fa-users mr-2"></i> Players</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="users" class="w-4 h-4 mr-2 inline"></i> Players</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agents">
-              <span><i class="fa-solid fa-user-shield text-emerald-400 mr-2"></i> Agents & Staff</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="shield" class="w-4 h-4 mr-2 inline text-emerald-400"></i> Agents & Staff</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="commission">
-              <span><i class="fa-solid fa-percent text-emerald-400 mr-2"></i> Commission</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="trending-up" class="w-4 h-4 mr-2 inline text-emerald-400"></i> Commission</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agent-leaders">
-              <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> Agent Leaders</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="crown" class="w-4 h-4 mr-2 inline text-amber-400"></i> Agent Leaders</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="subagents-list">
-              <span><i class="fa-solid fa-users text-indigo-400 mr-2"></i> Sub-Agents List</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="users" class="w-4 h-4 mr-2 inline text-indigo-400"></i> Sub-Agents List</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="lotteries">
-              <span><i class="fa-solid fa-ticket mr-2"></i> Lotteries</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="ticket" class="w-4 h-4 mr-2 inline"></i> Lotteries</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="deposits">
-              <span><i class="fa-solid fa-wallet mr-2"></i> Deposits</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="wallet" class="w-4 h-4 mr-2 inline"></i> Deposits</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="withdraws">
-              <span><i class="fa-solid fa-money-bill-transfer mr-2"></i> Payouts</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="refresh-cw" class="w-4 h-4 mr-2 inline"></i> Payouts</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="store">
-              <span><i class="fa-solid fa-store text-cyan-400 mr-2"></i> Shop Control</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="shopping-cart" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Shop Control</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="gateways">
-              <span><i class="fa-solid fa-credit-card mr-2"></i> Pay Gateways</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="wallet" class="w-4 h-4 mr-2 inline"></i> Pay Gateways</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="messages">
-              <span><i class="fa-solid fa-paper-plane text-cyan-400 mr-2"></i> Messages</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="paper-plane" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Messages</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="categories">
-              <span><i class="fa-solid fa-shapes mr-2"></i> Categories</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="box" class="w-4 h-4 mr-2 inline"></i> Categories</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="website">
-              <span><i class="fa-solid fa-globe mr-2"></i> Website Settings</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="globe" class="w-4 h-4 mr-2 inline"></i> Website Settings</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="legal">
-              <span><i class="fa-solid fa-scale-balanced text-rose-500 mr-2"></i> Legal & Policies</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="file-text" class="w-4 h-4 mr-2 inline text-rose-500"></i> Legal & Policies</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="reports">
-              <span><i class="fa-solid fa-triangle-exclamation mr-2"></i> Reports</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="alert-triangle" class="w-4 h-4 mr-2 inline"></i> Reports</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="refer">
-              <span><i class="fa-solid fa-users-gear text-cyan-400 mr-2"></i> Refer Control</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="settings" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Refer Control</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="vip">
-              <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> VIP Club Manager</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="crown" class="w-4 h-4 mr-2 inline text-amber-400"></i> VIP Club Manager</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="jackpot">
-              <span><i class="fa-solid fa-gem text-purple-400 animate-pulse mr-2"></i> Jackpot History</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="star" class="w-4 h-4 mr-2 inline text-purple-400 animate-pulse"></i> Jackpot History</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="tasks">
-              <span><i class="fa-solid fa-list-check text-cyan-400 animate-pulse mr-2"></i> Daily Tasks</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="check-square" class="w-4 h-4 mr-2 inline text-cyan-400 animate-pulse"></i> Daily Tasks</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="checkin">
-              <span><i class="fa-solid fa-calendar-check text-amber-400 mr-2"></i> Daily Check-In Control</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="calendar" class="w-4 h-4 mr-2 inline text-amber-400"></i> Daily Check-In Control</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="badge-requests">
-              <span><i class="fa-solid fa-ribbon text-rose-500 mr-2"></i> Badge Requests</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="award" class="w-4 h-4 mr-2 inline text-rose-500"></i> Badge Requests</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="video-bounty">
-              <span><i class="fa-solid fa-video text-rose-500 mr-2"></i> Video Bounty</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="video" class="w-4 h-4 mr-2 inline text-rose-500"></i> Video Bounty</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="sync-vault">
-              <span><i class="fa-solid fa-cloud-arrow-up text-cyan-400 mr-2"></i> Cloud Failover</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="refresh-cw" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Cloud Failover</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="events">
-              <span><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i> Events & Banners</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="bell" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Events & Banners</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
+            </button>
+            <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="blog">
+              <span><i data-lucide="book-open" class="w-4 h-4 mr-2 inline text-amber-400"></i> Blog Management</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="splash">
-              <span><i class="fa-solid fa-desktop text-rose-400 mr-2"></i> Splash Screen Manager</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="monitor" class="w-4 h-4 mr-2 inline text-rose-400"></i> Splash Screen Manager</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
             <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="settings">
-              <span><i class="fa-solid fa-sliders mr-2"></i> App Settings</span>
-              <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+              <span><i data-lucide="settings" class="w-4 h-4 mr-2 inline"></i> App Settings</span>
+              <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
             </button>
           </div>
         </div>
@@ -1888,7 +1916,7 @@
         <div class="flex items-center gap-2">
           <!-- Mobile Sidebar Nav Toggle Button -->
           <button id="admin-nav-toggle-btn" class="flex items-center gap-1.5 text-xs font-bold font-mono bg-rose-950/80 border border-rose-800 text-rose-300 px-3 py-1.5 rounded-xl hover:bg-rose-900 transition cursor-pointer active:scale-95 shadow-md">
-            <i class="fa-solid fa-bars text-rose-400"></i>
+            <i data-lucide="menu" class="w-4 h-4 text-rose-400"></i>
             <span>Menu Nav</span>
           </button>
           <span class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse hidden sm:inline-block"></span>
@@ -1914,127 +1942,131 @@
             <!-- Drawer Header -->
             <div class="flex items-center justify-between pb-3 border-b border-slate-800">
               <div class="flex items-center gap-2">
-                <i class="fa-solid fa-shield-halved text-rose-500 text-sm"></i>
+                <i data-lucide="shield" class="w-4 h-4 text-rose-500"></i>
                 <span class="font-black text-rose-400 uppercase tracking-wider text-xs">Admin Navigation</span>
               </div>
               <button id="close-admin-sidebar-btn" class="w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer active:scale-95">
-                <i class="fa-solid fa-xmark text-sm"></i>
+                <i data-lucide="x" class="w-4 h-4"></i>
               </button>
             </div>
 
             <!-- Vertical Sidebar Menu List -->
             <div class="flex flex-col gap-1.5 max-h-[75vh] overflow-y-auto pr-1">
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="stats">
-                <span><i class="fa-solid fa-chart-pie mr-2"></i> Dashboard</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="bar-chart" class="w-4 h-4 mr-2 inline"></i> Dashboard</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="users">
-                <span><i class="fa-solid fa-users mr-2"></i> Players</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="users" class="w-4 h-4 mr-2 inline"></i> Players</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agents">
-                <span><i class="fa-solid fa-user-shield text-emerald-400 mr-2"></i> Agents & Staff</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="shield" class="w-4 h-4 mr-2 inline text-emerald-400"></i> Agents & Staff</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="commission">
-                <span><i class="fa-solid fa-percent text-emerald-400 mr-2"></i> Commission</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="percent" class="w-4 h-4 mr-2 inline text-emerald-400"></i> Commission</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="agent-leaders">
-                <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> Agent Leaders</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="crown" class="w-4 h-4 mr-2 inline text-amber-400"></i> Agent Leaders</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="subagents-list">
-                <span><i class="fa-solid fa-users text-indigo-400 mr-2"></i> Sub-Agents List</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="users" class="w-4 h-4 mr-2 inline text-indigo-400"></i> Sub-Agents List</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="lotteries">
-                <span><i class="fa-solid fa-ticket mr-2"></i> Lotteries</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="ticket" class="w-4 h-4 mr-2 inline"></i> Lotteries</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="deposits">
-                <span><i class="fa-solid fa-wallet mr-2"></i> Deposits</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="wallet" class="w-4 h-4 mr-2 inline"></i> Deposits</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="withdraws">
-                <span><i class="fa-solid fa-money-bill-transfer mr-2"></i> Payouts</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="refresh-cw" class="w-4 h-4 mr-2 inline"></i> Payouts</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="store">
-                <span><i class="fa-solid fa-store text-cyan-400 mr-2"></i> Shop Control</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="shopping-cart" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Shop Control</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="gateways">
-                <span><i class="fa-solid fa-credit-card mr-2"></i> Pay Gateways</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="credit-card" class="w-4 h-4 mr-2 inline"></i> Pay Gateways</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="messages">
-                <span><i class="fa-solid fa-paper-plane text-cyan-400 mr-2"></i> Messages</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="send" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Messages</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="categories">
-                <span><i class="fa-solid fa-shapes mr-2"></i> Categories</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="box" class="w-4 h-4 mr-2 inline"></i> Categories</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="website">
-                <span><i class="fa-solid fa-globe mr-2"></i> Website Settings</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="globe" class="w-4 h-4 mr-2 inline"></i> Website Settings</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="legal">
-                <span><i class="fa-solid fa-scale-balanced text-rose-500 mr-2"></i> Legal & Policies</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="file-text" class="w-4 h-4 mr-2 inline text-rose-500"></i> Legal & Policies</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="reports">
-                <span><i class="fa-solid fa-triangle-exclamation mr-2"></i> Reports</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="alert-triangle" class="w-4 h-4 mr-2 inline"></i> Reports</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="refer">
-                <span><i class="fa-solid fa-users-gear text-cyan-400 mr-2"></i> Refer Control</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="settings" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Refer Control</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="vip">
-                <span><i class="fa-solid fa-crown text-amber-400 mr-2"></i> VIP Club Manager</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="crown" class="w-4 h-4 mr-2 inline text-amber-400"></i> VIP Club Manager</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="jackpot">
-                <span><i class="fa-solid fa-gem text-purple-400 animate-pulse mr-2"></i> Jackpot History</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="star" class="w-4 h-4 mr-2 inline text-purple-400 animate-pulse"></i> Jackpot History</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="tasks">
-                <span><i class="fa-solid fa-list-check text-cyan-400 animate-pulse mr-2"></i> Daily Tasks</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="check-square" class="w-4 h-4 mr-2 inline text-cyan-400 animate-pulse"></i> Daily Tasks</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="checkin">
-                <span><i class="fa-solid fa-calendar-check text-amber-400 mr-2"></i> Daily Check-In Control</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="calendar" class="w-4 h-4 mr-2 inline text-amber-400"></i> Daily Check-In Control</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="badge-requests">
-                <span><i class="fa-solid fa-ribbon text-rose-500 mr-2"></i> Badge Requests</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="award" class="w-4 h-4 mr-2 inline text-rose-500"></i> Badge Requests</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="video-bounty">
-                <span><i class="fa-solid fa-video text-rose-500 mr-2"></i> Video Bounty</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="video" class="w-4 h-4 mr-2 inline text-rose-500"></i> Video Bounty</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="sync-vault">
-                <span><i class="fa-solid fa-cloud-arrow-up text-cyan-400 mr-2"></i> Cloud Failover</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="cloud-upload" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Cloud Failover</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="events">
-                <span><i class="fa-solid fa-bullhorn text-cyan-400 mr-2"></i> Events & Banners</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="bell" class="w-4 h-4 mr-2 inline text-cyan-400"></i> Events & Banners</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="blog">
-                <span><i class="fa-solid fa-newspaper text-amber-400 mr-2"></i> Blog Management</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="book-open" class="w-4 h-4 mr-2 inline text-amber-400"></i> Blog Management</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
+              </button>
+              <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="security">
+                <span><i data-lucide="shield" class="w-4 h-4 mr-2 inline text-emerald-400"></i> Security Room</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="splash">
-                <span><i class="fa-solid fa-desktop text-rose-400 mr-2"></i> Splash Screen Manager</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="monitor" class="w-4 h-4 mr-2 inline text-rose-400"></i> Splash Screen Manager</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
               <button class="admin-tab-selector-btn text-xs font-semibold py-2.5 px-3.5 rounded-xl border border-slate-800 flex items-center justify-between cursor-pointer transition w-full text-left" data-tab="settings">
-                <span><i class="fa-solid fa-sliders mr-2"></i> App Settings</span>
-                <i class="fa-solid fa-chevron-right text-[10px] text-slate-600"></i>
+                <span><i data-lucide="sliders" class="w-4 h-4 mr-2 inline"></i> App Settings</span>
+                <i data-lucide="chevron-right" class="w-3 h-3 text-slate-600"></i>
               </button>
             </div>
           </div>
@@ -2048,79 +2080,85 @@
       <!-- Admin Tab Switch selectors -->
       <div class="flex gap-1.5 sm:gap-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-none w-full max-w-full px-0.5">
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="stats">
-          <i class="fa-solid fa-chart-pie"></i> Dashboard
+          <i data-lucide="bar-chart" class="w-3.5 h-3.5"></i> Dashboard
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="users">
-          <i class="fa-solid fa-users"></i> Players
+          <i data-lucide="users" class="w-3.5 h-3.5"></i> Players
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="agents">
-          <i class="fa-solid fa-user-shield text-emerald-400"></i> Agents & Staff
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-emerald-400"></i> Agents & Staff
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="commission">
-          <i class="fa-solid fa-percent text-emerald-400"></i> Commission
+          <i data-lucide="percent" class="w-3.5 h-3.5 text-emerald-400"></i> Commission
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition font-sans" data-tab="agent-leaders">
-          <i class="fa-solid fa-crown text-amber-400"></i> Agent Leaders
+          <i data-lucide="crown" class="w-3.5 h-3.5 text-amber-400"></i> Agent Leaders
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition font-sans" data-tab="subagents-list">
-          <i class="fa-solid fa-users text-indigo-400"></i> Sub-Agents List
+          <i data-lucide="users" class="w-3.5 h-3.5 text-indigo-400"></i> Sub-Agents List
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="lotteries">
-          <i class="fa-solid fa-ticket"></i> Lotteries
+          <i data-lucide="ticket" class="w-3.5 h-3.5"></i> Lotteries
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="deposits">
-          <i class="fa-solid fa-wallet"></i> Deposits
+          <i data-lucide="wallet" class="w-3.5 h-3.5"></i> Deposits
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="withdraws">
-          <i class="fa-solid fa-money-bill-transfer"></i> Payouts
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Payouts
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="gateways">
-          <i class="fa-solid fa-credit-card"></i> Pay Gateways
+          <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Pay Gateways
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="messages">
-          <i class="fa-solid fa-paper-plane text-cyan-400"></i> Messages
+          <i data-lucide="send" class="w-3.5 h-3.5 text-cyan-400"></i> Messages
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="categories">
-          <i class="fa-solid fa-shapes"></i> Categories
+          <i data-lucide="box" class="w-3.5 h-3.5"></i> Categories
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="website">
-          <i class="fa-solid fa-globe"></i> Website Settings
+          <i data-lucide="globe" class="w-3.5 h-3.5"></i> Website Settings
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="reports">
-          <i class="fa-solid fa-triangle-exclamation"></i> Reports <span class="bg-red-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1" id="admin-reports-count-badge">0</span>
+          <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> Reports <span class="bg-red-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1" id="admin-reports-count-badge">0</span>
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="refer">
-          <i class="fa-solid fa-users-gear text-cyan-400"></i> Refer Control
+          <i data-lucide="settings" class="w-3.5 h-3.5 text-cyan-400"></i> Refer Control
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="vip">
-          <i class="fa-solid fa-crown text-amber-400"></i> VIP Club Manager
+          <i data-lucide="crown" class="w-3.5 h-3.5 text-amber-400"></i> VIP Club Manager
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="jackpot">
-          <i class="fa-solid fa-gem text-purple-400 animate-pulse"></i> Jackpot History
+          <i data-lucide="star" class="w-3.5 h-3.5 text-purple-400 animate-pulse"></i> Jackpot History
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="tasks">
-          <i class="fa-solid fa-list-check text-cyan-400 animate-pulse"></i> Daily Tasks
+          <i data-lucide="check-square" class="w-3.5 h-3.5 text-cyan-400 animate-pulse"></i> Daily Tasks
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="checkin">
-          <i class="fa-solid fa-calendar-check text-amber-400"></i> Daily Check-In
+          <i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-400"></i> Daily Check-In
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="badge-requests">
-          <i class="fa-solid fa-ribbon text-rose-500"></i> Badge Requests <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-badge-requests-count-badge">0</span>
+          <i data-lucide="award" class="w-3.5 h-3.5 text-rose-500"></i> Badge Requests <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-badge-requests-count-badge">0</span>
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition relative overflow-hidden" data-tab="video-bounty">
-          <i class="fa-solid fa-video text-rose-500"></i> Video Bounty <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-bounty-count-badge">0</span>
+          <i data-lucide="video" class="w-3.5 h-3.5 text-rose-500"></i> Video Bounty <span class="bg-rose-500 text-[10px] text-white px-2 py-0.5 rounded-full ml-1 hidden" id="admin-bounty-count-badge">0</span>
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="sync-vault">
-          <i class="fa-solid fa-cloud-arrow-up text-cyan-400"></i> Cloud Failover Vault
+          <i data-lucide="cloud-upload" class="w-3.5 h-3.5 text-cyan-400"></i> Cloud Failover Vault
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="events">
-          <i class="fa-solid fa-bullhorn text-cyan-400"></i> Popup Events & Banners
+          <i data-lucide="bell" class="w-3.5 h-3.5 text-cyan-400"></i> Popup Events & Banners
+        </button>
+        <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="blog">
+          <i data-lucide="book-open" class="w-3.5 h-3.5 text-amber-400"></i> Blog Management
+        </button>
+        <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="security">
+          <i data-lucide="shield" class="w-3.5 h-3.5 text-emerald-400"></i> Security Room
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="splash">
-          <i class="fa-solid fa-desktop text-rose-400"></i> Splash Screen
+          <i data-lucide="monitor" class="w-3.5 h-3.5 text-rose-400"></i> Splash Screen
         </button>
         <button class="admin-tab-selector-btn text-xs font-semibold py-2 px-4 rounded-full flex items-center gap-1.5 cursor-pointer shrink-0 transition" data-tab="settings">
-          <i class="fa-solid fa-sliders"></i> App Settings
+          <i data-lucide="sliders" class="w-3.5 h-3.5"></i> App Settings
         </button>
       </div>
 
@@ -3196,7 +3234,213 @@
       </div>
 
       <!-- ================= ADMIN TAB: SUB-AGENTS LIST ================= -->
-      <div id="admin-tab-subagents-list" class="hidden space-y-6"></div>
+      <div id="admin-tab-subagents-list" class="hidden space-y-6">
+
+        <!-- LIST VIEWPORT -->
+        <div id="subagents-list-view" class="space-y-6">
+          <!-- Header -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h3 class="text-base font-black text-white flex items-center gap-2">
+                  <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i> Sub-Agents Registry
+                </h3>
+                <p class="text-xs text-slate-500 font-mono">Field operator accounts recruited under parent agent leaders.</p>
+              </div>
+              
+              <!-- Search Bar -->
+              <div class="relative w-full sm:w-72 font-sans">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-500">
+                  <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500"></i>
+                </span>
+                <input id="subagents-list-search-input" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 pl-9 pr-3 text-white outline-none focus:border-indigo-500 font-sans text-xs" placeholder="Search sub-agents..." />
+              </div>
+            </div>
+
+            <!-- Quick stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-slate-800/80 pt-4 font-mono text-xs">
+              <div class="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl">
+                <span class="text-[10px] text-slate-500 font-bold uppercase block">Active Operators</span>
+                <span id="subagents-list-stat-count" class="text-base font-black text-white block mt-0.5">0 Sub-agents</span>
+              </div>
+              <div class="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl">
+                <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Sales Volume</span>
+                <span id="subagents-list-stat-sales" class="text-base font-black text-indigo-400 block mt-0.5">৳0.00</span>
+              </div>
+              <div class="bg-slate-950/40 p-4 border border-slate-850 rounded-2xl">
+                <span class="text-[10px] text-slate-500 font-bold uppercase block">Total Direct Players</span>
+                <span id="subagents-list-stat-players" class="text-base font-black text-emerald-400 block mt-0.5">0 Players</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subagents List Card -->
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono font-black">Sub-Agents Operator Directory / সাব-এজেন্ট তালিকা</span>
+              <span class="text-[10px] text-slate-500 font-mono flex items-center gap-1.5">
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse"></span>
+                <span>Realtime Field Operators</span>
+              </span>
+            </div>
+            
+            <!-- Beautiful cards-based grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6" id="subagents-list-cards-grid">
+              <!-- Populated dynamically via admin.js -->
+            </div>
+          </div>
+        </div>
+
+        <!-- DETAIL VIEWPORT -->
+        <div id="subagents-detail-view" class="hidden space-y-6">
+          <!-- Back Header -->
+          <div class="flex items-center gap-3">
+            <button id="subagents-detail-back-btn" class="bg-slate-900 hover:bg-slate-800 text-slate-300 font-black py-2 px-4 rounded-xl border border-slate-800 text-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer">
+              <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i> Back to Sub-Agents List
+            </button>
+            <span class="text-slate-600 font-mono text-xs">/ System Operations / Sub-Agent Details</span>
+          </div>
+
+          <!-- Profile Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- General profile info -->
+            <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+              <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-black text-lg shadow-md shadow-indigo-950/40">
+                  <span id="detail-sub-avatar-initial">S</span>
+                </div>
+                <div>
+                  <h4 class="text-base font-black text-white" id="detail-sub-username">@operator</h4>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="text-slate-500 font-mono text-[9px] uppercase">Leader:</span>
+                    <span class="text-amber-400 font-mono text-[10px] font-bold" id="detail-sub-parent-lbl">@leader</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="border-t border-slate-800/80 pt-4 space-y-3.5 font-mono text-xs">
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Email:</span>
+                  <span class="text-slate-300 select-all" id="detail-sub-email">sub@agents.app</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Phone:</span>
+                  <span class="text-slate-300 select-all" id="detail-sub-phone">01800000000</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Operator Status:</span>
+                  <span class="font-bold uppercase text-emerald-400" id="detail-sub-status-lbl">ACTIVE</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Balance:</span>
+                  <span class="text-indigo-400 font-bold" id="detail-sub-balance-lbl">৳0.00</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Commission Rate:</span>
+                  <span class="text-emerald-400 font-bold" id="detail-sub-commission-lbl">3.0%</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-slate-500">Total Bookings:</span>
+                  <span class="text-white font-bold" id="detail-sub-bookings-lbl">0 Sales</span>
+                </div>
+              </div>
+
+              <button id="detail-sub-edit-profile-btn" class="w-full bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 font-bold py-2 px-4 rounded-xl text-xs transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
+                <i data-lucide="settings" class="w-3.5 h-3.5"></i> Edit Operator Settings
+              </button>
+            </div>
+
+            <!-- Performance target mission card -->
+            <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-6">
+              <div>
+                <h4 class="text-sm font-black text-white flex items-center gap-2">
+                  <i data-lucide="flag" class="w-4 h-4 text-indigo-400"></i> Monthly Mission & Targets Progress
+                </h4>
+                <p class="text-xs text-slate-500 font-sans">Performance-based wallet rewards added automatically upon achieving targets.</p>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="bg-slate-950/60 p-4 border border-slate-850 rounded-2xl space-y-1">
+                  <span class="text-[9px] text-slate-500 uppercase tracking-widest font-mono block">Required Sales Quota</span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-black text-white font-mono" id="detail-sub-target-tickets">0</span>
+                    <span class="text-xs text-slate-500">tickets</span>
+                  </div>
+                  <span class="text-[9.5px] text-slate-600 block leading-tight font-sans">Operator target for this calendar month</span>
+                </div>
+
+                <div class="bg-slate-950/60 p-4 border border-slate-850 rounded-2xl space-y-1">
+                  <span class="text-[9px] text-slate-500 uppercase tracking-widest font-mono block">Operator Reward Cash</span>
+                  <div class="flex items-baseline gap-1">
+                    <span class="text-xl font-black text-emerald-400 font-mono" id="detail-sub-target-reward">৳0.00</span>
+                  </div>
+                  <span class="text-[9.5px] text-slate-600 block leading-tight font-sans">Credit added immediately upon completion</span>
+                </div>
+              </div>
+
+              <!-- Progress bar and countdown -->
+              <div class="bg-slate-950/40 p-5 border border-slate-850 rounded-2xl space-y-4">
+                <div class="flex justify-between items-center text-xs font-mono">
+                  <div>
+                    <span class="text-slate-500 uppercase tracking-wide">Target Pool Filter:</span>
+                    <strong class="text-white ml-1 font-sans" id="detail-sub-target-pool">Any Active Pool</strong>
+                  </div>
+                  <div>
+                    <span class="text-slate-500 uppercase tracking-wide">Target Accomplished:</span>
+                    <strong class="text-indigo-400 ml-1" id="detail-sub-progress-pct">0%</strong>
+                  </div>
+                </div>
+
+                <!-- Progress bar track -->
+                <div class="relative w-full h-3 bg-slate-950 border border-slate-800 rounded-full overflow-hidden">
+                  <div id="detail-sub-progress-bar" class="absolute top-0 left-0 h-full bg-gradient-to-r from-indigo-500 via-sky-500 to-emerald-500 rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[10.5px] font-mono border-t border-slate-850/60 pt-3">
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-slate-500">Tickets Logged:</span>
+                    <strong class="text-white" id="detail-sub-progress-val">0 / 0 Tickets</strong>
+                  </div>
+                  <div class="flex items-center gap-1.5">
+                    <span class="text-slate-500">Mission Quota Status:</span>
+                    <span id="detail-sub-mission-badge" class="font-bold py-0.5 px-2 rounded text-[9px] uppercase tracking-wider bg-rose-950/60 text-rose-400">UNFINISHED</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Players registered under this sub-agent -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div>
+              <h4 class="text-sm font-black text-white flex items-center gap-2">
+                <i data-lucide="users" class="w-4 h-4 text-emerald-400"></i> Customers Referred / Registered Players
+              </h4>
+              <p class="text-xs text-slate-500 font-sans">All players registered directly under this operator account, including their transaction states.</p>
+            </div>
+
+            <div class="overflow-x-auto font-sans">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-[10px] font-mono font-bold text-slate-400 uppercase select-none">
+                    <th class="p-3">Player Details</th>
+                    <th class="p-3">Wallet Balance</th>
+                    <th class="p-3">Registration Email</th>
+                    <th class="p-3">Phone Number</th>
+                    <th class="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="detail-sub-players-tbody" class="divide-y divide-slate-800/40">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
 
       <!-- ================= ADMIN TAB: LOTTERIES CRUD ================= -->
       <div id="admin-tab-lotteries" class="hidden space-y-6">
@@ -5695,7 +5939,7 @@
 
           <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse">
-              <thead>
+              <thead class="hidden sm:table-header-group">
                 <tr class="border-b border-slate-800/60 pb-2 text-slate-500 text-[10px] uppercase tracking-wider font-bold">
                   <th class="py-2.5 font-bold">Recipients</th>
                   <th class="py-2.5 font-bold font-semibold">Category</th>
@@ -5789,7 +6033,51 @@
       </div>
 
       <!-- ================= ADMIN TAB: VIDEO BOUNTY SYSTEM ================= -->
-      <div id="admin-tab-video-bounty" class="hidden space-y-6"></div>
+      <div id="admin-tab-video-bounty" class="hidden space-y-6">
+        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl text-xs font-mono">
+          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+            <div>
+              <h3 class="text-sm font-bold uppercase text-rose-500 tracking-wider flex items-center gap-1.5 font-display">
+                <i data-lucide="video" class="w-4 h-4 text-rose-500 animate-pulse"></i> TikTok & Reels Bounty Manager
+              </h3>
+              <p class="text-[10px] text-slate-500 mt-0.5 font-sans">Approve with ৳100 - ৳500 reward balance credit or reject player video review applications.</p>
+            </div>
+            <i data-lucide="gift" class="w-5 h-5 text-slate-700"></i>
+          </div>
+
+          <!-- Stats & Filters Info -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850">
+              <span class="text-[8px] text-slate-500 uppercase block">Pending Review</span>
+              <span id="admin-bounty-pending-count" class="text-xs font-black text-amber-500 mt-1 block">0 claims</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850">
+              <span class="text-[8px] text-slate-500 uppercase block">Approved Claims</span>
+              <span id="admin-bounty-approved-count" class="text-xs font-black text-emerald-500 mt-1 block">0 claims</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850">
+              <span class="text-[8px] text-slate-500 uppercase block">Total Payouts</span>
+              <span id="admin-bounty-total-payout" class="text-xs font-black text-rose-400 mt-1 block">৳0</span>
+            </div>
+            <div class="bg-slate-950 p-3 rounded-2xl border border-slate-850">
+              <span class="text-[8px] text-slate-500 uppercase block">Min Views Target</span>
+              <span class="text-xs font-black text-cyan-400 mt-1 block">2,000+</span>
+            </div>
+          </div>
+
+          <!-- Claims List -->
+          <div class="space-y-3">
+            <h4 class="text-[10px] font-bold uppercase text-slate-400 tracking-wider flex items-center justify-between">
+              <span>📋 Bounty Applications List</span>
+              <span id="admin-bounties-sub-stats" class="text-rose-400 font-sans text-[9px] font-semibold text-right">0 pending reviews</span>
+            </h4>
+            
+            <div id="admin-bounties-list" class="space-y-3 font-sans">
+              <!-- Dynamically populated via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- ================= ADMIN TAB: DYNAMIC CATEGORY MANAGER ================= -->
       <div id="admin-tab-categories" class="hidden space-y-6">
@@ -6294,6 +6582,378 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- ================= ADMIN TAB: BLOG & CONTENT SUITE ================= -->
+      <div id="admin-tab-blog" class="hidden space-y-6"></div>
+
+      <!-- ================= ADMIN TAB: SECURITY OPERATIONS CENTER ================= -->
+      <div id="admin-tab-security" class="hidden space-y-6">
+        <!-- Top Security Banner & Diagnostics Header -->
+        <div class="bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950/40 border border-emerald-500/30 p-6 rounded-3xl shadow-xl relative overflow-hidden">
+          <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 text-xl font-black shadow-lg">
+                <i class="fa-solid fa-shield-halved"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-base font-black text-white uppercase tracking-wider font-display">Security Operations Center</h3>
+                  <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 uppercase">Armored</span>
+                </div>
+                <p class="text-xs text-slate-400 font-mono mt-0.5">Real-time audit log monitoring, brute-force rate limit tracking & credential defense.</p>
+              </div>
+            </div>
+
+            <!-- Global Security Status Indicator -->
+            <div class="flex items-center gap-2 bg-slate-950/80 border border-emerald-900/40 rounded-2xl px-4 py-2 font-mono text-xs">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span class="text-emerald-400 font-bold">ALL SHIELDS ACTIVE</span>
+            </div>
+          </div>
+
+          <!-- Metric Badges Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-6 pt-5 border-t border-slate-800/80 font-mono">
+            <div class="bg-slate-950/60 border border-slate-800/60 p-3.5 rounded-2xl">
+              <span class="text-[10px] text-slate-500 uppercase block">Total Audit Events</span>
+              <span id="admin-sec-total-logs" class="text-lg font-black text-white mt-1 block">0</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/60 p-3.5 rounded-2xl">
+              <span class="text-[10px] text-slate-500 uppercase block">Security Blocks / Fails</span>
+              <span id="admin-sec-failed-logins" class="text-lg font-black text-rose-400 mt-1 block">0</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/60 p-3.5 rounded-2xl">
+              <span class="text-[10px] text-slate-500 uppercase block">Active Locked Keys</span>
+              <span id="admin-sec-locked-rates" class="text-lg font-black text-amber-400 mt-1 block">0</span>
+            </div>
+            <div class="bg-slate-950/60 border border-slate-800/60 p-3.5 rounded-2xl">
+              <span class="text-[10px] text-slate-500 uppercase block">Session Defense</span>
+              <span class="text-xs font-bold text-cyan-400 mt-2 block">30m Idle / 8h Max</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Shield Health Checklist -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-list-check text-cyan-400 text-sm"></i>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Active Defense Matrix</h4>
+            </div>
+            <span class="text-[10px] font-mono text-slate-500">Standards Verified</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">SQL Injection Barrier</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">PDO Prepared Statements enforced on all queries.</span>
+              </div>
+            </div>
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">CSRF Token Shield</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">Constant-time token validation on state-changing requests.</span>
+              </div>
+            </div>
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">Provably Fair Draws</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">Cryptographic random_int() RNG for lottery winners.</span>
+              </div>
+            </div>
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">Brute-Force Rate Limiting</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">Persistent database-backed attempt throttlers.</span>
+              </div>
+            </div>
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">Deposit Idempotency</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">Unique TrxID verification stops duplicate credit replay attacks.</span>
+              </div>
+            </div>
+            <div class="bg-slate-950/70 border border-emerald-900/30 rounded-2xl p-3 flex items-start gap-3">
+              <i class="fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5 shrink-0"></i>
+              <div>
+                <span class="font-bold text-white block">Upload Execution Barrier</span>
+                <span class="text-[10px] text-slate-400 block mt-0.5">.htaccess script execution deny rules active in uploads.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Security Audit Log Stream -->
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div class="flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-amber-400 text-sm"></i>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Live Security Audit Log (Latest 30 Events)</h4>
+            </div>
+            <button id="btn-sec-prune-logs" type="button" class="text-[10px] font-mono text-slate-400 hover:text-rose-400 transition bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 cursor-pointer">
+              <i class="fa-solid fa-broom mr-1"></i> Prune Old Logs
+            </button>
+          </div>
+
+          <div class="overflow-x-auto max-h-[400px] overflow-y-auto scrollbar-none">
+            <table class="w-full text-left border-collapse font-mono text-[11px]">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500 uppercase text-[9px] tracking-wider sticky top-0 bg-slate-900 z-10">
+                  <th class="py-2.5 px-3">Timestamp</th>
+                  <th class="py-2.5 px-3">Actor</th>
+                  <th class="py-2.5 px-3">Action Event</th>
+                  <th class="py-2.5 px-3">Client IP</th>
+                  <th class="py-2.5 px-3">Security Details</th>
+                </tr>
+              </thead>
+              <tbody id="admin-sec-audit-tbody" class="divide-y divide-slate-850 text-slate-300">
+                <tr>
+                  <td colspan="5" class="py-6 text-center text-slate-600 font-mono text-xs">
+                    Loading security audit logs...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 2-FACTOR AUTHENTICATION (2FA) & RATE LIMIT POLICY CONTROL GRID -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- 2-Factor Authentication (2FA) Security Center -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-emerald-400 text-sm"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Two-Factor Authentication (2FA)</h4>
+              </div>
+              <span id="admin-sec-2fa-status-badge" class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-slate-950 text-slate-400 border border-slate-800 uppercase">
+                Disabled
+              </span>
+            </div>
+
+            <div class="space-y-4 font-mono text-xs">
+              <!-- Master 2FA Toggle -->
+              <div class="flex items-center justify-between bg-slate-950/70 border border-slate-800/80 p-3 rounded-2xl">
+                <div>
+                  <span class="text-white font-bold block text-xs font-sans">Enforce 2-Factor Authentication</span>
+                  <span class="text-[10px] text-slate-400 block font-sans">Requires 6-digit security code / recovery code on sensitive checkpoints.</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" id="admin-sec-2fa-toggle" class="sr-only peer">
+                  <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                </label>
+              </div>
+
+              <!-- 6-Digit Master Security Code (PIN) -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] uppercase font-bold text-slate-400">Master 6-Digit Security Code (PIN)</label>
+                  <button id="btn-sec-gen-pin" type="button" class="text-[9.5px] text-cyan-400 hover:text-cyan-300 transition underline cursor-pointer">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Regenerate Random PIN
+                  </button>
+                </div>
+                <div class="relative">
+                  <input 
+                    id="admin-sec-2fa-pin" 
+                    type="text" 
+                    maxlength="6" 
+                    placeholder="829401" 
+                    class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white text-center font-mono tracking-[0.3em] font-black text-sm outline-none focus:border-emerald-500" 
+                  />
+                </div>
+                <span class="text-[9px] text-slate-500 font-sans block">Use this 6-digit authenticator passcode to verify logins and critical transactions.</span>
+              </div>
+
+              <!-- Emergency Recovery Backup Codes -->
+              <div class="space-y-1.5">
+                <div class="flex items-center justify-between">
+                  <label class="text-[10px] uppercase font-bold text-slate-400">Emergency Recovery Backup Codes</label>
+                  <button id="btn-sec-gen-backup" type="button" class="text-[9.5px] text-amber-400 hover:text-amber-300 transition underline cursor-pointer">
+                    <i class="fa-solid fa-key mr-1"></i> Generate New Codes
+                  </button>
+                </div>
+                <div id="admin-sec-backup-codes-display" class="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-950/80 p-2.5 rounded-xl border border-slate-800/80 text-[10px] text-center font-bold text-slate-300">
+                  <span class="bg-slate-900 py-1 px-1 rounded border border-slate-800">LW-9821</span>
+                  <span class="bg-slate-900 py-1 px-1 rounded border border-slate-800">LW-4412</span>
+                  <span class="bg-slate-900 py-1 px-1 rounded border border-slate-800">LW-7729</span>
+                  <span class="bg-slate-900 py-1 px-1 rounded border border-slate-800">LW-3184</span>
+                  <span class="bg-slate-900 py-1 px-1 rounded border border-slate-800">LW-5590</span>
+                </div>
+              </div>
+
+              <!-- Important Checkpoints Selection -->
+              <div class="space-y-2 pt-1 border-t border-slate-800/80">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Enforced Checkpoint Moments:</span>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-sans">
+                  <label class="flex items-center gap-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" id="admin-sec-2fa-chk-login" checked class="rounded border-slate-700 text-emerald-500 focus:ring-0">
+                    <span class="text-slate-200">User & Admin Login</span>
+                  </label>
+                  <label class="flex items-center gap-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" id="admin-sec-2fa-chk-withdraw" checked class="rounded border-slate-700 text-emerald-500 focus:ring-0">
+                    <span class="text-slate-200">Wallet Withdrawals</span>
+                  </label>
+                  <label class="flex items-center gap-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" id="admin-sec-2fa-chk-credentials" checked class="rounded border-slate-700 text-emerald-500 focus:ring-0">
+                    <span class="text-slate-200">Password Changes</span>
+                  </label>
+                  <label class="flex items-center gap-2 p-2 bg-slate-950/60 rounded-xl border border-slate-800/60 cursor-pointer hover:border-slate-700">
+                    <input type="checkbox" id="admin-sec-2fa-chk-finance" checked class="rounded border-slate-700 text-emerald-500 focus:ring-0">
+                    <span class="text-slate-200">Manual Draws & Payouts</span>
+                  </label>
+                </div>
+              </div>
+
+              <button 
+                id="btn-sec-save-2fa" 
+                type="button" 
+                class="w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:brightness-110 text-slate-950 font-black text-xs py-2.5 rounded-xl transition duration-200 shadow-md uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
+              >
+                <i class="fa-solid fa-floppy-disk text-xs"></i> Save 2FA Policy Settings
+              </button>
+            </div>
+          </div>
+
+          <!-- Rate Limiting Rules & Throttle Configurator -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-rose-400 text-sm"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Rate Limiting Policy</h4>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-rose-955/60 text-rose-400 border border-rose-900/40 uppercase">
+                Brute-Force Shield Active
+              </span>
+            </div>
+
+            <div class="space-y-4 font-mono text-xs">
+              <!-- Max Login Attempts Threshold -->
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[10px] uppercase font-bold">Max Failed Login Attempts</label>
+                <select id="admin-sec-rate-max-attempts" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-mono text-xs">
+                  <option value="3">3 Attempts (Strict High Security)</option>
+                  <option value="5" selected>5 Attempts (Recommended Standard)</option>
+                  <option value="10">10 Attempts (Lenient)</option>
+                </select>
+                <span class="text-[9px] text-slate-500 font-sans block">Number of consecutive wrong password attempts before temporary account/IP lockout.</span>
+              </div>
+
+              <!-- Lockout Duration (Decay Window) -->
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[10px] uppercase font-bold">Temporary Lockout Duration</label>
+                <select id="admin-sec-rate-decay-mins" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-mono text-xs">
+                  <option value="5">5 Minutes Lockout</option>
+                  <option value="15" selected>15 Minutes Lockout (Standard)</option>
+                  <option value="30">30 Minutes Lockout</option>
+                  <option value="60">60 Minutes Lockout (Extreme)</option>
+                </select>
+                <span class="text-[9px] text-slate-500 font-sans block">Duration an unauthorized actor is barred from attempting further authentication.</span>
+              </div>
+
+              <!-- Max Sensitive Requests per Minute -->
+              <div class="space-y-1">
+                <label class="block text-slate-400 text-[10px] uppercase font-bold">Max Sensitive Actions / Minute</label>
+                <select id="admin-sec-rate-sensitive-per-min" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-mono text-xs">
+                  <option value="5">5 Requests / Min (Strict)</option>
+                  <option value="10" selected>10 Requests / Min (Recommended)</option>
+                  <option value="20">20 Requests / Min (High Volume)</option>
+                </select>
+                <span class="text-[9px] text-slate-500 font-sans block">Throttle limit on withdrawal requests, balance transfers, and password modifications.</span>
+              </div>
+
+              <button 
+                id="btn-sec-save-ratelimit" 
+                type="button" 
+                class="w-full bg-gradient-to-r from-rose-600 via-rose-500 to-red-600 hover:brightness-110 text-white font-black text-xs py-2.5 rounded-xl transition duration-200 shadow-md uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2"
+              >
+                <i class="fa-solid fa-shield-virus text-xs"></i> Save Rate Limiting Policy
+              </button>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Rate Limit Manager & Admin Password Change Dual Card Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+          <!-- Active Rate Limit Counters -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-rose-400 text-sm"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Brute-Force Rate Limits Tracker</h4>
+              </div>
+              <button id="btn-sec-unlock-rates" type="button" class="text-[10px] font-mono text-amber-400 hover:text-amber-300 transition bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 cursor-pointer">
+                <i class="fa-solid fa-rotate-left mr-1"></i> Unlock All Keys
+              </button>
+            </div>
+
+            <div class="overflow-x-auto max-h-[250px] overflow-y-auto scrollbar-none font-mono text-[11px]">
+              <table class="w-full text-left border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-800 text-slate-500 uppercase text-[9px]">
+                    <th class="py-2 px-2">Key / IP</th>
+                    <th class="py-2 px-2 text-center">Attempts</th>
+                    <th class="py-2 px-2 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-sec-rates-tbody" class="divide-y divide-slate-850">
+                  <tr>
+                    <td colspan="3" class="py-6 text-center text-slate-600 text-xs">
+                      0 active throttles. System traffic is within normal limits.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Admin Passphrase Update Form -->
+          <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div class="flex items-center gap-2">
+                <i class="fa-solid fa-key text-amber-400 text-sm"></i>
+                <h4 class="text-xs font-bold uppercase tracking-wider text-white font-mono">Change Administrator Password</h4>
+              </div>
+              <a href="admin.php?tab=security" target="_blank" class="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 transition bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-arrow-up-right-from-square mr-1"></i> PHP Security Hub
+              </a>
+            </div>
+
+            <form id="admin-sec-pw-form" class="space-y-3 font-mono text-xs">
+              <div class="space-y-1">
+                <label class="block text-slate-500 text-[10px] uppercase font-bold">Current Administrator Passcode</label>
+                <input id="admin-sec-cur-pw" type="password" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500" placeholder="••••••••••••" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-slate-500 text-[10px] uppercase font-bold">New Security Passcode (Min 8 Characters)</label>
+                <input id="admin-sec-new-pw" type="password" required minlength="8" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500" placeholder="••••••••••••" />
+              </div>
+
+              <div class="space-y-1">
+                <label class="block text-slate-500 text-[10px] uppercase font-bold">Confirm New Passcode</label>
+                <input id="admin-sec-conf-pw" type="password" required minlength="8" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500" placeholder="••••••••••••" />
+              </div>
+
+              <p class="text-[9.5px] text-slate-500 font-sans">
+                Passwords are encrypted with Argon2id / Bcrypt algorithm. The backdoor default is disabled permanently upon modification.
+              </p>
+
+              <button type="submit" class="w-full bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 hover:brightness-110 text-slate-950 font-black text-xs py-2.5 rounded-xl transition duration-200 shadow-md uppercase tracking-wider cursor-pointer">
+                <i class="fa-solid fa-lock mr-1.5"></i> Update Security Credentials
+              </button>
+            </form>
+          </div>
+
         </div>
       </div>
 
@@ -9612,6 +10272,75 @@
         }
       }, 2500);
     </script>
+
+    <!-- ================= TWO-FACTOR AUTHENTICATION (2FA) CHALLENGE MODAL ================= -->
+    <div id="two-factor-auth-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in font-sans">
+      <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/40 max-w-sm w-full rounded-3xl p-6 shadow-2xl relative space-y-4">
+        <!-- Close icon button -->
+        <button id="btn-two-factor-close" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-white transition w-8 h-8 rounded-full bg-slate-800/60 flex items-center justify-center cursor-pointer">
+          <i data-lucide="x" class="text-sm"></i>
+        </button>
+
+        <!-- Icon & Header -->
+        <div class="text-center space-y-2 pt-2">
+          <div class="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center mx-auto text-emerald-400 text-2xl shadow-lg animate-pulse">
+            <i data-lucide="shield-check"></i>
+          </div>
+          <h3 id="two-factor-modal-title" class="text-base font-black text-white font-display uppercase tracking-wider">Two-Factor Security</h3>
+          <p id="two-factor-modal-subtitle" class="text-xs text-slate-400 font-sans leading-relaxed">
+            Enter your 6-digit security code or recovery backup code to authorize this action.
+          </p>
+        </div>
+
+        <!-- Error alert banner -->
+        <div id="two-factor-alert-box" class="hidden p-3 rounded-2xl bg-rose-955/60 border border-rose-850/60 text-rose-300 text-xs font-mono flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="text-rose-400 shrink-0"></i>
+          <span id="two-factor-alert-text">Invalid code. Please try again.</span>
+        </div>
+
+        <!-- 2FA Challenge Form -->
+        <form id="two-factor-challenge-form" class="space-y-4" onsubmit="event.preventDefault();">
+          <div class="space-y-1.5 text-center">
+            <label id="two-factor-input-label" class="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider">
+              Enter 6-Digit Code
+            </label>
+            <input 
+              id="two-factor-code-input" 
+              type="text" 
+              maxlength="10" 
+              inputmode="numeric" 
+              autocomplete="one-time-code" 
+              placeholder="••••••" 
+              required
+              class="w-full text-center tracking-[0.4em] font-mono text-xl font-black py-3 px-4 bg-slate-950 border-2 border-slate-800 focus:border-emerald-400 rounded-2xl text-white outline-none transition placeholder:text-slate-700 shadow-inner"
+            />
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-500 px-1 pt-0.5">
+              <span id="two-factor-remaining-badge">3 attempts remaining</span>
+              <button id="btn-toggle-backup-mode" type="button" class="text-emerald-400 hover:text-emerald-300 underline cursor-pointer">
+                Use Backup Code
+              </button>
+            </div>
+          </div>
+
+          <div class="space-y-2 pt-1">
+            <button 
+              id="btn-two-factor-submit" 
+              type="submit" 
+              class="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:brightness-110 text-slate-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-lg transition active:scale-98 cursor-pointer flex items-center justify-center gap-2"
+            >
+              <i data-lucide="lock" class="text-xs"></i> Verify & Authorize
+            </button>
+            <button 
+              id="btn-two-factor-cancel" 
+              type="button" 
+              class="w-full py-2.5 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-white font-bold text-xs rounded-2xl border border-slate-800 transition cursor-pointer"
+            >
+              Cancel Operation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <!-- Application script bundle -->
     <script type="module" src="/src/main.ts"></script>

@@ -124,7 +124,7 @@ export class MembersListManager {
     if (filtered.length === 0) {
       container.innerHTML = `
         <div class="text-center py-12 text-slate-500 text-xs">
-          <i class="fa-solid fa-user-slash text-2xl mb-2 text-slate-600"></i>
+          <i data-lucide="user-x" class="text-2xl mb-2 text-slate-600"></i>
           <p>কোনো মেম্বার পাওয়া যায়নি</p>
         </div>
       `;
@@ -159,7 +159,7 @@ export class MembersListManager {
             </div>
           </div>
           <div class="shrink-0 text-slate-500 group-hover:text-blue-400 transition pl-2">
-            <i class="fa-solid fa-chevron-right text-xs"></i>
+            <i data-lucide="chevron-right" class="text-xs"></i>
           </div>
         </div>
       `;

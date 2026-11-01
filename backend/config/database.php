@@ -49,13 +49,12 @@ try {
     bootstrap_database($conn);
 
 } catch (PDOException $e) {
-    // Elegant JSON error response for robust client interpretation
+    error_log("Secure DB Connectivity Error: " . $e->getMessage());
     header('Content-Type: application/json');
     http_response_code(500);
     echo json_encode([
         "success" => false,
-        "message" => "Secure Database Connectivity Error. Please verify server environment keys.",
-        "technical" => $e->getMessage()
+        "message" => "Secure Database Connectivity Error. Please verify server environment keys."
     ]);
     exit();
 }

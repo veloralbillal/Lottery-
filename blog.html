@@ -53,6 +53,28 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #334155;
       }
+      /* Subtle Fade-In Transition Effect for Blog Post Items */
+      @keyframes blogItemFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .blog-fade-in {
+        animation: blogItemFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        will-change: opacity, transform;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .blog-fade-in {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      }
     </style>
   </head>
   <body class="bg-[#090c14] text-slate-100 min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">

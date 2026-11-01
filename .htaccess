@@ -1,0 +1,47 @@
+# ==============================================================================
+# Lottery Winner - Shared Hosting Security Configuration (.htaccess)
+# ==============================================================================
+
+# 1. Disable Directory Browsing and Server Signature
+Options -Indexes
+<IfModule mod_autoindex.c>
+    IndexIgnore *
+</IfModule>
+
+# 2. HTTP Security Headers
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header set X-XSS-Protection "1; mode=block"
+    Header set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+</IfModule>
+
+# 3. Block Access to Hidden & Sensitive Files
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block access to hidden dot-files (e.g. .git, .env)
+    RewriteRule (^\.|/\.) - [F,L]
+
+    # Block direct access to sensitive file extensions (except manifest.json)
+    RewriteCond %{REQUEST_URI} !manifest\.json$ [NC]
+    RewriteRule \.(json|lock|md|sql|log|bak|config|env|sh|ts|tsx)$ - [F,L]
+</IfModule>
+
+# 4. Protect Sensitive Files via FilesMatch
+<FilesMatch "(?i)\.(env.*|sql|md|log|git.*|lock)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order Deny,Allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# 5. Prevent Direct Access to Installation Script after deployment if needed
+<Files "install.php">
+    # Uncomment below to lock installation script in production:
+    # Require all denied
+</Files>

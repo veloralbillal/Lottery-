@@ -61,28 +61,43 @@ try {
 
 // Process update actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'update_gateways') {
-    try {
-        $conn->beginTransaction();
-        
-        $stmt_save = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-        
-        $toggle_keys = ['payMasterEnabled', 'payUddoktapayEnabled', 'payZinipayEnabled', 'payBkashEnabled', 'payNagadEnabled', 'payRocketEnabled', 'payUsdtEnabled', 'payAgentDepositEnabled'];
-        foreach ($toggle_keys as $tkey) {
-            $val = isset($_POST[$tkey]) ? 'true' : 'false';
-            $stmt_save->execute([$tkey, $val, $val]);
-        }
+    if (!verify_csrf_token()) {
+        record_audit_log($conn, $_SESSION['user_id'] ?? null, 'Admin', 'PAYMENT_GATEWAYS_CSRF_REJECTED', [
+            'ip' => get_client_ip()
+        ]);
+        $error_msg = "Security session validation token expired or invalid. Please refresh the page.";
+    } else {
+        try {
+            $conn->beginTransaction();
+            
+            $stmt_save = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            
+            $toggle_keys = ['payMasterEnabled', 'payUddoktapayEnabled', 'payZinipayEnabled', 'payBkashEnabled', 'payNagadEnabled', 'payRocketEnabled', 'payUsdtEnabled', 'payAgentDepositEnabled'];
+            foreach ($toggle_keys as $tkey) {
+                $val = isset($_POST[$tkey]) ? 'true' : 'false';
+                $stmt_save->execute([$tkey, $val, $val]);
+            }
 
-        foreach ($required_keys as $key => $def_val) {
-            if (in_array($key, $toggle_keys)) continue;
-            $post_val = isset($_POST[$key]) ? trim($_POST[$key]) : '';
-            $stmt_save->execute([$key, $post_val, $post_val]);
+            foreach ($required_keys as $key => $def_val) {
+                if (in_array($key, $toggle_keys)) continue;
+                $post_val = isset($_POST[$key]) ? trim($_POST[$key]) : '';
+                $stmt_save->execute([$key, $post_val, $post_val]);
+            }
+            
+            $conn->commit();
+
+            record_audit_log($conn, $_SESSION['user_id'] ?? null, 'Admin', 'PAYMENT_GATEWAYS_UPDATED', [
+                'ip' => get_client_ip()
+            ]);
+
+            $success_msg = "All payment gateways and channel routes were synchronized successfully!";
+        } catch (PDOException $e) {
+            if ($conn->inTransaction()) {
+                $conn->rollBack();
+            }
+            error_log("Database payment update failure: " . $e->getMessage());
+            $error_msg = "Failed to update payment configurations. Please verify input formats.";
         }
-        
-        $conn->commit();
-        $success_msg = "All payment gateways and channel routes were synchronized successfully!";
-    } catch (PDOException $e) {
-        $conn->rollBack();
-        $error_msg = "Database update failure: " . $e->getMessage();
     }
 }
 
@@ -186,6 +201,7 @@ foreach ($required_keys as $key => $def_val) {
 
         <!-- Setup Form fields -->
         <form action="payment.php" method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
             <input type="hidden" name="action" value="update_gateways">
 
             <!-- GATEWAY ENABLE / DISABLE SWITCHBOARD CARD -->

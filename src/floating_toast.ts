@@ -9,9 +9,7 @@ export class FloatingToastNotification {
   static container = null;
   static isRunning = false;
 
-  static start(appInstance) {
-    // Disabled to prevent unwanted background popups as requested
-    return;
+  static start(appInstance: any) {
     if (this.isRunning) return;
     this.isRunning = true;
     
@@ -20,12 +18,12 @@ export class FloatingToastNotification {
     // Create the container in DOM
     this.ensureContainer();
 
-    // Trigger first toast after 4 seconds
+    // Trigger first toast after 6 seconds
     setTimeout(() => {
       this.showRandomToast(appInstance);
-    }, 4000);
+    }, 6000);
 
-    // Schedule regular toasts every 14 to 22 seconds
+    // Schedule regular toasts every 18 to 28 seconds (less frequent to be less annoying)
     this.scheduleNext(appInstance);
   }
 
@@ -66,66 +64,66 @@ export class FloatingToastNotification {
     const events = [
       {
         type: "lottery_win",
-        icon: "fa-solid fa-trophy text-emerald-400",
+        icon: "trophy text-emerald-400",
         border: "border-emerald-500/40 shadow-emerald-950/20",
         glow: "rgba(16,185,129,0.15)",
         title: "TICKET DRAW WIN! 🎉",
         text: () => {
-          const wins = [500, 800, 1000, 1500, 2000];
+          const wins = [500, 800, 1000, 1500, 2000, 5000];
           const winAmt = wins[Math.floor(Math.random() * wins.length)];
-          const draws = ["Dhaka Daily", "Sylhet Express", "Chittagong Star", "Weekend Golden Pool"];
+          const draws = ["Dhaka Daily", "Sylhet Express", "Chittagong Star", "Weekend Golden Pool", "Mega Cash"];
           const drawName = draws[Math.floor(Math.random() * draws.length)];
-          return `@<span class="text-white font-bold">${username}</span> won <strong class="text-emerald-400">৳${winAmt}</strong> on the ${drawName} Draw!`;
+          return `@<span class="text-white font-bold">${username}</span> won <strong class="text-emerald-400">৳${winAmt}</strong> in ${drawName} ড্রতে জিতেছেন! 🏆`;
         }
       },
       {
         type: "jackpot_win",
-        icon: "fa-solid fa-crown text-amber-400 animate-bounce",
+        icon: "crown text-amber-400 animate-bounce",
         border: "border-amber-500/50 shadow-amber-950/30",
         glow: "rgba(245,158,11,0.2)",
         title: "MEGA JACKPOT HIT! 🚀",
         text: () => {
           const jpPool = db.settings ? parseFloat(db.settings.jackpotPool || 25000) : 25000;
-          const pct = 0.2 + Math.random() * 0.4; // 20% to 60% of pool
+          const pct = 0.15 + Math.random() * 0.3; // 15% to 45% of pool
           const hitAmt = Math.floor(jpPool * pct);
-          return `@<span class="text-white font-bold">${username}</span> claimed <strong class="text-amber-400">৳${(hitAmt || 0).toLocaleString()}</strong> from Progressive Jackpot!`;
+          return `@<span class="text-white font-bold">${username}</span>claimed <strong class="text-amber-400">৳${(hitAmt || 0).toLocaleString()}</strong> মেগা জ্যাকপট জিতেছেন! 👑`;
         }
       },
       {
         type: "affiliate_commission",
-        icon: "fa-solid fa-money-bill-trend-up text-pink-400",
+        icon: "trending-up text-pink-400",
         border: "border-pink-500/40 shadow-pink-950/20",
         glow: "rgba(236,72,153,0.15)",
         title: "COMMISSION PAID! 💸",
         text: () => {
           const earnings = [40, 75, 120, 250, 480];
           const commAmt = earnings[Math.floor(Math.random() * earnings.length)];
-          return `@<span class="text-white font-bold">${username}</span> received <strong class="text-pink-400">৳${commAmt}</strong> Level 1 affiliate commission!`;
+          return `@<span class="text-white font-bold">${username}</span> received <strong class="text-pink-400">৳${commAmt}</strong> রেফারেল কমিশন পেয়েছেন! 🌟`;
         }
       },
       {
         type: "lucky_spin",
-        icon: "fa-solid fa-dharmachakra text-cyan-400 animate-spin-slow",
+        icon: "zap text-cyan-400 animate-spin-slow",
         border: "border-cyan-500/40 shadow-cyan-950/20",
         glow: "rgba(6,182,212,0.15)",
         title: "LUCKY WHEEL HIT! 🎡",
         text: () => {
-          const prizes = ["Golden Ticket", "৳150 Cash Bonus", "৳250 Promo Code", "Double XP badge"];
+          const prizes = ["Golden Ticket", "৳150 Bonus", "৳250 Promo", "Double XP"];
           const prizeName = prizes[Math.floor(Math.random() * prizes.length)];
-          return `@<span class="text-white font-bold">${username}</span> spun the Lucky Wheel and won <strong class="text-cyan-400">${prizeName}</strong>!`;
+          return `@<span class="text-white font-bold">${username}</span> spun the wheel and won <strong class="text-cyan-400">${prizeName}</strong> স্পিন করে জিতেছেন! 🎡`;
         }
       },
       {
         type: "consecutive_checkin",
-        icon: "fa-solid fa-calendar-check text-indigo-400",
+        icon: "calendar text-indigo-400",
         border: "border-indigo-500/40 shadow-indigo-950/20",
         glow: "rgba(99,102,241,0.15)",
-        title: "DAILY CHECK-IN STREAK! 📅",
+        title: "DAILY CHECK-IN! 📅",
         text: () => {
           const days = [3, 4, 5, 6, 7];
           const day = days[Math.floor(Math.random() * days.length)];
           const bonus = day * 25;
-          return `@<span class="text-white font-bold">${username}</span> claimed Day ${day} consecutive check-in reward of <strong class="text-indigo-400">৳${bonus}</strong>!`;
+          return `@<span class="text-white font-bold">${username}</span> Day ${day} বোনাস <strong class="text-indigo-400">৳${bonus}</strong> ক্লেইম করেছেন! 📅`;
         }
       }
     ];
@@ -146,7 +144,7 @@ export class FloatingToastNotification {
 
     toast.innerHTML = `
       <div class="w-7 h-7 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center shrink-0">
-        <i class="${event.icon} text-xs"></i>
+        <i data-lucide="${event.icon}" class="text-xs"></i>
       </div>
       <div class="flex-1 space-y-0.5">
         <div class="text-[8px] font-black uppercase text-slate-500 tracking-wider flex justify-between items-center">
@@ -183,9 +181,9 @@ export class FloatingToastNotification {
     this.ensureContainer();
 
     const config = {
-      info: { icon: "fa-solid fa-circle-info text-cyan-400", border: "border-cyan-500/40", glow: "rgba(6,182,212,0.15)" },
-      success: { icon: "fa-solid fa-circle-check text-emerald-400", border: "border-emerald-500/40", glow: "rgba(16,185,129,0.15)" },
-      warning: { icon: "fa-solid fa-triangle-exclamation text-amber-400", border: "border-amber-500/40", glow: "rgba(245,158,11,0.15)" }
+      info: { icon: "info text-cyan-400", border: "border-cyan-500/40", glow: "rgba(6,182,212,0.15)" },
+      success: { icon: "circle-check text-emerald-400", border: "border-emerald-500/40", glow: "rgba(16,185,129,0.15)" },
+      warning: { icon: "alert-triangle text-amber-400", border: "border-amber-500/40", glow: "rgba(245,158,11,0.15)" }
     };
 
     const c = config[type] || config.info;
@@ -196,7 +194,7 @@ export class FloatingToastNotification {
 
     toast.innerHTML = `
       <div class="w-7 h-7 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center shrink-0">
-        <i class="${c.icon} text-xs"></i>
+        <i data-lucide="${c.icon}" class="text-xs"></i>
       </div>
       <div class="flex-1 space-y-0.5">
         <div class="text-[8px] font-black uppercase text-slate-500 tracking-wider">

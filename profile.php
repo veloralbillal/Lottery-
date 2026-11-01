@@ -35,7 +35,8 @@ try {
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
 } catch (PDOException $e) {
-    die("Data fetching failure: " . $e->getMessage());
+    error_log("Profile data fetching error: " . $e->getMessage());
+    die("Service temporarily unavailable. Please try again later.");
 }
 
 if (!$user) {
@@ -46,55 +47,92 @@ if (!$user) {
 
 // Process update actions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $email = trim($_POST['email'] ?? '');
-    $phone = trim($_POST['phone'] ?? '');
-    $dob = trim($_POST['dob'] ?? '');
-    
-    // Support image uploading
-    $photo_path = $user['photo'];
-    
-    if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-        $temp_path = $_FILES['photo']['tmp_name'];
-        $orig_name = $_FILES['photo']['name'];
-        $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
+    if (!verify_csrf_token()) {
+        $error_msg = "Security session validation token expired. Please reload the page.";
+    } else {
+        $email = trim($_POST['email'] ?? '');
+        $phone = trim($_POST['phone'] ?? '');
+        $dob = trim($_POST['dob'] ?? '');
         
-        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-        if (in_array($ext, $allowed)) {
-            // Ensure target uploads folder exists
-            $uploads_dir = __DIR__ . '/uploads';
-            if (!is_dir($uploads_dir)) {
-                mkdir($uploads_dir, 0755, true);
-            }
+        // Support image uploading with strict security validation
+        $photo_path = $user['photo'];
+        
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $temp_path = $_FILES['photo']['tmp_name'];
+            $file_size = $_FILES['photo']['size'];
+            $orig_name = $_FILES['photo']['name'];
+            $ext = strtolower(pathinfo($orig_name, PATHINFO_EXTENSION));
             
-            $file_name = 'avatar_' . $user_id . '_' . time() . '.' . $ext;
-            $dest_path = $uploads_dir . '/' . $file_name;
-            
-            if (move_uploaded_file($temp_path, $dest_path)) {
-                $photo_path = 'uploads/' . $file_name;
-            } else {
-                $error_msg = "Failed to copy uploaded photo to uploads folder.";
-            }
-        } else {
-            $error_msg = "Invalid file format. Upload only PNG, JPG, WEBP or GIF.";
-        }
-    }
-    
-    // Direct Google Picker photo save
-    if (isset($_POST['google_photo_url']) && !empty($_POST['google_photo_url'])) {
-        $photo_path = trim($_POST['google_photo_url']);
-    }
+            // Restrict allowed extensions
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $allowed_mimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
-    if (empty($error_msg)) {
-        try {
-            $update_stmt = $conn->prepare("UPDATE users SET email = ?, phone = ?, dob = ?, photo = ? WHERE id = ?");
-            $update_stmt->execute([$email, $phone, $dob ? $dob : null, $photo_path, $user_id]);
-            
-            $success_msg = "Your profile was securely synchronized.";
-            // Refresh user row
-            $stmt->execute([$user_id]);
-            $user = $stmt->fetch();
-        } catch (PDOException $e) {
-            $error_msg = "Failed to update profile record: " . $e->getMessage();
+            // 1. Check file size (max 5MB)
+            if ($file_size > 5 * 1024 * 1024) {
+                $error_msg = "Avatar file size exceeds 5MB limit.";
+            } elseif (!in_array($ext, $allowed_exts)) {
+                $error_msg = "Invalid file format. Upload only PNG, JPG, WEBP, or GIF.";
+            } else {
+                // 2. Validate MIME type
+                $detected_mime = '';
+                if (function_exists('finfo_open')) {
+                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                    $detected_mime = finfo_file($finfo, $temp_path);
+                    finfo_close($finfo);
+                } elseif (function_exists('mime_content_type')) {
+                    $detected_mime = mime_content_type($temp_path);
+                }
+
+                // 3. Validate image magic bytes
+                $img_info = @getimagesize($temp_path);
+
+                if ($img_info === false || (!empty($detected_mime) && !in_array($detected_mime, $allowed_mimes))) {
+                    $error_msg = "Uploaded file is not a valid image.";
+                } else {
+                    $uploads_dir = __DIR__ . '/uploads';
+                    if (!is_dir($uploads_dir)) {
+                        @mkdir($uploads_dir, 0755, true);
+                    }
+                    
+                    // Generate safe cryptographically random filename
+                    $file_name = 'avatar_' . bin2hex(random_bytes(8)) . '_' . time() . '.' . $ext;
+                    $dest_path = $uploads_dir . '/' . $file_name;
+                    
+                    if (move_uploaded_file($temp_path, $dest_path)) {
+                        $photo_path = 'uploads/' . $file_name;
+                    } else {
+                        $error_msg = "Failed to store uploaded photo securely.";
+                    }
+                }
+            }
+        }
+        
+        // Direct Google Picker photo save (strictly validate URL)
+        if (isset($_POST['google_photo_url']) && !empty($_POST['google_photo_url'])) {
+            $g_url = trim($_POST['google_photo_url']);
+            if (filter_var($g_url, FILTER_VALIDATE_URL) && preg_match('/^https:\/\//i', $g_url)) {
+                $photo_path = $g_url;
+            }
+        }
+
+        if (empty($error_msg)) {
+            // Validate email format
+            if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $error_msg = "Please provide a valid email address.";
+            } else {
+                try {
+                    $update_stmt = $conn->prepare("UPDATE users SET email = ?, phone = ?, dob = ?, photo = ? WHERE id = ?");
+                    $update_stmt->execute([$email, $phone, $dob ? $dob : null, $photo_path, $user_id]);
+                    
+                    $success_msg = "Your profile was securely synchronized.";
+                    // Refresh user row
+                    $stmt->execute([$user_id]);
+                    $user = $stmt->fetch();
+                } catch (PDOException $e) {
+                    error_log("Failed to update profile record: " . $e->getMessage());
+                    $error_msg = "Failed to update profile record. Please check your inputs.";
+                }
+            }
         }
     }
 }
@@ -198,6 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Edit Registration details Form -->
             <form action="profile.php" method="POST" enctype="multipart/form-data" id="profile-edit-form" class="text-left space-y-4 pt-2">
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
                 
                 <!-- Hidden inputs for photo setting from google Picker -->
                 <input type="hidden" name="google_photo_url" id="google-photo-url-field" value="" />

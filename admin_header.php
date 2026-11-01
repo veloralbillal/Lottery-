@@ -7,13 +7,17 @@
  */
 require_once __DIR__ . '/config.php';
 
-// Assert Admin role authentication
+// Assert Admin role authentication with strict check
 if (!is_admin_logged_in()) {
+    record_audit_log($conn, $_SESSION['user_id'] ?? null, $_SESSION['username'] ?? 'GUEST', 'UNAUTHORIZED_ADMIN_ACCESS_ATTEMPT', [
+        'ip' => get_client_ip(),
+        'uri' => $_SERVER['REQUEST_URI'] ?? ''
+    ]);
     header("Location: login_page.php?error=unauthorized");
     exit;
 }
 
-// Fetch general system statistics to display in the header status strip
+// Fetch general system statistics safely
 try {
     $total_users_stmt = $conn->query("SELECT COUNT(*) FROM users");
     $total_users = (int)$total_users_stmt->fetchColumn();
@@ -24,6 +28,7 @@ try {
     $pending_withdrawals_stmt = $conn->query("SELECT COUNT(*) FROM withdrawals WHERE status = 'pending'");
     $pending_withdrawals = (int)$pending_withdrawals_stmt->fetchColumn();
 } catch (PDOException $e) {
+    error_log("Admin stats query error: " . $e->getMessage());
     $total_users = 0;
     $pending_deposits = 0;
     $pending_withdrawals = 0;
@@ -52,25 +57,28 @@ try {
                 <a href="admin.php" class="hover:text-red-400 transition bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1">
                     <i class="fa-solid fa-gauge text-slate-500"></i> Dashboard
                 </a>
+                <a href="admin.php?tab=security" class="hover:text-emerald-400 transition bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1 text-emerald-400">
+                    <i class="fa-solid fa-shield-halved text-emerald-400"></i> Security Room
+                </a>
                 <a href="payment.php" class="hover:text-cyan-400 transition bg-slate-900 px-2.5 py-1 rounded-lg border border-slate-800 flex items-center gap-1">
                     <i class="fa-solid fa-file-invoice-dollar text-slate-500"></i> Payment Gateways
                 </a>
                 <div class="flex items-center gap-1.5 bg-slate-900/40 border border-slate-800/60 rounded-lg px-2.5 py-1">
                     <span class="w-1.5 h-1.5 bg-cyan-400 rounded-full"></span>
-                    <span>Members: <?php echo $total_users; ?></span>
+                    <span>Members: <?php echo htmlspecialchars((string)$total_users, ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
                 
                 <?php if ($pending_deposits > 0): ?>
                     <div class="flex items-center gap-1.5 bg-emerald-950/40 border border-emerald-900/30 rounded-lg px-2.5 py-1 text-emerald-400">
                         <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping"></span>
-                        <span>Deposits: <?php echo $pending_deposits; ?></span>
+                        <span>Deposits: <?php echo htmlspecialchars((string)$pending_deposits, ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
                 <?php endif; ?>
 
                 <?php if ($pending_withdrawals > 0): ?>
                     <div class="flex items-center gap-1.5 bg-rose-950/40 border border-rose-900/30 rounded-lg px-2.5 py-1 text-rose-400">
                         <span class="w-1.5 h-1.5 bg-rose-400 rounded-full animate-ping"></span>
-                        <span>Withdrawals: <?php echo $pending_withdrawals; ?></span>
+                        <span>Withdrawals: <?php echo htmlspecialchars((string)$pending_withdrawals, ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
                 <?php endif; ?>
             </div>

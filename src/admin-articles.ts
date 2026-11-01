@@ -1,13 +1,45 @@
+import "./index.css";
+import { createIcons, ArrowLeft, Globe, Plus, Search, X, Newspaper, Edit, Trash } from 'lucide';
+
 /**
  * Standalone Published Articles Manager (src/admin-articles.ts)
+ * 
+ * Mobile-First Redesign for 390px Mobile Viewports:
+ * - Optimized touch-friendly layout & spacing
+ * - Instant search filter by title/category
+ * - Real-time synchronization across browser tabs & cloud API
  */
 
 class StandaloneArticlesApp {
   private db: any = {};
+  private bcChannel: BroadcastChannel | null = null;
+  private searchQuery: string = "";
 
   constructor() {
     this.loadState();
+    this.initSyncChannel();
     this.render();
+  }
+
+  private initSyncChannel() {
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        this.bcChannel = new BroadcastChannel("lw_realtime_db_sync");
+        this.bcChannel.onmessage = (event) => {
+          if (event.data && event.data.type === "database_updated") {
+            this.loadState();
+            this.render();
+          }
+        };
+      } catch (e) {}
+    }
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === "lw_lottery_db_v3") {
+        this.loadState();
+        this.render();
+      }
+    });
   }
 
   private loadState() {
@@ -21,9 +53,40 @@ class StandaloneArticlesApp {
     if (!this.db.blogs) this.db.blogs = [];
   }
 
-  private saveDB() {
+  private async saveDB() {
     try {
-      localStorage.setItem("lw_lottery_db_v3", JSON.stringify(this.db));
+      const serialized = JSON.stringify(this.db);
+      try {
+        localStorage.setItem("lw_lottery_db_v3", serialized);
+        localStorage.setItem("lottery_winner_db_backup", serialized);
+      } catch (quotaErr) {
+        console.warn("[Storage Quota Exceeded] Pruning temporary logs...", quotaErr);
+        try {
+          if (this.db.groupChatMessages && this.db.groupChatMessages.length > 50) {
+            this.db.groupChatMessages = this.db.groupChatMessages.slice(-50);
+          }
+          localStorage.removeItem("lottery_winner_db_backup");
+          localStorage.setItem("lw_lottery_db_v3", JSON.stringify(this.db));
+        } catch (quotaErr2) {
+          console.warn("[Storage Quota Exceeded] localStorage full. Proceeding with cloud sync.", quotaErr2);
+          try { localStorage.removeItem("lw_lottery_db_v3"); } catch {}
+        }
+      }
+
+      if (this.bcChannel) {
+        try {
+          this.bcChannel.postMessage({ type: "database_updated", timestamp: Date.now() });
+        } catch {}
+      }
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Push to backend server
+      fetch("/api/sql/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ db: serialized })
+      }).catch(() => {});
     } catch (e) {
       console.warn("Could not save db:", e);
     }
@@ -49,87 +112,139 @@ class StandaloneArticlesApp {
     const root = document.getElementById("articles-app-root");
     if (!root) return;
 
-    const posts = this.db.blogs || [];
+    const query = this.searchQuery.toLowerCase().trim();
+    const posts = (this.db.blogs || []).filter((b: any) => {
+      return !query || b.title.toLowerCase().includes(query) || (b.category && b.category.toLowerCase().includes(query)) || (b.excerpt && b.excerpt.toLowerCase().includes(query));
+    });
 
     root.innerHTML = `
-      <header class="bg-[#0b0f19]/95 border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md px-4 py-3.5 shadow-xl">
-        <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3">
-            <a href="index.html#admin" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-amber-300 hover:text-white flex items-center justify-center transition shadow">
-              <i class="fa-solid fa-arrow-left text-sm"></i>
+      <!-- Mobile-First Sticky Header -->
+      <header class="bg-[#0b0f19]/95 border-b border-slate-800/85 sticky top-0 z-40 backdrop-blur-md px-3.5 py-3 shadow-xl">
+        <div class="max-w-xl mx-auto flex items-center justify-between gap-2.5">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <a href="index.html#admin" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-amber-300 hover:text-white flex items-center justify-center transition shadow shrink-0 active:scale-95" title="Back to Admin">
+              <i data-lucide="arrow-left" class="text-xs"></i>
             </a>
-            <div class="leading-tight">
-              <span class="text-[9px] uppercase font-mono font-black text-amber-400 tracking-wider">ADMIN ARTICLES LIST</span>
-              <h1 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
-                <span>Published Articles Screen</span>
-                <i class="fa-solid fa-newspaper text-xs text-amber-400"></i>
-              </h1>
+            <div class="leading-tight min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <span class="text-[8.5px] uppercase font-mono font-black text-amber-400 tracking-wider">ARTICLES MANAGER</span>
+                <span class="text-[8.5px] font-mono text-emerald-400 bg-emerald-950/80 px-2 py-0.2 rounded-full flex items-center gap-1">
+                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Live
+                </span>
+              </div>
+              <h1 class="text-xs sm:text-sm font-black text-white truncate">Published Posts (${(this.db.blogs || []).length})</h1>
             </div>
           </div>
-          <a href="admin-blog-editor.html" class="text-xs font-bold text-slate-950 bg-gradient-to-r from-amber-500 to-yellow-500 px-4 py-2 rounded-xl shadow cursor-pointer hover:opacity-95 transition">
-            <i class="fa-solid fa-plus mr-1"></i> Add Article ✍️
-          </a>
+          <div class="flex items-center gap-1.5 shrink-0">
+            <a href="blog.html" target="_blank" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 hover:text-white flex items-center justify-center transition shadow text-xs" title="View Public Blog">
+              <i data-lucide="globe"></i>
+            </a>
+            <a href="admin-blog-editor.html" class="bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs px-3 py-2 rounded-xl shadow hover:opacity-95 transition flex items-center gap-1 active:scale-95">
+              <i data-lucide="plus" class="text-[10px]"></i> <span>Add</span>
+            </a>
+          </div>
         </div>
       </header>
 
-      <main class="max-w-4xl mx-auto p-4 sm:p-6 w-full space-y-6 pb-24 font-sans">
-        <div class="space-y-3">
-          <h4 class="text-sm font-bold text-white uppercase tracking-wider font-mono">
-            Published Articles (${posts.length})
-          </h4>
+      <!-- Mobile-Optimized Main Workspace -->
+      <main class="max-w-xl mx-auto p-3.5 sm:p-5 w-full space-y-4 pb-28 font-sans">
+        
+        <!-- Search Bar -->
+        <div class="relative">
+          <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+          <input type="text" id="articles-search-input" value="${this.searchQuery}" placeholder="Search articles by title or category..." class="w-full bg-slate-900 border border-slate-800 focus:border-amber-500 rounded-2xl pl-10 pr-9 py-2.5 text-xs text-white outline-none placeholder-slate-500 font-mono shadow-inner transition" />
+          ${this.searchQuery ? `
+            <button id="articles-clear-search" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer">
+              <i data-lucide="x"></i>
+            </button>
+          ` : ''}
+        </div>
 
-          <div class="space-y-3">
-            ${posts.length === 0 ? `
-              <div class="bg-slate-900 border border-slate-800 p-10 rounded-3xl text-center space-y-3">
-                <i class="fa-regular fa-newspaper text-4xl text-slate-600"></i>
-                <p class="text-xs text-slate-400 font-mono">No blog articles published yet.</p>
-                <a href="admin-blog-editor.html" class="inline-block px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl">Publish First Article</a>
-              </div>
-            ` : `
-              ${posts.map((b: any) => {
+        <!-- Articles Feed -->
+        <div class="space-y-3">
+          ${posts.length === 0 ? `
+            <div class="bg-slate-900/90 border border-slate-800 p-8 rounded-3xl text-center space-y-3 shadow-xl">
+              <i data-lucide="newspaper" class="text-3xl text-slate-600"></i>
+              <p class="text-xs text-slate-400 font-mono">No blog articles found.</p>
+              <a href="admin-blog-editor.html" class="inline-block px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs rounded-xl shadow">
+                Publish New Article 🚀
+              </a>
+            </div>
+          ` : `
+            <div class="space-y-3">
+              ${posts.map((b: any, idx: number) => {
                 const commentCount = (this.db.blogComments || []).filter((c: any) => c.blogId === b.id).length;
+                const coverImg = b.image || b.coverImage || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=200&auto=format&fit=crop&q=60';
                 return `
-                  <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 p-4 sm:p-5 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition shadow-xl">
-                    <div class="flex items-center gap-3.5 min-w-0">
-                      <img src="${b.image}" alt="${b.title}" class="w-16 h-16 rounded-xl object-cover shrink-0" referrerPolicy="no-referrer" />
-                      <div class="space-y-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                          <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-mono px-2 py-0.5 rounded font-bold">${b.category}</span>
-                          <span class="text-[10px] text-slate-500 font-mono">${b.date} · ${b.views || 0} views · ${b.likes || 0} likes · ${commentCount} comments</span>
+                  <div class="blog-fade-in bg-slate-900/95 border border-slate-800 hover:border-slate-700 p-3.5 rounded-2xl flex flex-col gap-3 transition shadow-lg" style="animation-delay: ${Math.min(idx * 30, 200)}ms;">
+                    <div class="flex items-start gap-3">
+                      <img src="${coverImg}" alt="${this.escapeHTML(b.title)}" class="w-16 h-16 rounded-xl object-cover shrink-0 border border-slate-800 shadow" referrerPolicy="no-referrer" />
+                      <div class="space-y-1 min-w-0 flex-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                          <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[8.5px] font-mono px-2 py-0.2 rounded font-bold">${b.category}</span>
+                          ${b.featured ? '<span class="bg-amber-500 text-slate-950 text-[8.5px] font-black px-1.5 py-0.2 rounded font-mono">⭐ FEATURED</span>' : ''}
                         </div>
-                        <h5 class="text-xs font-bold text-white truncate">${this.escapeHTML(b.title)}</h5>
-                        <p class="text-[10px] text-slate-400 truncate max-w-md">${this.escapeHTML(b.excerpt || '')}</p>
+                        <h5 class="text-xs font-bold text-white leading-snug line-clamp-2">${this.escapeHTML(b.title)}</h5>
+                        <div class="text-[9.5px] text-slate-400 font-mono flex items-center gap-1.5 flex-wrap">
+                          <span>${b.date || 'Recent'}</span>
+                          <span>·</span>
+                          <span>${b.readTime || '3 min'}</span>
+                          <span>·</span>
+                          <span>👁️ ${b.views || 0}</span>
+                          <span>·</span>
+                          <span>💬 ${commentCount}</span>
+                        </div>
                       </div>
                     </div>
-                    <div class="flex items-center gap-2 shrink-0">
-                      <a href="admin-blog-editor.html?edit=${b.id}" class="bg-slate-800 hover:bg-slate-750 text-amber-300 border border-slate-700 text-xs font-bold px-3 py-1.5 rounded-xl transition">
-                        <i class="fa-solid fa-pen"></i> Edit
+
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80">
+                      <a href="admin-blog-editor.html?edit=${encodeURIComponent(b.id)}" class="bg-slate-800 hover:bg-slate-750 text-amber-300 border border-slate-700 text-xs font-bold py-2 rounded-xl transition flex items-center justify-center gap-1.5 shadow active:scale-95 cursor-pointer">
+                        <i data-lucide="edit" class="text-[10px]"></i> Edit
                       </a>
-                      <button class="article-delete-btn bg-rose-600/20 hover:bg-rose-600/30 text-rose-400 border border-rose-500/30 text-xs font-bold px-3 py-1.5 rounded-xl transition cursor-pointer" data-id="${b.id}">
-                        <i class="fa-solid fa-trash"></i> Delete
+                      <button class="article-delete-btn bg-rose-600/15 hover:bg-rose-600/25 text-rose-400 border border-rose-500/30 text-xs font-bold py-2 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5 shadow active:scale-95" data-id="${b.id}">
+                        <i data-lucide="trash" class="text-[10px]"></i> Delete
                       </button>
                     </div>
                   </div>
                 `;
               }).join("")}
-            `}
-          </div>
+            </div>
+          `}
         </div>
       </main>
     `;
 
     this.bindEvents();
+    createIcons({ icons: { ArrowLeft, Globe, Plus, Search, X, Newspaper, Edit, Trash } });
   }
 
   private bindEvents() {
+    const searchBox = document.getElementById("articles-search-input") as HTMLInputElement;
+    if (searchBox) {
+      searchBox.oninput = (e: any) => {
+        this.searchQuery = e.target.value;
+        this.render();
+      };
+    }
+
+    const clearBtn = document.getElementById("articles-clear-search");
+    if (clearBtn) {
+      clearBtn.onclick = () => {
+        this.searchQuery = "";
+        this.render();
+      };
+    }
+
     const deleteBtns = document.querySelectorAll(".article-delete-btn");
     deleteBtns.forEach((btn) => {
-      btn.addEventListener("click", (e: any) => {
+      btn.addEventListener("click", async (e: any) => {
         const id = e.currentTarget.getAttribute("data-id");
-        this.db.blogs = this.db.blogs.filter((b: any) => b.id !== id);
-        this.saveDB();
-        this.showToast("Article deleted successfully.", "success");
-        this.render();
+        if (confirm("Are you sure you want to delete this article?")) {
+          this.db.blogs = (this.db.blogs || []).filter((b: any) => b.id !== id);
+          await this.saveDB();
+          this.showToast("Article deleted & synced in real-time.", "success");
+          this.render();
+        }
       });
     });
   }

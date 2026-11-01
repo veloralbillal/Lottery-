@@ -155,7 +155,7 @@ export class HomeExtensions {
             <div class="pt-1 flex items-center justify-between gap-3">
               <span class="text-[8.5px] text-slate-400 font-mono italic">${isCompleted ? "ড্র ফলাফল দেখুন" : "বিস্তারিত দেখতে ট্যাপ করুন"}</span>
               <button class="carousel-buy-btn lottery-ticket-btn text-white font-black text-[10.5px] uppercase py-1.5 px-3.5 rounded-xl cursor-pointer transition-transform duration-200 hover:scale-[1.03] active:scale-95 flex items-center gap-1.5 shadow" data-id="${lot.id}">
-                <i class="fa-solid fa-ticket"></i> ${isCompleted ? "ফলাফল" : "টিকেট নিন"}
+                <i data-lucide="ticket" class="w-3.5 h-3.5"></i> ${isCompleted ? "ফলাফল" : "টিকেট নিন"}
               </button>
             </div>
           </div>

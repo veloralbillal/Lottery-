@@ -461,7 +461,7 @@ export const SubAgentModule = {
           id: "u" + Date.now(),
           username: usernameVal,
           email: emailVal,
-          password: passVal,
+          password: (typeof window !== 'undefined' && window.hashPasswordWithUniqueSalt ? window.hashPasswordWithUniqueSalt(passVal) : passVal),
           phone: phoneVal,
           balance: welcomeBonus,
           totDeposit: 0,
@@ -590,7 +590,8 @@ export const SubAgentModule = {
         targetUser.commissionRate = rateVal;
         targetUser.status = status;
         if (password) {
-          targetUser.password = password;
+          const safeHashed = (typeof window !== "undefined" && window.hashPasswordWithUniqueSalt ? window.hashPasswordWithUniqueSalt(password) : password);
+          targetUser.password = safeHashed;
         }
 
         const targetLotteryId = document.getElementById("edit-subagent-target-lottery").value;
@@ -615,7 +616,7 @@ export const SubAgentModule = {
             u.monthlyTargetReward = targetReward;
             u.monthlyTargetLotteryId = targetLotteryId;
             if (password) {
-              u.password = password;
+              u.password = targetUser.password;
             }
           }
         });

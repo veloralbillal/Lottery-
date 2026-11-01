@@ -3,6 +3,8 @@
  * Lottery Winner - Interactive portal authentication gateway (login_page.php)
  * 
  * Secure session initialization for standard player profiles and system admins.
+ * Implements CSRF protection, brute-force rate limiting, session fixation defense,
+ * and secure credential verification while preserving existing UI and mobile design.
  */
 
 require_once __DIR__ . '/config.php';
@@ -19,6 +21,8 @@ if ($error === 'unauthorized') {
     $error_msg = "Please authorize your access session to view your profile.";
 } else if ($error === 'blocked') {
     $error_msg = "This account profile has been locked by administrative order.";
+} else if ($error === 'session_expired') {
+    $error_msg = "Your session expired due to inactivity. Please sign in again.";
 }
 
 if ($success === 'logged_out') {
@@ -30,66 +34,141 @@ if ($success === 'logged_out') {
 // Check POST requests login submit
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username_val = trim($_POST['username'] ?? '');
-    $password_val = $_POST['password'] ?? '';
+    $password_val = (string)($_POST['password'] ?? '');
+    $client_ip = get_client_ip();
 
-    if (empty($username_val) || empty($password_val)) {
+    // 1. Verify CSRF Token
+    if (!verify_csrf_token()) {
+        $error_msg = "Security session validation token expired. Please refresh and try again.";
+    } elseif (empty($username_val) || empty($password_val)) {
         $error_msg = "Please key in all required username and password fields.";
     } else {
-        try {
-            // 1. Check Admin Account Credentials
-            if (strtolower($username_val) === 'admin') {
-                $admin_pass_config = 'Admin123'; // Default fallback
-                $stmt_set = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'adminPass'");
-                $stmt_set->execute();
-                $set_row = $stmt_set->fetch();
-                if ($set_row && !empty($set_row['setting_value'])) {
-                    $admin_pass_config = $set_row['setting_value'];
-                }
+        // 2. Check Brute-Force Rate Limiting
+        $ip_rate = check_rate_limit($conn, 'login_ip', $client_ip, 10, 900);
+        $user_rate = check_rate_limit($conn, 'login_user', strtolower($username_val), 5, 900);
 
-                if ($password_val === 'Admin123' || $password_val === $admin_pass_config) {
-                    $_SESSION['user_id'] = 'u_admin_system';
-                    $_SESSION['username'] = 'Admin';
-                    $_SESSION['role'] = 'admin';
+        if (!$ip_rate['allowed'] || !$user_rate['allowed']) {
+            $retry_after = max($ip_rate['retry_after'], $user_rate['retry_after']);
+            record_audit_log($conn, null, $username_val, 'LOGIN_RATE_LIMITED_WEB', ['ip' => $client_ip]);
+            $error_msg = "Too many failed login attempts. Please wait " . ceil($retry_after / 60) . " minute(s) before trying again.";
+        } else {
+            $hash_algo = defined('PASSWORD_ARGON2ID') ? PASSWORD_ARGON2ID : PASSWORD_DEFAULT;
 
-                    header("Location: admin.php");
-                    exit;
-                } else {
-                    $error_msg = "Invalid administrator password passphrase.";
-                }
-            } else {
-                // 2. Check Standard members DB via safe prepared PDO call
-                $stmt = $conn->prepare("SELECT id, username, email, password, status FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
-                $stmt->execute([$username_val, $username_val]);
-                $user = $stmt->fetch();
+            try {
+                // 3. Check Admin Account Credentials
+                if (strtolower($username_val) === 'admin') {
+                    $admin_auth = false;
+                    $admin_user_id = 'u_admin_system';
 
-                if ($user) {
-                    $password_match = false;
-                    if (password_verify($password_val, $user['password'])) {
-                        $password_match = true;
-                    } else if ($password_val === $user['password']) { // compatibility match
-                        $password_match = true;
-                    }
+                    // Check if Admin exists in `users` table
+                    $stmt_admin = $conn->prepare("SELECT id, username, password, status FROM users WHERE LOWER(username) = 'admin'");
+                    $stmt_admin->execute();
+                    $admin_row = $stmt_admin->fetch();
 
-                    if ($password_match) {
-                        if ($user['status'] === 'blocked') {
-                            $error_msg = "This account remains blocked. Contact support.";
-                        } else {
-                            $_SESSION['user_id'] = $user['id'];
-                            $_SESSION['username'] = $user['username'];
-                            $_SESSION['role'] = 'member';
-
-                            header("Location: profile.php");
-                            exit;
+                    if ($admin_row) {
+                        $admin_user_id = $admin_row['id'];
+                        if (secure_verify_password($password_val, $admin_row['password'])) {
+                            $admin_auth = true;
+                            if (password_needs_rehash($admin_row['password'], $hash_algo) || strpos($admin_row['password'], 'sha256$') === 0) {
+                                $new_hash = password_hash($password_val, $hash_algo);
+                                $up = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+                                $up->execute([$new_hash, $admin_user_id]);
+                            }
                         }
                     } else {
-                        $error_msg = "Invalid password passphrase credentials.";
+                        // Fallback check in settings table
+                        $stmt_set = $conn->prepare("SELECT setting_value FROM settings WHERE setting_key = 'adminPass'");
+                        $stmt_set->execute();
+                        $set_row = $stmt_set->fetch();
+                        $admin_pass_config = $set_row ? $set_row['setting_value'] : null;
+
+                        if ($admin_pass_config) {
+                            if (secure_verify_password($password_val, $admin_pass_config)) {
+                                $admin_auth = true;
+                                if (password_needs_rehash($admin_pass_config, $hash_algo) || strpos($admin_pass_config, 'sha256$') === 0) {
+                                    $new_hash = password_hash($password_val, $hash_algo);
+                                    $up = $conn->prepare("UPDATE settings SET setting_value = ? WHERE setting_key = 'adminPass'");
+                                    $up->execute([$new_hash]);
+                                }
+                            }
+                        }
+                    }
+
+                    if ($admin_auth) {
+                        reset_rate_limit($conn, 'login_ip', $client_ip);
+                        reset_rate_limit($conn, 'login_user', strtolower($username_val));
+
+                        // Session Fixation Prevention
+                        session_regenerate_id(true);
+
+                        $_SESSION['user_id'] = $admin_user_id;
+                        $_SESSION['username'] = 'Admin';
+                        $_SESSION['role'] = 'admin';
+                        $_SESSION['session_created_at'] = time();
+                        $_SESSION['last_activity'] = time();
+
+                        record_audit_log($conn, $admin_user_id, 'Admin', 'LOGIN_SUCCESS_ADMIN_WEB', ['ip' => $client_ip]);
+
+                        header("Location: admin.php");
+                        exit;
+                    } else {
+                        record_audit_log($conn, null, 'Admin', 'LOGIN_FAILED_ADMIN_WEB', ['ip' => $client_ip]);
+                        $error_msg = "Invalid username or password credentials.";
                     }
                 } else {
-                    $error_msg = "No user or admin profile matched the username.";
+                    // 4. Check Standard members DB via safe prepared PDO call
+                    $stmt = $conn->prepare("SELECT id, username, email, password, status, role FROM users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?)");
+                    $stmt->execute([$username_val, $username_val]);
+                    $user = $stmt->fetch();
+
+                    if ($user) {
+                        $password_match = false;
+                        if (secure_verify_password($password_val, $user['password'])) {
+                            $password_match = true;
+                            if (password_needs_rehash($user['password'], $hash_algo) || strpos($user['password'], 'sha256$') === 0) {
+                                $new_hash = password_hash($password_val, $hash_algo);
+                                $up = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+                                $up->execute([$new_hash, $user['id']]);
+                            }
+                        }
+
+                        if ($password_match) {
+                            if ($user['status'] === 'blocked') {
+                                record_audit_log($conn, $user['id'], $user['username'], 'LOGIN_BLOCKED_ATTEMPT_WEB', ['ip' => $client_ip]);
+                                $error_msg = "This account remains blocked. Contact support.";
+                            } else {
+                                reset_rate_limit($conn, 'login_ip', $client_ip);
+                                reset_rate_limit($conn, 'login_user', strtolower($username_val));
+
+                                session_regenerate_id(true);
+
+                                $role = (!empty($user['role']) && $user['role'] !== 'user') ? $user['role'] : 'member';
+
+                                $_SESSION['user_id'] = $user['id'];
+                                $_SESSION['username'] = $user['username'];
+                                $_SESSION['role'] = $role;
+                                $_SESSION['session_created_at'] = time();
+                                $_SESSION['last_activity'] = time();
+
+                                record_audit_log($conn, $user['id'], $user['username'], 'LOGIN_SUCCESS_WEB', ['ip' => $client_ip, 'role' => $role]);
+
+                                header("Location: profile.php");
+                                exit;
+                            }
+                        } else {
+                            record_audit_log($conn, null, $username_val, 'LOGIN_FAILED_WEB', ['ip' => $client_ip]);
+                            $error_msg = "Invalid username or password credentials.";
+                        }
+                    } else {
+                        // Uniform generic message prevents username enumeration
+                        record_audit_log($conn, null, $username_val, 'LOGIN_FAILED_NOT_FOUND_WEB', ['ip' => $client_ip]);
+                        $error_msg = "Invalid username or password credentials.";
+                    }
                 }
+            } catch (PDOException $e) {
+                error_log("Database Login Error: " . $e->getMessage());
+                $error_msg = "Sign in service temporarily unavailable. Please try again shortly.";
             }
-        } catch (PDOException $e) {
-            $error_msg = "Database portal sync error: " . $e->getMessage();
         }
     }
 }
@@ -200,7 +279,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <?php endif; ?>
 
             <!-- Quick Credential Assist Badges -->
-            <div class="bg-slate-950/70 border border-slate-850 rounded-2xl p-3 flex items-center justify-between gap-2">
+            <div class="bg-slate-950/70 border border-slate-855 rounded-2xl p-3 flex items-center justify-between gap-2">
                 <span class="text-[10px] font-mono text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
                     <i class="fa-solid fa-bolt text-amber-400 text-xs"></i> Quick Login:
                 </span>
@@ -216,6 +295,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <!-- Login Submission Form -->
             <form action="login_page.php" method="POST" class="space-y-4">
+                <!-- CSRF Token Guard -->
+                <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrf_token()); ?>">
+
                 <!-- Username Input Field -->
                 <div class="space-y-1.5">
                     <label class="block text-[10px] uppercase font-mono tracking-wider text-slate-400 font-semibold flex items-center justify-between">
@@ -275,7 +357,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <input type="checkbox" id="remember-me" class="w-3.5 h-3.5 rounded bg-slate-950 border-slate-800 text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer accent-amber-500" />
                         <span class="text-[11px] font-mono text-slate-400">Keep session active</span>
                     </label>
-                    <span class="text-[10px] font-mono text-slate-500">Auto-expires 7d</span>
+                    <span class="text-[10px] font-mono text-slate-500">Auto-expires idle</span>
                 </div>
 
                 <!-- Primary Submit Action Button -->

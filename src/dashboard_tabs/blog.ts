@@ -12,10 +12,19 @@ export class BlogModule {
   static blogSelectedCategory: string = "All";
 
   /**
-   * Helper to render markdown/rich text formatting safely
+   * Helper to render markdown and rich HTML content safely
    */
   static formatContent(rawText: string = ""): string {
     if (!rawText) return "";
+
+    const hasHtmlTags = /<\/?(p|h[1-6]|div|span|strong|b|em|i|u|s|blockquote|ul|ol|li|table|tr|th|td|img|hr|pre|code|a)\b/i.test(rawText);
+    if (hasHtmlTags) {
+      return rawText
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
+        .replace(/javascript:/gi, "");
+    }
+
     let html = rawText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -100,7 +109,7 @@ export class BlogModule {
         <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <button id="blog-screen-back-btn" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-amber-300 hover:text-white hover:bg-amber-500/20 flex items-center justify-center transition cursor-pointer shadow">
-              <i class="fa-solid fa-arrow-left text-sm"></i>
+              <i data-lucide="arrow-left" class="w-4 h-4"></i>
             </button>
             <div class="leading-tight">
               <div class="flex items-center gap-1.5">
@@ -109,7 +118,7 @@ export class BlogModule {
               </div>
               <h1 class="text-sm sm:text-base font-black text-white flex items-center gap-1.5">
                 <span>Lottery Blog & Updates</span>
-                <i class="fa-solid fa-newspaper text-xs text-amber-400"></i>
+                <i data-lucide="newspaper" class="w-4 h-4 text-amber-400"></i>
               </h1>
             </div>
           </div>
@@ -127,11 +136,11 @@ export class BlogModule {
         <!-- Search & Filter Controls -->
         <div class="space-y-3">
           <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"></i>
             <input type="text" id="blog-search-input" value="${this.blogSearchQuery}" placeholder="Search articles, strategies, win stories..." class="w-full bg-[#111625] border border-slate-800 focus:border-amber-500/80 rounded-2xl pl-10 pr-4 py-3 text-xs text-white outline-none placeholder-slate-500 font-mono shadow-inner transition" />
             ${this.blogSearchQuery ? `
               <button id="blog-clear-search-btn" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
               </button>
             ` : ''}
           </div>
@@ -148,7 +157,7 @@ export class BlogModule {
 
         <!-- Featured Story (if viewing All and not searching) -->
         ${featuredPost && selectedCat === 'All' && !searchQuery ? `
-          <div class="blog-read-card bg-gradient-to-br from-[#161d36] via-[#0d1326] to-[#1d1636] border border-amber-500/40 rounded-3xl overflow-hidden shadow-2xl cursor-pointer group hover:border-amber-400 transition" data-id="${featuredPost.id}">
+          <div class="blog-read-card blog-fade-in bg-gradient-to-br from-[#161d36] via-[#0d1326] to-[#1d1636] border border-amber-500/40 rounded-3xl overflow-hidden shadow-2xl cursor-pointer group hover:border-amber-400 transition" data-id="${featuredPost.id}">
             <div class="relative h-48 sm:h-64 overflow-hidden">
               <img src="${featuredPost.image}" alt="${featuredPost.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" referrerPolicy="no-referrer" />
               <div class="absolute inset-0 bg-gradient-to-t from-[#090c14] via-black/40 to-transparent"></div>
@@ -163,11 +172,11 @@ export class BlogModule {
             </div>
             <div class="p-5 sm:p-6 space-y-3">
               <div class="flex items-center gap-3 text-[10px] font-mono text-slate-400">
-                <span><i class="fa-regular fa-calendar text-amber-400 mr-1"></i> ${featuredPost.date}</span>
+                <span><i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-400 mr-1 inline"></i> ${featuredPost.date}</span>
                 <span>·</span>
-                <span><i class="fa-regular fa-clock text-cyan-400 mr-1"></i> ${featuredPost.readTime || '3 min read'}</span>
+                <span><i data-lucide="clock" class="w-3.5 h-3.5 text-cyan-400 mr-1 inline"></i> ${featuredPost.readTime || '3 min read'}</span>
                 <span>·</span>
-                <span><i class="fa-regular fa-eye text-emerald-400 mr-1"></i> ${featuredPost.views || 0} views</span>
+                <span><i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-400 mr-1 inline"></i> ${featuredPost.views || 0} views</span>
               </div>
               <h2 class="text-base sm:text-xl font-black text-white group-hover:text-amber-300 transition leading-snug">
                 ${featuredPost.title}
@@ -178,7 +187,7 @@ export class BlogModule {
               <div class="pt-3 flex items-center justify-between border-t border-slate-800">
                 <span class="text-xs text-slate-400">By <strong class="text-white">${featuredPost.author}</strong></span>
                 <span class="text-xs font-black text-amber-400 flex items-center gap-1.5 group-hover:translate-x-1 transition">
-                  Read Full Story <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                  Read Full Story <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline"></i>
                 </span>
               </div>
             </div>
@@ -197,16 +206,16 @@ export class BlogModule {
 
           ${filteredPosts.length === 0 ? `
             <div class="bg-slate-900 border border-slate-800 rounded-3xl p-10 text-center space-y-3">
-              <i class="fa-regular fa-newspaper text-4xl text-slate-600"></i>
+              <i data-lucide="newspaper" class="w-12 h-12 text-slate-600 mx-auto block mb-2"></i>
               <h4 class="text-sm font-bold text-white">No articles match your criteria</h4>
               <p class="text-xs text-slate-400 max-w-sm mx-auto">Try clearing search terms or selecting "All Categories" to view available stories.</p>
             </div>
           ` : `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              ${filteredPosts.map((post: any) => {
+              ${filteredPosts.map((post: any, idx: number) => {
                 const commentCount = (appInstance.db.blogComments || []).filter((c: any) => c.blogId === post.id && c.status === "approved").length;
                 return `
-                  <div class="blog-read-card bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-lg flex flex-col justify-between group cursor-pointer transition duration-200 hover:-translate-y-0.5" data-id="${post.id}">
+                  <div class="blog-read-card blog-fade-in bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-lg flex flex-col justify-between group cursor-pointer transition duration-200 hover:-translate-y-0.5" data-id="${post.id}" style="animation-delay: ${Math.min(idx * 45, 300)}ms;">
                     <div>
                       <div class="relative h-40 overflow-hidden">
                         <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" referrerPolicy="no-referrer" />
@@ -221,9 +230,9 @@ export class BlogModule {
                           <span>·</span>
                           <span>${post.readTime || '3 min'}</span>
                           <span>·</span>
-                          <span><i class="fa-regular fa-eye text-emerald-400 mr-0.5"></i> ${post.views || 0}</span>
+                          <span><i data-lucide="eye" class="w-3 h-3 text-emerald-400 mr-0.5 inline"></i> ${post.views || 0}</span>
                           <span>·</span>
-                          <span><i class="fa-regular fa-comment text-cyan-400 mr-0.5"></i> ${commentCount}</span>
+                          <span><i data-lucide="message-square" class="w-3 h-3 text-cyan-400 mr-0.5 inline"></i> ${commentCount}</span>
                         </div>
                         <h4 class="text-sm font-bold text-white group-hover:text-amber-300 transition line-clamp-2 leading-snug">
                           ${post.title}
@@ -236,7 +245,7 @@ export class BlogModule {
                     <div class="p-4 pt-0 flex items-center justify-between border-t border-slate-800/60 mt-3">
                       <span class="text-[10px] text-slate-500">By ${post.author}</span>
                       <span class="text-xs font-bold text-amber-400 flex items-center gap-1 group-hover:translate-x-1 transition">
-                        Read Story <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                        Read Story <i data-lucide="arrow-right" class="w-3.5 h-3.5 inline"></i>
                       </span>
                     </div>
                   </div>
@@ -249,6 +258,7 @@ export class BlogModule {
     `;
 
     this.bindScreenEvents(appInstance);
+    if (appInstance && typeof appInstance.refreshIcons === "function") appInstance.refreshIcons();
   }
 
   static renderPostDetail(appInstance: any, screenEl: HTMLElement, post: any) {
@@ -269,7 +279,7 @@ export class BlogModule {
       <header class="bg-[#0b0f19] border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md px-4 py-3 shadow-lg">
         <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <button id="blog-detail-back-btn" class="flex items-center gap-2 text-xs font-bold text-amber-300 hover:text-white bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl transition cursor-pointer">
-            <i class="fa-solid fa-arrow-left"></i> Back to Articles
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Back to Articles
           </button>
           <span class="bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-mono px-3 py-1 rounded-full font-bold">
             ${post.category}
@@ -279,7 +289,7 @@ export class BlogModule {
 
       <!-- Article Body Container -->
       <main class="max-w-3xl mx-auto p-4 sm:p-6 w-full space-y-6 pb-24 font-sans">
-        <article class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-6">
+        <article class="blog-fade-in bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl space-y-6">
           <div class="relative h-64 sm:h-80 overflow-hidden">
             <img src="${post.image}" alt="${post.title}" class="w-full h-full object-cover" referrerPolicy="no-referrer" />
             <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
@@ -287,13 +297,13 @@ export class BlogModule {
 
           <div class="px-6 space-y-4">
             <div class="flex items-center gap-3 text-xs font-mono text-slate-400 flex-wrap">
-              <span><i class="fa-regular fa-calendar text-amber-400 mr-1"></i> ${post.date}</span>
+              <span><i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-400 mr-1 inline"></i> ${post.date}</span>
               <span>·</span>
-              <span><i class="fa-regular fa-clock text-cyan-400 mr-1"></i> ${post.readTime || '3 min'}</span>
+              <span><i data-lucide="clock" class="w-3.5 h-3.5 text-cyan-400 mr-1 inline"></i> ${post.readTime || '3 min'}</span>
               <span>·</span>
-              <span><i class="fa-regular fa-eye text-emerald-400 mr-1"></i> ${post.views} views</span>
+              <span><i data-lucide="eye" class="w-3.5 h-3.5 text-emerald-400 mr-1 inline"></i> ${post.views} views</span>
               <span>·</span>
-              <span><i class="fa-solid fa-user-pen text-purple-400 mr-1"></i> ${post.author}</span>
+              <span><i data-lucide="user-pen" class="w-3.5 h-3.5 text-purple-400 mr-1 inline"></i> ${post.author}</span>
             </div>
 
             <h1 class="text-xl sm:text-2xl font-black text-white leading-tight">
@@ -303,10 +313,10 @@ export class BlogModule {
             <!-- Social Action Bar -->
             <div class="flex items-center gap-3 py-3 border-y border-slate-800">
               <button id="blog-like-btn" class="flex items-center gap-2 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer active:scale-95">
-                <i class="fa-solid fa-heart"></i> Like (<span id="blog-likes-count">${post.likes || 0}</span>)
+                <i data-lucide="heart" class="w-3.5 h-3.5 inline"></i> Like (<span id="blog-likes-count">${post.likes || 0}</span>)
               </button>
               <button id="blog-share-btn" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-750 border border-slate-700 text-slate-200 text-xs font-bold px-4 py-2 rounded-xl transition cursor-pointer">
-                <i class="fa-solid fa-share-nodes"></i> Share Article
+                <i data-lucide="share-2" class="w-3.5 h-3.5 inline"></i> Share Article
               </button>
             </div>
 
@@ -320,7 +330,7 @@ export class BlogModule {
           <div class="bg-slate-950 p-6 border-t border-slate-800 space-y-5">
             <div class="flex items-center justify-between">
               <h3 class="text-sm font-black text-white flex items-center gap-2">
-                <i class="fa-regular fa-comments text-amber-400"></i> Reader Comments (${comments.length})
+                <i data-lucide="message-square" class="w-4 h-4 text-amber-400 inline"></i> Reader Comments (${comments.length})
               </h3>
               <span class="text-[10px] text-slate-400 font-mono">Moderated community discussion</span>
             </div>
@@ -360,7 +370,7 @@ export class BlogModule {
                           <span class="bg-amber-950 text-amber-400 border border-amber-600/40 text-[8px] px-1.5 py-0.2 rounded font-bold">Pending Review</span>
                         ` : ''}
                       </div>
-                      <span>${c.date}</span>
+                      <span>${c.date || (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : new Date().toLocaleDateString())}</span>
                     </div>
                     <p class="text-xs text-slate-200 font-sans leading-relaxed">${appInstance.escapeHTML(c.text)}</p>
                   </div>
@@ -500,6 +510,7 @@ export class BlogModule {
           username: appInstance.currentUser?.username || "player",
           text,
           date: new Date().toISOString().split("T")[0],
+          createdAt: new Date().toISOString(),
           status: "pending" // Sent to moderation queue
         };
 

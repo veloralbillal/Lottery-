@@ -131,7 +131,7 @@ export class VideoBountyTab {
           </div>
           <div class="text-[10px] text-cyan-400 truncate mt-1">
             <a href="${b.videoUrl}" target="_blank" class="hover:underline flex items-center gap-1">
-              <i class="fa-solid fa-link text-[8px]"></i> ${b.videoUrl}
+              <i data-lucide="link" class="text-[8px]"></i> ${b.videoUrl}
             </a>
           </div>
           ${b.status === "approved" ? `

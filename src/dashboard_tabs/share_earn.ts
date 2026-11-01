@@ -66,9 +66,9 @@ export class ReferTab {
           
           let statusBadge = "";
           if (claimed) {
-            statusBadge = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800/80 px-2 py-0.5 rounded text-[8px] font-black uppercase"><i class="fa-solid fa-circle-check"></i> CLAIMED ৳${lvl.reward}</span>`;
+            statusBadge = `<span class="bg-emerald-950 text-emerald-400 border border-emerald-800/80 px-2 py-0.5 rounded text-[8px] font-black uppercase flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> CLAIMED ৳${lvl.reward}</span>`;
           } else if (reached) {
-            statusBadge = `<button class="claim-milestone-btn bg-gradient-to-r from-cyan-500 to-rose-600 hover:brightness-110 active:scale-95 text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase cursor-pointer animate-pulse flex items-center gap-1 shadow-md transition" data-title="${appInstance.escapeHTML(lvl.title)}"><i class="fa-solid fa-gift"></i> Claim ৳${lvl.reward}</button>`;
+            statusBadge = `<button class="claim-milestone-btn bg-gradient-to-r from-cyan-500 to-rose-600 hover:brightness-110 active:scale-95 text-white px-2.5 py-1 rounded-xl text-[8px] font-black uppercase cursor-pointer animate-pulse flex items-center gap-1 shadow-md transition" data-title="${appInstance.escapeHTML(lvl.title)}"><i data-lucide="gift" class="w-3 h-3"></i> Claim ৳${lvl.reward}</button>`;
           } else {
             statusBadge = `<span class="bg-slate-950 text-slate-500 border border-slate-900 px-2 py-0.5 rounded text-[8px] font-bold">Goal: ${lvl.count} refers</span>`;
           }
@@ -148,5 +148,9 @@ export class ReferTab {
     // Render the premium Referral Extensions (Progress bar, calculator, marketing social templates)
     ReferralExtensions.render(appInstance);
     AffiliateAgentSystem.render(appInstance);
+
+    if (appInstance && typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
+    }
   }
 }

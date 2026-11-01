@@ -48,10 +48,25 @@
   - `app_knowledge.txt` line 7: States the app was originally `designed to run seamlessly both as a Single Page Application (SPA)... and as a classic PHP multi-screen platform.`
   - The repository contains legacy standalone PHP entry points in the project root (`index.php`, `login.php`, `deposit.php`, `withdrawal.php`, `profile.php`, `install.php`).
   - In `vite.config.ts` lines 6–78, a custom plugin (`serveAndCopyAssetsPlugin`) bundles all PHP dashboard and admin templates (`src/dashboard_tabs/*.php`, `src/admin_tabs/*.php`) into a TypeScript string map (`src/js/bundledTabs.ts`).
-  - In `src/main.ts` line 743 and `src/js/performanceOptimizer.ts` line 246, `LazyTabManager.loadTabTemplate` dynamically injects the pre-bundled HTML template strings directly into the client-side DOM.
+  - In `src/main.ts` and `src/js/performanceOptimizer.ts`, `LazyTabManager.loadTabTemplate` dynamically injects the pre-bundled HTML template strings directly into the client-side DOM.
 - **Reason**: The application was modernized into a unified, zero-reload Single Page Application running under Node.js and Vite to enable instant client-side tab transitions, offline caching, and hosting on modern JavaScript platforms without a PHP server runtime.
 - **Current Alternative**: Single Page Application (SPA) with dynamic DOM template loading from `src/js/bundledTabs.ts` and API endpoints powered by Node.js Express (`server.ts`).
 - **Impact**: Enables offline capability, rapid tab switching without page refreshes, and consistent bundling with Vite while reusing existing PHP/HTML markup.
+
+---
+
+## 4. React Component Architecture for UI
+- **Option**: React component hierarchy and JSX virtual DOM rendering.
+- **Decision**: Avoided / Inert in Runtime
+- **Evidence**:
+  - `package.json` contains `"react": "^19.0.1"` and `"react-dom": "^19.0.1"`.
+  - However, `vite.config.ts` does not load `@vitejs/plugin-react`.
+  - `index.html` loads `<script type="module" src="/src/main.ts"></script>`.
+  - Across `src/main.ts` and modular tab controllers (`src/dashboard_tabs/`, `src/admin_tabs/`), there are no `ReactDOM.createRoot` calls, no JSX/TSX components, and no React hooks (`useState`, `useEffect`).
+  - The application renders entirely via imperative DOM methods (`document.getElementById`, `innerHTML`, `classList`).
+- **Reason**: Avoided full frontend rewriting of dozens of HTML/PHP layout templates into JSX; preserved fast direct DOM manipulation.
+- **Current Alternative**: Vanilla TypeScript DOM manipulation managed by `StateManager` and `LazyTabManager`.
+- **Impact**: Eliminates virtual DOM diffing overhead and keeps execution predictable, although it increases imperative code size in controller files.
 
 ---
 

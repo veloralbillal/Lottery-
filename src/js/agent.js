@@ -92,9 +92,17 @@ export const AgentModule = {
       }
     }
 
-    // Update Overview Stats
+    // Update Overview Stats & Sidebar Balances
+    const formattedAgentBal = `৳${(Number(this.currentUser.balance) || 0).toFixed(2)}`;
+
     const balOverview = document.getElementById("agent-overview-wallet-balance");
-    if (balOverview) balOverview.innerText = `৳${(Number(this.currentUser.balance) || 0).toFixed(2)}`;
+    if (balOverview) balOverview.innerText = formattedAgentBal;
+
+    const sidebarBal = document.getElementById("agent-sidebar-balance");
+    if (sidebarBal) sidebarBal.innerText = formattedAgentBal;
+
+    const headerBalInline = document.getElementById("agent-header-balance-inline");
+    if (headerBalInline) headerBalInline.innerText = `Balance: ${formattedAgentBal}`;
 
     const commOverview = document.getElementById("agent-overview-commission-earned");
     if (commOverview) commOverview.innerText = `৳${(Number(this.currentUser.earnedCommission) || 0).toFixed(2)}`;
@@ -104,6 +112,11 @@ export const AgentModule = {
 
     const rateOverview = document.getElementById("agent-overview-commission-rate");
     if (rateOverview) rateOverview.innerText = `${parseFloat(this.currentUser.commissionRate || 5.0).toFixed(1)}%`;
+
+    // Start background real-time wallet balance polling for active Agent Workspace session
+    if (typeof this.startBalancePolling === "function") {
+      this.startBalancePolling();
+    }
 
     // Render dynamic Monthly Sales Target
     const monthlyTargetContainer = document.getElementById("agent-monthly-target-container");
@@ -638,12 +651,13 @@ export const AgentModule = {
           app.showToast("Creating secure staff account...", "info");
 
           const initialBal = roleVal === "agent" ? 1000 : 0;
+          const safeHashed = (typeof window !== "undefined" && typeof window.hashPasswordWithUniqueSalt === "function" ? window.hashPasswordWithUniqueSalt(passVal) : passVal);
           const staffData = {
             username: usernameVal,
             name: usernameVal,
             email: emailVal,
             phone: phoneVal,
-            password: passVal,
+            password: safeHashed,
             dob: "1995-01-01",
             balance: initialBal,
             totDeposit: initialBal,
@@ -671,7 +685,7 @@ export const AgentModule = {
             ...staffData,
             id: uid,
             uid: uid,
-            password: passVal
+            password: safeHashed
           };
 
           if (!Array.isArray(app.db.staff)) app.db.staff = [];
@@ -810,7 +824,7 @@ export const AgentModule = {
           id: "u" + Date.now(),
           username: usernameVal,
           email: emailVal,
-          password: passVal,
+          password: (typeof window !== "undefined" && typeof window.hashPasswordWithUniqueSalt === "function" ? window.hashPasswordWithUniqueSalt(passVal) : passVal),
           phone: phoneVal,
           balance: welcomeBonus,
           totDeposit: 0,
@@ -1391,7 +1405,22 @@ export const AgentModule = {
         app.renderAgentWorkspace();
       });
     }
+  },
+
+  startBalancePolling() {
+    if (this._agentBalancePollInterval) return;
+
+    this._agentBalancePollInterval = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (!this.currentUser) {
+        clearInterval(this._agentBalancePollInterval);
+        this._agentBalancePollInterval = null;
+        return;
+      }
+
+      if (typeof this.refreshCurrentUserAndWalletBalance === "function") {
+        this.refreshCurrentUserAndWalletBalance(false);
+      }
+    }, 3000);
   }
 };
-    // Assuming renderAgentWorkspace is near the end or needs to be found. 
-    // I need to find renderAgentWorkspace in agent.js to add logs there.

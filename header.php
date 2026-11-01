@@ -19,10 +19,14 @@ if ($is_logged_in) {
         $user_row = $stmt->fetch();
         if ($user_row) {
             if ($user_row['status'] === 'blocked') {
-                // If blocked, instantly destroy session
-                session_unset();
-                session_destroy();
-                header("Location: login.php?error=blocked");
+                // If blocked, instantly destroy session and cookie
+                $_SESSION = [];
+                if (ini_get("session.use_cookies")) {
+                    $p = session_get_cookie_params();
+                    setcookie(session_name(), '', time() - 42000, $p["path"], $p["domain"], $p["secure"], $p["httponly"]);
+                }
+                @session_destroy();
+                header("Location: login_page.php?error=blocked");
                 exit;
             }
             $nav_username = htmlspecialchars($user_row['username']);

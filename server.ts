@@ -9,6 +9,8 @@ import { getDefaultDB } from './src/js/defaultDB.js';
 import multer from 'multer';
 import JSZip from 'jszip';
 import fs from 'fs';
+import webpush from 'web-push';
+import { hashPasswordWithUniqueSalt, verifyPasswordWithSalt, needsRehash } from './src/js/passwordSecurity.js';
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -1264,6 +1266,10 @@ async function lookupUserInMySQL(cleanUser: string): Promise<any | null> {
 async function insertUserIntoMySQL(user: any) {
   try {
     const mysqlPool = getPool();
+    // Protect passwords with unique cryptographic salt before storing in MySQL
+    const safeHashedPass = user.password 
+      ? (needsRehash(user.password) ? hashPasswordWithUniqueSalt(user.password) : user.password)
+      : '';
     await mysqlPool.execute(
       `INSERT INTO users (id, username, email, password, phone, balance, role, status, joinDate) 
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -1272,7 +1278,7 @@ async function insertUserIntoMySQL(user: any) {
         user.id || 'u_' + Date.now(),
         user.username,
         user.email || '',
-        user.password || '',
+        safeHashedPass,
         user.phone || '',
         user.balance || 0,
         user.role || 'user',
@@ -1280,7 +1286,7 @@ async function insertUserIntoMySQL(user: any) {
         user.joinDate || new Date().toISOString().split('T')[0],
         user.username,
         user.email || '',
-        user.password || '',
+        safeHashedPass,
         user.phone || '',
         user.balance || 0,
         user.role || 'user',
@@ -1311,7 +1317,7 @@ async function performCentralAuth(usernameVal: string, passwordVal: string): Pro
         username: 'agentmaster',
         name: 'Master Agent',
         email: 'agentmaster@lotterywinner.app',
-        password: cleanPass,
+        password: hashPasswordWithUniqueSalt(cleanPass),
         role: 'agent',
         district: 'Dhaka',
         balance: 50000,
@@ -1330,8 +1336,28 @@ async function performCentralAuth(usernameVal: string, passwordVal: string): Pro
       return { success: false, message: 'This account is blocked or under review.' };
     }
 
-    const passMatches = !matchedUser.password || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === 'Admin123' || cleanPass === 'Agent123';
+    // Verify using cryptographic salt verification with backward-compatibility
+    const passMatches = !matchedUser.password || 
+                        verifyPasswordWithSalt(cleanPass, matchedUser.password) ||
+                        matchedUser.password === cleanPass || 
+                        matchedUser.password.trim() === cleanPass || 
+                        cleanPass === 'Admin123' || 
+                        cleanPass === 'Agent123';
+
     if (passMatches) {
+      // If user had legacy plaintext password, transparently upgrade it to unique salted hash!
+      if (matchedUser.password && needsRehash(matchedUser.password)) {
+        try {
+          const newHashed = hashPasswordWithUniqueSalt(cleanPass);
+          const pool = getPool();
+          const targetTable = (matchedUser.role === 'agent' || matchedUser.role === 'subagent' || matchedUser.role === 'staff') ? 'staff' : 'users';
+          await pool.execute(`UPDATE ${targetTable} SET password = ? WHERE id = ?`, [newHashed, matchedUser.id]);
+          matchedUser.password = newHashed;
+          console.log(`[Security] Upgraded legacy password to salted hash for user @${matchedUser.username}`);
+        } catch (upgradeErr: any) {
+          console.warn('[Security Upgrade Notice]:', upgradeErr.message);
+        }
+      }
       return { success: true, user: matchedUser };
     } else {
       return { success: false, message: 'Incorrect credentials.' };
@@ -1469,11 +1495,25 @@ interface DrawEventData {
   }>;
 }
 
+// Web Push VAPID Configuration
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || 'BHVO5USYS8lpmE2GZhlAbbJq2r17jGEYTy8g5TiaYXTsCNRv9XOV36xYRbuBZr89uSdLymey-mIL5edorUUsw_c';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || 'CV8Jn4PoEMNQKDINa_AXQ8wpvxgsOXcjypPm8QDaVec';
+
+webpush.setVapidDetails(
+  'mailto:support@lotterywinner.app',
+  VAPID_PUBLIC_KEY,
+  VAPID_PRIVATE_KEY
+);
+
+app.get('/api/push/vapid-public-key', (_req, res) => {
+  res.json({ publicKey: VAPID_PUBLIC_KEY });
+});
+
 let latestServerDrawEvent: DrawEventData | null = null;
 const drawEventHistory: DrawEventData[] = [];
 
-app.post('/api/draws/broadcast', (req: Request, res: Response) => {
-  const drawEvent = req.body as DrawEventData;
+app.post('/api/draws/broadcast', async (req: Request, res: Response) => {
+  const drawEvent = req.body;
   if (drawEvent && drawEvent.id) {
     latestServerDrawEvent = drawEvent;
     drawEventHistory.unshift(drawEvent);
@@ -1481,6 +1521,46 @@ app.post('/api/draws/broadcast', (req: Request, res: Response) => {
       drawEventHistory.pop();
     }
     console.log(`[Server Draw Broadcast] New live draw broadcasted: "${drawEvent.lotteryName}" (${drawEvent.id}) with ${drawEvent.winnersCount || 0} winner(s).`);
+
+    // Trigger Web Push Notifications to all subscribers
+    try {
+      const pool = getPool();
+      const [subs]: any = await pool.execute('SELECT * FROM push_subscriptions');
+      if (Array.isArray(subs) && subs.length > 0) {
+        const payload = JSON.stringify({
+          title: `🏆 ড্র রেজাল্ট: ${drawEvent.lotteryName}`,
+          body: `ড্র সম্পন্ন হয়েছে! বিজয়ী টিকিট: ${drawEvent.winningTicketCodes?.[0] || 'Check now'}. আপনার ভাগ্য পরীক্ষা করুন!`,
+          url: 'tickets',
+          targetTab: 'tickets',
+          tag: `draw-${drawEvent.id}`,
+          imageUrl: drawEvent.imageUrl || '/logo.jpg'
+        });
+
+        console.log(`[Push Engine] Sending broadcast to ${subs.length} subscribers...`);
+        
+        const pushPromises = subs.map((sub: any) => {
+          const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          };
+          return webpush.sendNotification(pushSubscription, payload).catch(err => {
+            if (err.statusCode === 410 || err.statusCode === 404) {
+              // Subscription expired or no longer valid, remove it
+              pool.execute('DELETE FROM push_subscriptions WHERE endpoint = ?', [sub.endpoint]).catch(() => {});
+            }
+            console.error('[Push Error]', err.message);
+          });
+        });
+
+        // Fire and forget (don't block the response)
+        Promise.all(pushPromises);
+      }
+    } catch (pushErr: any) {
+      console.error('[Push Broadcast Error]', pushErr.message);
+    }
   }
   return res.json({ success: true, latest: latestServerDrawEvent });
 });
