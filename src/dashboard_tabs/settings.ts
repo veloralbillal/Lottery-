@@ -7,6 +7,7 @@
 
 import { DeviceFingerprint } from "../js/deviceFingerprint.js";
 import { TOTP } from "../js/totp.js";
+import { hashPasswordWithUniqueSalt, verifyPasswordWithSalt } from "../js/passwordSecurity.js";
 
 export class SettingsTab {
 
@@ -58,18 +59,23 @@ export class SettingsTab {
         if (user.twoFactorEnabled) {
           if (activeBanner) activeBanner.classList.remove("hidden");
           if (disableBtn) disableBtn.classList.remove("hidden");
-          if (verifyBtn) verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Re-verify 2FA Code`;
+          if (verifyBtn) verifyBtn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 mr-1 inline"></i> Re-verify 2FA Code`;
         } else {
           if (activeBanner) activeBanner.classList.add("hidden");
           if (disableBtn) disableBtn.classList.add("hidden");
-          if (verifyBtn) verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Verify & Activate 2FA`;
+          if (verifyBtn) verifyBtn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4 mr-1 inline"></i> Verify & Activate 2FA`;
         }
 
         const codeInput = document.getElementById("settings-2fa-code");
         if (codeInput) codeInput.value = "";
 
         const modal = document.getElementById("settings-2fa-modal");
-        if (modal) modal.classList.remove("hidden");
+        if (modal) {
+          modal.classList.remove("hidden");
+          if (appInstance && typeof appInstance.refreshIcons === "function") {
+            appInstance.refreshIcons();
+          }
+        }
         return;
       }
 
@@ -342,7 +348,7 @@ export class SettingsTab {
             appInstance.showToast("Please enter current password to update password!", "error");
             return;
           }
-          if (appInstance.currentUser.password && oldPass !== appInstance.currentUser.password) {
+          if (appInstance.currentUser.password && !verifyPasswordWithSalt(oldPass, appInstance.currentUser.password) && oldPass !== appInstance.currentUser.password) {
             appInstance.showToast("Current password is incorrect!", "error");
             return;
           }
@@ -355,7 +361,12 @@ export class SettingsTab {
             return;
           }
 
-          appInstance.currentUser.password = newPass;
+          const hashedNewPass = hashPasswordWithUniqueSalt(newPass);
+          appInstance.currentUser.password = hashedNewPass;
+          const userInDb = appInstance.db?.users?.find((u: any) => u.id === appInstance.currentUser.id || u.username === appInstance.currentUser.username);
+          if (userInDb) {
+            userInDb.password = hashedNewPass;
+          }
           updatedAny = true;
 
           const oldEl = document.getElementById("settings-old-pass");

@@ -22,6 +22,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
     <!-- Master Tailwind CSS v4 Production & Theme Stylesheet -->
+    <link rel="stylesheet" href="/src/tailwind-built.css" id="lw-main-css" />
 
     <style>
       body {
@@ -52,10 +53,35 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #334155;
       }
+      /* Subtle Fade-In Transition Effect for Blog Post Items */
+      @keyframes blogItemFadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .blog-fade-in {
+        animation: blogItemFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+        will-change: opacity, transform;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .blog-fade-in {
+          animation: none !important;
+          opacity: 1 !important;
+          transform: none !important;
+        }
+      }
     </style>
-    <script type="module" crossorigin src="./assets/blog-CxpFDRL5.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/tailwind-built-B6Vj1Iel.js">
-    <link rel="stylesheet" crossorigin href="./assets/tailwind-built-CoVX6Ubr.css">
+    <script type="module" crossorigin src="./assets/blog-BEKt4v0y.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-BCb6XRRm.js">
+    <link rel="modulepreload" crossorigin href="./assets/lucide-aRgWbLId.js">
+    <link rel="modulepreload" crossorigin href="./assets/share-2-DNadgRwn.js">
+    <link rel="modulepreload" crossorigin href="./assets/x-DAFRHQJ0.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-UIPrMni1.css">
   </head>
   <body class="bg-[#090c14] text-slate-100 min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
     <div id="blog-app-root" class="min-h-screen flex flex-col w-full"></div>

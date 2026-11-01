@@ -267,6 +267,9 @@ export class LazyTabManager {
         if (finalHTML && finalHTML.trim().length > 20) {
           el.innerHTML = finalHTML;
           this.loadedTabs.add(tabId);
+          if (typeof (window as any).refreshIcons === 'function') {
+            try { (window as any).refreshIcons(); } catch (e) {}
+          }
           return true;
         }
       } catch (err) {
@@ -280,6 +283,9 @@ export class LazyTabManager {
     if (cachedHTML && cachedHTML.trim().length > 30) {
       el.innerHTML = cachedHTML;
       this.loadedTabs.add(tabId);
+      if (typeof (window as any).refreshIcons === 'function') {
+        try { (window as any).refreshIcons(); } catch (e) {}
+      }
       return true;
     }
 

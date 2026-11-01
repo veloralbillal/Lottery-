@@ -11,6 +11,31 @@ export class NotificationEngine {
   static isInitialized = false;
   static appInstance = null;
   static simulatedTimer = null;
+  static vapidPublicKey = null;
+
+  static async fetchVapidPublicKey() {
+    if (this.vapidPublicKey) return this.vapidPublicKey;
+    try {
+      const res = await fetch('/api/push/vapid-public-key');
+      const data = await res.json();
+      this.vapidPublicKey = data.publicKey;
+      return this.vapidPublicKey;
+    } catch (err) {
+      console.warn("Failed to fetch VAPID public key:", err);
+      return null;
+    }
+  }
+
+  static urlBase64ToUint8Array(base64String) {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
 
   static init(appInstance) {
     if (this.isInitialized) return;
@@ -276,10 +301,13 @@ export class NotificationEngine {
     });
 
     // Event listener for Accept
-    document.getElementById("push-prompt-accept").addEventListener("click", () => {
+    document.getElementById("push-prompt-accept").addEventListener("click", async () => {
       promptCard.classList.add("translate-y-12", "opacity-0");
       setTimeout(() => promptCard.remove(), 500);
-      this.requestNativePermission();
+      const granted = await this.requestNativePermission();
+      if (granted) {
+        await this.subscribeToPush();
+      }
     });
   }
 
@@ -314,6 +342,45 @@ export class NotificationEngine {
       this.showSimulatedBanner("Notifications Active ⚙️", "Using high-speed floating banner notifications.", "clover");
       return false;
     });
+  }
+
+  /**
+   * Subscribes the current device to real Web Push notifications
+   */
+  static async subscribeToPush() {
+    if (!("serviceWorker" in navigator)) return;
+
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      const publicKey = await this.fetchVapidPublicKey();
+      if (!publicKey) return;
+
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: this.urlBase64ToUint8Array(publicKey)
+      });
+
+      console.log("Push Subscription successful:", subscription);
+
+      // Send to server
+      const userId = this.appInstance?.currentUser?.id || localStorage.getItem('lw_user_id') || 'guest';
+      const subJSON = subscription.toJSON();
+
+      await fetch('/api/push/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: userId,
+          endpoint: subJSON.endpoint,
+          keys: subJSON.keys,
+          device_info: navigator.userAgent
+        })
+      });
+
+      console.log("Push subscription registered with server.");
+    } catch (err) {
+      console.warn("Push subscription failed:", err);
+    }
   }
 
   /**

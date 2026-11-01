@@ -255,18 +255,18 @@ export const TrendingGamesModule = {
       if (cell.clicked) {
         if (cell.isMine) {
           cellClass = "aspect-square rounded-2xl bg-rose-950/60 border border-rose-600/60 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/10";
-          content = `<i class="fa-solid fa-bomb text-lg animate-bounce"></i>`;
+          content = `<i data-lucide="bomb" class="text-lg animate-bounce"></i>`;
         } else {
           cellClass = "aspect-square rounded-2xl bg-emerald-950/50 border border-emerald-600/50 flex items-center justify-center text-emerald-400 shadow-lg shadow-emerald-500/10";
-          content = `<i class="fa-solid fa-gem text-lg"></i>`;
+          content = `<i data-lucide="gem" class="text-lg"></i>`;
         }
       } else if (revealAll) {
         if (cell.isMine) {
           cellClass = "aspect-square rounded-2xl bg-slate-900/60 border border-rose-900/30 flex items-center justify-center text-rose-500/60";
-          content = `<i class="fa-solid fa-bomb text-sm"></i>`;
+          content = `<i data-lucide="bomb" class="text-sm"></i>`;
         } else {
           cellClass = "aspect-square rounded-2xl bg-slate-900/60 border border-slate-850 flex items-center justify-center text-emerald-500/60";
-          content = `<i class="fa-solid fa-gem text-sm"></i>`;
+          content = `<i data-lucide="gem" class="text-sm"></i>`;
         }
       }
 

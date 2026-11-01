@@ -233,7 +233,7 @@ export class HomeTab {
 
                     <div class="pt-2 border-t border-slate-950 flex justify-between items-center">
                       <button class="syn-copy-btn text-[10px] text-slate-400 hover:text-white flex items-center gap-1 bg-slate-950 px-2.5 py-1.5 rounded-lg border border-slate-800 transition" data-code="${s.code}">
-                        <i class="fa-regular fa-copy"></i> Copy Code
+                        <i data-lucide="clipboard" class="w-3 h-3"></i> Copy Code
                       </button>
                       ${isMember ? `
                         <span class="text-[10px] text-emerald-400 font-bold bg-emerald-950/40 px-3 py-1.5 rounded-xl border border-emerald-800/40">
@@ -399,7 +399,7 @@ export class HomeTab {
         listEl.innerHTML = `
           <div class="bg-slate-900/50 border border-slate-800/80 p-12 rounded-3xl text-center space-y-4">
             <div class="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 mx-auto mb-2">
-              <i class="fa-solid fa-ban text-lg"></i>
+              <i data-lucide="ban" class="w-5 h-5"></i>
             </div>
             <h4 class="text-sm font-bold text-white">Quick Draw Game Disabled</h4>
             <p class="text-xs text-slate-500 font-sans">This game mode is currently undergoing scheduled maintenance by the Admin.</p>
@@ -456,7 +456,7 @@ export class HomeTab {
             <!-- 3D Studio Live Trigger Bar (Full Screen) -->
             <div class="flex items-center justify-center gap-2 max-w-xs mx-auto my-3">
               <button id="quick-draw-3d-preview-btn" class="w-full bg-slate-900/90 hover:bg-amber-500/20 border border-slate-800 hover:border-amber-500/40 text-amber-300 text-xs font-mono font-bold py-2.5 px-4 rounded-2xl transition cursor-pointer flex items-center justify-center gap-2 shadow-lg active:scale-95">
-                <i class="fa-solid fa-cube text-amber-400 text-sm"></i>
+                <i data-lucide="box" class="w-4 h-4 text-amber-400"></i>
                 <span id="quick-draw-3d-btn-text">⚡ ফুলস্ক্রিন ৩ডি লাইভ ড্র দেখুন</span>
               </button>
             </div>
@@ -499,7 +499,7 @@ export class HomeTab {
           <!-- Live Feed of Past Completed Draw Winners -->
           <div class="space-y-3">
             <h3 class="text-xs font-mono font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-              <i class="fa-solid fa-trophy text-amber-400"></i> লটারি ড্র ফলাফল ফিড (Draw Results Feed)
+              <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i> লটারি ড্র ফলাফল ফিড (Draw Results Feed)
             </h3>
             <div class="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-xl">
               <div class="divide-y divide-slate-800/60">
@@ -527,7 +527,7 @@ export class HomeTab {
                     <div class="flex justify-between items-center p-3.5 hover:bg-slate-950/30 transition text-xs">
                       <div class="flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                          <i class="fa-solid fa-ticket text-xs"></i>
+                          <i data-lucide="ticket" class="w-4 h-4 text-amber-400"></i>
                         </div>
                         <div>
                           <strong class="text-white block text-xs">${l.name.split('(')[0]}</strong>
@@ -779,7 +779,7 @@ export class HomeTab {
               <span class="lotto-card-countdown text-[9.5px] text-amber-400 font-mono font-bold block mt-0.5" data-drawtime="${lot.drawTime}">⏱ গণন হচ্ছে...</span>
             </div>
             <div class="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-300 text-xs shrink-0">
-              <i class="fa-regular fa-clock"></i>
+              <i data-lucide="clock" class="w-4 h-4 text-cyan-300"></i>
             </div>
           </div>
         </div>
@@ -795,7 +795,7 @@ export class HomeTab {
         <div class="space-y-1.5">
           <div class="flex justify-between text-[10px] font-mono">
             <span class="text-slate-400 flex items-center gap-1">
-              <i class="fa-solid fa-ticket-simple text-amber-400"></i> টিকেট বিক্রয় সম্পন্ন
+              <i data-lucide="ticket" class="w-3.5 h-3.5 text-amber-400"></i> টিকেট বিক্রয় সম্পন্ন
             </span>
             <span class="text-amber-300 font-black">${progress}% (${lot.soldTickets}/${lot.totalTickets} টিকেট)</span>
           </div>
@@ -812,10 +812,10 @@ export class HomeTab {
           </div>
           <div class="flex items-center gap-2">
             <button class="three-fullscreen-btn bg-slate-900/80 hover:bg-amber-500/20 border border-slate-800 hover:border-amber-500/40 text-amber-300 px-3 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs font-mono font-bold transition cursor-pointer active:scale-95" data-lotto-name="${lot.name}" title="ফুলস্ক্রিন ৩ডি লাইভ ড্র">
-              <i class="fa-solid fa-cube text-xs"></i> <span>৩ডি ড্র</span>
+              <i data-lucide="box" class="w-3.5 h-3.5 text-amber-300"></i> <span>৩ডি ড্র</span>
             </button>
             <button class="buy-pool-btn lottery-ticket-btn px-4 py-2.5 rounded-2xl flex items-center gap-1.5 text-xs uppercase tracking-wide cursor-pointer active:scale-95" data-id="${lot.id}">
-              <i class="fa-solid fa-ticket"></i>
+              <i data-lucide="ticket" class="w-3.5 h-3.5"></i>
               <span>টিকেট কিনুন (৳${lot.entryFee})</span>
             </button>
           </div>
@@ -923,5 +923,9 @@ export class HomeTab {
 
     // Render Home Pools Tab extensions
     HomeExtensions.render(appInstance);
+
+    if (appInstance && typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
+    }
   }
 }

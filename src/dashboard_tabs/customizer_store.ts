@@ -327,7 +327,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "PLAYER",
     colorClass: "bg-slate-800 text-slate-300 border-slate-700",
-    icon: "fa-user",
+    icon: "user",
     description: "Standard verified player title badge"
   },
   {
@@ -338,7 +338,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "👑 SUPREME MONARCH",
     colorClass: "bg-gradient-to-r from-amber-500 to-yellow-600 text-slate-950 font-black border-amber-300 shadow-md shadow-amber-500/20",
-    icon: "fa-crown",
+    icon: "crown",
     description: "Royal sovereign title with golden crown illumination"
   },
   {
@@ -349,7 +349,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "⚡ CYBER LORD",
     colorClass: "bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-black border-cyan-300 shadow-md shadow-cyan-500/20",
-    icon: "fa-bolt",
+    icon: "zap",
     description: "High-tech electric blue title with neon spark"
   },
   {
@@ -360,7 +360,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "💎 DIAMOND VIP",
     colorClass: "bg-gradient-to-r from-sky-400 to-indigo-500 text-white font-black border-sky-300 shadow-md shadow-sky-500/20",
-    icon: "fa-gem",
+    icon: "gem",
     description: "Exclusive crystalline diamond rank identifier"
   },
   {
@@ -371,7 +371,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "🐉 DRAGON SLAYER",
     colorClass: "bg-gradient-to-r from-rose-600 to-red-700 text-white font-black border-rose-400 shadow-md shadow-rose-600/20",
-    icon: "fa-dragon",
+    icon: "award",
     description: "Fiery red slayer badge for legendary players"
   },
   {
@@ -382,7 +382,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "🌌 COSMIC LEGEND",
     colorClass: "bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-black border-purple-300 shadow-md shadow-purple-500/20",
-    icon: "fa-star",
+    icon: "star",
     description: "Galaxy purple stellar title badge"
   },
   {
@@ -393,7 +393,7 @@ export const CUSTOM_BADGES = [
     category: "badge",
     badgeLabel: "🎰 JACKPOT MASTER",
     colorClass: "bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black border-emerald-300 shadow-md shadow-emerald-500/20",
-    icon: "fa-coins",
+    icon: "coins",
     description: "High-roller jackpot conqueror title badge"
   }
 ];
@@ -633,11 +633,11 @@ export class CustomizerStore {
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-slate-900/90 border border-slate-800 p-4 rounded-3xl shadow-xl backdrop-blur-md gap-3">
           <div class="flex items-center gap-3">
             <button type="button" id="customizer-back-btn" class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 hover:border-amber-500/80 hover:bg-slate-900 flex items-center justify-center text-slate-300 hover:text-amber-400 transition cursor-pointer shadow-inner">
-              <i class="fa-solid fa-arrow-left text-sm"></i>
+              <i data-lucide="arrow-left" class="text-sm"></i>
             </button>
             <div>
               <h2 class="text-sm font-black text-white flex items-center gap-2 font-display uppercase tracking-wider">
-                <i class="fa-solid fa-gem text-amber-400 animate-pulse"></i> VIP Decor & Profile Customizer
+                <i data-lucide="gem" class="text-amber-400 animate-pulse"></i> VIP Decor & Profile Customizer
               </h2>
               <p class="text-[10px] text-slate-400 font-mono">Avatar frames, card banners, aura glows & VIP titles</p>
             </div>
@@ -659,7 +659,7 @@ export class CustomizerStore {
           <div class="flex flex-col sm:flex-row justify-between items-center border-b border-slate-800/80 pb-3 gap-2">
             <div class="text-center sm:text-left">
               <span class="text-[9px] font-mono font-bold uppercase tracking-widest text-amber-400 flex items-center justify-center sm:justify-start gap-1">
-                <i class="fa-solid fa-wand-magic-sparkles animate-pulse"></i> Live Interactive Decor Preview
+                <i data-lucide="wand-2" class="animate-pulse"></i> Live Interactive Decor Preview
               </span>
               <h3 class="text-xs font-black text-white uppercase tracking-wider font-display">Test Your Setup Across App Views</h3>
             </div>
@@ -667,13 +667,13 @@ export class CustomizerStore {
             <!-- Mode Switcher Pills -->
             <div class="flex items-center bg-slate-950 p-1 rounded-2xl border border-slate-850 gap-1 font-mono text-[9px]">
               <button type="button" class="customizer-mode-btn px-2.5 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1 ${this.previewMode === "card" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"}" data-mode="card">
-                <i class="fa-solid fa-id-card"></i> Card
+                <i data-lucide="credit-card" ></i> Card
               </button>
               <button type="button" class="customizer-mode-btn px-2.5 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1 ${this.previewMode === "chat" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"}" data-mode="chat">
-                <i class="fa-solid fa-comment-dots"></i> Chat
+                <i data-lucide="message-square" ></i> Chat
               </button>
               <button type="button" class="customizer-mode-btn px-2.5 py-1 rounded-xl font-bold transition cursor-pointer flex items-center gap-1 ${this.previewMode === "leaderboard" ? "bg-amber-500 text-slate-950" : "text-slate-400 hover:text-white"}" data-mode="leaderboard">
-                <i class="fa-solid fa-trophy"></i> Rank
+                <i data-lucide="trophy" ></i> Rank
               </button>
             </div>
           </div>
@@ -687,20 +687,20 @@ export class CustomizerStore {
           <div class="flex flex-wrap items-center justify-between gap-2 border-t border-slate-800/80 pt-3">
             <div class="flex items-center gap-2 font-mono text-[9px]">
               <button type="button" id="customizer-add-photo-btn" class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1">
-                <i class="fa-solid fa-link text-xs"></i> Change Avatar URL
+                <i data-lucide="link" class="text-xs"></i> Change Avatar URL
               </button>
               <label class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-amber-400 font-bold px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1">
-                <i class="fa-solid fa-cloud-arrow-up text-xs"></i> Upload Local
+                <i data-lucide="upload" class="text-xs"></i> Upload Local
                 <input type="file" id="customizer-tab-upload-input" accept="image/*" class="hidden" />
               </label>
             </div>
 
             <div class="flex items-center gap-2">
               <button type="button" id="customizer-btn-reset-preview" class="bg-slate-950 hover:bg-slate-850 border border-slate-800 text-slate-400 hover:text-white font-mono text-[9px] font-bold px-3 py-1.5 rounded-xl transition cursor-pointer">
-                <i class="fa-solid fa-rotate-left"></i> Reset
+                <i data-lucide="refresh-ccw" ></i> Reset
               </button>
               <button type="button" id="customizer-btn-apply-all" class="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-mono text-[10px] font-black px-4 py-1.5 rounded-xl transition cursor-pointer shadow-lg shadow-amber-500/20 flex items-center gap-1.5">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Apply All Previewed Decor
+                <i data-lucide="wand-2" ></i> Apply All Previewed Decor
               </button>
             </div>
           </div>
@@ -713,23 +713,23 @@ export class CustomizerStore {
             <!-- Segment Category Tabs -->
             <div class="flex items-center gap-1.5 overflow-x-auto w-full md:w-auto scrollbar-none pb-1 md:pb-0">
               <button type="button" class="customizer-tab-btn px-3 py-2 rounded-2xl text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" data-tab="frame">
-                <i class="fa-solid fa-crown text-amber-400"></i> Avatar Frames
+                <i data-lucide="crown" class="text-amber-400"></i> Avatar Frames
               </button>
               <button type="button" class="customizer-tab-btn px-3 py-2 rounded-2xl text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" data-tab="banner">
-                <i class="fa-solid fa-image text-cyan-400"></i> Banners
+                <i data-lucide="image" class="text-cyan-400"></i> Banners
               </button>
               <button type="button" class="customizer-tab-btn px-3 py-2 rounded-2xl text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" data-tab="animation">
-                <i class="fa-solid fa-bolt text-rose-400"></i> Glow Auras
+                <i data-lucide="zap" class="text-rose-400"></i> Glow Auras
               </button>
               <button type="button" class="customizer-tab-btn px-3 py-2 rounded-2xl text-[10px] font-mono font-bold uppercase transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap" data-tab="badge">
-                <i class="fa-solid fa-award text-purple-400"></i> VIP Badges
+                <i data-lucide="award" class="text-purple-400"></i> VIP Badges
               </button>
             </div>
 
             <!-- Search & Ownership Filter -->
             <div class="flex items-center gap-2 w-full md:w-auto">
               <div class="relative flex-1 md:w-48">
-                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-500 text-xs"></i>
+                <i data-lucide="search" class="absolute left-3 top-2.5 text-slate-500 text-xs"></i>
                 <input type="text" id="customizer-search-input" value="${this.searchQuery}" placeholder="Search decor..." class="w-full bg-slate-950 border border-slate-800 focus:border-amber-500 rounded-xl py-1.5 pl-8 pr-3 text-xs text-white outline-none font-mono" />
               </div>
 
@@ -819,7 +819,7 @@ export class CustomizerStore {
             <div class="relative w-20 h-20 bg-slate-950 border-2 border-slate-900 text-slate-400 rounded-full flex items-center justify-center text-3xl overflow-hidden shadow-inner font-sans z-0">
               ${user.photo 
                 ? `<img src="${user.photo}" class="w-full h-full object-cover rounded-full" alt="Avatar" referrerPolicy="no-referrer" />`
-                : `<i class="fa-solid fa-user-astronaut text-slate-500"></i>`}
+                : `<i data-lucide="user" class="text-slate-500"></i>`}
             </div>
           </div>
 
@@ -827,7 +827,7 @@ export class CustomizerStore {
           <div class="space-y-1 relative z-10">
             <h4 class="text-sm font-black text-white truncate flex items-center justify-center gap-1 font-display">
               @${user.username}
-              <i class="fa-solid fa-circle-check text-sky-400 text-xs"></i>
+              <i data-lucide="check-circle" class="text-sky-400 text-xs"></i>
             </h4>
 
             <div class="pt-0.5">
@@ -862,7 +862,7 @@ export class CustomizerStore {
               <div class="w-10 h-10 bg-slate-950 border border-slate-800 rounded-full flex items-center justify-center text-base overflow-hidden">
                 ${user.photo 
                   ? `<img src="${user.photo}" class="w-full h-full object-cover rounded-full" alt="Avatar" referrerPolicy="no-referrer" />`
-                  : `<i class="fa-solid fa-user-astronaut text-slate-500"></i>`}
+                  : `<i data-lucide="user" class="text-slate-500"></i>`}
               </div>
             </div>
 
@@ -906,14 +906,14 @@ export class CustomizerStore {
                 <div class="w-10 h-10 bg-slate-950 border border-slate-800 rounded-full flex items-center justify-center text-base overflow-hidden">
                   ${user.photo 
                     ? `<img src="${user.photo}" class="w-full h-full object-cover rounded-full" alt="Avatar" referrerPolicy="no-referrer" />`
-                    : `<i class="fa-solid fa-user-astronaut text-slate-500"></i>`}
+                    : `<i data-lucide="user" class="text-slate-500"></i>`}
                 </div>
               </div>
 
               <div class="min-w-0">
                 <h5 class="text-xs font-black text-white truncate flex items-center gap-1">
                   @${user.username}
-                  <i class="fa-solid fa-crown text-amber-400 text-[10px]"></i>
+                  <i data-lucide="crown" class="text-amber-400 text-[10px]"></i>
                 </h5>
                 <span class="text-[8px] font-mono text-slate-400 uppercase block truncate">
                   ${badgeData.badgeLabel}
@@ -966,7 +966,7 @@ export class CustomizerStore {
     if (itemsList.length === 0) {
       grid.innerHTML = `
         <div class="col-span-full py-8 text-center text-slate-500 font-mono text-xs space-y-1">
-          <i class="fa-solid fa-ghost text-2xl text-slate-700 block"></i>
+          <i data-lucide="ghost" class="text-2xl text-slate-700 block"></i>
           <span>No decor items matched your search query or filter.</span>
         </div>
       `;
@@ -993,9 +993,9 @@ export class CustomizerStore {
       if (item.rating > 0) {
         for (let i = 0; i < 3; i++) {
           if (i < item.rating) {
-            starHtml += `<i class="fa-solid fa-star text-amber-400 text-[8px]"></i>`;
+            starHtml += `<i data-lucide="star" class="text-amber-400 text-[8px]"></i>`;
           } else {
-            starHtml += `<i class="fa-regular fa-star text-slate-700 text-[8px]"></i>`;
+            starHtml += `<i data-lucide="star" class="text-slate-700 text-[8px]"></i>`;
           }
         }
       }
@@ -1012,7 +1012,7 @@ export class CustomizerStore {
       if (item.category === "frame") {
         thumbnailHtml = `
           <div class="relative w-12 h-12 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center overflow-hidden shrink-0">
-            <span class="text-slate-700 text-xs"><i class="fa-solid fa-user"></i></span>
+            <span class="text-slate-700 text-xs"><i data-lucide="user"></i></span>
             <div class="absolute inset-0 z-10 flex items-center justify-center scale-90 pointer-events-none">
               ${this.getFrameOverlayHTML(item.id)}
             </div>
@@ -1029,7 +1029,7 @@ export class CustomizerStore {
 
         thumbnailHtml = `
           <div class="w-12 h-12 rounded-xl ${bannerBgClass} border border-slate-800 shrink-0 relative overflow-hidden flex items-center justify-center">
-            <span class="text-white/30 text-xs"><i class="fa-solid fa-image"></i></span>
+            <span class="text-white/30 text-xs"><i data-lucide="image"></i></span>
           </div>
         `;
       } else if (item.category === "animation") {
@@ -1038,13 +1038,13 @@ export class CustomizerStore {
             <div class="absolute inset-0 flex items-center justify-center pointer-events-none scale-75 z-10">
               ${this.getAnimationOverlayHTML(item.id)}
             </div>
-            <span class="text-[10px] text-slate-400 z-0"><i class="fa-solid fa-cube text-cyan-400"></i></span>
+            <span class="text-[10px] text-slate-400 z-0"><i data-lucide="box" class="text-cyan-400"></i></span>
           </div>
         `;
       } else if (item.category === "badge") {
         thumbnailHtml = `
           <div class="w-12 h-12 rounded-xl bg-slate-950 border border-slate-800 shrink-0 flex items-center justify-center p-1 text-center">
-            <i class="fa-solid ${item.icon || 'fa-award'} text-amber-400 text-lg"></i>
+            <i data-lucide="${item.icon || 'award'}" class="text-amber-400 text-lg"></i>
           </div>
         `;
       }
@@ -1054,7 +1054,7 @@ export class CustomizerStore {
       if (isEquipped) {
         actionBtnHtml = `
           <span class="text-[8px] font-black uppercase text-emerald-400 bg-emerald-950 border border-emerald-900/60 px-2.5 py-1.5 rounded-xl flex items-center gap-1 shadow-sm font-mono">
-            <i class="fa-solid fa-circle-check"></i> Equipped
+            <i data-lucide="check-circle"></i> Equipped
           </span>
         `;
       } else {
@@ -1063,7 +1063,7 @@ export class CustomizerStore {
           : "bg-slate-900 text-slate-400 border border-slate-850 hover:bg-slate-850 hover:text-slate-200";
 
         const equipBtnText = isUnlocked ? "Equip" : `Buy ৳${item.price}`;
-        const equipIcon = isUnlocked ? "fa-circle-check" : "fa-lock";
+        const equipIcon = isUnlocked ? "check-circle" : "lock";
         const equipBtnClass = isUnlocked
           ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-950/20"
           : "bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-950/20";
@@ -1074,7 +1074,7 @@ export class CustomizerStore {
               ${isPreviewed ? "Previewing" : "Preview"}
             </button>
             <button type="button" class="customizer-equip-btn ${equipBtnClass} font-black font-mono text-[8px] uppercase px-3 py-1.5 rounded-xl transition cursor-pointer flex items-center gap-1 shrink-0" data-item-id="${item.id}" data-category="${item.category}" data-price="${item.price}">
-              <i class="fa-solid ${equipIcon} text-[9px]"></i> ${equipBtnText}
+              <i data-lucide="${equipIcon}" class="text-[9px]"></i> ${equipBtnText}
             </button>
           </div>
         `;
@@ -1282,15 +1282,15 @@ export class CustomizerStore {
         <div class="absolute -inset-2 rounded-full border border-amber-400/30 animate-pulse pointer-events-none"></div>
         
         <div class="absolute top-[-15px] left-1/2 -translate-x-1/2 z-20 animate-bounce pointer-events-none flex flex-col items-center" style="animation-duration: 2.2s;">
-          <i class="fa-solid fa-crown text-amber-300 text-sm drop-shadow-[0_0_10px_rgba(245,158,11,1)]"></i>
+          <i data-lucide="crown" class="text-amber-300 text-sm drop-shadow-[0_0_10px_rgba(245,158,11,1)]"></i>
         </div>
 
         <div class="absolute left-[-16px] top-[calc(50%-10px)] z-20 pointer-events-none animate-flap-wings origin-right">
-          <i class="fa-solid fa-feather text-amber-300 text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform -rotate-[25deg]"></i>
+          <i data-lucide="feather" class="text-amber-300 text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform -rotate-[25deg]"></i>
         </div>
 
         <div class="absolute right-[-16px] top-[calc(50%-10px)] z-20 pointer-events-none animate-flap-wings origin-left" style="animation-delay: 0.3s;">
-          <i class="fa-solid fa-feather text-amber-300 text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform rotate-[25deg] scale-x-[-1]"></i>
+          <i data-lucide="feather" class="text-amber-300 text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.9)] transform rotate-[25deg] scale-x-[-1]"></i>
         </div>
       `;
     } else if (frame === "neon") {
@@ -1298,8 +1298,8 @@ export class CustomizerStore {
         <div class="absolute -inset-1 rounded-full border-2 border-cyan-400 animate-pulse-glow drop-shadow-[0_0_10px_rgba(34,211,238,0.9)] pointer-events-none"></div>
         <div class="absolute -inset-2 rounded-full border border-dashed border-pink-500 animate-spin-slow opacity-90 pointer-events-none" style="animation-duration: 25s;"></div>
         
-        <div class="absolute top-[-12px] left-[8px] text-cyan-400 text-[9px] animate-pulse pointer-events-none"><i class="fa-solid fa-circle-nodes drop-shadow-[0_0_4px_rgba(34,211,238,0.8)]"></i></div>
-        <div class="absolute top-[-12px] right-[8px] text-pink-400 text-[9px] animate-pulse pointer-events-none" style="animation-delay: 0.4s;"><i class="fa-solid fa-circle-nodes drop-shadow-[0_0_4px_rgba(236,72,153,0.8)]"></i></div>
+        <div class="absolute top-[-12px] left-[8px] text-cyan-400 text-[9px] animate-pulse pointer-events-none"><i data-lucide="network" class="drop-shadow-[0_0_4px_rgba(34,211,238,0.8)]"></i></div>
+        <div class="absolute top-[-12px] right-[8px] text-pink-400 text-[9px] animate-pulse pointer-events-none" style="animation-delay: 0.4s;"><i data-lucide="network" class="drop-shadow-[0_0_4px_rgba(236,72,153,0.8)]"></i></div>
       `;
     } else if (frame === "ruby") {
       return `
@@ -1307,8 +1307,8 @@ export class CustomizerStore {
         <div class="absolute -inset-2 rounded-full border-2 border-rose-600 animate-fire-burn pointer-events-none drop-shadow-[0_0_10px_rgba(225,29,72,0.95)]"></div>
         
         <div class="absolute top-[-14px] left-1/2 -translate-x-1/2 flex gap-1.5 text-rose-500 text-xs animate-bounce pointer-events-none" style="animation-duration: 1.8s;">
-          <i class="fa-solid fa-fire drop-shadow-[0_0_6px_rgba(225,29,72,1)]"></i>
-          <i class="fa-solid fa-fire drop-shadow-[0_0_6px_rgba(225,29,72,1)]"></i>
+          <i data-lucide="flame" class="drop-shadow-[0_0_6px_rgba(225,29,72,1)]"></i>
+          <i data-lucide="flame" class="drop-shadow-[0_0_6px_rgba(225,29,72,1)]"></i>
         </div>
       `;
     } else if (frame === "cosmic") {
@@ -1316,15 +1316,15 @@ export class CustomizerStore {
         <div class="absolute -inset-1 rounded-full border-2 border-purple-500 animate-pulse-glow drop-shadow-[0_0_10px_rgba(168,85,247,0.9)] pointer-events-none"></div>
         <div class="absolute -inset-2.5 rounded-full border border-dotted border-fuchsia-450 animate-spin-slow opacity-80 pointer-events-none" style="animation-duration: 8s;"></div>
         
-        <div class="absolute top-[-6px] left-[-6px] text-fuchsia-400 text-[9px] animate-drift-sparkle pointer-events-none"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
-        <div class="absolute top-[-6px] right-[-6px] text-purple-400 text-[9px] animate-drift-sparkle pointer-events-none" style="animation-delay: 0.4s;"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+        <div class="absolute top-[-6px] left-[-6px] text-fuchsia-400 text-[9px] animate-drift-sparkle pointer-events-none"><i data-lucide="wand-2"></i></div>
+        <div class="absolute top-[-6px] right-[-6px] text-purple-400 text-[9px] animate-drift-sparkle pointer-events-none" style="animation-delay: 0.4s;"><i data-lucide="wand-2"></i></div>
       `;
     } else if (frame === "phoenix") {
       return `
         <div class="absolute -inset-1.5 rounded-full border-2 border-amber-500 animate-pulse-glow drop-shadow-[0_0_10px_rgba(245,158,11,0.9)] pointer-events-none"></div>
         
         <div class="absolute top-[-16px] left-1/2 -translate-x-1/2 z-20 animate-bounce pointer-events-none flex flex-col items-center">
-          <i class="fa-solid fa-fire-flame-simple text-amber-450 text-sm drop-shadow-[0_0_8px_rgba(245,158,11,1)]"></i>
+          <i data-lucide="flame" class="text-amber-450 text-sm drop-shadow-[0_0_8px_rgba(245,158,11,1)]"></i>
         </div>
       `;
     } else if (frame === "dragon") {
@@ -1332,10 +1332,10 @@ export class CustomizerStore {
         <div class="absolute -inset-1 rounded-full border-2 border-emerald-400 animate-pulse-glow drop-shadow-[0_0_10px_rgba(16,185,129,0.9)] pointer-events-none"></div>
 
         <div class="absolute left-[-18px] top-[calc(50%-8px)] text-emerald-400 text-xs animate-bounce pointer-events-none">
-          <i class="fa-solid fa-dragon drop-shadow-[0_0_8px_rgba(16,185,129,1)]"></i>
+          <i data-lucide="award" class="drop-shadow-[0_0_8px_rgba(16,185,129,1)]"></i>
         </div>
         <div class="absolute right-[-18px] top-[calc(50%-8px)] text-emerald-400 text-xs animate-bounce pointer-events-none" style="animation-delay: 0.4s;">
-          <i class="fa-solid fa-dragon drop-shadow-[0_0_8px_rgba(16,185,129,1)] scale-x-[-1]"></i>
+          <i data-lucide="award" class="drop-shadow-[0_0_8px_rgba(16,185,129,1)] scale-x-[-1]"></i>
         </div>
       `;
     } else if (frame === "love") {
@@ -1343,22 +1343,22 @@ export class CustomizerStore {
         <div class="absolute -inset-1 rounded-full border border-pink-400 animate-pulse-glow drop-shadow-[0_0_8px_rgba(244,63,94,0.9)] pointer-events-none"></div>
         
         <div class="absolute top-[-14px] left-1/2 -translate-x-1/2 z-20 animate-bounce pointer-events-none flex gap-0.5 items-end">
-          <i class="fa-solid fa-heart text-rose-500 text-xs drop-shadow-[0_0_6px_rgba(244,63,94,1)] animate-heart-beat"></i>
-          <i class="fa-solid fa-heart text-pink-400 text-[8px] drop-shadow-[0_0_4px_rgba(244,63,94,0.8)]"></i>
+          <i data-lucide="heart" class="text-rose-500 text-xs drop-shadow-[0_0_6px_rgba(244,63,94,1)] animate-heart-beat"></i>
+          <i data-lucide="heart" class="text-pink-400 text-[8px] drop-shadow-[0_0_4px_rgba(244,63,94,0.8)]"></i>
         </div>
       `;
     } else if (frame === "cool") {
       return `
         <div class="absolute -inset-1.5 rounded-full border-2 border-amber-300 drop-shadow-[0_0_8px_rgba(245,158,11,0.9)] pointer-events-none animate-pulse-glow"></div>
         <div class="absolute top-[-18px] left-1/2 -translate-x-1/2 z-20 animate-bounce pointer-events-none flex flex-col items-center" style="animation-duration: 2.4s;">
-          <i class="fa-solid fa-crown text-amber-300 text-sm drop-shadow-[0_0_10px_rgba(245,158,11,1)]"></i>
+          <i data-lucide="crown" class="text-amber-300 text-sm drop-shadow-[0_0_10px_rgba(245,158,11,1)]"></i>
           <span class="text-[6px] text-amber-300 font-black -mt-1 font-sans animate-pulse">😎</span>
         </div>
         <div class="absolute left-[-16px] top-[calc(50%-10px)] z-20 pointer-events-none animate-flap-wings origin-right text-yellow-400">
-          <i class="fa-solid fa-feather text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.8)] transform -rotate-12"></i>
+          <i data-lucide="feather" class="text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.8)] transform -rotate-12"></i>
         </div>
         <div class="absolute right-[-16px] top-[calc(50%-10px)] z-20 pointer-events-none animate-flap-wings origin-left text-yellow-400" style="animation-delay: 0.3s;">
-          <i class="fa-solid fa-feather text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.8)] transform rotate-12 scale-x-[-1]"></i>
+          <i data-lucide="feather" class="text-sm drop-shadow-[0_0_6px_rgba(245,158,11,0.8)] transform rotate-12 scale-x-[-1]"></i>
         </div>
       `;
     } else if (frame === "funny") {
@@ -1431,7 +1431,7 @@ export class CustomizerStore {
         <div class="absolute -inset-3 rounded-full border-2 border-dashed border-cyan-400/90 animate-spin-slow pointer-events-none drop-shadow-[0_0_12px_rgba(34,211,238,0.9)]" style="animation-duration: 10s;"></div>
         <div class="absolute -inset-4 rounded-full border border-pink-500/70 animate-spin-slow pointer-events-none opacity-80" style="animation-duration: 18s; animation-direction: reverse;"></div>
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 text-[9px] text-cyan-300 font-mono font-bold animate-pulse pointer-events-none flex items-center gap-1 bg-slate-950/90 px-2 py-0.5 rounded-full border border-cyan-500/60 shadow-lg z-30">
-          <i class="fa-solid fa-atom text-cyan-400 animate-spin"></i> 3D HOLO
+          <i data-lucide="atom" class="text-cyan-400 animate-spin"></i> 3D HOLO
         </div>
         <div class="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 via-transparent to-fuchsia-500/20 rounded-full animate-pulse pointer-events-none"></div>
       `;
@@ -1442,16 +1442,16 @@ export class CustomizerStore {
           <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-cyan-400 shadow-[0_0_12px_#22d3ee] animate-ping"></div>
           <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-fuchsia-400 shadow-[0_0_10px_#e879f9]"></div>
         </div>
-        <div class="absolute -top-2 right-[-8px] text-xs text-amber-300 animate-bounce pointer-events-none"><i class="fa-solid fa-star text-[10px] drop-shadow-[0_0_6px_#f59e0b]"></i></div>
+        <div class="absolute -top-2 right-[-8px] text-xs text-amber-300 animate-bounce pointer-events-none"><i data-lucide="star" class="text-[10px] drop-shadow-[0_0_6px_#f59e0b]"></i></div>
       `;
     } else if (anim === "dragon_3d") {
       return `
         <div class="absolute -inset-2.5 rounded-full border-2 border-emerald-500/80 animate-pulse-glow pointer-events-none shadow-[0_0_20px_rgba(16,185,129,0.8)]"></div>
         <div class="absolute -left-6 top-1/2 -translate-y-1/2 text-emerald-400 text-sm animate-flap-wings origin-right pointer-events-none drop-shadow-[0_0_8px_#10b981]">
-          <i class="fa-solid fa-dragon"></i>
+          <i data-lucide="award"></i>
         </div>
         <div class="absolute -right-6 top-1/2 -translate-y-1/2 text-emerald-400 text-sm animate-flap-wings origin-left pointer-events-none drop-shadow-[0_0_8px_#10b981] scale-x-[-1]">
-          <i class="fa-solid fa-dragon"></i>
+          <i data-lucide="award"></i>
         </div>
         <div class="absolute -top-3 left-1/2 -translate-x-1/2 text-xs text-emerald-300 animate-bounce pointer-events-none">🔥</div>
       `;
@@ -1459,7 +1459,7 @@ export class CustomizerStore {
       return `
         <div class="absolute -inset-2 rounded-full border-2 border-amber-400/90 animate-pulse pointer-events-none shadow-[0_0_20px_rgba(245,158,11,0.8)]"></div>
         <div class="absolute -top-5 left-1/2 -translate-x-1/2 z-30 animate-bounce pointer-events-none flex flex-col items-center">
-          <i class="fa-solid fa-crown text-amber-300 text-base drop-shadow-[0_0_12px_#f59e0b]"></i>
+          <i data-lucide="crown" class="text-amber-300 text-base drop-shadow-[0_0_12px_#f59e0b]"></i>
           <span class="text-[7px] text-amber-300 font-black font-mono tracking-widest bg-slate-950/90 px-1 rounded border border-amber-500/40 -mt-0.5">3D ROYAL</span>
         </div>
         <div class="absolute -bottom-2 left-[-6px] text-xs text-yellow-300 animate-pulse pointer-events-none">✨</div>

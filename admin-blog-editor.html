@@ -2,24 +2,133 @@
 <html lang="en">
   <head>
     <base href="/" id="app-base-href" />
+    <script>
+      (function() {
+        const l = window.location;
+        const isGitHub = l.hostname.includes('github.io');
+        const segments = l.pathname.split('/').filter(Boolean);
+        let base = '/';
+        if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html' && segments[0] !== 'admin-blog-editor.html') {
+          base = '/' + segments[0] + '/';
+          const baseTag = document.getElementById('app-base-href');
+          if (baseTag) baseTag.setAttribute('href', base);
+        }
+        window.APP_BASE = base;
+      }());
+    </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
-    <title>Article Editor Suite | LuckyBox Admin Portal</title>
-    <meta name="description" content="Dedicated standalone admin page for publishing and editing rich text blog articles with live SEO preview and cover image upload." />
+    <title>Article Editor & Public Blog Publisher | LuckyBox Admin Portal</title>
+    <meta name="description" content="Dedicated standalone admin page for publishing and editing rich text blog articles with dual Compose WYSIWYG & HTML code editors, live SEO preview, and real-time cloud synchronization." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="/src/tailwind-built.css" />
     <style>
       body { background-color: #090c14; color: #f1f5f9; font-family: 'Inter', sans-serif; min-height: 100vh; overflow-x: hidden; }
       .font-mono { font-family: 'JetBrains Mono', monospace; }
       ::-webkit-scrollbar { width: 6px; height: 6px; }
       ::-webkit-scrollbar-track { background: #0b0f19; }
       ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+
+      /* Visual Compose Area Content Styling */
+      .editor-compose-area {
+        min-height: 360px;
+        max-height: 720px;
+        overflow-y: auto;
+        outline: none;
+      }
+      .editor-compose-area:empty:before {
+        content: attr(data-placeholder);
+        color: #64748b;
+        pointer-events: none;
+        display: block;
+      }
+      .editor-compose-area h1 { font-size: 1.75rem; font-weight: 800; margin: 1rem 0 0.5rem; color: #ffffff; }
+      .editor-compose-area h2 { font-size: 1.35rem; font-weight: 700; margin: 0.85rem 0 0.4rem; color: #f8fafc; }
+      .editor-compose-area h3 { font-size: 1.15rem; font-weight: 600; margin: 0.75rem 0 0.35rem; color: #fde68a; }
+      .editor-compose-area h4 { font-size: 1.05rem; font-weight: 600; margin: 0.65rem 0 0.3rem; color: #cbd5e1; }
+      .editor-compose-area p { margin-bottom: 0.75rem; line-height: 1.65; }
+      .editor-compose-area ul { list-style-type: disc; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+      .editor-compose-area ol { list-style-type: decimal; margin-left: 1.5rem; margin-bottom: 0.75rem; }
+      .editor-compose-area li { margin-bottom: 0.25rem; }
+      .editor-compose-area blockquote {
+        border-left: 4px solid #f59e0b;
+        padding: 0.65rem 1rem;
+        margin: 0.75rem 0;
+        color: #e2e8f0;
+        background: rgba(245, 158, 11, 0.08);
+        border-radius: 0 0.5rem 0.5rem 0;
+        font-style: italic;
+      }
+      .editor-compose-area pre {
+        background: #020617;
+        border: 1px solid #1e293b;
+        padding: 0.85rem;
+        border-radius: 0.5rem;
+        font-family: 'JetBrains Mono', monospace;
+        overflow-x: auto;
+        color: #38bdf8;
+        font-size: 0.8rem;
+        margin: 0.75rem 0;
+      }
+      .editor-compose-area code {
+        background: #0f172a;
+        padding: 0.15rem 0.35rem;
+        border-radius: 0.25rem;
+        font-family: 'JetBrains Mono', monospace;
+        color: #f43f5e;
+        font-size: 0.85em;
+      }
+      .editor-compose-area hr {
+        border: 0;
+        height: 1px;
+        background: #334155;
+        margin: 1.25rem 0;
+      }
+      .editor-compose-area table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.85rem;
+      }
+      .editor-compose-area table th, .editor-compose-area table td {
+        border: 1px solid #334155;
+        padding: 0.5rem 0.75rem;
+        text-align: left;
+      }
+      .editor-compose-area table th {
+        background: #1e293b;
+        color: #f8fafc;
+        font-weight: 700;
+      }
+      .editor-compose-area table tr:nth-child(even) td {
+        background: rgba(15, 23, 42, 0.5);
+      }
+      .editor-compose-area img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.75rem;
+        margin: 0.75rem auto;
+        display: block;
+        border: 1px solid #334155;
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+      }
+      .editor-compose-area a {
+        color: #38bdf8;
+        text-decoration: underline;
+      }
+      .editor-compose-area a:hover {
+        color: #7dd3fc;
+      }
     </style>
-    <script type="module" crossorigin src="./assets/adminBlogEditor-21J8ScO9.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/tailwind-built-B6Vj1Iel.js">
-    <link rel="stylesheet" crossorigin href="./assets/tailwind-built-CoVX6Ubr.css">
+    <script type="module" crossorigin src="./assets/adminBlogEditor-C0Y5g1Px.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-BCb6XRRm.js">
+    <link rel="modulepreload" crossorigin href="./assets/lucide-aRgWbLId.js">
+    <link rel="modulepreload" crossorigin href="./assets/undo-FugcdS0Y.js">
+    <link rel="modulepreload" crossorigin href="./assets/square-pen-C-B5Tg7k.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-UIPrMni1.css">
   </head>
   <body class="bg-[#090c14] text-slate-100 min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
     <div id="editor-app-root" class="min-h-screen flex flex-col w-full"></div>

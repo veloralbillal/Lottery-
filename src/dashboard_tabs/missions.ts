@@ -20,7 +20,7 @@ export class MissionsTab {
     if (tasks.length === 0) {
       listContainer.innerHTML = `
         <div class="bg-slate-900 border border-slate-800 p-8 rounded-3xl text-center space-y-2">
-          <i class="fa-solid fa-list-check text-slate-700 text-3xl"></i>
+          <i data-lucide="clipboard" class="text-slate-700 text-3xl"></i>
           <p class="text-slate-400 font-bold text-xs">No tasks currently broadcasted.</p>
           <p class="text-slate-500 text-[10px]">Contact our executive administrator to get promotional jobs assigned.</p>
         </div>
@@ -37,7 +37,7 @@ export class MissionsTab {
 
       if (userSub) {
         if (userSub.status === "pending") {
-          statusBadge = `<span class="bg-amber-955/20 border border-amber-900/45 text-amber-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-hourglass-half mr-1 text-[8px]"></i> Pending Review</span>`;
+          statusBadge = `<span class="bg-amber-955/20 border border-amber-900/45 text-amber-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i data-lucide="clock" class="mr-1 text-[8px]"></i> Pending Review</span>`;
           actionArea = `
             <div class="bg-slate-950 p-3 rounded-2xl border border-slate-900 flex items-center justify-between gap-3 text-[10px]">
               <span class="text-slate-400">Proof submitted. Waiting for dynamic review:</span>
@@ -45,19 +45,19 @@ export class MissionsTab {
             </div>
           `;
         } else if (userSub.status === "approved") {
-          statusBadge = `<span class="bg-emerald-955/20 border border-emerald-900/45 text-emerald-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-check-double mr-1 text-[8px]"></i> Approved</span>`;
+          statusBadge = `<span class="bg-emerald-955/20 border border-emerald-900/45 text-emerald-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i data-lucide="check-check" class="mr-1 text-[8px]"></i> Approved</span>`;
           actionArea = `
             <div class="bg-emerald-955/10 p-3 rounded-2xl border border-emerald-900/10 text-emerald-400 text-[10px] flex items-center gap-2">
-              <i class="fa-solid fa-gift text-sm animate-bounce"></i>
+              <i data-lucide="gift" class="text-sm animate-bounce"></i>
               <span>Earned <strong>৳${task.reward}</strong> balance credited directly! (Notes: ${appInstance.escapeHTML(userSub.adminNotes || "Good job")})</span>
             </div>
           `;
         } else if (userSub.status === "rejected") {
-          statusBadge = `<span class="bg-rose-955/20 border border-rose-900/40 text-rose-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-circle-xmark mr-1 text-[8px]"></i> Rejected</span>`;
+          statusBadge = `<span class="bg-rose-955/20 border border-rose-900/40 text-rose-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i data-lucide="x-circle" class="mr-1 text-[8px]"></i> Rejected</span>`;
           actionArea = `
             <div class="space-y-2">
               <div class="bg-rose-955/10 p-3 rounded-2xl border border-rose-900/15 text-rose-400 text-[10px] flex items-center gap-2">
-                <i class="fa-solid fa-circle-exclamation text-sm"></i>
+                <i data-lucide="alert-circle" class="text-sm"></i>
                 <span>Disapproved: <strong>${appInstance.escapeHTML(userSub.adminNotes || 'Screenshot blurred or irrelevant.')}</strong></span>
               </div>
               <button onclick="window.appInstance.reSubmitTask('${task.id}')" class="w-full bg-slate-950 hover:bg-slate-900 border border-slate-850 py-2 rounded-xl text-[10px] text-white font-bold transition">
@@ -67,15 +67,15 @@ export class MissionsTab {
           `;
         }
       } else {
-        statusBadge = `<span class="bg-cyan-955/20 border border-cyan-900/40 text-cyan-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i class="fa-solid fa-bullseye mr-1 text-[8px]"></i> Open Task</span>`;
+        statusBadge = `<span class="bg-cyan-955/20 border border-cyan-900/40 text-cyan-400 font-extrabold text-[8px] tracking-wider uppercase px-2.5 py-1 rounded-full"><i data-lucide="target" class="mr-1 text-[8px]"></i> Open Task</span>`;
         actionArea = `
           <div class="space-y-3">
             <div class="flex items-center gap-2.5">
               <a href="${appInstance.escapeHTML(task.url)}" target="_blank" class="w-1/2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition">
-                <i class="fa-solid fa-external-link mr-1"></i> Open Task Link
+                <i data-lucide="external-link" class="mr-1"></i> Open Task Link
               </a>
               <button onclick="document.getElementById('task-img-upload-${task.id}').click()" class="w-1/2 bg-slate-950 hover:bg-slate-900 border border-slate-800 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer">
-                <i class="fa-solid fa-cloud-arrow-up text-cyan-400 animate-pulse"></i> Upload Screenshot
+                <i data-lucide="upload" class="text-cyan-400 animate-pulse"></i> Upload Screenshot
               </button>
             </div>
             <input type="file" id="task-img-upload-${task.id}" class="hidden" accept="image/*" onchange="window.appInstance.handleScreenshotUpload(this, '${task.id}')" />

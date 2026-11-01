@@ -357,46 +357,61 @@ export class WalletExtensions {
       return;
     }
 
-    // Deduct user balance
-    user.balance -= totalDebit;
-    if (user.profit !== undefined) user.profit -= totalDebit;
+    const executeWithdrawal = () => {
+      // Deduct user balance
+      user.balance -= totalDebit;
+      if (user.profit !== undefined) user.profit -= totalDebit;
 
-    const newWd = {
-      id: "w" + Date.now(),
-      username: user.username,
-      amount: amountVal,
-      fee: feeAmount,
-      totalDebit: totalDebit,
-      method: gateway,
-      targetAccount: targetVal,
-      status: "pending",
-      date: new Date().toISOString()
+      const newWd = {
+        id: "w" + Date.now(),
+        username: user.username,
+        amount: amountVal,
+        fee: feeAmount,
+        totalDebit: totalDebit,
+        method: gateway,
+        targetAccount: targetVal,
+        status: "pending",
+        date: new Date().toISOString()
+      };
+
+      if (!appRef.db.withdrawals) appRef.db.withdrawals = [];
+      appRef.db.withdrawals.unshift(newWd);
+      appRef.saveDB();
+
+      if (!navigator.onLine && appRef.offlineQueue) {
+        appRef.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
+          withdrawal: newWd
+        });
+      }
+
+      appRef.showToast(`Payout request of ৳${amountVal} submitted successfully! 24H limit allowance updated.`, "success");
+      
+      // Refresh 24H limit UI
+      WalletExtensions.render24HLimit(appRef);
+      WalletExtensions.renderWithdrawLimit(appRef);
+
+      // Reset inputs
+      if (amountInput) amountInput.value = "";
+      if (accountInput) accountInput.value = "";
+      const pinInput = document.getElementById("wallet-withdraw-pin-input") as HTMLInputElement | null;
+      if (pinInput) pinInput.value = "";
+
+      appRef.currentTab = "history";
+      appRef.render();
     };
 
-    if (!appRef.db.withdrawals) appRef.db.withdrawals = [];
-    appRef.db.withdrawals.unshift(newWd);
-    appRef.saveDB();
-
-    if (!navigator.onLine && appRef.offlineQueue) {
-      appRef.offlineQueue.enqueueAction("SUBMIT_WITHDRAWAL", {
-        withdrawal: newWd
+    if (appRef && typeof appRef.is2FAActive === "function" && appRef.is2FAActive("withdraw")) {
+      appRef.prompt2FA({
+        title: "Confirm Withdrawal Payout",
+        subtitle: `Two-Factor verification required to confirm payout of ৳${amountVal} via ${gateway} to ${targetVal}.`,
+        user: user
+      }, executeWithdrawal, () => {
+        appRef.showToast("Withdrawal payout cancelled. 2FA verification required.", "info");
       });
+      return;
+    } else {
+      executeWithdrawal();
     }
-
-    appRef.showToast(`Payout request of ৳${amountVal} submitted successfully! 24H limit allowance updated.`, "success");
-    
-    // Refresh 24H limit UI
-    WalletExtensions.render24HLimit(appRef);
-    WalletExtensions.renderWithdrawLimit(appRef);
-
-    // Reset inputs
-    if (amountInput) amountInput.value = "";
-    if (accountInput) accountInput.value = "";
-    const pinInput = document.getElementById("wallet-withdraw-pin-input") as HTMLInputElement | null;
-    if (pinInput) pinInput.value = "";
-
-    appRef.currentTab = "history";
-    appRef.render();
   }
 
   static render(appInstance: any) {
@@ -490,10 +505,10 @@ export class WalletExtensions {
         }
         if (isEnabled) {
           badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 bg-emerald-950 text-emerald-400 border border-emerald-800/50 inline-flex items-center gap-1";
-          badge.innerHTML = '<i class="fa-solid fa-circle-check"></i> LIVE';
+          badge.innerHTML = '<i data-lucide="check-circle"></i> LIVE';
         } else {
           badge.className = "gw-status-badge text-[8px] font-mono font-bold px-1.5 py-0.5 rounded ml-2 bg-rose-950 text-rose-400 border border-rose-800/50 inline-flex items-center gap-1";
-          badge.innerHTML = '<i class="fa-solid fa-ban"></i> OFFLINE';
+          badge.innerHTML = '<i data-lucide="ban"></i> OFFLINE';
         }
       }
     });
@@ -540,7 +555,7 @@ export class WalletExtensions {
       <div class="bg-slate-900 border border-slate-800 p-4.5 rounded-3xl space-y-3.5 shadow-lg font-mono">
         <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
           <div class="flex items-center gap-2">
-            <i class="fa-solid fa-chart-line text-rose-500"></i>
+            <i data-lucide="trending-up" class="w-4 h-4 text-rose-500"></i>
             <span class="text-xs font-bold uppercase text-slate-300">Wallet Analytics & Velocity</span>
           </div>
           <span class="text-[8px] bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-slate-400">Real-Time Tracker</span>
@@ -578,7 +593,7 @@ export class WalletExtensions {
       <div class="bg-gradient-to-b from-indigo-950/20 to-slate-900 border border-indigo-900/30 p-5 rounded-3xl space-y-4 shadow-xl font-mono">
         <div class="flex items-center justify-between border-b border-indigo-900/20 pb-3">
           <div class="flex items-center gap-2">
-            <i class="fa-solid fa-piggy-bank text-indigo-400 text-base"></i>
+            <i data-lucide="piggy-bank" class="w-5 h-5 text-indigo-400"></i>
             <div>
               <h3 class="text-xs font-extrabold uppercase text-white">🔒 Royal Savings Vault</h3>
               <p class="text-[9px] text-slate-400 font-sans">Shield funds from accidental lottery spending. Earn 15 XP upon saving.</p>
@@ -602,15 +617,19 @@ export class WalletExtensions {
 
           <div class="grid grid-cols-2 gap-2">
             <button id="vault-lock-btn" type="button" class="bg-indigo-650 hover:bg-indigo-600 text-white font-bold py-2.5 rounded-xl transition text-[10px] flex items-center justify-center gap-1.5 cursor-pointer shadow-md">
-              <i class="fa-solid fa-lock"></i> Lock Funds
+              <i data-lucide="lock" class="w-3.5 h-3.5"></i> Lock Funds
             </button>
             <button id="vault-unlock-btn" type="button" class="bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-300 font-bold py-2.5 rounded-xl transition text-[10px] flex items-center justify-center gap-1.5 cursor-pointer">
-              <i class="fa-solid fa-lock-open"></i> Unlock Funds
+              <i data-lucide="lock-open" class="w-3.5 h-3.5"></i> Unlock Funds
             </button>
           </div>
         </div>
       </div>
     `;
+
+    if (appInstance && typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
+    }
   }
 
   // Feature 1: Quick Deposit preset button list
@@ -693,7 +712,7 @@ export class WalletExtensions {
       ? `
         <div class="space-y-1 bg-slate-950 border border-slate-850 p-3 rounded-2xl animate-fade-in">
           <div class="flex justify-between items-center">
-            <label class="block text-[9px] uppercase font-bold text-slate-400"><i class="fa-solid fa-key mr-1 text-rose-500"></i> Withdrawal security PIN (4 digits)</label>
+            <label class="block text-[9px] uppercase font-bold text-slate-400"><i data-lucide="key" class="mr-1 text-rose-500"></i> Withdrawal security PIN (4 digits)</label>
             <span class="text-[8px] text-slate-500">Secured transaction channel</span>
           </div>
           <input type="password" id="wallet-withdraw-pin-input" maxlength="4" pattern="[0-9]*" inputmode="numeric" required class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-center text-sm font-black tracking-widest text-white outline-none focus:border-rose-500" placeholder="••••" />
@@ -705,7 +724,7 @@ export class WalletExtensions {
       <div class="bg-slate-950/40 border border-slate-850/60 p-3 rounded-2xl flex items-center justify-between font-mono text-[10px]">
         <div class="space-y-0.5">
           <div class="font-bold text-white uppercase flex items-center gap-1.5">
-            <i class="fa-solid fa-shield-halved text-rose-500"></i> Payout PIN Authorization Lock
+            <i data-lucide="shield-check" class="text-rose-500"></i> Payout PIN Authorization Lock
           </div>
           <div class="text-slate-500 leading-normal text-[8.5px]">Require PIN confirmation before filing withdrawal ticket.</div>
         </div>

@@ -1,17 +1,49 @@
+import "./index.css";
+
 /**
  * Standalone Comment Moderation Suite (src/comments.ts)
  * 
  * Provides a dedicated standalone separate page and file (comments.html)
  * for moderating user comments across all blog articles.
+ * 
+ * Features:
+ * - Real-time cross-tab synchronization via BroadcastChannel & cloud API
+ * - Approve, Reject, and Delete comment actions with instant UI update
+ * - Status filters: All, Pending, Approved, Rejected
  */
 
 class StandaloneCommentsApp {
   private db: any = {};
   private currentFilter: string = "all";
+  private bcChannel: BroadcastChannel | null = null;
 
   constructor() {
     this.loadState();
+    this.initSyncChannel();
     this.render();
+  }
+
+  private initSyncChannel() {
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        this.bcChannel = new BroadcastChannel("lw_realtime_db_sync");
+        this.bcChannel.onmessage = (event) => {
+          if (event.data && event.data.type === "database_updated") {
+            this.loadState();
+            this.render();
+          }
+        };
+      } catch (e) {
+        console.warn("[BroadcastChannel] Not supported:", e);
+      }
+    }
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === "lw_lottery_db_v3") {
+        this.loadState();
+        this.render();
+      }
+    });
   }
 
   private loadState() {
@@ -30,9 +62,26 @@ class StandaloneCommentsApp {
     if (!this.db.blogComments) this.db.blogComments = [];
   }
 
-  private saveDB() {
+  private async saveDB() {
     try {
-      localStorage.setItem("lw_lottery_db_v3", JSON.stringify(this.db));
+      const serialized = JSON.stringify(this.db);
+      localStorage.setItem("lw_lottery_db_v3", serialized);
+      localStorage.setItem("lottery_winner_db_backup", serialized);
+
+      if (this.bcChannel) {
+        try {
+          this.bcChannel.postMessage({ type: "database_updated", timestamp: Date.now() });
+        } catch {}
+      }
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Push to backend server
+      fetch("/api/sql/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ db: serialized })
+      }).catch(() => {});
     } catch (e) {
       console.warn("Could not save database:", e);
     }
@@ -135,6 +184,7 @@ class StandaloneCommentsApp {
             ${filteredComments.map((c: any) => {
               const post = (this.db.blogs || []).find((b: any) => b.id === c.blogId);
               const postTitle = post ? post.title : 'Unknown Article';
+              const commentDate = c.date || (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : new Date().toLocaleDateString());
 
               return `
                 <div class="bg-slate-900 border border-slate-800 hover:border-slate-700 p-4 sm:p-5 rounded-2xl space-y-3 transition shadow-xl">
@@ -144,7 +194,7 @@ class StandaloneCommentsApp {
                       <span class="text-[10px] text-slate-500 font-mono">on "${this.escapeHTML(postTitle)}"</span>
                     </div>
                     <div class="flex items-center gap-2">
-                      <span class="text-[10px] text-slate-500 font-mono">${c.date || new Date().toLocaleDateString()}</span>
+                      <span class="text-[10px] text-slate-500 font-mono">${commentDate}</span>
                       <span class="text-[9px] font-mono px-2.5 py-0.5 rounded font-bold uppercase ${c.status === 'approved' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : c.status === 'rejected' ? 'bg-rose-950 text-rose-400 border border-rose-800/40' : 'bg-amber-950 text-amber-400 border border-amber-600/40'}">
                         ${c.status || 'pending'}
                       </span>

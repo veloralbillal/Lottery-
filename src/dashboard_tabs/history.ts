@@ -115,6 +115,9 @@ Status: SECURED & VERIFIED
       if (communitySection) communitySection.classList.remove("hidden");
 
       appInstance.renderCommunitySection();
+      if (appInstance && typeof appInstance.refreshIcons === "function") {
+        appInstance.refreshIcons();
+      }
       return;
     }
 
@@ -265,10 +268,11 @@ Status: SECURED & VERIFIED
     if (filteredOps.length === 0) {
       listEl.innerHTML = `
         <div class="text-center py-12 text-slate-500 text-xs font-mono bg-slate-950/45 border border-slate-900/60 rounded-3xl">
-          <i class="fa-solid fa-clock-rotate-left text-xl text-slate-700 block mb-2"></i>
+          <i data-lucide="history" class="w-8 h-8 text-slate-700 mx-auto block mb-2"></i>
           No matching transactions found in your ledger.
         </div>
       `;
+      if (appInstance && typeof appInstance.refreshIcons === "function") appInstance.refreshIcons();
       return;
     }
 
@@ -293,7 +297,7 @@ Status: SECURED & VERIFIED
       card.innerHTML = `
         <div class="space-y-0.5 max-w-[70%]">
           <div class="font-extrabold text-white capitalize flex items-center gap-1.5">
-            ${op.type === "deposit" ? '<i class="fa-solid fa-circle-arrow-down text-emerald-400 text-[10px]"></i>' : '<i class="fa-solid fa-circle-arrow-up text-rose-400 text-[10px]"></i>'}
+            ${op.type === "deposit" ? '<i data-lucide="arrow-down-circle" class="w-3.5 h-3.5 text-emerald-400 shrink-0"></i>' : '<i data-lucide="arrow-up-circle" class="w-3.5 h-3.5 text-rose-400 shrink-0"></i>'}
             ${op.type === "deposit" ? "Credit" : "Debit"} via ${op.method}
           </div>
           <div class="text-[10px] text-slate-500 font-mono truncate">${trxLabel}</div>
@@ -304,7 +308,7 @@ Status: SECURED & VERIFIED
         </div>
         <!-- Tap indicator icon visible on hover -->
         <div class="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity text-[8px] text-rose-500">
-          <i class="fa-solid fa-up-right-from-square"></i>
+          <i data-lucide="external-link" class="w-3 h-3"></i>
         </div>
       `;
 
@@ -352,6 +356,10 @@ Status: SECURED & VERIFIED
 
       listEl.appendChild(card);
     });
+
+    if (appInstance && typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
+    }
   }
 }
 

@@ -278,7 +278,7 @@ export class AffiliateAgentSystem {
       if (data.level1Users.length === 0) {
         treeRoot.innerHTML = `
           <div class="text-center py-4 text-slate-550 text-[10px] font-sans">
-            <i class="fa-solid fa-users-slash text-slate-650 text-base mb-1 block"></i>
+            <i data-lucide="users" class="text-slate-650 text-base mb-1 block"></i>
             You do not have any referred players yet. Invite friends using your referral link!
           </div>
         `;
@@ -305,7 +305,7 @@ export class AffiliateAgentSystem {
                 </div>
                 ${subagents.length > 0 ? `
                   <button class="toggle-l2-btn px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:bg-slate-800 text-[8px] font-black text-cyan-400 flex items-center gap-1 cursor-pointer" data-username="${appInstance.escapeHTML(u1.username)}">
-                    <i class="fa-solid ${isExpanded ? 'fa-folder-open' : 'fa-folder'}"></i>
+                    <i data-lucide="${isExpanded ? 'folder-open' : 'folder'}"></i>
                     ${subagents.length} Downline${subagents.length > 1 ? 's' : ''}
                   </button>
                 ` : `
@@ -323,7 +323,7 @@ export class AffiliateAgentSystem {
           if (isExpanded && subagents.length > 0) {
             let l2ListHtml = `
               <div class="pl-4 mt-2 border-l border-dashed border-slate-800 space-y-1.5 pt-1">
-                <span class="block text-[7px] text-slate-500 uppercase font-black tracking-wider"><i class="fa-solid fa-turn-up rotate-90 inline-block mr-1"></i> Level 2 Sub-Agents</span>
+                <span class="block text-[7px] text-slate-500 uppercase font-black tracking-wider"><i data-lucide="corner-right-up" class="rotate-90 inline-block mr-1"></i> Level 2 Sub-Agents</span>
             `;
 
             subagents.forEach(u2 => {
@@ -542,7 +542,7 @@ export class AffiliateAgentSystem {
     if (agents.length === 0) {
       listContainer.innerHTML = `
         <div class="bg-slate-900/90 border border-slate-800/80 p-6 rounded-2xl text-center space-y-2">
-          <i class="fa-solid fa-user-tie text-slate-600 text-2xl block"></i>
+          <i data-lucide="user" class="text-slate-600 text-2xl block"></i>
           <p class="text-xs font-bold text-slate-300">No active agents available right now</p>
           <p class="text-[10px] text-slate-500">অনুগ্রহ করে কিছুক্ষণ পর আবার চেষ্টা করুন।</p>
         </div>
@@ -576,13 +576,13 @@ export class AffiliateAgentSystem {
         <div class="flex items-start justify-between">
           <div class="flex items-center gap-3">
             <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg font-black shadow-sm shrink-0">
-              <i class="fa-solid fa-user-tie"></i>
+              <i data-lucide="user"></i>
             </div>
             <div>
               <div class="flex items-center gap-1.5">
                 <h3 class="text-xs font-black text-white font-mono">${appInstance.escapeHTML(agent.displayName || ('@' + agent.username))}</h3>
                 <span class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
-                  <i class="fa-solid fa-circle-check text-[8px]"></i> VERIFIED
+                  <i data-lucide="check-circle" class="text-[8px]"></i> VERIFIED
                 </span>
               </div>
               <p class="text-[10px] text-slate-400 font-sans">${appInstance.escapeHTML(agent.district || 'Dhaka')} • @${appInstance.escapeHTML(agent.username)}</p>
@@ -593,16 +593,16 @@ export class AffiliateAgentSystem {
         </div>
         <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
           <button type="button" onclick="if(window.app){window.app.openAgentChat('${appInstance.escapeHTML(agent.username)}');}" class="relative flex-1 bg-cyan-950/80 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-            <i class="fa-solid fa-comments text-cyan-400"></i>
+            <i data-lucide="message-square" class="text-cyan-400"></i>
             <span>Live Chat</span>
             ${unreadCount > 0 ? `<span class="ml-1 px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[9px] font-black animate-pulse">${unreadCount}</span>` : ''}
           </button>
           <a href="https://wa.me/${appInstance.escapeHTML((agent.phone || '').replace(/[^0-9]/g, ''))}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-            <i class="fa-brands fa-whatsapp text-emerald-400"></i>
+            <i data-lucide="message-square" class="text-emerald-400"></i>
             <span>WhatsApp</span>
           </a>
           <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-            <i class="fa-solid fa-money-bill-transfer"></i>
+            <i data-lucide="arrow-left-right"></i>
             <span>Cashout</span>
           </button>
         </div>

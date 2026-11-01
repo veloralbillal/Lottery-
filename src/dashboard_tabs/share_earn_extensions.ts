@@ -199,13 +199,29 @@ export class ReferralExtensions {
 
     calcContainer.innerHTML = `
       <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl font-mono text-xs">
-        <h3 class="text-[10px] font-bold uppercase text-amber-400 tracking-wider flex items-center gap-1.5 border-b border-slate-850 pb-2">
-          <i class="fa-solid fa-calculator text-amber-500"></i> Interactive Commission Estimator
-        </h3>
-        
-        <p class="text-[8px] text-slate-500 font-sans leading-relaxed">
-          Estimate your potential automated passive income. When your referred friends register and buy lottery tickets, you receive commission rewards instantly!
-        </p>
+        <!-- VIRAL GROWTH: PROMINENT WHATSAPP SHARING -->
+        <div class="bg-emerald-950/30 border-2 border-emerald-500/40 p-5 rounded-3xl space-y-4 shadow-[0_0_20px_rgba(16,185,129,0.15)] relative overflow-hidden group">
+          <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all"></div>
+          
+          <div class="flex items-center gap-3">
+             <div class="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-900/40">
+                <i data-lucide="message-circle" class="w-5 h-5 text-white"></i>
+             </div>
+             <div>
+                <h3 class="text-xs font-black text-white uppercase tracking-tight">Viral WhatsApp Share</h3>
+                <p class="text-[9px] text-emerald-400/80 font-bold">বন্ধুদের ইনভাইট করে আনলিমিটেড ইনকাম করুন!</p>
+             </div>
+          </div>
+
+          <p class="text-[10px] text-slate-300 leading-relaxed font-sans">
+            নিচের বাটনে ক্লিক করে সরাসরি হোয়াটসঅ্যাপে আপনার ইনভাইট লিংক শেয়ার করুন। যত বেশি শেয়ার করবেন, তত বেশি বোনাস পাবেন!
+          </p>
+
+          <button onclick="app.shareOnWhatsAppViral()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-3.5 rounded-2xl flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-950/40 active:scale-95 transition-all cursor-pointer border-b-4 border-emerald-800">
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
+            <span class="text-sm">হোয়াটসঅ্যাপে শেয়ার করুন</span>
+          </button>
+        </div>
 
         <div class="space-y-4 pt-1">
           <!-- Friends Slider -->
@@ -305,7 +321,7 @@ export class ReferralExtensions {
     let html = `
       <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 font-mono text-xs">
         <h3 class="text-[10px] font-bold uppercase text-white tracking-wider flex items-center gap-1.5 border-b border-slate-850 pb-2">
-          <i class="fa-solid fa-bullhorn text-pink-500"></i> High-Converting Share Templates
+          <i data-lucide="megaphone" class="w-4 h-4 text-pink-500"></i> High-Converting Share Templates
         </h3>
         
         <p class="text-[8px] text-slate-500 font-sans">
@@ -321,7 +337,7 @@ export class ReferralExtensions {
           <div class="flex justify-between items-center">
             <span class="text-[9px] font-black text-cyan-400 uppercase tracking-wide">${t.title}</span>
             <button class="text-[8px] text-slate-500 hover:text-cyan-400 font-bold uppercase transition flex items-center gap-1 cursor-pointer" onclick="navigator.clipboard.writeText(\`${t.text.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`); app.showToast('Promo template copied to clipboard!', 'success');">
-              <i class="fa-solid fa-copy"></i> Copy Text
+              <i data-lucide="copy" class="w-3 h-3"></i> Copy Text
             </button>
           </div>
           <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-950 text-[9px] text-slate-400 line-clamp-3 select-all leading-relaxed whitespace-pre-line">
@@ -331,10 +347,10 @@ export class ReferralExtensions {
           <!-- Social triggers row -->
           <div class="flex gap-2 pt-1 text-[8px] font-black uppercase tracking-wide">
             <button data-share-platform="telegram" data-template-id="${t.id}" class="flex-1 bg-slate-900 border border-sky-950 text-sky-400 py-1.5 rounded-lg flex items-center justify-center gap-1 hover:bg-sky-950/20 transition cursor-pointer">
-              <i class="fa-brands fa-telegram text-[11px]"></i> Telegram
+              <i data-lucide="send" class="w-3.5 h-3.5 text-sky-400"></i> Telegram
             </button>
             <button data-share-platform="whatsapp" data-template-id="${t.id}" class="flex-1 bg-slate-900 border border-emerald-950 text-emerald-400 py-1.5 rounded-lg flex items-center justify-center gap-1 hover:bg-emerald-950/20 transition cursor-pointer">
-              <i class="fa-brands fa-whatsapp text-[11px]"></i> WhatsApp
+              <i data-lucide="message-circle" class="w-3.5 h-3.5 text-emerald-400"></i> WhatsApp
             </button>
           </div>
         </div>
@@ -342,6 +358,53 @@ export class ReferralExtensions {
     });
 
     html += `
+        </div>
+      </div>
+
+      <!-- VIRAL LEADERBOARD: TOP RECRUITERS -->
+      <div class="bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl font-mono text-xs mt-4">
+        <h3 class="text-[10px] font-bold uppercase text-cyan-400 tracking-wider flex items-center gap-1.5 border-b border-slate-850 pb-2">
+          <i data-lucide="trophy" class="w-4 h-4 text-cyan-500"></i> Viral Recruitment Leaderboard
+        </h3>
+        
+        <p class="text-[8px] text-slate-500 font-sans leading-relaxed">
+          See who is dominating the recruitment race! Top recruiters win exclusive monthly rewards and custom profile badges.
+        </p>
+
+        <div class="space-y-2 pt-1">
+          ${(() => {
+            const users = appInstance.db.users || [];
+            const topRecruiters = [...users]
+              .filter(u => (u.refersCount || 0) > 0)
+              .sort((a, b) => (b.refersCount || 0) - (a.refersCount || 0))
+              .slice(0, 5);
+
+            if (topRecruiters.length === 0) {
+              return `<p class="text-center py-4 text-slate-600 text-[9px]">No recruitment data yet. Be the first!</p>`;
+            }
+
+            return topRecruiters.map((u, idx) => `
+              <div class="flex items-center justify-between bg-slate-950/60 p-3 rounded-2xl border border-slate-900/80">
+                <div class="flex items-center gap-3">
+                  <div class="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center font-black text-[10px] \${idx === 0 ? 'text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'text-slate-500 border border-slate-800'}">
+                    #\${idx + 1}
+                  </div>
+                  <div>
+                    <span class="text-[11px] font-black text-white">@\${u.username}</span>
+                    <span class="block text-[8px] text-slate-500 uppercase font-bold tracking-tighter">Elite Recruiter</span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <span class="text-cyan-400 font-black text-xs">\${u.refersCount}</span>
+                  <span class="block text-[7px] text-slate-600 uppercase font-bold">Refers</span>
+                </div>
+              </div>
+            `).join("");
+          })()}
+        </div>
+
+        <div class="pt-2 text-center">
+           <p class="text-[7px] text-slate-600 uppercase font-black tracking-widest animate-pulse">Update Frequency: Every 12 Hours</p>
         </div>
       </div>
     `;

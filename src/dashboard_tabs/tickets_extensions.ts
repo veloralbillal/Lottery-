@@ -141,7 +141,7 @@ export class TicketsExtensions {
         
         <div class="flex items-center justify-between border-b border-slate-800/60 pb-2.5">
           <div class="flex items-center gap-2">
-            <i class="fa-solid fa-chart-pie text-rose-500"></i>
+            <i data-lucide="pie-chart" class="text-rose-500"></i>
             <span class="text-[11px] font-extrabold uppercase text-slate-300">Lottery Entries Portfolio</span>
           </div>
           <span class="text-[8px] bg-slate-950 border border-slate-800 px-2 py-0.5 rounded text-slate-400">Live Statistics</span>
@@ -215,7 +215,7 @@ export class TicketsExtensions {
       <div class="bg-slate-900 border border-slate-800 p-4.5 rounded-3xl space-y-4 shadow-xl font-mono h-full flex flex-col justify-between">
         <div class="space-y-1.5">
           <div class="flex items-center gap-1.5 border-b border-slate-800/60 pb-2">
-            <i class="fa-solid fa-dice text-rose-500 text-sm"></i>
+            <i data-lucide="dice-5" class="text-rose-500 text-sm"></i>
             <h3 class="text-xs font-extrabold uppercase text-white">🔮 Lucky Quick Pick Picker</h3>
           </div>
           <p class="text-[9px] text-slate-500 leading-normal font-sans">
@@ -243,7 +243,7 @@ export class TicketsExtensions {
             
             <div class="flex flex-col justify-end">
               <button id="picker-generate-btn" type="button" class="w-full bg-slate-950 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-rose-400 font-bold py-2 px-3 rounded-xl transition text-[10px] flex items-center justify-center gap-1.5 cursor-pointer">
-                <i class="fa-solid fa-rotate"></i> Roll Lucky Codes
+                <i data-lucide="refresh-cw" ></i> Roll Lucky Codes
               </button>
             </div>
           </div>
@@ -251,7 +251,7 @@ export class TicketsExtensions {
 
         <!-- Generated Lucky List Display area -->
         <div id="picker-results-box" class="bg-slate-950/70 border border-slate-850/50 p-3 rounded-2xl min-h-[90px] flex flex-col items-center justify-center text-center py-4">
-          <i class="fa-solid fa-circle-nodes text-slate-700 text-lg mb-1 animate-pulse"></i>
+          <i data-lucide="network" class="text-slate-700 text-lg mb-1 animate-pulse"></i>
           <p class="text-[9px] text-slate-500">Generated ticket queue is empty. Choose parameters and click roll!</p>
         </div>
       </div>
@@ -277,7 +277,7 @@ export class TicketsExtensions {
     // Show a thrilling random code rolling visual effect!
     resultsBox.innerHTML = `
       <div class="space-y-2 text-center py-2 w-full">
-        <div class="text-[10px] text-rose-500 font-extrabold animate-pulse"><i class="fa-solid fa-spinner fa-spin mr-1"></i> CYCLING SEED COMBINATIONS...</div>
+        <div class="text-[10px] text-rose-500 font-extrabold animate-pulse"><i data-lucide="loader-2" class="animate-spin mr-1"></i> CYCLING SEED COMBINATIONS...</div>
         <div class="text-[24px] font-black text-slate-600 tracking-wider select-none animate-bounce">LW-${Math.floor(100000 + Math.random() * 900000)}</div>
       </div>
     `;
@@ -318,7 +318,7 @@ export class TicketsExtensions {
           </div>
 
           <button id="picker-bulk-purchase-btn" type="button" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white font-extrabold text-[10px] py-2 px-3 rounded-xl shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
-            <i class="fa-solid fa-cart-shopping"></i> Bulk Purchase Stack Now
+            <i data-lucide="shopping-cart" ></i> Bulk Purchase Stack Now
           </button>
         </div>
       `;
@@ -399,7 +399,7 @@ export class TicketsExtensions {
     resultsBox.removeAttribute("data-rolled-pool-id");
     resultsBox.removeAttribute("data-rolled-codes");
     resultsBox.innerHTML = `
-      <i class="fa-solid fa-circle-check text-emerald-400 text-lg mb-1 animate-bounce"></i>
+      <i data-lucide="check-circle" class="text-emerald-400 text-lg mb-1 animate-bounce"></i>
       <p class="text-[9px] text-slate-400">Stack purchased successfully! Check your tickets ledger list below.</p>
     `;
 
@@ -416,7 +416,7 @@ export class TicketsExtensions {
       <div class="bg-slate-900 border border-slate-800 p-4.5 rounded-3xl space-y-4 shadow-xl font-mono h-full flex flex-col justify-between">
         <div class="space-y-1.5">
           <div class="flex items-center gap-1.5 border-b border-slate-800/60 pb-2">
-            <i class="fa-solid fa-shield-halved text-rose-500 text-sm"></i>
+            <i data-lucide="shield-check" class="text-rose-500 text-sm"></i>
             <h3 class="text-xs font-extrabold uppercase text-white">🔍 Cryptographic Ticket Verifier</h3>
           </div>
           <p class="text-[9px] text-slate-500 leading-normal font-sans">
@@ -428,19 +428,19 @@ export class TicketsExtensions {
           <div class="space-y-1">
             <label class="block text-[8px] uppercase text-slate-500 font-bold">Input Ticket Reference Code</label>
             <div class="relative flex items-center bg-slate-950 border border-slate-850 rounded-xl overflow-hidden px-2.5">
-              <i class="fa-solid fa-barcode text-slate-500 mr-2 text-[11px]"></i>
+              <i data-lucide="barcode" class="text-slate-500 mr-2 text-[11px]"></i>
               <input type="text" id="verifier-code-input" placeholder="LW-123456 or LW-..." class="w-full bg-transparent border-none text-[11px] text-white py-2.5 outline-none font-bold placeholder-slate-750 uppercase" />
             </div>
           </div>
 
           <button id="verifier-scan-btn" type="button" class="w-full bg-slate-950 hover:bg-slate-850 border border-slate-800 text-rose-400 font-bold py-2.5 px-4 rounded-xl transition cursor-pointer text-[10px] flex items-center justify-center gap-1.5">
-            <i class="fa-solid fa-radar text-rose-500 animate-pulse"></i> Verify Signature Ledger
+            <i data-lucide="radar" class="text-rose-500 animate-pulse"></i> Verify Signature Ledger
           </button>
         </div>
 
         <!-- Verification Scanner Display result area -->
         <div id="verifier-output-box" class="bg-slate-950/70 border border-slate-850/50 p-3 rounded-2xl min-h-[90px] flex flex-col items-center justify-center text-center py-4">
-          <i class="fa-solid fa-network-wired text-slate-700 text-lg mb-1"></i>
+          <i data-lucide="network" class="text-slate-700 text-lg mb-1"></i>
           <p class="text-[9px] text-slate-500">Validation engine offline. Input ticket code and check ledger status!</p>
         </div>
       </div>
@@ -462,7 +462,7 @@ export class TicketsExtensions {
     outputBox.innerHTML = `
       <div class="space-y-2 text-center py-1 w-full text-[9px] text-slate-500 font-bold">
         <div class="flex items-center justify-center gap-1.5 text-rose-500">
-          <i class="fa-solid fa-spinner fa-spin"></i>
+          <i data-lucide="loader-2" class="animate-spin"></i>
           <span>[ SEARCHING CENTRAL CRYPTO DRAW DATABASE... ]</span>
         </div>
         <div class="w-full bg-slate-900 h-1.5 rounded-full overflow-hidden border border-slate-800">
@@ -479,7 +479,7 @@ export class TicketsExtensions {
       if (!ticket) {
         outputBox.innerHTML = `
           <div class="space-y-1 text-center py-1.5">
-            <i class="fa-solid fa-triangle-exclamation text-rose-500 text-base mb-1 block"></i>
+            <i data-lucide="alert-triangle" class="text-rose-500 text-base mb-1 block"></i>
             <span class="text-[10px] text-white uppercase font-black tracking-wider">VALIDATION FAILURE</span>
             <p class="text-[8.5px] text-slate-500">Signature mismatch: Code "${inputVal}" is not registered in our drawing database.</p>
           </div>
@@ -521,7 +521,7 @@ export class TicketsExtensions {
       outputBox.innerHTML = `
         <div class="space-y-2.5 text-left w-full">
           <div class="flex justify-between items-center border-b border-slate-850 pb-1.5">
-            <span class="text-[9px] text-emerald-400 font-bold"><i class="fa-solid fa-circle-check"></i> SECURE SIGNATURE OK</span>
+            <span class="text-[9px] text-emerald-400 font-bold"><i data-lucide="check-circle" ></i> SECURE SIGNATURE OK</span>
             ${statusHTML}
           </div>
           
@@ -534,7 +534,7 @@ export class TicketsExtensions {
           </div>
 
           <button type="button" data-id="${ticket.id}" class="verifier-view-ticket-btn w-full bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-extrabold text-[9px] py-1.5 rounded-lg transition flex items-center justify-center gap-1 cursor-pointer">
-            <i class="fa-solid fa-circle-info"></i> Open Receipt Invoice
+            <i data-lucide="info" ></i> Open Receipt Invoice
           </button>
         </div>
       `;
@@ -565,7 +565,7 @@ export class TicketsExtensions {
       <div class="bg-slate-950 border border-slate-850 p-3 rounded-2xl space-y-2.5 font-mono text-[10px] mt-4">
         <!-- Search bar -->
         <div class="relative flex items-center bg-slate-900 border border-slate-800 rounded-xl overflow-hidden px-2.5">
-          <i class="fa-solid fa-magnifying-glass text-slate-500 mr-2 text-[10px]"></i>
+          <i data-lucide="search" class="text-slate-500 mr-2 text-[10px]"></i>
           <input type="text" id="ticket-search-input" placeholder="Search by Ticket Code (e.g. LW-852401) or Pool Name..." class="w-full bg-transparent border-none text-[10.5px] text-white py-1.5 outline-none placeholder-slate-600" />
         </div>
 
@@ -675,7 +675,7 @@ export class TicketsExtensions {
     if (filtered.length === 0) {
       listEl.innerHTML = `
         <div class="text-center py-12 text-slate-500 text-xs font-mono bg-slate-950/45 border border-slate-900/60 rounded-3xl mt-4">
-          <i class="fa-solid fa-clock-rotate-left text-xl text-slate-700 block mb-2"></i>
+          <i data-lucide="history" class="text-xl text-slate-700 block mb-2"></i>
           No tickets found matching your filter criteria.
         </div>
       `;
@@ -731,7 +731,7 @@ export class TicketsExtensions {
       const resultNotice = (lot.status === "drawn" || lot.status === "completed") && winCode ? `
         <div class="mt-1 flex items-center gap-1.5 flex-wrap text-[9px] font-mono">
           <span class="text-amber-400 font-bold flex items-center gap-1">
-            <i class="fa-solid fa-trophy text-[9px] text-yellow-400"></i> ড্র ফলাফল:
+            <i data-lucide="trophy" class="text-[9px] text-yellow-400"></i> ড্র ফলাফল:
           </span>
           <span class="bg-slate-950 px-1.5 py-0.5 rounded border border-amber-500/30 text-amber-300 font-extrabold tracking-wider select-all">
             ${winCode}
@@ -743,7 +743,7 @@ export class TicketsExtensions {
       card.innerHTML = `
         <div class="space-y-1 max-w-[70%] font-mono">
           <h4 class="text-xs font-black text-white leading-none flex items-center gap-1.5">
-            <i class="fa-solid fa-ticket text-rose-500 text-[10px]"></i>
+            <i data-lucide="ticket" class="text-rose-500 text-[10px]"></i>
             ${lot.name}
           </h4>
           <span class="text-[9px] text-slate-500 font-mono block">Purchased: ${new Date(t.purchaseDate).toLocaleDateString()}</span>
@@ -755,7 +755,7 @@ export class TicketsExtensions {
         </div>
         <!-- Tap indicator icon visible on hover -->
         <div class="absolute right-1 top-1 opacity-0 group-hover:opacity-100 transition-opacity text-[8px] text-rose-500">
-          <i class="fa-solid fa-up-right-from-square"></i>
+          <i data-lucide="external-link" ></i>
         </div>
       `;
 

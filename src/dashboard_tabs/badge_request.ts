@@ -76,5 +76,6 @@ export class BadgeRequestTab {
         });
       });
     }
+    appInstance.refreshIcons();
   }
 }

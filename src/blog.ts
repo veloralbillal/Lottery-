@@ -1,3 +1,6 @@
+import "./index.css";
+import { createIcons, CircleCheck, AlertCircle, Info, ArrowLeft, Newspaper, Home, Search, X, ArrowRight, Heart, MessageSquare, ChevronRight, Share2, Send } from 'lucide';
+
 /**
  * Standalone Blog Portal (src/blog.ts)
  * 
@@ -47,7 +50,29 @@ class StandaloneBlogApp {
 
   constructor() {
     this.loadState();
+    this.initSyncChannel();
     this.parseUrlParams();
+  }
+
+  private initSyncChannel() {
+    if (typeof BroadcastChannel !== "undefined") {
+      try {
+        const bc = new BroadcastChannel("lw_realtime_db_sync");
+        bc.onmessage = (event) => {
+          if (event.data && event.data.type === "database_updated") {
+            this.loadState();
+            this.render();
+          }
+        };
+      } catch (e) {}
+    }
+
+    window.addEventListener("storage", (e) => {
+      if (e.key === "lw_lottery_db_v3") {
+        this.loadState();
+        this.render();
+      }
+    });
   }
 
   private loadState() {
@@ -170,9 +195,27 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
     } catch (e) {}
   }
 
-  private saveDB() {
+  private async saveDB() {
     try {
-      localStorage.setItem("lw_lottery_db_v3", JSON.stringify(this.db));
+      const serialized = JSON.stringify(this.db);
+      localStorage.setItem("lw_lottery_db_v3", serialized);
+      localStorage.setItem("lottery_winner_db_backup", serialized);
+
+      if (typeof BroadcastChannel !== "undefined") {
+        try {
+          const bc = new BroadcastChannel("lw_realtime_db_sync");
+          bc.postMessage({ type: "database_updated", timestamp: Date.now() });
+        } catch {}
+      }
+
+      window.dispatchEvent(new Event("storage"));
+
+      // Push to backend server
+      fetch("/api/sql/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ db: serialized })
+      }).catch(() => {});
     } catch (e) {
       console.error("Failed to save database:", e);
     }
@@ -191,10 +234,20 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
   }
 
   /**
-   * Helper to render markdown/rich text formatting safely
+   * Helper to render markdown and rich HTML content safely
    */
   public formatContent(rawText: string = ""): string {
     if (!rawText) return "";
+
+    // Check if content already contains HTML markup (from Compose WYSIWYG or HTML source mode)
+    const hasHtmlTags = /<\/?(p|h[1-6]|div|span|strong|b|em|i|u|s|blockquote|ul|ol|li|table|tr|th|td|img|hr|pre|code|a)\b/i.test(rawText);
+    if (hasHtmlTags) {
+      return rawText
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/on\w+\s*=\s*["'][^"']*["']/gi, "")
+        .replace(/javascript:/gi, "");
+    }
+
     let html = rawText
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
@@ -241,7 +294,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
     toast.className = `fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl border text-xs font-mono font-bold shadow-2xl backdrop-blur-md transition-all duration-300 animate-bounce ${colors[type]}`;
     toast.innerHTML = `
-      <i class="${type === 'success' ? 'fa-solid fa-circle-check text-emerald-400' : type === 'error' ? 'fa-solid fa-circle-exclamation text-rose-400' : 'fa-solid fa-circle-info text-amber-400'}"></i>
+      <i data-lucide="${type === 'success' ? 'circle-check' : type === 'error' ? 'alert-circle' : 'info'}" class="${type === 'success' ? 'text-emerald-400' : type === 'error' ? 'text-rose-400' : 'text-amber-400'}"></i>
       <span>${msg}</span>
     `;
 
@@ -254,6 +307,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
   public init() {
     this.render();
+    createIcons({ icons: { CircleCheck, AlertCircle, Info, ArrowLeft, Newspaper, Home, Search, X, ArrowRight, Heart, MessageSquare, ChevronRight, Share2, Send } });
   }
 
   public render() {
@@ -292,7 +346,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
         <div class="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div class="flex items-center gap-3">
             <a href="index.html" class="w-9 h-9 rounded-xl bg-slate-900 border border-slate-800 text-amber-300 hover:text-white hover:bg-amber-500/20 flex items-center justify-center transition cursor-pointer shadow active:scale-95" title="Back to Home Dashboard">
-              <i class="fa-solid fa-arrow-left text-sm"></i>
+              <i data-lucide="arrow-left" class="text-sm"></i>
             </a>
             <div class="leading-tight">
               <div class="flex items-center gap-1.5">
@@ -301,7 +355,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
               </div>
               <h1 class="text-sm sm:text-base font-black text-white flex items-center gap-2">
                 <span>Lottery Blog & News</span>
-                <i class="fa-solid fa-newspaper text-xs text-amber-400"></i>
+                <i data-lucide="newspaper" class="text-xs text-amber-400"></i>
               </h1>
             </div>
           </div>
@@ -311,7 +365,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
               ${(this.db.blogs || []).length} Articles
             </span>
             <a href="index.html" class="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl transition">
-              <i class="fa-solid fa-house text-xs"></i>
+              <i data-lucide="home" class="text-xs"></i>
               <span>Dashboard</span>
             </a>
           </div>
@@ -324,11 +378,11 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
         <!-- Search Bar with Instant Reset -->
         <div class="space-y-3">
           <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+            <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
             <input type="text" id="blog-search-box" value="${this.searchQuery}" placeholder="Search guides, strategies, winners stories..." class="w-full bg-[#111625] border border-slate-800 focus:border-amber-500/80 rounded-2xl pl-10 pr-10 py-3 text-xs text-white outline-none placeholder-slate-500 font-mono shadow-inner transition" />
             ${this.searchQuery ? `
               <button id="blog-clear-search" class="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
+                <i data-lucide="x"></i>
               </button>
             ` : ''}
           </div>
@@ -345,10 +399,10 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
         <!-- Featured Story Card (if no search filter is active) -->
         ${!this.searchQuery && this.selectedCategory === "All" && featured ? `
-          <div class="blog-card bg-gradient-to-br from-[#161d36] via-[#0d1326] to-[#1d1636] border border-amber-500/40 rounded-3xl overflow-hidden shadow-2xl cursor-pointer group hover:border-amber-400 transition" data-id="${featured.id}">
+          <div class="blog-card blog-fade-in bg-gradient-to-br from-[#161d36] via-[#0d1326] to-[#1d1636] border border-amber-500/40 rounded-3xl overflow-hidden shadow-2xl cursor-pointer group hover:border-amber-400 transition" data-id="${featured.id}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="h-52 md:h-full relative overflow-hidden bg-slate-950 min-h-[200px]">
-                <img src="${featured.coverImage || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                <img src="${featured.coverImage || (featured as any).image || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                 <span class="absolute top-3 left-3 bg-amber-500 text-slate-950 font-mono font-black text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md">
                   ⭐ FEATURED STORY
                 </span>
@@ -374,7 +428,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
                     <span class="text-[11px] font-mono text-slate-300 font-bold">${featured.author}</span>
                   </div>
                   <span class="text-xs font-bold text-amber-400 flex items-center gap-1 group-hover:translate-x-1 transition">
-                    Read Article <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    Read Article <i data-lucide="arrow-right" class="text-[10px]"></i>
                   </span>
                 </div>
               </div>
@@ -394,7 +448,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
           ${filtered.length === 0 ? `
             <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-10 text-center space-y-3">
-              <i class="fa-solid fa-newspaper text-3xl text-slate-600"></i>
+              <i data-lucide="newspaper" class="text-3xl text-slate-600"></i>
               <h4 class="text-xs font-bold text-slate-300">No blog articles match your criteria</h4>
               <p class="text-[11px] text-slate-500 max-w-sm mx-auto">Try clearing your search query or selecting a different category from above.</p>
               <button id="blog-reset-filters" class="bg-slate-800 hover:bg-slate-700 text-white font-mono text-xs px-4 py-2 rounded-xl transition cursor-pointer">
@@ -403,13 +457,13 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
             </div>
           ` : `
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              ${filtered.map((post: BlogPost) => {
+              ${filtered.map((post: BlogPost, idx: number) => {
                 const commentsCount = (this.db.blogComments || []).filter((c: BlogComment) => c.blogId === post.id && c.status === "approved").length;
                 return `
-                  <div class="blog-card bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-lg flex flex-col justify-between group cursor-pointer transition duration-200 hover:-translate-y-0.5" data-id="${post.id}">
+                  <div class="blog-card blog-fade-in bg-slate-900/90 border border-slate-800 hover:border-amber-500/40 rounded-3xl overflow-hidden shadow-lg flex flex-col justify-between group cursor-pointer transition duration-200 hover:-translate-y-0.5" data-id="${post.id}" style="animation-delay: ${Math.min(idx * 45, 300)}ms;">
                     <div>
                       <div class="h-44 w-full relative overflow-hidden bg-slate-950">
-                        <img src="${post.coverImage || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
+                        <img src="${post.coverImage || (post as any).image || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover group-hover:scale-105 transition duration-500" />
                         <span class="absolute top-3 left-3 bg-slate-950/85 backdrop-blur-md text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full uppercase">
                           ${post.category}
                         </span>
@@ -432,14 +486,14 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
                     <div class="px-4 pb-4 sm:px-5 sm:pb-5 pt-0 flex items-center justify-between border-t border-slate-800/50 mt-2">
                       <div class="flex items-center gap-3 text-[11px] font-mono text-slate-400">
                         <span class="flex items-center gap-1 text-rose-400">
-                          <i class="fa-solid fa-heart text-[10px]"></i> ${post.likes || 0}
+                          <i data-lucide="heart" class="text-[10px]"></i> ${post.likes || 0}
                         </span>
                         <span class="flex items-center gap-1 text-cyan-400">
-                          <i class="fa-solid fa-comment text-[10px]"></i> ${commentsCount}
+                          <i data-lucide="message-square" class="text-[10px]"></i> ${commentsCount}
                         </span>
                       </div>
                       <span class="text-xs font-bold text-amber-400 group-hover:translate-x-1 transition flex items-center gap-1">
-                        Read <i class="fa-solid fa-chevron-right text-[9px]"></i>
+                        Read <i data-lucide="chevron-right" class="text-[9px]"></i>
                       </span>
                     </div>
                   </div>
@@ -530,13 +584,13 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
       <header class="bg-[#0b0f19]/95 border-b border-slate-800/80 sticky top-0 z-40 backdrop-blur-md px-4 py-3.5 shadow-xl">
         <div class="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <button id="blog-back-feed-btn" class="flex items-center gap-2 text-xs font-bold text-amber-300 hover:text-white bg-slate-900 border border-slate-800 px-3.5 py-2 rounded-xl transition cursor-pointer active:scale-95 shadow">
-            <i class="fa-solid fa-arrow-left text-xs"></i>
+            <i data-lucide="arrow-left" class="text-xs"></i>
             <span>All Articles</span>
           </button>
 
           <div class="flex items-center gap-2">
             <a href="index.html" class="flex items-center gap-1.5 text-xs font-bold text-slate-300 hover:text-amber-300 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl transition">
-              <i class="fa-solid fa-house text-xs"></i>
+              <i data-lucide="home" class="text-xs"></i>
               <span class="hidden sm:inline">Home Dashboard</span>
             </a>
           </div>
@@ -544,7 +598,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
       </header>
 
       <!-- Article Reader View Body -->
-      <article class="max-w-3xl mx-auto p-4 sm:p-6 w-full space-y-6 pb-24 flex-1 font-sans">
+      <article class="blog-fade-in max-w-3xl mx-auto p-4 sm:p-6 w-full space-y-6 pb-24 flex-1 font-sans">
         
         <!-- Category & Title Header -->
         <div class="space-y-3">
@@ -573,12 +627,12 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
             <div class="flex items-center gap-2">
               <button id="blog-like-button" class="flex items-center gap-1.5 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-400 text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer active:scale-95 shadow">
-                <i class="fa-solid fa-heart text-xs"></i>
+                <i data-lucide="heart" class="text-xs"></i>
                 <span>Like</span>
                 (<span id="blog-like-count">${post.likes || 0}</span>)
               </button>
               <button id="blog-share-button" class="flex items-center gap-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition cursor-pointer active:scale-95 shadow">
-                <i class="fa-solid fa-share-nodes text-xs"></i>
+                <i data-lucide="share-2" class="text-xs"></i>
                 <span class="hidden sm:inline">Share</span>
               </button>
             </div>
@@ -587,7 +641,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
 
         <!-- Featured Cover Image Banner -->
         <div class="w-full h-56 sm:h-72 rounded-3xl overflow-hidden border border-slate-800 shadow-2xl relative bg-slate-950">
-          <img src="${post.coverImage || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover" />
+          <img src="${post.coverImage || (post as any).image || 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?auto=format&fit=crop&w=800&q=80'}" alt="Cover" class="w-full h-full object-cover" />
         </div>
 
         <!-- Rendered Rich Text Content -->
@@ -611,7 +665,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
         <section class="pt-8 border-t border-slate-800 space-y-6">
           <div class="flex items-center justify-between">
             <h3 class="text-sm font-black text-white font-mono flex items-center gap-2">
-              <i class="fa-solid fa-comments text-amber-400"></i>
+              <i data-lucide="message-square" class="text-amber-400"></i>
               <span>Community Comments (${comments.length})</span>
             </h3>
             <span class="text-[10px] font-mono text-emerald-400">Live verified discussion</span>
@@ -634,7 +688,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
               </div>
               <button id="blog-submit-comment" class="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-500 hover:brightness-110 text-slate-950 font-black text-xs px-5 py-2.5 rounded-xl transition active:scale-95 shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-1.5">
                 <span>Post Comment</span>
-                <i class="fa-solid fa-paper-plane text-[10px]"></i>
+                <i data-lucide="send" class="text-[10px]"></i>
               </button>
             </div>
             <p id="comment-validation-msg" class="text-[10px] font-mono text-rose-400 hidden"></p>
@@ -654,7 +708,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
                     ${c.status === 'pending' ? `
                       <span class="text-[8px] bg-amber-500/15 border border-amber-500/30 text-amber-300 px-2 py-0.5 rounded-full">Pending Approval</span>
                     ` : ''}
-                    <span class="text-slate-500">${new Date(c.createdAt).toLocaleDateString()}</span>
+                    <span class="text-slate-500">${(c as any).date || (c.createdAt ? new Date(c.createdAt).toLocaleDateString() : new Date().toLocaleDateString())}</span>
                   </div>
                 </div>
                 <p class="text-xs text-slate-300 leading-relaxed font-sans">${c.text}</p>
@@ -739,6 +793,7 @@ We are delighted to introduce our revamped financial bridge! All withdrawals ini
           createdAt: new Date().toISOString(),
           status: "approved"
         };
+        (newComment as any).date = new Date().toISOString().split("T")[0];
 
         if (!this.db.blogComments) this.db.blogComments = [];
         this.db.blogComments.unshift(newComment);

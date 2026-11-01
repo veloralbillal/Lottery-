@@ -5,6 +5,7 @@
  */
 
 import { getDefaultDB } from "./defaultDB.js";
+import { hashPasswordWithUniqueSalt, verifyPasswordWithSalt, needsRehash } from "./passwordSecurity.js";
 
 const DEFAULT_BRIDGE_URL = "https://api.veloralbillal.top/db_bridge.php";
 const BRIDGE_TOKEN = "Billal50598326";
@@ -452,8 +453,16 @@ function isStaticLiveHost(): boolean {
   );
 }
 
-const originalFetch: typeof window.fetch =
-  typeof window !== "undefined" ? window.fetch.bind(window) : (globalThis.fetch as any);
+// 🛡️ CRITICAL: Capture original fetch once and store it on window to prevent infinite recursion on HMR/reloads
+const getOriginalFetch = (): typeof window.fetch => {
+  if (typeof window === "undefined") return (globalThis.fetch as any);
+  if (!(window as any).__originalFetch) {
+    (window as any).__originalFetch = window.fetch.bind(window);
+  }
+  return (window as any).__originalFetch;
+};
+
+const originalFetch = getOriginalFetch();
 
 export function installUniversalSqlBridgeFetchInterceptor(): void {
   if (typeof window === "undefined" || (window as any).__sqlBridgeInterceptorInstalled) return;
@@ -461,6 +470,11 @@ export function installUniversalSqlBridgeFetchInterceptor(): void {
 
   const interceptedFetch = async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     let urlStr = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+
+    // 0. Bypasses: Direct server calls that should never be intercepted
+    if (urlStr.includes("/api/upload/") || urlStr.includes("/uploads/")) {
+      return originalFetch(input, init);
+    }
 
     // 1. Automatically rewrite direct calls to https://api.veloralbillal.top/db -> db_bridge.php to prevent 405 Not Allowed
     if (urlStr.includes("api.veloralbillal.top/db") && !urlStr.includes("db_bridge.php")) {
@@ -654,12 +668,20 @@ export function installUniversalSqlBridgeFetchInterceptor(): void {
         }
         const passOk =
           !matched.password ||
+          verifyPasswordWithSalt(cleanPass, matched.password) ||
           matched.password === cleanPass ||
           String(matched.password).trim() === cleanPass ||
           cleanPass === "Admin123" ||
           cleanPass === "Agent123";
+
         if (!passOk) {
           return jsonResponse({ success: false, message: "Incorrect credentials." }, 401);
+        }
+
+        // Automatic security upgrade: migrate legacy passwords to unique salted hashes on successful login
+        if (matched.password && needsRehash(matched.password)) {
+          matched.password = hashPasswordWithUniqueSalt(cleanPass);
+          // Snapshot sync will propagate this change to MySQL
         }
         return jsonResponse({ success: true, user: matched });
       }
