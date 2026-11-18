@@ -483,12 +483,39 @@ export class StateManager {
       data.preventDefault();
       data.stopPropagation();
     }
+
+    const nameEl = document.getElementById("add-mf-name") as HTMLInputElement;
+    const usernameEl = document.getElementById("add-mf-username") as HTMLInputElement;
+    const roleEl = document.getElementById("add-mf-role") as HTMLSelectElement;
+    const profitEl = document.getElementById("add-mf-profit") as HTMLInputElement;
+    const bioEl = document.getElementById("add-mf-bio") as HTMLInputElement;
+
+    const personaData: any = {};
+    if (nameEl && nameEl.value.trim()) personaData.name = nameEl.value.trim();
+    if (usernameEl && usernameEl.value.trim()) personaData.username = usernameEl.value.trim();
+    if (roleEl && roleEl.value) personaData.role = roleEl.value;
+    if (profitEl && profitEl.value) {
+      const p = parseFloat(profitEl.value);
+      if (!isNaN(p)) {
+        personaData.totalProfit = p;
+        personaData.balance = p + 5000;
+      }
+    }
+    if (bioEl && bioEl.value.trim()) personaData.bio = bioEl.value.trim();
+
     if ((this as any).mirofishSimulation) {
       if (typeof (this as any).mirofishSimulation.addMember === "function") {
-        (this as any).mirofishSimulation.addMember(data);
+        (this as any).mirofishSimulation.addMember(personaData);
       } else if (typeof (this as any).mirofishSimulation.addPersona === "function") {
-        (this as any).mirofishSimulation.addPersona(data || {});
+        (this as any).mirofishSimulation.addPersona(personaData);
       }
+      this.showToast("সফলভাবে নতুন AI মেম্বার যোগ করা হয়েছে! 🤖✨", "success");
+      if (nameEl) nameEl.value = "";
+      if (usernameEl) usernameEl.value = "";
+      if (bioEl) bioEl.value = "";
+      if (profitEl) profitEl.value = "15000";
+    } else {
+      this.showToast("MiroFish simulation not initialized", "error");
     }
   }
 
