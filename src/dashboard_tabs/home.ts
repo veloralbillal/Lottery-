@@ -7,30 +7,83 @@
 
 import { HomeExtensions } from "./home_extensions.js";
 import { ThreeLotteryDrawScene } from "../components/ThreeLotteryDrawScene.js";
+import { GameHubModule } from "../js/gameHub.js";
+import { StoreTab } from "../store/StoreManager.js";
 
 export class HomeTab {
   static init(appInstance) {
     console.log("Home Tab Module initialized securely.");
     HomeExtensions.init(appInstance);
 
-    // Bind Shop button
-    const shopBtn = document.getElementById("home-shop-sub-btn");
-    if (shopBtn) {
-      shopBtn.onclick = () => {
-        appInstance.currentTab = "store";
-        appInstance.render();
-      };
-    }
+    // Event delegation on document to handle re-injected elements
+    document.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement;
+
+      // Bind Shop button
+      if (target.closest("#home-shop-sub-btn")) {
+        e.preventDefault();
+        StoreTab.activeSubTab = "catalog";
+        appInstance.navigateTo("store");
+      }
+
+      // Bind VIP Lounge button
+      else if (target.closest("#home-vip-upgrade-btn")) {
+        const modal = document.getElementById("vip-lounge-modal");
+        if (modal) {
+          modal.classList.remove("hidden");
+          appInstance.renderVipLoungePlans();
+        }
+      }
+
+      // Bind Lucky Wheel button (Separate Page: lucky-wheel.html - Instant navigation)
+      else if (target.closest("#home-lucky-spin-btn")) {
+        e.preventDefault();
+        window.location.href = "lucky-wheel.html";
+      }
+
+      // Bind Daily Check-in button (Dedicated Daily Check-In Tab)
+      else if (target.closest("#home-checkin-bonus-btn")) {
+        e.preventDefault();
+        appInstance.navigateTo("daily-checkin");
+      }
+
+      // Bind Daily Bounty Tasks button
+      else if (target.closest("#home-daily-tasks-btn")) {
+        e.preventDefault();
+        appInstance.navigateTo("tasks");
+      }
+
+      // Bind Game Hub button
+      else if (target.closest("#home-games-hub-sub-btn")) {
+        e.preventDefault();
+        GameHubModule.activeSubTab = "lobby";
+        appInstance.navigateTo("games");
+      }
+
+      // Bind LuckyBox Group (Syndicate Lottery) button
+      else if (target.closest("#home-group-lottery-sub-btn")) {
+        e.preventDefault();
+        GameHubModule.activeSubTab = "syndicate";
+        appInstance.navigateTo("games");
+      }
+
+      // Bind Close VIP Lounge button
+      else if (target.closest("#close-vip-lounge-btn")) {
+        const modal = document.getElementById("vip-lounge-modal");
+        if (modal) {
+          modal.classList.add("hidden");
+        }
+      }
+    });
   }
 
   static render(appInstance) {
-    appInstance.updateNotificationBanner();
-    if (typeof appInstance.startLiveActivityTicker === "function") {
-      appInstance.startLiveActivityTicker();
+    const checkinLabel = document.getElementById("home-checkin-status-label");
+    if (checkinLabel) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      checkinLabel.innerText = appInstance.currentUser?.lastCheckinDate === todayStr ? "Claimed ✓" : "Claim";
     }
-    if (typeof appInstance.renderHomeBannerSliders === "function") {
-      appInstance.renderHomeBannerSliders();
-    }
+
     const listEl = document.getElementById("pools-list-container");
     if (!listEl) return;
     listEl.innerHTML = "";
@@ -74,19 +127,29 @@ export class HomeTab {
           }
         }
         btn.innerHTML = cat.label;
+        btn.addEventListener("click", (e) => {
+          const catName = (e.currentTarget as HTMLElement).getAttribute("data-category");
+          if (appInstance.currentHomeCategory === catName) return;
+          appInstance.currentHomeCategory = catName;
+          // Optimization: Only re-render the HomeTab instead of full dashboard
+          HomeTab.render(appInstance);
+        });
         tabsCont.appendChild(btn);
       });
-
-      // Bind category buttons inside render so they work dynamically
-      const catButtons = tabsCont.querySelectorAll(".home-cat-tab-btn");
-      catButtons.forEach(btn => {
-        btn.addEventListener("click", (e) => {
-          const cat = e.currentTarget.getAttribute("data-category");
-          appInstance.currentHomeCategory = cat;
-          appInstance.render();
-        });
-      });
     }
+
+    // Performance Optimization: Defer non-critical UI updates
+    requestAnimationFrame(() => {
+      if (appInstance.currentTab === "home") {
+        appInstance.updateNotificationBanner();
+        if (typeof appInstance.startLiveActivityTicker === "function") {
+          appInstance.startLiveActivityTicker();
+        }
+        if (typeof appInstance.renderHomeBannerSliders === "function") {
+          appInstance.renderHomeBannerSliders();
+        }
+      }
+    });
 
     // Clear any previous quick-draw interval to avoid multiple triggers leaking memory
     if (appInstance.quickDrawInterval) {

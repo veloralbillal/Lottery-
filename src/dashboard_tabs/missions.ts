@@ -7,6 +7,42 @@
 export class MissionsTab {
   static init(appInstance) {
     console.log("Missions Tab Module initialized successfully.");
+
+    document.addEventListener("click", (e) => {
+      if (appInstance.currentTab !== "tasks") return;
+
+      // 1. Open Proof Screenshot
+      const proofImg = e.target.closest(".proof-img-thumb");
+      if (proofImg) {
+        window.open(proofImg.getAttribute("data-src"), '_blank');
+        return;
+      }
+
+      // 2. Resubmit Task
+      const resubmitBtn = e.target.closest(".resubmit-task-btn");
+      if (resubmitBtn) {
+        appInstance.reSubmitTask(resubmitBtn.getAttribute("data-task-id"));
+        return;
+      }
+
+      // 3. Trigger Upload Input
+      const uploadTrigger = e.target.closest(".upload-task-img-trigger");
+      if (uploadTrigger) {
+        document.getElementById(uploadTrigger.getAttribute("data-target-input"))?.click();
+        return;
+      }
+    });
+
+    document.addEventListener("change", (e) => {
+      if (appInstance.currentTab !== "tasks") return;
+
+      // 4. Handle Screenshot Upload
+      const fileInput = e.target.closest(".task-img-upload-input");
+      if (fileInput) {
+        appInstance.handleScreenshotUpload(fileInput, fileInput.getAttribute("data-task-id"));
+        return;
+      }
+    });
   }
 
   static render(appInstance) {
@@ -29,8 +65,7 @@ export class MissionsTab {
     }
 
     tasks.forEach(task => {
-      // Find user submission for this task
-      const userSub = submissions.find(s => s.taskId === task.id && s.userName === appInstance.currentUser.username);
+      const userSub = submissions.find(s => s.taskId === task.id && s.userName === appInstance.currentUser?.username);
       
       let statusBadge = "";
       let actionArea = "";
@@ -41,7 +76,7 @@ export class MissionsTab {
           actionArea = `
             <div class="bg-slate-950 p-3 rounded-2xl border border-slate-900 flex items-center justify-between gap-3 text-[10px]">
               <span class="text-slate-400">Proof submitted. Waiting for dynamic review:</span>
-              <img src="${userSub.screenshot}" class="w-10 h-10 aspect-square object-cover rounded border border-slate-805 cursor-zoom-in" onclick="window.open('${userSub.screenshot}', '_blank')" />
+              <img src="${userSub.screenshot}" data-src="${userSub.screenshot}" class="proof-img-thumb w-10 h-10 aspect-square object-cover rounded border border-slate-805 cursor-zoom-in" />
             </div>
           `;
         } else if (userSub.status === "approved") {
@@ -60,7 +95,7 @@ export class MissionsTab {
                 <i data-lucide="alert-circle" class="text-sm"></i>
                 <span>Disapproved: <strong>${appInstance.escapeHTML(userSub.adminNotes || 'Screenshot blurred or irrelevant.')}</strong></span>
               </div>
-              <button onclick="window.appInstance.reSubmitTask('${task.id}')" class="w-full bg-slate-950 hover:bg-slate-900 border border-slate-850 py-2 rounded-xl text-[10px] text-white font-bold transition">
+              <button data-task-id="${task.id}" class="resubmit-task-btn w-full bg-slate-950 hover:bg-slate-900 border border-slate-850 py-2 rounded-xl text-[10px] text-white font-bold transition">
                 Resubmit New Screenshot Proof
               </button>
             </div>
@@ -74,16 +109,15 @@ export class MissionsTab {
               <a href="${appInstance.escapeHTML(task.url)}" target="_blank" class="w-1/2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:opacity-95 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition">
                 <i data-lucide="external-link" class="mr-1"></i> Open Task Link
               </a>
-              <button onclick="document.getElementById('task-img-upload-${task.id}').click()" class="w-1/2 bg-slate-950 hover:bg-slate-900 border border-slate-800 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer">
+              <button data-target-input="task-img-upload-${task.id}" class="upload-task-img-trigger w-1/2 bg-slate-950 hover:bg-slate-900 border border-slate-800 py-2.5 rounded-xl text-center text-[10px] text-white font-extrabold transition flex items-center justify-center gap-1.5 cursor-pointer">
                 <i data-lucide="upload" class="text-cyan-400 animate-pulse"></i> Upload Screenshot
               </button>
             </div>
-            <input type="file" id="task-img-upload-${task.id}" class="hidden" accept="image/*" onchange="window.appInstance.handleScreenshotUpload(this, '${task.id}')" />
+            <input type="file" id="task-img-upload-${task.id}" class="task-img-upload-input hidden" data-task-id="${task.id}" accept="image/*" />
           </div>
         `;
       }
 
-      // Check category details
       let catIcon = "📺";
       if (task.category === "telegram") catIcon = "✈️";
       if (task.category === "facebook") catIcon = "👍";
@@ -116,6 +150,11 @@ export class MissionsTab {
       `;
       listContainer.appendChild(taskDiv);
     });
+
+    if (typeof appInstance.refreshIconsForContainer === "function") {
+      const tabEl = document.getElementById("tab-tasks");
+      if (tabEl) appInstance.refreshIconsForContainer(tabEl);
+    }
   }
 }
 

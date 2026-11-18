@@ -13,10 +13,20 @@ export class WalletTab {
   }
 
   static render(appInstance) {
-    appInstance.rebuildDepositGatewaySelect();
-    appInstance.rebuildWithdrawGatewaySelect();
-    appInstance.updateSelectedDepositGatewayInstructions();
-    appInstance.renderSupportAgentsList();
-    WalletExtensions.render(appInstance);
+    if (appInstance && typeof appInstance.rebuildDepositGatewaySelect === "function") {
+      appInstance.rebuildDepositGatewaySelect();
+    }
+    if (appInstance && typeof appInstance.rebuildWithdrawGatewaySelect === "function") {
+      appInstance.rebuildWithdrawGatewaySelect();
+    }
+    if (appInstance && typeof appInstance.updateSelectedDepositGatewayInstructions === "function") {
+      appInstance.updateSelectedDepositGatewayInstructions();
+    }
+    if (appInstance && typeof appInstance.renderSupportAgentsList === "function") {
+      appInstance.renderSupportAgentsList();
+    }
+    if (WalletExtensions && typeof WalletExtensions.render === "function") {
+      WalletExtensions.render(appInstance);
+    }
   }
 }

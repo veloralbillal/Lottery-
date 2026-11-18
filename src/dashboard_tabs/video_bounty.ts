@@ -5,12 +5,21 @@
  */
 
 export class VideoBountyTab {
-  static init(appInstance) {
+  static init(appInstance: any) {
     console.log("Video Bounty Tab Module initialized.");
     
     // Global listener for submission to avoid double-binding on render
     document.addEventListener("click", async (e) => {
-      if (e.target.closest("#user-submit-bounty-btn")) {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      if (target.closest("#video-bounty-back-btn")) {
+        e.preventDefault();
+        appInstance.navigateTo("profile");
+        return;
+      }
+
+      if (target.closest("#user-submit-bounty-btn")) {
         const platform = document.getElementById("user-bounty-platform")?.value;
         const videoUrl = document.getElementById("user-bounty-video-url")?.value?.trim();
         const viewsStr = document.getElementById("user-bounty-views")?.value?.trim();
@@ -78,12 +87,12 @@ export class VideoBountyTab {
     });
   }
 
-  static render(appInstance) {
+  static render(appInstance: any) {
     const listEl = document.getElementById("user-bounty-history-list");
-    if (!listEl) return;
+    if (!listEl || !appInstance?.currentUser) return;
     listEl.innerHTML = "";
 
-    const myBounties = (appInstance.db.videoBounties || []).filter(b => b.userId === appInstance.currentUser.id);
+    const myBounties = (appInstance.db?.videoBounties || []).filter((b: any) => b.userId === appInstance.currentUser.id);
 
     if (myBounties.length === 0) {
       listEl.innerHTML = `
@@ -155,5 +164,12 @@ export class VideoBountyTab {
 
       listEl.appendChild(item);
     });
+
+    const container = document.getElementById("tab-video-bounty");
+    if (container && typeof appInstance.refreshIconsForContainer === "function") {
+      appInstance.refreshIconsForContainer(container);
+    } else if (typeof appInstance.refreshIcons === "function") {
+      appInstance.refreshIcons();
+    }
   }
 }

@@ -8,13 +8,58 @@ import { ReferralExtensions } from "./share_earn_extensions.js";
 import { AffiliateAgentSystem } from "./affiliate_agent_system.js";
 
 export class ReferTab {
-  static init(appInstance) {
+  private static initialized = false;
+
+  static init(appInstance: any) {
+    if (this.initialized) return;
+    this.initialized = true;
     console.log("Refer Tab Module initialized successfully.");
     ReferralExtensions.init(appInstance);
     AffiliateAgentSystem.init(appInstance);
+
+    document.addEventListener("click", (e) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+
+      if (target.closest("#refer-back-btn")) {
+        e.preventDefault();
+        appInstance.navigateTo("profile");
+        return;
+      }
+
+      if (target.closest("#copy-refer-code-btn")) {
+        if (!appInstance.currentUser) return;
+        const code = appInstance.currentUser.username || "";
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          navigator.clipboard
+            .writeText(code)
+            .then(() => appInstance.showToast("Affiliate code copied to clipboard!", "success"))
+            .catch(() => appInstance.showToast(`Affiliate Code: ${code} (copied)`, "success"));
+        } else {
+          appInstance.showToast(`Affiliate Code: ${code}`, "info");
+        }
+        return;
+      }
+
+      if (target.closest("#copy-refer-link-btn")) {
+        if (!appInstance.currentUser) return;
+        const inviteUrl =
+          window.location.origin + "/index.html?ref=" + encodeURIComponent(appInstance.currentUser.username || "");
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+          navigator.clipboard
+            .writeText(inviteUrl)
+            .then(() => appInstance.showToast("Quick invitation link copied!", "success"))
+            .catch(() => appInstance.showToast("Link clipboard access restricted. Highlight & copy!", "info"));
+        } else {
+          appInstance.showToast(inviteUrl, "info");
+        }
+      }
+    });
   }
 
-  static render(appInstance) {
+  static render(appInstance: any) {
+    if (!appInstance?.currentUser) return;
+
     const userDisplay = document.getElementById("user-refer-code-display");
     const regionDisplay = document.getElementById("user-region-display");
     const linkDisplay = document.getElementById("user-refer-link-display");
@@ -22,17 +67,17 @@ export class ReferTab {
     const tierDisplay = document.getElementById("user-refer-level-display");
     const profitsDisplay = document.getElementById("user-refer-earned-display");
 
-    if (userDisplay) userDisplay.innerText = appInstance.currentUser.username;
+    if (userDisplay) userDisplay.innerText = appInstance.currentUser.username || "PLAYER";
     if (regionDisplay) regionDisplay.innerText = appInstance.currentUser.region || "Dhaka";
     
-    const inviteUrl = window.location.origin + "/index.html?ref=" + encodeURIComponent(appInstance.currentUser.username);
+    const inviteUrl = window.location.origin + "/index.html?ref=" + encodeURIComponent(appInstance.currentUser.username || "");
     if (linkDisplay) linkDisplay.innerText = inviteUrl;
 
     const count = appInstance.currentUser.refersCount || 0;
-    if (totalCount) totalCount.innerText = count;
+    if (totalCount) totalCount.innerText = String(count);
 
     // Evaluate Milestone Levels configuration to decide current tier and earned rewards
-    const levels = appInstance.db.settings.milestoneLevels || [];
+    const levels = appInstance.db?.settings?.milestoneLevels || [];
     let currentLvlTitle = "LV0: Cadet";
     let earnedBounties = 0;
 

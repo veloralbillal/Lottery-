@@ -811,4 +811,269 @@ svg.lucide.w-8 { width: 2rem; height: 2rem; }
 svg.lucide.w-10 { width: 2.5rem; height: 2.5rem; }
 svg.lucide.w-12 { width: 3rem; height: 3rem; }
 
+/* Image layout safeguard for static hosting */
+img {
+  max-width: 100%;
+  height: auto;
+  content-visibility: auto;
+}
+/* Performance mode CSS containment */
+.perf-contain {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 100px;
+}
+.perf-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+img[src*="logo.jpg"] {
+  max-width: 40px !important;
+  max-height: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  object-fit: cover !important;
+  border-radius: 0.75rem !important;
+}
+/* Smooth transitions and scrollbars */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.hidden {
+  display: none !important;
+}
+body {
+  background-color: #030712;
+}
+/* Custom Holographic scanning animations */
+@keyframes cyberScan {
+  0%, 100% { top: 0%; opacity: 0.3; }
+  50% { top: 96%; opacity: 1; }
+}
+.animate-cyber-scan {
+  animation: cyberScan 2.5s ease-in-out infinite;
+}
+@keyframes neonPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.05); }
+}
+.animate-neon-pulse {
+  animation: neonPulse 3s ease-in-out infinite;
+}
+/* Extended animations */
+@keyframes heartBeat {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+}
+.animate-heart-beat-custom {
+  animation: heartBeat 1.2s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
+}
+
+/* Ultimate Mobile Responsiveness & Touch Optimization - Smooth 100% Scroll & Zero Accidental Zoom */
+html {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: pan-x pan-y;
+}
+
+body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  position: relative;
+  margin: 0;
+  padding: 0;
+  touch-action: pan-x pan-y;
+}
+
+button, select, input, label, a, [role="button"], .tab-selector-btn, .admin-tab-selector-btn {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Guarantee no input ever zooms the mobile screen on focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* ================= GROUP CHAT MOBILE RESPONSIVENESS & BOUNDARY DEFENSE ================= */
+#screen-group-chat {
+  width: 100% !important;
+  max-width: 32rem; /* max-w-lg mobile container */
+  margin-left: auto;
+  margin-right: auto;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+}
+
+#group-chat-messages-container {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden !important;
+  box-sizing: border-box;
+  padding-left: 0.625rem;
+  padding-right: 0.625rem;
+}
+
+#group-chat-messages-container .group-msg-row {
+  display: flex;
+  align-items: flex-end;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+#group-chat-messages-container .group-msg-container {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+#group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
+  max-width: 86%;
+  margin-right: 0.5rem;
+  padding-left: 0.25rem;
+  align-items: flex-start;
+}
+
+#group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
+  max-width: 84%;
+  margin-right: 0.25rem;
+  padding-left: 1.25rem;
+  align-items: flex-end;
+}
+
+#screen-group-chat .group-msg-bubble,
+#group-chat-messages-container .group-msg-bubble {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  hyphens: auto;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+  text-align: left;
+}
+
+#screen-group-chat .group-msg-bubble p,
+#group-chat-messages-container .group-msg-bubble p {
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  overflow-wrap: anywhere !important;
+  margin: 0;
+  line-height: 1.45;
+}
+
+@media (max-width: 480px) {
+  #group-chat-messages-container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  #group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
+    max-width: 88%;
+    margin-right: 0.25rem;
+    padding-left: 0.125rem;
+  }
+  #group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
+    max-width: 86%;
+    margin-right: 0.125rem;
+    padding-left: 0.75rem;
+  }
+  #screen-group-chat .group-msg-bubble {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    padding: 0.55rem 0.75rem !important;
+  }
+}
+
+/* Prevent iOS Safari input zoom on focus */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="password"],
+  input[type="number"],
+  input[type="email"],
+  input[type="tel"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile friendly scrollbars & containers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.6);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(212, 175, 55, 0.4);
+  border-radius: 4px;
+}
+
+/* ================= VOICE CLUB + LOTTERY HYBRID ANIMATION ENGINE ================= */
+@keyframes voiceWavePulse {
+  0% { transform: scale(0.92); opacity: 0.9; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(2.3); opacity: 0; }
+}
+.voice-wave-1 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; }
+.voice-wave-2 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 0.6s; }
+.voice-wave-3 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.2s; }
+.voice-wave-4 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.8s; }
+
+@keyframes voiceFreqBar {
+  0% { height: 5px; }
+  50% { height: 26px; }
+  100% { height: 9px; }
+}
+.eq-bar { animation: voiceFreqBar 0.9s ease-in-out infinite alternate; }
+
+@keyframes floatLotteryItem {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(8deg); }
+}
+.lottery-float-1 { animation: floatLotteryItem 3.2s ease-in-out infinite; }
+.lottery-float-2 { animation: floatLotteryItem 3.8s ease-in-out infinite 0.8s; }
+.lottery-float-3 { animation: floatLotteryItem 4.2s ease-in-out infinite 1.5s; }
+
+@keyframes goldCoinShimmerCustom {
+  0% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5)); transform: scale(1); }
+  50% { filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.9)) drop-shadow(0 0 25px rgba(236, 72, 153, 0.4)); transform: scale(1.06); }
+  100% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5)); transform: scale(1); }
+}
+.gold-lottery-pulse { animation: goldCoinShimmerCustom 2.2s infinite ease-in-out; }
+
+/* Subtle Fade-In Transition Effect for Blog Post Items */
+@keyframes blogItemFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.blog-fade-in {
+  animation: blogItemFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .blog-fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+
 

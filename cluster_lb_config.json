@@ -1,0 +1,21 @@
+{
+  "backupSqlConfig": {
+    "enabled": true,
+    "host": "localhost",
+    "port": "3306",
+    "database": "veloralb_Lotto",
+    "username": "veloralb_billal",
+    "password": "Z3[9T*x39URzna",
+    "bridgeUrl": "",
+    "lastSyncTime": null,
+    "syncStatus": "needs_schema"
+  },
+  "loadBalancerConfig": {
+    "mode": "round_robin",
+    "dualWriteReplication": true,
+    "autoFailover": true,
+    "primaryWeight": 60,
+    "backupWeight": 40
+  },
+  "updatedAt": "2026-11-18T01:52:47.533Z"
+}

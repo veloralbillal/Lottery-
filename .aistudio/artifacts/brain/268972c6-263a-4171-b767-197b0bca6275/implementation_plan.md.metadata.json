@@ -1,6 +1,0 @@
-{
-  "summary":  "Comprehensive PHP + MySQL Security Audit Report and Hardening Implementation Guide. Documents all identified vulnerabilities, CVSS severities, precise code mitigations across authentication, authorization, database, financial idempotency, web application security, Apache shared hosting configurations, verification test matrix, and rollback instructions.",
-  "updatedAt":  "2026-10-27T03:36:11.810605252Z",
-  "requestFeedback":  true,
-  "userFacing":  true
-}

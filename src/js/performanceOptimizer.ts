@@ -267,9 +267,7 @@ export class LazyTabManager {
         if (finalHTML && finalHTML.trim().length > 20) {
           el.innerHTML = finalHTML;
           this.loadedTabs.add(tabId);
-          if (typeof (window as any).refreshIcons === 'function') {
-            try { (window as any).refreshIcons(); } catch (e) {}
-          }
+          // Icon refresh is now handled by the caller (ensureTabLoaded/renderDashboard)
           return true;
         }
       } catch (err) {

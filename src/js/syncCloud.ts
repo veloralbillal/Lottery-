@@ -4,11 +4,11 @@ import { fallbackFirebaseConfig } from "./bundledTabs.js";
 
 const DEFAULT_BRIDGE_CONFIG = {
   bridgeUrl: "https://api.veloralbillal.top/db_bridge.php",
-  token: "Billal50598326",
+  token: "Billal2026@bd",
   dbHost: "localhost",
-  database: "veloralb_Digital",
-  username: "veloralb_Digital",
-  password: "UcWg.75@wv+Ijzh#"
+  database: "veloralb_lottery",
+  username: "veloralb_billal",
+  password: "Z3[9T*x39URzna"
 };
 
 const clientTableColumnsCache: Record<string, string[]> = {};
@@ -37,10 +37,15 @@ async function executeDirectBridgeQuery(sql: string, params: any[] = [], customC
   const dbName = customConfig?.database || DEFAULT_BRIDGE_CONFIG.database;
   const dbUser = customConfig?.username || DEFAULT_BRIDGE_CONFIG.username;
   const dbPass = customConfig?.password || DEFAULT_BRIDGE_CONFIG.password;
+  const token = DEFAULT_BRIDGE_CONFIG.token;
+
+  const trimmedSql = formattedSql.trim().toUpperCase();
+  const isSelectOrDescribe = trimmedSql.startsWith('SELECT') || trimmedSql.startsWith('SHOW') || trimmedSql.startsWith('DESCRIBE') || trimmedSql.startsWith('EXPLAIN');
+  const bridgeAction = isSelectOrDescribe ? 'query' : 'execute';
 
   const urlObj = new URL(bridgeUrl);
-  urlObj.searchParams.set("token", DEFAULT_BRIDGE_CONFIG.token);
-  urlObj.searchParams.set("action", "query");
+  urlObj.searchParams.set("token", token);
+  urlObj.searchParams.set("action", bridgeAction);
   urlObj.searchParams.set("db_host", DEFAULT_BRIDGE_CONFIG.dbHost);
   urlObj.searchParams.set("db_name", dbName);
   urlObj.searchParams.set("db_user", dbUser);
@@ -49,12 +54,13 @@ async function executeDirectBridgeQuery(sql: string, params: any[] = [], customC
   const res = await rawNativeFetch(urlObj.toString(), {
     method: "POST",
     headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
+      "Content-Type": "application/json",
+      "X-Bridge-Key": token,
       "Accept": "application/json, text/plain, */*"
     },
-    body: new URLSearchParams({
-      token: DEFAULT_BRIDGE_CONFIG.token,
-      action: "query",
+    body: JSON.stringify({
+      token,
+      action: bridgeAction,
       db_host: DEFAULT_BRIDGE_CONFIG.dbHost,
       db_name: dbName,
       db_user: dbUser,
@@ -67,10 +73,12 @@ async function executeDirectBridgeQuery(sql: string, params: any[] = [], customC
   const text = await res.text();
   if (text && text.trim().startsWith("{")) {
     const parsed = JSON.parse(text);
-    if (parsed.success) {
-      return Array.isArray(parsed.data) ? parsed.data : [];
+    if (parsed.success || parsed.ok) {
+      if (Array.isArray(parsed.data)) return parsed.data;
+      if (parsed.data && typeof parsed.data === "object") return [parsed.data];
+      return [];
     }
-    throw new Error(parsed.message || "Bridge SQL query failed");
+    throw new Error(parsed.message || parsed.error || "Bridge SQL query failed");
   }
   throw new Error(`Invalid response from SQL bridge (HTTP ${res.status})`);
 }
@@ -84,27 +92,35 @@ async function directBridgeFetchDatabase(): Promise<any> {
     "d1", "d2", "w1",
     "syn_mock_1", "syn_mock_2"
   ]);
-  const fetchTableSafe = async (tbl: string) => {
+  const fetchTableSafe = async (primaryTbl: string, fallbackTbl?: string) => {
     try {
-      return await executeDirectBridgeQuery(`SELECT * FROM ${tbl}`);
+      const res = await executeDirectBridgeQuery(`SELECT * FROM ${primaryTbl}`);
+      if (Array.isArray(res) && res.length > 0) return res;
+      if (fallbackTbl) {
+        return await executeDirectBridgeQuery(`SELECT * FROM ${fallbackTbl}`).catch(() => []);
+      }
+      return res || [];
     } catch {
+      if (fallbackTbl) {
+        return await executeDirectBridgeQuery(`SELECT * FROM ${fallbackTbl}`).catch(() => []);
+      }
       return [];
     }
   };
 
   const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, rawTickets, rawDeposits, rawWithdrawals, transactions, agentLedger, rawAgentChats, settingsRows] = await Promise.all([
-    fetchTableSafe("users"),
-    fetchTableSafe("staff"),
-    fetchTableSafe("agents"),
-    fetchTableSafe("categories"),
-    fetchTableSafe("lotteries"),
-    fetchTableSafe("tickets"),
-    fetchTableSafe("deposits"),
-    fetchTableSafe("withdrawals"),
-    fetchTableSafe("transactions"),
-    fetchTableSafe("agentLedger"),
-    fetchTableSafe("agentChats"),
-    fetchTableSafe("settings")
+    fetchTableSafe("lottery_users", "users"),
+    fetchTableSafe("lottery_staff", "staff"),
+    fetchTableSafe("lottery_agents", "agents"),
+    fetchTableSafe("lottery_categories"),
+    fetchTableSafe("lottery_lotteries", "lotteries"),
+    fetchTableSafe("lottery_tickets", "tickets"),
+    fetchTableSafe("lottery_deposits", "deposits"),
+    fetchTableSafe("lottery_withdrawals", "withdrawals"),
+    fetchTableSafe("lottery_transactions", "transactions"),
+    fetchTableSafe("lottery_agentLedger", "agentLedger"),
+    fetchTableSafe("lottery_agentChats", "agentChats"),
+    fetchTableSafe("lottery_settings", "settings")
   ]);
 
   const users = rawUsers.filter((u: any) => u && !staticMockIds.has(u.id));
@@ -123,7 +139,15 @@ async function directBridgeFetchDatabase(): Promise<any> {
     { id: "c6", name: "Syndicate", label: "👥 গ্রুপ লটারি (Syndicate)", type: "syndicate", defaultPrizes: "" },
     { id: "c7", name: "Quick Draw", label: "⚡ কুইক লটারি (1-Min)", type: "single", defaultPrizes: "" }
   ];
-  const categories = rawCategories.length > 0 ? rawCategories : defaultCategories;
+  const rawCategoryList = rawCategories.length > 0 ? rawCategories : defaultCategories;
+  const categories = rawCategoryList.filter(Boolean).map((c: any) => ({
+    ...c,
+    id: String(c.id || ""),
+    name: (c.name && String(c.name).trim()) || (c.label && String(c.label).trim()) || String(c.id || "Unnamed"),
+    label: (c.label && String(c.label).trim()) || (c.name && String(c.name).trim()) || String(c.id || "Unnamed Category"),
+    type: c.type || "single",
+    defaultPrizes: c.defaultPrizes !== undefined && c.defaultPrizes !== null ? String(c.defaultPrizes) : ""
+  }));
 
   const lotteries = rawLotteries
     .filter((l: any) => l && !staticMockIds.has(l.id))
@@ -157,19 +181,48 @@ async function directBridgeFetchDatabase(): Promise<any> {
     }
   }
 
+  const savedProfiles = (settings._agentProfiles && typeof settings._agentProfiles === "object") ? settings._agentProfiles : {};
+  const hydrateProfile = (rec: any) => {
+    if (!rec || !rec.username) return rec;
+    const prof = savedProfiles[String(rec.username).toLowerCase().trim()];
+    if (!prof || typeof prof !== "object") return rec;
+    const out = { ...rec };
+    if (prof.photo !== undefined) {
+      out.photo = prof.photo || "";
+      out.avatar = prof.avatar || prof.photo || "";
+    } else {
+      if (!out.photo && prof.avatar) out.photo = prof.avatar;
+      if (!out.avatar && (out.photo || prof.avatar)) out.avatar = out.photo || prof.avatar;
+    }
+    if (!out.displayName && prof.displayName) out.displayName = prof.displayName;
+    if (!out.name && (prof.name || out.displayName)) out.name = prof.name || out.displayName;
+    if (!out.availabilityStatus && prof.availabilityStatus) out.availabilityStatus = prof.availabilityStatus;
+    if (!out.district && prof.district) out.district = prof.district;
+    return out;
+  };
+
   return {
     success: true,
     source: "direct-mysql-bridge",
     db: {
-      users,
-      staff,
-      agents,
+      users: users.map(hydrateProfile),
+      staff: staff.map(hydrateProfile),
+      agents: agents.map(hydrateProfile),
       categories,
       lotteries,
       tickets,
       deposits,
       withdrawals,
-      transactions,
+      transactions: Array.isArray(transactions)
+        ? transactions.filter(Boolean).map((t: any) => ({
+            ...t,
+            amount: parseFloat(t.amount) || 0,
+            transactionType: t.transactionType || t.type || "general",
+            type: t.type || t.transactionType || "general",
+            notes: t.notes ?? t.description ?? null,
+            description: t.description ?? t.notes ?? ""
+          }))
+        : [],
       agentLedger,
       agentChats: Array.isArray(rawAgentChats) && rawAgentChats.length > 0 ? rawAgentChats : (Array.isArray(settings._agentChats) ? settings._agentChats : []),
       settings
@@ -178,7 +231,12 @@ async function directBridgeFetchDatabase(): Promise<any> {
 }
 
 async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Promise<any> {
-  const getCols = async (tableName: string): Promise<string[]> => {
+  const getCols = async (rawName: string): Promise<string[]> => {
+    const tableName = rawName.startsWith("lottery_") ? rawName : (
+      ["users", "staff", "agents", "categories", "lotteries", "tickets", "deposits", "withdrawals", "transactions", "agentLedger", "agentChats", "settings", "recovery", "user"].includes(rawName)
+        ? `lottery_${rawName}`
+        : rawName
+    );
     if (clientTableColumnsCache[tableName]?.length) return clientTableColumnsCache[tableName];
     try {
       const rows = await executeDirectBridgeQuery(`DESCRIBE ${tableName}`, [], customConfig);
@@ -190,10 +248,11 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
     }
   };
 
-  const syncTableDirect = async (tableName: string, dataArray: any[]) => {
+  const syncTableDirect = async (rawTableName: string, dataArray: any[]) => {
     if (!Array.isArray(dataArray)) return;
+    const tableName = rawTableName.startsWith("lottery_") ? rawTableName : "lottery_" + rawTableName;
     if (dataArray.length === 0) {
-      if (tableName === "lotteries" || tableName === "staff" || tableName === "agents") {
+      if (tableName === "lottery_lotteries" || tableName === "lottery_staff" || tableName === "lottery_agents") {
         try { await executeDirectBridgeQuery(`DELETE FROM ${tableName}`, [], customConfig); } catch {}
       }
       return;
@@ -202,8 +261,183 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
     const cols = await getCols(tableName);
     if (cols.length === 0) return;
 
+    let targetData = dataArray;
+    if (tableName === "lottery_users" || tableName === "users") {
+      targetData = dataArray.map((u: any) => {
+        if (!u) return u;
+        const uname = String(u.username || u.name || "").trim() || String(u.id || "user");
+        const photoVal = u.photo || u.avatar || null;
+        return {
+          id: String(u.id || `u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          username: uname.slice(0, 100),
+          email: (u.email && String(u.email).trim()) || `${uname.toLowerCase().replace(/[^a-z0-9._-]/g, "") || "user"}@lottery.local`,
+          password: u.password || u.password_hash || "123456",
+          phone: u.phone || null,
+          dob: u.dob || null,
+          balance: parseFloat(u.balance) || 0,
+          totDeposit: parseFloat(u.totDeposit) || 0,
+          totWithdraw: parseFloat(u.totWithdraw) || 0,
+          wins: parseInt(u.wins, 10) || 0,
+          loss: parseInt(u.loss, 10) || 0,
+          profit: parseFloat(u.profit) || 0,
+          joinDate: u.joinDate || new Date().toISOString().split("T")[0],
+          status: u.status || "active",
+          role: ["admin", "agent", "subagent", "moderator"].includes(u.role) ? u.role : "user",
+          region: u.region || null,
+          district: u.district || null,
+          photo: photoVal,
+          avatar: u.avatar || photoVal,
+          displayName: u.displayName || null,
+          name: u.name || u.displayName || null,
+          availabilityStatus: u.availabilityStatus || "online"
+        };
+      });
+    } else if (tableName === "lottery_staff" || tableName === "staff" || tableName === "lottery_agents" || tableName === "agents") {
+      targetData = dataArray.map((a: any) => {
+        if (!a || typeof a !== "object") return a;
+        const uname = String(a.username || a.name || "").trim() || String(a.id || "agent");
+        const photoVal = a.photo || a.avatar || null;
+        return {
+          id: String(a.id || `agent_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          username: uname.slice(0, 100),
+          email: (a.email && String(a.email).trim()) || `${uname.toLowerCase().replace(/[^a-z0-9._-]/g, "") || "agent"}@lottery.local`,
+          password: a.password || a.password_hash || "123456",
+          phone: a.phone || null,
+          dob: a.dob || null,
+          balance: parseFloat(a.balance) || 0,
+          earnedCommission: parseFloat(a.earnedCommission) || 0,
+          commissionRate: parseFloat(a.commissionRate) || 0,
+          totalBookings: parseInt(a.totalBookings, 10) || 0,
+          district: a.district || null,
+          region: a.region || a.district || null,
+          joinDate: a.joinDate || new Date().toISOString().split("T")[0],
+          status: a.status || "active",
+          role: ["admin", "agent", "subagent", "moderator"].includes(a.role) ? a.role : "agent",
+          photo: photoVal,
+          avatar: a.avatar || photoVal,
+          displayName: a.displayName || null,
+          name: a.name || a.displayName || null,
+          availabilityStatus: a.availabilityStatus || "online"
+        };
+      });
+    } else if (tableName === "lottery_transactions" || tableName === "transactions") {
+      targetData = dataArray.map((t: any) => {
+        if (!t || typeof t !== "object") return t;
+        const txType = String(t.transactionType || t.type || "general").trim() || "general";
+        return {
+          ...t,
+          id: String(t.id || `tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          userId: String(t.userId || t.uid || t.username || "system").slice(0, 50),
+          userName: t.userName || t.username || null,
+          username: t.username || t.userName || null,
+          paymentMethod: t.paymentMethod || t.method || null,
+          phone: t.phone || null,
+          amount: parseFloat(t.amount) || 0,
+          transactionType: txType.slice(0, 50),
+          status: String(t.status || "completed").slice(0, 30),
+          bonusAmount: parseFloat(t.bonusAmount) || 0,
+          notes: t.notes ?? t.description ?? null,
+          date: t.date || new Date().toISOString()
+        };
+      });
+    } else if (tableName === "lottery_tickets" || tableName === "tickets") {
+      targetData = dataArray.map((t: any) => {
+        if (!t || typeof t !== "object") return t;
+        return {
+          ...t,
+          id: String(t.id || `t_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          userId: String(t.userId || t.uid || "unknown").slice(0, 50),
+          lotteryId: String(t.lotteryId || "").slice(0, 50),
+          code: String(t.code || t.ticketNumber || "0000").slice(0, 50),
+          status: String(t.status || "pending").slice(0, 30),
+          prizeAmount: parseFloat(t.prizeAmount) || 0
+        };
+      });
+    } else if (tableName === "lottery_deposits" || tableName === "deposits") {
+      targetData = dataArray.map((d: any) => {
+        if (!d || typeof d !== "object") return d;
+        return {
+          ...d,
+          id: String(d.id || `dep_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          username: String(d.username || d.userId || "user").slice(0, 100),
+          amount: parseFloat(d.amount) || 0,
+          method: String(d.method || d.paymentMethod || "manual").slice(0, 50),
+          trxId: String(d.trxId || d.transactionId || d.id || "N/A").slice(0, 100),
+          status: String(d.status || "pending").slice(0, 30)
+        };
+      });
+    } else if (tableName === "lottery_withdrawals" || tableName === "withdrawals") {
+      targetData = dataArray.map((w: any) => {
+        if (!w || typeof w !== "object") return w;
+        return {
+          ...w,
+          id: String(w.id || `wd_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          username: String(w.username || w.userId || "user").slice(0, 100),
+          amount: parseFloat(w.amount) || 0,
+          method: String(w.method || "manual").slice(0, 50),
+          targetAccount: String(w.targetAccount || w.account || w.phone || "N/A").slice(0, 100),
+          status: String(w.status || "pending").slice(0, 30)
+        };
+      });
+    } else if (tableName === "lottery_agentLedger" || tableName === "agentLedger") {
+      targetData = dataArray.map((l: any) => {
+        if (!l || typeof l !== "object") return l;
+        return {
+          ...l,
+          id: String(l.id || `led_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          agentId: String(l.agentId || "").slice(0, 50),
+          agentUsername: String(l.agentUsername || "agent").slice(0, 100),
+          timestamp: String(l.timestamp || l.date || new Date().toISOString()).slice(0, 100),
+          amount: parseFloat(l.amount) || 0,
+          commission: parseFloat(l.commission) || 0,
+          status: String(l.status || "pending").slice(0, 30)
+        };
+      });
+    } else if (tableName === "lottery_agentChats" || tableName === "agentChats") {
+      targetData = dataArray.map((c: any) => {
+        if (!c || typeof c !== "object") return c;
+        return {
+          ...c,
+          id: String(c.id || `chat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 80),
+          sender: String(c.sender || "system").slice(0, 100),
+          recipient: String(c.recipient || "admin").slice(0, 100),
+          timestamp: String(c.timestamp || new Date().toISOString()).slice(0, 100)
+        };
+      });
+    } else if (tableName === "lottery_lotteries" || tableName === "lotteries") {
+      targetData = dataArray.map((l: any) => {
+        if (!l || typeof l !== "object") return l;
+        return {
+          ...l,
+          id: String(l.id || `lot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          name: String(l.name || "Lottery Pool").slice(0, 150),
+          entryFee: parseFloat(l.entryFee) || 0,
+          totalTickets: parseInt(l.totalTickets, 10) || 100,
+          soldTickets: parseInt(l.soldTickets, 10) || 0,
+          category: String(l.category || "10 Taka Banner").slice(0, 50),
+          drawTime: l.drawTime || new Date(Date.now() + 86400000).toISOString(),
+          prizeAmount: parseFloat(l.prizeAmount) || 0,
+          status: String(l.status || "active").slice(0, 30)
+        };
+      });
+    } else if (tableName === "lottery_categories" || tableName === "categories") {
+      targetData = dataArray.map((c: any) => {
+        if (!c || typeof c !== "object") return c;
+        const cleanName = String(c.name || c.label || c.id || "Category").trim().slice(0, 150);
+        const cleanLabel = String(c.label || cleanName).trim().slice(0, 150);
+        return {
+          ...c,
+          id: String(c.id || `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+          name: cleanName,
+          label: cleanLabel,
+          type: String(c.type || "single").slice(0, 50),
+          defaultPrizes: c.defaultPrizes !== undefined && c.defaultPrizes !== null ? String(c.defaultPrizes) : ""
+        };
+      });
+    }
+
     const keySet = new Set<string>();
-    for (const item of dataArray) {
+    for (const item of targetData) {
       if (item && typeof item === "object") {
         Object.keys(item).forEach(k => {
           if (cols.includes(k)) keySet.add(k);
@@ -225,8 +459,8 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
     };
 
     const chunkSize = 100;
-    for (let i = 0; i < dataArray.length; i += chunkSize) {
-      const chunk = dataArray.slice(i, i + chunkSize);
+    for (let i = 0; i < targetData.length; i += chunkSize) {
+      const chunk = targetData.slice(i, i + chunkSize);
       const valueRows: string[] = [];
       const flatValues: any[] = [];
       for (const item of chunk) {
@@ -246,8 +480,8 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
       );
     }
 
-    if (validKeys.includes("id")) {
-      const activeIds = dataArray.map((item: any) => item?.id).filter(Boolean);
+    if (validKeys.includes("id") && tableName !== "lottery_users" && tableName !== "users") {
+      const activeIds = targetData.map((item: any) => item?.id).filter(Boolean);
       if (activeIds.length > 0 && activeIds.length <= 500) {
         const ph = activeIds.map(() => "?").join(",");
         await executeDirectBridgeQuery(`DELETE FROM ${tableName} WHERE id NOT IN (${ph})`, activeIds, customConfig);
@@ -255,24 +489,36 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
     }
   };
 
-  try {
-    await executeDirectBridgeQuery(`CREATE TABLE IF NOT EXISTS categories (
-      id VARCHAR(50) PRIMARY KEY,
-      name VARCHAR(150) NOT NULL,
-      label VARCHAR(150) NOT NULL,
-      type VARCHAR(50) DEFAULT 'single',
-      defaultPrizes TEXT NULL
-    ) ENGINE=InnoDB;`, [], customConfig);
-  } catch {}
-
   if (dbToSync.categories) await syncTableDirect("categories", dbToSync.categories);
   if (dbToSync.lotteries) await syncTableDirect("lotteries", dbToSync.lotteries);
   if (dbToSync.users) await syncTableDirect("users", dbToSync.users);
-  if (dbToSync.staff) await syncTableDirect("staff", dbToSync.staff);
-  if (Array.isArray(dbToSync.agents) && dbToSync.agents.length > 0) {
-    await syncTableDirect("agents", dbToSync.agents);
-  } else if (Array.isArray(dbToSync.staff)) {
-    await syncTableDirect("agents", dbToSync.staff.filter((s: any) => s && (s.role === "agent" || s.role === "subagent")));
+
+  const mergedStaffMap = new Map<string, any>();
+  const mergedAgentsMap = new Map<string, any>();
+  const addMergedDirect = (map: Map<string, any>, item: any) => {
+    if (!item || typeof item !== "object") return;
+    const key = item.id ? String(item.id) : (item.username ? String(item.username).toLowerCase() : "");
+    if (!key) return;
+    map.set(key, { ...(map.get(key) || {}), ...item, id: String(item.id || key) });
+  };
+  (Array.isArray(dbToSync.users) ? dbToSync.users : []).forEach((u: any) => {
+    if (u && (u.role === "agent" || u.role === "subagent" || u.role === "moderator")) addMergedDirect(mergedStaffMap, u);
+    if (u && (u.role === "agent" || u.role === "subagent")) addMergedDirect(mergedAgentsMap, u);
+  });
+  (Array.isArray(dbToSync.staff) ? dbToSync.staff : []).forEach((s: any) => {
+    addMergedDirect(mergedStaffMap, s);
+    if (s && (!s.role || s.role === "agent" || s.role === "subagent")) addMergedDirect(mergedAgentsMap, s);
+  });
+  (Array.isArray(dbToSync.agents) ? dbToSync.agents : []).forEach((a: any) => {
+    addMergedDirect(mergedAgentsMap, a);
+    addMergedDirect(mergedStaffMap, a);
+  });
+
+  if (dbToSync.staff || mergedStaffMap.size > 0) {
+    await syncTableDirect("staff", Array.from(mergedStaffMap.values()));
+  }
+  if (dbToSync.agents || mergedAgentsMap.size > 0) {
+    await syncTableDirect("agents", Array.from(mergedAgentsMap.values()));
   }
   if (dbToSync.tickets) await syncTableDirect("tickets", dbToSync.tickets);
   if (dbToSync.deposits) await syncTableDirect("deposits", dbToSync.deposits);
@@ -280,6 +526,34 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
   if (dbToSync.transactions) await syncTableDirect("transactions", dbToSync.transactions);
   if (dbToSync.agentLedger) await syncTableDirect("agentLedger", dbToSync.agentLedger);
   if (dbToSync.agentChats) await syncTableDirect("agentChats", dbToSync.agentChats);
+
+  if (!dbToSync.settings || typeof dbToSync.settings !== "object") {
+    dbToSync.settings = {};
+  }
+  const agentProfilesMap: Record<string, any> = {};
+  const recordAgentProfile = (rec: any) => {
+    if (!rec || !rec.username) return;
+    const uLower = String(rec.username).toLowerCase().trim();
+    if (!uLower) return;
+    const isAgentLike = ["agent", "subagent", "moderator"].includes(String(rec.role || "").toLowerCase());
+    if (!isAgentLike && !rec.photo && !rec.avatar && !rec.displayName) return;
+    const prev = agentProfilesMap[uLower] || {};
+    const photoVal = rec.photo !== undefined ? rec.photo : (rec.avatar !== undefined ? rec.avatar : prev.photo);
+    agentProfilesMap[uLower] = {
+      photo: photoVal || "",
+      avatar: photoVal || "",
+      displayName: rec.displayName || prev.displayName || "",
+      name: rec.name || rec.displayName || prev.name || "",
+      availabilityStatus: rec.availabilityStatus || prev.availabilityStatus || "online",
+      district: rec.district || prev.district || ""
+    };
+  };
+  (Array.isArray(dbToSync.users) ? dbToSync.users : []).forEach(recordAgentProfile);
+  Array.from(mergedStaffMap.values()).forEach(recordAgentProfile);
+  Array.from(mergedAgentsMap.values()).forEach(recordAgentProfile);
+  if (Object.keys(agentProfilesMap).length > 0) {
+    dbToSync.settings._agentProfiles = agentProfilesMap;
+  }
 
   if (dbToSync.settings && typeof dbToSync.settings === "object") {
     if (Array.isArray(dbToSync.agentChats)) {
@@ -295,7 +569,7 @@ async function directBridgeSyncDatabase(dbToSync: any, customConfig?: any): Prom
       }
       if (settingRows.length > 0) {
         await executeDirectBridgeQuery(
-          `REPLACE INTO settings (setting_key, setting_value) VALUES ${settingRows.join(",")}`,
+          `REPLACE INTO lottery_settings (setting_key, setting_value) VALUES ${settingRows.join(",")}`,
           settingVals,
           customConfig
         );
@@ -465,9 +739,15 @@ export const SyncCloudModule = {
     try {
       // Hydrate from active database (synced with MySQL)
       if (this.db && this.db.users && Array.isArray(this.db.users)) {
-        const localUser = this.db.users.find(u => u.id === uid || u.uid === uid);
+        const localUser = this.db.users.find((u: any) => u.id === uid || u.uid === uid) ||
+                          (this.db.staff || []).find((s: any) => s.id === uid || s.uid === uid) ||
+                          (this.db.agents || []).find((a: any) => a.id === uid || a.uid === uid);
         if (localUser) {
+          const prevRole = this.currentUser?.role;
           this.currentUser = removeCircularReferences(localUser);
+          if ((prevRole === "agent" || prevRole === "subagent") && (!this.currentUser.role || this.currentUser.role === "user" || this.currentUser.role === "player")) {
+            this.currentUser.role = prevRole;
+          }
           localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
           console.log("User profile hydrated from active database:", localUser.username);
           this.render();
@@ -707,7 +987,7 @@ export const SyncCloudModule = {
     if (!Array.isArray(this.db.videoBounties)) this.db.videoBounties = [];
     if (!Array.isArray(this.db.syncLogs)) this.db.syncLogs = [];
 
-    // Ensure strict table separation: migrate any staff/agents from users to staff
+    // Ensure strict table separation: migrate any staff/agents from users to staff & agents
     const genuineUsers = [];
     for (const u of this.db.users) {
       const role = (u.role || "").toLowerCase();
@@ -715,8 +995,17 @@ export const SyncCloudModule = {
         if (!this.db.staff.some((s: any) => s.id === u.id || (s.username && u.username && s.username.toLowerCase() === u.username.toLowerCase()))) {
           this.db.staff.push(u);
         }
+        if ((role === "agent" || role === "subagent") && !this.db.agents.some((a: any) => a.id === u.id || (a.username && u.username && a.username.toLowerCase() === u.username.toLowerCase()))) {
+          this.db.agents.push(u);
+        }
       } else {
         genuineUsers.push(u);
+      }
+    }
+    for (const s of this.db.staff) {
+      const role = (s?.role || "agent").toLowerCase();
+      if ((role === "agent" || role === "subagent") && !this.db.agents.some((a: any) => a.id === s.id || (a.username && s.username && a.username.toLowerCase() === s.username.toLowerCase()))) {
+        this.db.agents.push(s);
       }
     }
     this.db.users = genuineUsers;
@@ -810,6 +1099,9 @@ export const SyncCloudModule = {
       if (!Array.isArray(this.db.settings.bannedIPs)) this.db.settings.bannedIPs = [];
     }
 
+    const sqlDbConfig = (prevDb.sqlDbConfig || parsed.sqlDbConfig)
+      ? { ...(prevDb.sqlDbConfig || {}), ...(parsed.sqlDbConfig || {}) }
+      : undefined;
     if (syncNodes) this.db.syncNodes = syncNodes;
     if (sqlDbConfig) this.db.sqlDbConfig = sqlDbConfig;
   },
@@ -918,16 +1210,29 @@ export const SyncCloudModule = {
           if (typeof (this as any).refreshCurrentUserAndWalletBalance === "function") {
             (this as any).refreshCurrentUserAndWalletBalance(false);
           } else if (this.currentUser) {
-            const freshUser = (this.db.users || []).find(u => u.username === this.currentUser.username || u.id === this.currentUser.id) ||
-                              (this.db.staff || []).find(s => s.username === this.currentUser.username || s.id === this.currentUser.id) ||
-                              (this.db.agents || []).find(a => a.username === this.currentUser.username || a.id === this.currentUser.id);
+            const curUname = this.currentUser.username ? String(this.currentUser.username).toLowerCase() : "";
+            const isAgentSession = this.currentUser.role === "agent" || this.currentUser.role === "subagent";
+            const matchFn = (x: any) => x && (
+              (x.id && String(x.id) === String(this.currentUser.id)) ||
+              (curUname && x.username && String(x.username).toLowerCase() === curUname)
+            );
+            const freshUser = isAgentSession
+              ? ((this.db.agents || []).find(matchFn) || (this.db.staff || []).find(matchFn) || (this.db.users || []).find(matchFn))
+              : ((this.db.users || []).find(matchFn) || (this.db.staff || []).find(matchFn) || (this.db.agents || []).find(matchFn));
             if (freshUser) {
+              const prevRole = this.currentUser.role;
               this.currentUser = removeCircularReferences(freshUser);
-              localStorage.setItem(this.sessionKey, safeStringify(freshUser));
+              if (isAgentSession && (!this.currentUser.role || this.currentUser.role === "user" || this.currentUser.role === "player")) {
+                this.currentUser.role = prevRole;
+              }
+              localStorage.setItem(this.sessionKey, safeStringify(this.currentUser));
             }
           }
           localStorage.setItem(this.dbKey, safeStringify(this.db));
           localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
+          if (typeof (this as any).updateMetaTags === "function") {
+            (this as any).updateMetaTags();
+          }
           this.render();
           this.startSqlPolling();
           this.addConsoleLog(`[SQL DB LOAD] Successfully loaded and aligned live state from active MySQL database.`, "success");
@@ -970,22 +1275,25 @@ export const SyncCloudModule = {
       const sqlConfig = this.db.sqlDbConfig || {
         host: 'https://api.veloralbillal.top/db_bridge.php',
         port: '3306',
-        database: 'veloralb_Digital',
-        username: 'veloralb_Digital',
-        password: 'UcWg.75@wv+Ijzh#',
+        database: 'veloralb_lottery',
+        username: 'veloralb_billal',
+        password: 'Z3[9T*x39URzna',
         activeEngine: 'mysql',
         autoSync: true
       };
       
       sqlConfig.activeEngine = 'mysql';
       sqlConfig.autoSync = true;
+      sqlConfig.database = sqlConfig.database || 'veloralb_lottery';
+      sqlConfig.username = sqlConfig.username || 'veloralb_billal';
+      sqlConfig.password = sqlConfig.password || 'Z3[9T*x39URzna';
       sqlConfig.lastSyncTime = new Date().toISOString();
       sqlConfig.syncStatus = "synced";
       this.db.sqlDbConfig = sqlConfig;
 
       // Guarantee we have a syncNodes entry for MySQL
       this.db.syncNodes = [
-        { id: "node-sql", name: "MySQL Database (veloralb_Digital)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
+        { id: "node-sql", name: "MySQL Database (veloralb_lottery)", active: true, type: "sql", status: "connected", lastSync: new Date().toLocaleTimeString() }
       ];
 
       // Replicate payload to server-side SQL sync endpoint (with automatic Direct Bridge fallback)
@@ -1016,23 +1324,27 @@ export const SyncCloudModule = {
             this.addConsoleLog(`[SYNC] 🐬 MySQL Database (${sqlConfig.database || 'veloralb_Digital'}@${sqlConfig.host || 'localhost'}) synced successfully. 100% data synced!`, "success");
             this.setSyncState("synced");
           } else {
-            throw new Error(resData.error || "Server rejected SQL sync");
+            throw new Error(resData.message || resData.error || "Server rejected SQL sync");
           }
         } else {
-          throw new Error(`HTTP ${response.status}`);
+          const errText = await response.text().catch(() => "");
+          throw new Error(errText || `HTTP ${response.status}`);
         }
       } catch (netErr: any) {
         this.addConsoleLog(`[SYNC ERROR] SQL Mirroring failed: ${netErr.message || netErr}`, "error");
         this.setSyncState("error");
+        return false;
       }
 
       // Update our new HA cluster UI stats if we're on the Failover Vault tab
       if (this.currentAdminTab === "sync-vault") {
         this.renderSyncVaultTab();
       }
+      return true;
     } catch (e: any) {
       this.addConsoleLog(`[SYNC WARNING] Sync notice: ${e.message || e}`, "warning");
       this.setSyncState("error");
+      return false;
     }
   },
 
@@ -1049,40 +1361,40 @@ export const SyncCloudModule = {
       const text = badge.querySelector(".cloud-sync-text");
       
       if (dot && text) {
-        // Reset classes
-        dot.className = "w-1.5 h-1.5 rounded-full cloud-sync-dot";
-        text.className = "font-extrabold uppercase tracking-tight cloud-sync-text";
+        // Reset classes safely (works for both HTML and SVG elements)
+        dot.setAttribute("class", "w-1.5 h-1.5 rounded-full cloud-sync-dot");
+        text.setAttribute("class", "font-extrabold uppercase tracking-tight cloud-sync-text");
         
         switch (state) {
           case 'synced':
             dot.classList.add("bg-emerald-500", "shadow-[0_0_6px_rgba(16,185,129,0.5)]");
             text.classList.add("text-emerald-400");
-            text.innerText = "Synced";
-            badge.title = "Cloud State: Synced successfully! Secure & Connected.";
+            text.textContent = "Synced";
+            badge.setAttribute("title", "Cloud State: Synced successfully! Secure & Connected.");
             break;
           case 'syncing':
             dot.classList.add("bg-amber-500", "animate-pulse", "shadow-[0_0_6px_rgba(245,158,11,0.5)]");
             text.classList.add("text-amber-400");
-            text.innerText = "Saving...";
-            badge.title = "Cloud State: Uploading current database changes...";
+            text.textContent = "Saving...";
+            badge.setAttribute("title", "Cloud State: Uploading current database changes...");
             break;
           case 'loading':
             dot.classList.add("bg-cyan-500", "animate-pulse", "shadow-[0_0_6px_rgba(6,182,212,0.5)]");
             text.classList.add("text-cyan-400");
-            text.innerText = "Loading...";
-            badge.title = "Cloud State: Loading fresh data from Firebase...";
+            text.textContent = "Loading...";
+            badge.setAttribute("title", "Cloud State: Loading fresh data from MySQL...");
             break;
           case 'offline':
             dot.classList.add("bg-rose-500", "animate-bounce", "shadow-[0_0_6px_rgba(239,68,68,0.5)]");
             text.classList.add("text-rose-500");
-            text.innerText = "Offline";
-            badge.title = "Cloud State: Internet disconnected. Changes saved locally.";
+            text.textContent = "Offline";
+            badge.setAttribute("title", "Cloud State: Internet disconnected. Changes saved locally.");
             break;
           case 'error':
             dot.classList.add("bg-red-600", "shadow-[0_0_6px_rgba(220,38,38,0.5)]");
             text.classList.add("text-red-500");
-            text.innerText = "Sync Error";
-            badge.title = "Cloud State: Sync failed. Will retry automatically.";
+            text.textContent = "Sync Error";
+            badge.setAttribute("title", "Cloud State: Sync failed. Will retry automatically.");
             break;
         }
       }
@@ -1100,10 +1412,10 @@ export const SyncCloudModule = {
     const modalIconContainer = document.getElementById("sync-modal-icon-container");
 
     if (modalDot && modalStateText && modalStateSubtext && modalIcon) {
-      // Clear previous classes
-      modalDot.className = "w-2 h-2 rounded-full";
-      modalIcon.className = "fa-solid";
-      if (modalIconContainer) modalIconContainer.className = "w-12 h-12 rounded-xl border flex items-center justify-center text-xl shrink-0";
+      // Clear previous classes safely (Lucide replaces <i> with <svg> where className is read-only)
+      modalDot.setAttribute("class", "w-2 h-2 rounded-full");
+      modalIcon.setAttribute("class", "fa-solid");
+      if (modalIconContainer) modalIconContainer.setAttribute("class", "w-12 h-12 rounded-xl border flex items-center justify-center text-xl shrink-0");
 
       // Calculate stats counts from local DB
       const userCount = this.db && this.db.users ? this.db.users.length : 0;
@@ -1119,10 +1431,10 @@ export const SyncCloudModule = {
       if (timeEl) {
         if (state === 'offline') {
           timeEl.innerText = "Offline Mode (Local Active)";
-          timeEl.className = "text-rose-400 font-bold";
+          timeEl.setAttribute("class", "text-rose-400 font-bold");
         } else {
           timeEl.innerText = this.lastSyncedTime ? this.lastSyncedTime.toLocaleTimeString() : "Just Now";
-          timeEl.className = "text-emerald-400 font-bold";
+          timeEl.setAttribute("class", "text-emerald-400 font-bold");
         }
       }
 
@@ -1130,31 +1442,31 @@ export const SyncCloudModule = {
         case 'synced':
           modalDot.classList.add("bg-emerald-500", "shadow-[0_0_6px_rgba(16,185,129,0.5)]");
           modalStateText.innerText = "Cloud Sync Active / ক্লাউড সুরক্ষিত";
-          modalStateText.className = "text-xs font-black text-emerald-400 uppercase tracking-wider";
-          modalStateSubtext.innerText = "Everything is perfectly backed up onto Firebase Firestore.";
+          modalStateText.setAttribute("class", "text-xs font-black text-emerald-400 uppercase tracking-wider");
+          modalStateSubtext.innerText = "Everything is perfectly backed up onto MySQL Database.";
           modalIcon.classList.add("fa-cloud-arrow-up", "text-emerald-400");
           if (modalIconContainer) modalIconContainer.classList.add("bg-emerald-950/40", "border-emerald-800/30", "text-emerald-400");
           break;
         case 'syncing':
           modalDot.classList.add("bg-amber-500", "animate-pulse", "shadow-[0_0_6px_rgba(245,158,11,0.5)]");
           modalStateText.innerText = "Uploading / ক্লাউড আপডেট হচ্ছে";
-          modalStateText.className = "text-xs font-black text-amber-500 uppercase tracking-wider";
-          modalStateSubtext.innerText = "Saving your wins, tickets, and modifications to Google Cloud.";
+          modalStateText.setAttribute("class", "text-xs font-black text-amber-500 uppercase tracking-wider");
+          modalStateSubtext.innerText = "Saving your wins, tickets, and modifications to MySQL Database.";
           modalIcon.classList.add("fa-circle-notch", "animate-spin", "text-amber-500");
           if (modalIconContainer) modalIconContainer.classList.add("bg-amber-950/40", "border-amber-800/30", "text-amber-500");
           break;
         case 'loading':
           modalDot.classList.add("bg-cyan-500", "animate-pulse", "shadow-[0_0_6px_rgba(6,182,212,0.5)]");
           modalStateText.innerText = "Downloading / ডাটা লোড হচ্ছে";
-          modalStateText.className = "text-xs font-black text-cyan-400 uppercase tracking-wider";
-          modalStateSubtext.innerText = "Fetching the latest player records and configurations from Firebase.";
+          modalStateText.setAttribute("class", "text-xs font-black text-cyan-400 uppercase tracking-wider");
+          modalStateSubtext.innerText = "Fetching the latest player records and configurations from MySQL Database.";
           modalIcon.classList.add("fa-circle-notch", "animate-spin", "text-cyan-400");
           if (modalIconContainer) modalIconContainer.classList.add("bg-cyan-950/40", "border-cyan-800/30", "text-cyan-400");
           break;
         case 'offline':
           modalDot.classList.add("bg-rose-500", "animate-bounce", "shadow-[0_0_6px_rgba(239,68,68,0.5)]");
           modalStateText.innerText = "Offline Mode / ইন্টারনেট বিচ্ছিন্ন";
-          modalStateText.className = "text-xs font-black text-rose-500 uppercase tracking-wider";
+          modalStateText.setAttribute("class", "text-xs font-black text-rose-500 uppercase tracking-wider");
           modalStateSubtext.innerText = "Using offline fallbacks. Data will autosync when internet returns.";
           modalIcon.classList.add("fa-wifi-slash", "text-rose-500");
           if (modalIconContainer) modalIconContainer.classList.add("bg-rose-950/40", "border-rose-800/30", "text-rose-500");
@@ -1162,8 +1474,8 @@ export const SyncCloudModule = {
         case 'error':
           modalDot.classList.add("bg-red-600", "shadow-[0_0_6px_rgba(220,38,38,0.5)]");
           modalStateText.innerText = "Sync Blocked / সংযোগ ত্রুটি";
-          modalStateText.className = "text-xs font-black text-red-500 uppercase tracking-wider";
-          modalStateSubtext.innerText = "Failed to establish synchronization handshake with the Firestore database.";
+          modalStateText.setAttribute("class", "text-xs font-black text-red-500 uppercase tracking-wider");
+          modalStateSubtext.innerText = "Failed to establish synchronization handshake with the MySQL database.";
           modalIcon.classList.add("fa-triangle-exclamation", "text-red-500");
           if (modalIconContainer) modalIconContainer.classList.add("bg-red-950/40", "border-red-800/30", "text-red-500");
           break;
@@ -1251,7 +1563,8 @@ export const SyncCloudModule = {
                 c: this.db?.categories,
                 t: this.db?.tickets,
                 d: this.db?.deposits,
-                w: this.db?.withdrawals
+                w: this.db?.withdrawals,
+                st: this.db?.settings
               });
               this.mergeParsedDb(parsed);
               const afterSig = safeStringify({
@@ -1262,13 +1575,17 @@ export const SyncCloudModule = {
                 c: this.db?.categories,
                 t: this.db?.tickets,
                 d: this.db?.deposits,
-                w: this.db?.withdrawals
+                w: this.db?.withdrawals,
+                st: this.db?.settings
               });
               if (beforeSig !== afterSig) {
                 localStorage.setItem(this.dbKey, safeStringify(this.db));
                 localStorage.setItem("lottery_winner_db_backup", safeStringify(this.db));
                 if (typeof (this as any).refreshCurrentUserAndWalletBalance === "function") {
                   (this as any).refreshCurrentUserAndWalletBalance(false);
+                }
+                if (typeof (this as any).updateMetaTags === "function") {
+                  (this as any).updateMetaTags();
                 }
                 this.render();
                 console.log("[SQL Realtime Poll] Live database changes detected and rendered automatically.");

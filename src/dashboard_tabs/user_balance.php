@@ -13,7 +13,7 @@
    </div>
   </div>
   <div class="flex items-baseline gap-2 mb-2">
-   <h1 class="text-3xl font-black text-white font-mono tracking-tight">৳<span class="curr-balance">0</span>.<span class="text-emerald-400">00</span></h1>
+   <h1 class="text-3xl font-black text-white font-mono tracking-tight">৳<span class="curr-balance">0.00</span></h1>
   </div>
   <div class="flex items-center justify-between pt-2 border-t border-slate-800/60 text-[10px] text-slate-400 font-mono">
    <span>Instant Draw Purchases</span>

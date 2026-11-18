@@ -8,10 +8,46 @@
 export class JackpotTab {
   static init(appInstance) {
     console.log("Jackpot Tab Module initialized successfully.");
+    
+    document.addEventListener("click", (e) => {
+      if (appInstance.currentTab !== "jackpot") return;
+
+      // 1. Quantity Adjustments
+      const qtyBtn = e.target.closest(".jp-qty-btn");
+      if (qtyBtn) {
+        const qty = parseInt(qtyBtn.getAttribute("data-qty") || "1");
+        const input = document.getElementById("jackpot-selected-qty");
+        if (input) {
+          input.value = qty;
+          JackpotTab.render(appInstance);
+        }
+        return;
+      }
+
+      // 2. Custom Qty Plus Button
+      if (e.target.closest("#jackpot-qty-plus-btn")) {
+        const input = document.getElementById("jackpot-custom-qty-input");
+        if (input) {
+          input.value = parseInt(input.value) + 1;
+          JackpotTab.render(appInstance);
+        }
+        return;
+      }
+
+      // 3. Buy Button
+      if (e.target.closest("#tab-buy-jackpot-btn")) {
+        console.log("Jackpot Buy Clicked");
+        appInstance.showToast("Jackpot purchase feature coming soon!", "info");
+        return;
+      }
+    });
   }
 
   static render(appInstance) {
     if (!appInstance || !appInstance.db) return;
+    if (typeof appInstance.updateAllWalletBalanceUI === "function") {
+      appInstance.updateAllWalletBalanceUI();
+    }
     const s = appInstance.db.settings || {};
     const poolVal = s.jackpotPool || 84250.00;
 

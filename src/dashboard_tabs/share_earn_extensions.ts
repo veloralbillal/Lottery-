@@ -6,7 +6,11 @@
  */
 
 export class ReferralExtensions {
-  static init(appInstance) {
+  private static initialized = false;
+
+  static init(appInstance: any) {
+    if (this.initialized) return;
+    this.initialized = true;
     console.log("Referral Extensions Module loaded.");
     this.setupListeners(appInstance);
   }
@@ -386,16 +390,16 @@ export class ReferralExtensions {
             return topRecruiters.map((u, idx) => `
               <div class="flex items-center justify-between bg-slate-950/60 p-3 rounded-2xl border border-slate-900/80">
                 <div class="flex items-center gap-3">
-                  <div class="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center font-black text-[10px] \${idx === 0 ? 'text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'text-slate-500 border border-slate-800'}">
-                    #\${idx + 1}
+                  <div class="w-7 h-7 rounded-full bg-slate-900 flex items-center justify-center font-black text-[10px] ${idx === 0 ? 'text-amber-400 border border-amber-500/30 shadow-[0_0_10px_rgba(245,158,11,0.2)]' : 'text-slate-500 border border-slate-800'}">
+                    #${idx + 1}
                   </div>
                   <div>
-                    <span class="text-[11px] font-black text-white">@\${u.username}</span>
+                    <span class="text-[11px] font-black text-white">@${appInstance.escapeHTML(u.username)}</span>
                     <span class="block text-[8px] text-slate-500 uppercase font-bold tracking-tighter">Elite Recruiter</span>
                   </div>
                 </div>
                 <div class="text-right">
-                  <span class="text-cyan-400 font-black text-xs">\${u.refersCount}</span>
+                  <span class="text-cyan-400 font-black text-xs">${u.refersCount}</span>
                   <span class="block text-[7px] text-slate-600 uppercase font-bold">Refers</span>
                 </div>
               </div>

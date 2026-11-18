@@ -2,147 +2,85 @@
 
 ## 1. Languages
 - **TypeScript (`~5.8.2`)**:
-  - *Purpose*: Primary programming language for the application frontend (`src/**/*.ts`) and backend server (`server.ts`). Provides static typing for state managers, database entity interfaces, and API request/response payloads.
+  - *Purpose*: Primary programming language for the application frontend and backend server.
 - **JavaScript (ES6+)**:
-  - *Purpose*: Core execution language for browser runtime scripts in `src/js/` (e.g. `admin.js`, `luckyWheel.js`, `syncVault.js`, `notificationEngine.js`) and game modules (`src/games/`).
+  - *Purpose*: Legacy execution language for browser scripts in `src/js/` and specialized game modules.
 - **HTML5**:
-  - *Purpose*: Document structuring for the primary SPA shell (`index.html`), standalone blog viewer (`blog.html`), dedicated admin article editor (`admin-blog-editor.html`), published articles manager (`admin-articles.html`), category taxonomy (`admin-categories.html`), and comments desk (`comments.html`).
+  - *Purpose*: Document structuring for the primary SPA shell (`index.html`) and standalone pages.
 - **PHP (Template Source Markup)**:
-  - *Purpose*: Template markup in `src/dashboard_tabs/*.php` and `src/admin_tabs/*.php`. These files contain HTML/PHP template blocks that are read and packaged at build time by Vite into JavaScript string dictionaries (`src/js/bundledTabs.ts`). Also present as legacy root files (`index.php`, `login.php`, `deposit.php`, etc.).
+  - *Purpose*: Source templates in `src/dashboard_tabs/*.php` and `src/admin_tabs/*.php`, pre-bundled at build time into JavaScript string dictionaries.
 - **CSS3 / PostCSS**:
-  - *Purpose*: Visual layout and utility-first styling rules processed via `@tailwindcss/vite` and scoped stylesheets (`src/index.css`, `src/dashboard_tabs/*.css`, `src/store/store.css`).
+  - *Purpose*: Utility-first styling via `@tailwindcss/vite` (`src/index.css`).
 
 ---
 
 ## 2. Frameworks & Core Runtimes
 - **Express (`^4.21.2`)**:
-  - *Purpose*: Backend HTTP framework (`server.ts`). Handles API endpoints, payment webhooks, database bridge proxying, plugin file uploads, and static asset serving in production.
-  - *Trade-off*: Lightweight and standard for Node.js, but requires manual routing and middleware architecture compared to full-stack opinionated frameworks like Next.js or NestJS.
+  - *Purpose*: Backend HTTP framework for API endpoints, payment webhooks, and static serving.
 - **Node.js (v20+ Runtime)**:
-  - *Purpose*: Server execution environment for Express, TSX, and ESBuild.
-- **React (`^19.0.1`, `react-dom`) [DECLARED / UNUSED IN RUNTIME]**:
-  - *Verification*: Declared in `package.json`, but **not imported or mounted in the application codebase**. The frontend uses vanilla TypeScript DOM manipulation (`document.getElementById`, `innerHTML`, class toggles) and template string injection via `StateManager` in `src/main.ts`.
+  - *Purpose*: Server execution environment.
+- **React (`^19.0.1`) [DECLARED / UNUSED]**:
+  - *Verification*: Declared in `package.json` but not used for UI rendering; the app uses vanilla TypeScript DOM manipulation.
 
 ---
 
 ## 3. Libraries & Packages
-
-### Actively Used in Codebase:
-- **Tailwind CSS (`^4.3.1`, `@tailwindcss/vite`)**:
-  - *Purpose*: Utility-first styling engine integrated directly into the Vite compilation pipeline (`@import "tailwindcss";` in `src/index.css`).
-  - *Trade-off*: Eliminates custom CSS bloat and accelerates UI styling, but results in verbose HTML class attributes.
-- **Lucide (`^1.63.0`)**:
-  - *Purpose*: Modern client-side SVG icon library imported in `src/main.ts` and rendered via `createIcons({ icons })` using the full 2,000+ icon dictionary for UI glyphs (`<i data-lucide="...">`). Includes an automatic FontAwesome-to-Lucide bridge.
-  - *Trade-off*: Bundled locally to ensure 100% offline availability without external font CDN dependencies, though requires explicit SVG sizing.
-- **Three.js (`^0.186.1`, `@types/three`)**:
-  - *Purpose*: WebGL 3D graphics rendering used in `src/components/ThreeLotteryDrawScene.ts` to create interactive 3D lottery balls, particle effects, and lottery drawing scenes.
-- **GSAP (`^3.15.0`)**:
-  - *Purpose*: High-performance timeline animation library loaded dynamically (`import("gsap")` in `src/main.ts`) for winner celebration overlays, drawer transitions, and smooth modal entrances.
-- **Canvas Confetti (`^1.9.4`, `@types/canvas-confetti`)**:
-  - *Purpose*: Particle celebration effects dynamically triggered upon ticket wins, daily check-in rewards, and lucky wheel jackpot spins (`src/main.ts`).
-- **MySQL2 (`^3.24.4`)**:
-  - *Purpose*: MySQL database client used in `server.ts` (`mysql2/promise`) for executing queries, connection testing, and cloud synchronization against MySQL 8.0 / MariaDB.
-- **Web-Push (`^3.6.7`, `@types/web-push`)**:
-  - *Purpose*: Encrypted Web Push notification delivery in `server.ts` using VAPID keys to send system alerts to subscribed client browsers.
-- **Multer (`^2.4.0`, `@types/multer`)**:
-  - *Purpose*: Multipart form-data middleware used in `server.ts` (`/api/plugins/upload`) to handle memory-buffered zip file uploads for store plugins.
-- **JSZip (`^3.10.2`, `@types/jszip`)**:
-  - *Purpose*: In-memory ZIP archive decompression library used in `server.ts` to inspect and extract uploaded plugin packages into `public/plugins/`.
-- **Nodemailer (`^9.0.3`, `@types/nodemailer`)**:
-  - *Purpose*: SMTP transport client used in `src/js/apiEmailSender.ts` and `server.ts` (`/api/send-reset-email`) to dispatch transactional password reset tokens and verification emails.
-- **Dotenv (`^17.2.3`)**:
-  - *Purpose*: Loads environment configuration variables (`PORT`, `SQL_BRIDGE_URL`, `DB_NAME`, `DB_USER`, `DB_PASS`, `SMTP_*`) into `process.env`.
-- **FontAwesome 6 (`6.4.0`, CDN via cdnjs)**:
-  - *Purpose*: Legacy vector icon stylesheet linked in `index.html` providing glyphs across legacy badges and templates (`<i class="fa-solid ...">`).
-- **Chart.js (CDN via jsdelivr)**:
-  - *Purpose*: Financial metrics, player activity, and deposit/withdrawal performance charts loaded via script tag in `index.html`.
-
-### Declared in `package.json` but Unused / Inert:
-- **`@google/genai` (`^2.4.0`)**: Declared in `package.json` and `metadata.json` capability (`MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API`), but has no active import statements in `src/` or `server.ts`.
-- **`lucide-react` (`^0.546.0`)**: Declared in `package.json`; unused because the frontend is vanilla TypeScript and uses `lucide` core instead.
-- **`motion` (`^12.23.24`)**: Declared in `package.json`; not imported in application source files.
-- **`@vitejs/plugin-react` (`^5.0.4`)**: Declared in `package.json`; not registered in `vite.config.ts`.
+- **Tailwind CSS (`^4.3.1`)**: Utility-first styling engine.
+- **Lucide (`^1.63.0`)**: Client-side SVG icon library with local bundling for offline use.
+- **Three.js (`^0.186.1`)**: WebGL 3D graphics for lottery drawing scenes.
+- **GSAP (`^3.15.0`)**: High-performance animation library.
+- **Canvas Confetti (`^1.9.4`)**: Particle celebration effects.
+- **MySQL2 (`^3.24.4`)**: MySQL database client for server-side SQL operations.
+- **Web-Push (`^3.6.7`)**: Encrypted Web Push notification delivery.
+- **JSZip (`^3.10.2`)**: In-memory ZIP decompression for plugin management.
+- **Nodemailer (`^9.0.3`)**: SMTP transport for transactional emails.
+- **FontAwesome 6 (CDN)**: Legacy vector icon support.
+- **Chart.js (CDN)**: Financial metrics and activity charting.
 
 ---
 
 ## 4. Database & Storage
-- **MySQL 8.0 / MariaDB (`veloralb_Digital`)**:
-  - *Purpose*: Primary remote relational database holding server records (`users`, `lotteries`, `tickets`, `deposits`, `withdrawals`, `settings`, `notifications`, `push_subscriptions`, `blogs`).
-  - *Access Method*: HTTP PHP Database Bridge (`https://api.veloralbillal.top/db_bridge.php`) authenticated via security token (`Billal50598326`) and fallback direct connection via `mysql2/promise`.
-- **Browser `localStorage`**:
-  - *Purpose*: Primary client-side datastore (`lottery_winner_db` / `lw_lottery_db_v3`). Stores full application state locally for instant reads and writes without network latency.
-- **Browser IndexedDB**:
-  - *Purpose*: Offline queue storage managed via `OfflineQueueManager` (`src/js/syncQueue.js`) to stage mutations when offline.
-- **Server Local File System**:
-  - *Purpose*: Storage directory (`public/plugins/`) for extracted store extensions and assets.
+- **MySQL 8.0 / MariaDB**: Primary remote relational database.
+- **Browser `localStorage`**: Primary client-side datastore for offline-first state.
+- **Browser IndexedDB**: Offline mutation queue storage.
 
 ---
 
 ## 5. Authentication & Security
-- **Custom Client/Server Session State**:
-  - *Purpose*: Authenticates users by matching credentials against local and remote SQL database records; stores authenticated session in `db.currentUser`.
-- **Password Salting and Hashing**:
-  - *Purpose*: Custom unique-salt password verification implemented in `src/js/passwordSecurity.ts` (`hashPasswordWithUniqueSalt`, `verifyPasswordWithSalt`).
-- **4-Digit Cashout Security PIN**:
-  - *Purpose*: Required secondary security barrier before initiating withdrawal transactions (`src/dashboard_tabs/wallet_extensions.ts`).
-- **TOTP (Time-Based One-Time Password)**:
-  - *Purpose*: In-app 6-digit dynamic token generator with 30-second rotation cycles (`src/js/totp.ts`) for in-person cashout verification at authorized agent desks.
-- **Math Captcha Engine**:
-  - *Purpose*: Dynamic client-side arithmetic challenge (`window.generateMathCaptcha`) embedded in authentication modals to thwart automated bot spam.
-- **SQL Bridge Secret Token**:
-  - *Purpose*: Static token authentication (`Billal50598326`) protecting the HTTP database bridge endpoint against unauthorized external queries.
+- **Custom Session State**: Authenticates against SQL records; stores session in `StateManager`.
+- **Password Hashing**: Custom unique-salt hashing in `src/js/passwordSecurity.ts`.
+- **Security PIN**: 4-digit barrier for financial withdrawals.
+- **TOTP**: Dynamic 6-digit tokens for agent verification.
+- **Math Captcha**: Bot mitigation for auth forms.
 
 ---
 
 ## 6. APIs & Third-Party Services
-- **UddoktaPay Payment Gateway**:
-  - *Endpoints*: `/api/uddoktapay/create-checkout`, `/api/uddoktapay/verify-payment`, `/api/uddoktapay/webhook`.
-  - *Purpose*: Real-time automated mobile payment processing for bKash, Nagad, and Rocket in Bangladesh.
-- **ZiniPay Payment Gateway**:
-  - *Endpoints*: `/api/zinipay/create-checkout`, `/api/zinipay/verify-payment`, `/api/zinipay/webhook`.
-  - *Purpose*: Alternative instant payment checkout and verification gateway.
-- **Remote SQL HTTP Bridge (`db_bridge.php`)**:
-  - *Host*: `https://api.veloralbillal.top/db_bridge.php`.
-  - *Purpose*: HTTP-based database query proxy enabling remote SQL operations on shared hosting where external port 3306 is blocked.
-- **Web Push Notifications API**:
-  - *Endpoint*: `/api/push/subscribe`.
-  - *Purpose*: Multi-device push notification subscription manager storing `p256dh` and `auth` credentials.
+- **UddoktaPay & ZiniPay**: Bangladeshi mobile payment gateways.
+- **Remote SQL HTTP Bridge**: Proxy for remote SQL operations on restrictive hosts.
+- **Web Push Notifications**: Multi-device notification delivery.
 
 ---
 
 ## 7. Build & Development Tools
-- **Vite (`^6.2.3`)**:
-  - *Purpose*: Frontend build tool and development server. Configured with a multi-page rollup entry (`index.html`, `blog.html`, `comments.html`, `admin-blog-editor.html`, etc.) and custom PHP template pre-bundling plugin.
-- **TSX (`^4.21.0`)**:
-  - *Purpose*: Zero-config TypeScript execution engine for Node.js development (`"dev": "tsx server.ts"`).
-- **ESBuild (`^0.25.0`)**:
-  - *Purpose*: High-speed bundler that compiles `server.ts` into a single standalone production file (`dist/server.cjs`) with externalized dependencies and source maps.
-- **Autoprefixer (`^10.4.21`)**:
-  - *Purpose*: PostCSS plugin ensuring cross-browser CSS prefix compatibility.
+- **Vite (`^6.2.3`)**: Frontend build tool and dev server.
+- **TSX (`^4.21.0`)**: TypeScript execution engine for development.
+- **ESBuild (`^0.25.0`)**: Production server bundler.
 
 ---
 
 ## 8. Testing Tools
-- **None Configured**:
-  - *Verification*: `package.json` contains `"lint": "echo 'No lint check needed'"`. There are no automated unit testing libraries (Vitest, Jest) or end-to-end testing frameworks (Playwright, Cypress) installed in the project.
+- **None Configured**: Automated testing is currently not implemented in the project.
 
 ---
 
 ## 9. Deployment / Platforms
-- **Platform**: Node.js runtime environment.
-- **Build Artifacts**:
-  - Frontend: Static HTML, JS, CSS, and asset bundles emitted to `dist/`.
-  - Backend: CommonJS server bundle emitted to `dist/server.cjs`.
-- **Process Entry**: `npm start` -> `node dist/server.cjs`.
+- **Platform**: Node.js runtime.
+- **Artifacts**: Static frontend assets and a CommonJS server bundle (`dist/server.cjs`).
 
 ---
 
 ## 10. Important Technology Trade-offs
-- **Vanilla DOM State Manager vs. React / Virtual DOM Framework**:
-  - Direct manipulation in `StateManager` eliminates virtual DOM diffing overhead and keeps initial bundle sizes minimal, but increases code size and imperative complexity in files like `src/main.ts` (10,000+ lines).
-- **HTTP SQL Bridge vs. Direct Database Connection**:
-  - Enables seamless database integration with cPanel shared hosting servers without firewall reconfiguration, but adds HTTP serialization latency and reliance on a static token.
-- **Dynamic Imports (`gsap`, `canvas-confetti`)**:
-  - Reduces initial load time by deferring heavy animation libraries until a celebratory event actually occurs in the UI.
-- **Local Lucide Package vs. CDN Icon Fonts**:
-  - Bundling `lucide` locally prevents network-induced icon invisibility in offline and restricted network environments, though requires SVG dimension handling.
+- **Vanilla DOM vs. React**: Preserves existing HTML templates and minimizes bundle overhead but increases imperative code complexity.
+- **HTTP SQL Bridge**: Enables integration with shared hosting but adds latency.
+- **Local Icon Bundling**: Ensures offline reliability at the cost of slight bundle increase.

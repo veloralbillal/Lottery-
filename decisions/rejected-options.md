@@ -1,72 +1,47 @@
 # Rejected, Replaced & Abandoned Options
 
-## 1. Firebase Integration (Firestore, Authentication & Storage)
-- **Option**: Google Firebase Backend-as-a-Service (Firestore real-time database, Firebase Authentication, and Firebase Cloud Storage).
-- **Decision**: Replaced / Abandoned
-- **Evidence**:
-  - `server.ts` line 3: Explicit comment: `// Firebase integration removed for pure SQL bridge architecture`.
-  - `server.ts` lines 2035–2042: Database health check returns:
-    ```json
-    firebase: {
-      connected: false,
-      recordCount: 0,
-      lastSuccessfulSync: null,
-      pendingSync: 0,
-      failedSync: 0,
-      error: 'Firebase removed'
-    }
-    ```
-  - `src/main.ts` line 6: `// Firebase removed per user request`.
-  - `src/js/syncCloud.ts` line 1: `// Firebase removed per user request for SQL-only bridge architecture.`.
-  - `src/js/syncVault.js` line 4: `// Firebase Firestore removed`.
-  - `src/js/admin.js` line 5: `// Firebase Storage removed`.
-  - `metadata.json`: Explicitly defines `"description": "Unified authentication system with SQL Bridge (MySQL) & local profiles. Pure SQL-based architecture..."`.
-  - `vite.config.ts` line 59: `fallbackFirebaseConfig` is retained only as a null placeholder for bundle backwards compatibility.
-- **Reason**: Transitioned from proprietary Google Cloud Firebase services to an open, self-hosted relational MySQL database architecture with a dedicated HTTP bridge and local browser state persistence.
-- **Current Alternative**: MySQL 8.0 / MariaDB accessed via `mysql2/promise` and an HTTP PHP database bridge (`https://api.veloralbillal.top/db_bridge.php`), paired with client-side session management in `StateManager` (`src/main.ts`).
-- **Impact**: Completely removed dependency on Firebase SDKs, eliminated external cloud BaaS vendor lock-in and pricing tiers, and unified data storage under standard SQL tables (`users`, `lotteries`, `tickets`, `deposits`, `withdrawals`).
+## 1. Firebase Integration
+- **Option**: Google Firebase (Firestore, Auth, Storage).
+- **Decision**: Replaced / Abandoned.
+- **Evidence**: `server.ts` line 3 explicitly states removal. Database health checks return "Firebase removed".
+- **Reason**: Transitioned to a pure SQL-based architecture with a remote MySQL bridge to avoid vendor lock-in and pricing tiers.
+- **Alternative**: MySQL/MariaDB with an HTTP PHP bridge.
 
 ---
 
-## 2. Drizzle ORM with PostgreSQL / Cloud SQL
-- **Option**: Drizzle ORM and a secondary relational PostgreSQL / Cloud SQL database.
-- **Decision**: Replaced / Abandoned
-- **Evidence**:
-  - `app_knowledge.txt` line 51 lists: `Relational Server (Secondary/Legacy): PostgreSQL / Cloud SQL via Drizzle ORM.`
-  - In `package.json`, neither `drizzle-orm`, `drizzle-kit`, `pg`, nor `@neondatabase/serverless` is installed or listed.
-  - In `server.ts` lines 116–272, SQL queries are executed directly as raw parameterized SQL strings using `mysql2/promise` and the custom PHP bridge (`db_bridge.php`) targeting MySQL/MariaDB (`veloralb_Digital`), with no Drizzle schema definitions or PostgreSQL connection pools present in source code.
-- **Reason**: The project avoided the complexity of maintaining schema migrations and dual ORM abstractions in favor of direct, lightweight SQL string execution routed over an HTTP bridge.
-- **Current Alternative**: Parameterized raw SQL execution over the HTTP SQL Bridge (`db_bridge.php`) and `mysql2/promise` targeting MySQL 8.0.
-- **Impact**: Avoids ORM build overhead, reduces bundle complexity, and eliminates the need for a dedicated PostgreSQL / Cloud SQL database instance.
+## 2. Drizzle ORM with PostgreSQL
+- **Option**: Drizzle ORM and PostgreSQL.
+- **Decision**: Replaced / Abandoned.
+- **Evidence**: Drizzle dependencies are absent from `package.json`. Queries are executed as raw SQL strings in `server.ts`.
+- **Reason**: Avoided ORM complexity and schema migration overhead in favor of direct SQL execution.
+- **Alternative**: Parameterized raw SQL over the bridge.
 
 ---
 
-## 3. Classic Server-Side PHP Runtime & Multi-Screen Architecture
-- **Option**: Multi-page server-rendered PHP architecture running on Apache / PHP-FPM.
-- **Decision**: Replaced / Re-architected into Vite Single Page Application (SPA)
-- **Evidence**:
-  - `app_knowledge.txt` line 7: States the app was originally `designed to run seamlessly both as a Single Page Application (SPA)... and as a classic PHP multi-screen platform.`
-  - The repository contains legacy standalone PHP entry points in the project root (`index.php`, `login.php`, `deposit.php`, `withdrawal.php`, `profile.php`, `install.php`).
-  - In `vite.config.ts` lines 6–78, a custom plugin (`serveAndCopyAssetsPlugin`) bundles all PHP dashboard and admin templates (`src/dashboard_tabs/*.php`, `src/admin_tabs/*.php`) into a TypeScript string map (`src/js/bundledTabs.ts`).
-  - In `src/main.ts` and `src/js/performanceOptimizer.ts`, `LazyTabManager.loadTabTemplate` dynamically injects the pre-bundled HTML template strings directly into the client-side DOM.
-- **Reason**: The application was modernized into a unified, zero-reload Single Page Application running under Node.js and Vite to enable instant client-side tab transitions, offline caching, and hosting on modern JavaScript platforms without a PHP server runtime.
-- **Current Alternative**: Single Page Application (SPA) with dynamic DOM template loading from `src/js/bundledTabs.ts` and API endpoints powered by Node.js Express (`server.ts`).
-- **Impact**: Enables offline capability, rapid tab switching without page refreshes, and consistent bundling with Vite while reusing existing PHP/HTML markup.
+## 3. Classic Server-Side PHP Runtime
+- **Option**: Multi-page PHP-rendered architecture.
+- **Decision**: Re-architected into Vite SPA.
+- **Evidence**: `vite.config.ts` bundles PHP templates into TS strings. Root PHP files are retained only for legacy/static compatibility.
+- **Reason**: Modernized for offline capability, instant transitions, and Node.js runtime compatibility.
+- **Alternative**: SPA with dynamic template injection from `src/state_suite/templates/`.
 
 ---
 
-## 4. React Component Architecture for UI
-- **Option**: React component hierarchy and JSX virtual DOM rendering.
-- **Decision**: Avoided / Inert in Runtime
-- **Evidence**:
-  - `package.json` contains `"react": "^19.0.1"` and `"react-dom": "^19.0.1"`.
-  - However, `vite.config.ts` does not load `@vitejs/plugin-react`.
-  - `index.html` loads `<script type="module" src="/src/main.ts"></script>`.
-  - Across `src/main.ts` and modular tab controllers (`src/dashboard_tabs/`, `src/admin_tabs/`), there are no `ReactDOM.createRoot` calls, no JSX/TSX components, and no React hooks (`useState`, `useEffect`).
-  - The application renders entirely via imperative DOM methods (`document.getElementById`, `innerHTML`, `classList`).
-- **Reason**: Avoided full frontend rewriting of dozens of HTML/PHP layout templates into JSX; preserved fast direct DOM manipulation.
-- **Current Alternative**: Vanilla TypeScript DOM manipulation managed by `StateManager` and `LazyTabManager`.
-- **Impact**: Eliminates virtual DOM diffing overhead and keeps execution predictable, although it increases imperative code size in controller files.
+## 4. React Component Architecture
+- **Option**: Full React/JSX reconstruction of UI.
+- **Decision**: Avoided / Inert.
+- **Evidence**: React is listed in `package.json` but `vite.config.ts` lacks the React plugin, and `src/` uses no JSX or hooks.
+- **Reason**: Preserved existing HTML/PHP layout templates to avoid a massive rewrite.
+- **Alternative**: Vanilla TypeScript state management and DOM manipulation.
+
+---
+
+## 5. Monolithic Controller Scripts
+- **Option**: 100KB+ feature controllers (Agent Suite, Admin Panel, Main App Kernel).
+- **Decision**: Refactored / Modularized.
+- **Evidence**: `src/main.ts` reduced from ~490KB to <1KB. `src/state_suite/`, `src/admin_suite/`, `src/agent_suite/` contain the new modular logic. `src/js/bundledTabs.ts` has been split into `src/state_suite/templates/`.
+- **Reason**: Massive files caused maintenance complexity and "file too large" errors during development.
+- **Alternative**: Domain-separated TypeScript modules.
 
 ---
 

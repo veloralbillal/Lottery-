@@ -102,17 +102,17 @@
    <span class="text-[7px] text-amber-400 font-mono font-bold mt-0.5 bg-amber-950/60 px-1.5 py-0.2 rounded border border-amber-500/20">Perks</span>
   </button>
 
-  <!-- Lucky Spin Wheel Button -->
-  <button id="home-lucky-spin-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+  <!-- Lucky Spin Wheel Button (Separate Page & File: lucky-wheel.html) -->
+  <a href="lucky-wheel.html" id="home-lucky-spin-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-cyan-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-cyan-500 via-sky-400 to-teal-300 text-slate-950 flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(6,182,212,0.45)] border border-cyan-200/60 group-hover:scale-110 transition duration-200">
     <i data-lucide="refresh-cw" class="text-[11px] animate-spin"></i>
    </div>
    <span class="text-[9.5px] font-black text-white block truncate group-hover:text-cyan-300 transition">Lucky Wheel</span>
    <span class="text-[7px] text-cyan-400 font-mono font-bold mt-0.5 bg-cyan-950/60 px-1.5 py-0.2 rounded border border-cyan-500/20">Free Spin</span>
-  </button>
+  </a>
 
-  <!-- Daily Rewards / Check-in -->
-  <button id="home-checkin-bonus-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-emerald-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+  <!-- Daily Rewards / Check-in (Dedicated Daily Check-In Tab) -->
+  <button type="button" id="home-checkin-bonus-btn" class="flex flex-col items-center justify-center bg-gradient-to-b from-[#131930] via-[#0d1224] to-[#090d1a] border border-slate-800/90 hover:border-emerald-500/40 p-2 sm:p-2.5 rounded-2xl cursor-pointer text-center group transition-all duration-200 hover:-translate-y-0.5 active:scale-95 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-500 via-green-400 to-teal-300 text-emerald-950 flex items-center justify-center mb-1.5 shadow-[0_3px_10px_rgba(16,185,129,0.45)] border border-emerald-200/60 group-hover:scale-110 transition duration-200">
     <i data-lucide="calendar" class="text-[11px]"></i>
    </div>

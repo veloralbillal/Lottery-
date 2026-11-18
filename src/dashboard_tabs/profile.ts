@@ -20,6 +20,18 @@ export class ProfileTab {
 
     // Event delegation on document to avoid duplicates or missing elements when template re-loads
     document.addEventListener("click", (e) => {
+      // 0. Logout Button Handler (works even if user object state is fluctuating)
+      if ((e.target as HTMLElement)?.closest("#profile-logout-btn, .profile-logout-btn")) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (typeof appInstance.logout === "function") {
+          appInstance.logout();
+        } else if (typeof (window as any).handleLogout === "function") {
+          (window as any).handleLogout();
+        }
+        return;
+      }
+
       if (!appInstance.currentUser) return;
 
       // 1. Toggle Vibe Editor
@@ -174,10 +186,14 @@ export class ProfileTab {
         return;
       }
 
-      // 8. Open Profile Settings Page
-      if (e.target.closest("#profile-open-edit-modal-btn")) {
-        appInstance.currentTab = "edit-profile";
-        appInstance.renderDashboard();
+      // 8. Open Profile Settings Page (only if not handled by inline onclick, kept as safe fallback using navigateTo)
+      if (e.target.closest("#profile-support-link")) {
+        const linkEl = e.target.closest("#profile-support-link") as HTMLAnchorElement | null;
+        const href = linkEl?.getAttribute("href") || "#";
+        if (href === "#") {
+          e.preventDefault();
+          appInstance.navigateTo("agent");
+        }
         return;
       }
 
@@ -344,8 +360,9 @@ export class ProfileTab {
         claimBtn.classList.add("from-emerald-600", "to-teal-600");
       }
     }
-    if (appInstance && typeof appInstance.refreshIcons === "function") {
-      appInstance.refreshIcons();
+    if (appInstance && typeof appInstance.refreshIconsForContainer === "function") {
+      appInstance.refreshIconsForContainer(claimStatusEl);
+      if (claimBtn) appInstance.refreshIconsForContainer(claimBtn);
     }
   }
 
@@ -355,34 +372,21 @@ export class ProfileTab {
       return;
     }
 
+    const currentUser = appInstance.currentUser;
+    console.log("ProfileTab.render executing, currentUser exists:", !!currentUser);
+
+    // 0. Sync username and balance across profile elements
+    const username = appInstance.currentUser.username || "Player";
+    document.querySelectorAll(".curr-username").forEach(el => {
+      (el as HTMLElement).innerText = username;
+    });
+    if (typeof appInstance.updateAllWalletBalanceUI === "function") {
+      appInstance.updateAllWalletBalanceUI();
+    }
+
     // Sync unread messages indicators
     window.chatProfileHelper?.updateNotificationBadgeOff();
 
-    // Dynamically calculate live statistics from database
-    const winCounts = (appInstance.db.tickets || []).filter(t => t.userId === appInstance.currentUser.id && t.status === "won").length + (appInstance.currentUser.wins || 0);
-    
-    const winsEl = document.getElementById("profile-wins");
-    if (winsEl) winsEl.innerText = winCounts;
-    const lossEl = document.getElementById("profile-loss");
-    if (lossEl) lossEl.innerText = appInstance.currentUser.loss || 0;
-    const profitEl = document.getElementById("profile-profit");
-    if (profitEl) profitEl.innerText = (appInstance.currentUser.profit || 0).toFixed(2);
-    const joinDateEl = document.getElementById("profile-join-date");
-    if (joinDateEl) joinDateEl.innerText = appInstance.currentUser.joinDate || "N/A";
-
-    const fpEl = document.getElementById("profile-device-fingerprint");
-    if (fpEl) {
-      fpEl.innerText = DeviceFingerprint.getFingerprint(appInstance.currentUser.username);
-    }
-
-    const ipEl = document.getElementById("profile-device-ip");
-    if (ipEl) {
-      DeviceFingerprint.getIPAddress().then(ip => {
-        if (ipEl) ipEl.innerText = ip;
-      });
-    }
-
-    // Gamification properties defaults
     const user = appInstance.currentUser;
     if (user) {
       if (user.level === undefined) user.level = 1;
@@ -390,69 +394,61 @@ export class ProfileTab {
       if (user.vibe === undefined) user.vibe = "🍀 Feeling Lucky";
     }
 
-    // 1. Level & XP UI render
+    // 1. Level & XP UI render (Synchronous for instant feedback)
     const levelNumEl = document.getElementById("profile-level-num");
     if (levelNumEl) levelNumEl.innerText = user.level || 1;
-
     const xpCurrEl = document.getElementById("profile-xp-curr");
     if (xpCurrEl) xpCurrEl.innerText = user.xp || 0;
-
     const neededXp = (user.level || 1) * 100;
     const xpNeededEl = document.getElementById("profile-xp-needed");
     if (xpNeededEl) xpNeededEl.innerText = neededXp;
-
     const xpBarEl = document.getElementById("profile-xp-bar");
     if (xpBarEl) {
       const percentage = Math.min(100, Math.max(0, ((user.xp || 0) / neededXp) * 100));
       xpBarEl.style.width = `${percentage}%`;
     }
 
-    // 2. Vibe status rendering
+    // 2. Vibe status
     const vibeStatusEl = document.getElementById("profile-vibe-status");
-    if (vibeStatusEl) {
-      vibeStatusEl.innerText = `"${user.vibe || "🍀 Feeling Lucky"}"`;
+    if (vibeStatusEl) vibeStatusEl.innerText = `"${user.vibe || "🍀 Feeling Lucky"}"`;
+
+    // 3. Visual identity (Banners, Glows, Avatars)
+    const boardContainer = document.getElementById("profile-identity-board-container");
+    if (boardContainer) {
+      const glow = user.profileGlow || "none";
+      boardContainer.classList.remove("shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50", "shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50", "shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50", "shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse", "shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60");
+      if (glow === "pulse") boardContainer.classList.add("shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50");
+      else if (glow === "cyber") boardContainer.classList.add("shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50");
+      else if (glow === "gold") boardContainer.classList.add("shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50");
+      else if (glow === "rainbow") boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse");
+      else if (glow === "mystic") boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60");
     }
 
-    const vibeInputEl = document.getElementById("profile-custom-vibe-input");
-    if (vibeInputEl) {
-      vibeInputEl.value = user.vibe || "";
-    }
+    const bannerOverlay = document.getElementById("profile-banner-overlay");
+    if (bannerOverlay) CustomizerStore.applyBannerBackground(bannerOverlay, user.profileBanner);
 
-    // 3. Daily Claim status countdown refresh
-    this.updateClaimCountdown(appInstance);
-
-    // 4. Lucky prediction number of the day rendering
-    const luckyResultEl = document.getElementById("profile-lucky-num-result");
-    const luckyBtn = document.getElementById("profile-lucky-num-btn");
-    const todayStr = new Date().toISOString().split("T")[0];
-
-    if (luckyResultEl) {
-      if (user.lastLuckyPredictDate === todayStr) {
-        luckyResultEl.innerHTML = `
-          <div class="flex items-center gap-2">
-            <span class="text-xs bg-rose-950 text-rose-400 border border-rose-900 px-2.5 py-1 rounded-lg font-black">${user.luckyNumber}</span>
-            <span class="text-[9px] text-slate-400">
-              ${this.getLuckyMessage(user.luckyNumber)}
-            </span>
-          </div>
-        `;
-        luckyResultEl.classList.remove("hidden");
-        if (luckyBtn) {
-          luckyBtn.innerText = "Generated";
-          luckyBtn.disabled = true;
-          luckyBtn.className = "w-full sm:w-auto bg-slate-900 border border-slate-800 text-slate-500 font-bold py-2.5 px-4 rounded-xl cursor-not-allowed text-[10px] flex items-center justify-center gap-1.5 whitespace-nowrap";
-        }
+    const avatarImg = document.getElementById("profile-avatar-img") as HTMLImageElement;
+    const avatarFallback = document.getElementById("profile-avatar-fallback");
+    if (avatarImg && avatarFallback) {
+      if (user.photo) {
+        avatarImg.src = user.photo;
+        avatarImg.classList.remove("hidden");
+        avatarFallback.classList.add("hidden");
       } else {
-        luckyResultEl.classList.add("hidden");
-        if (luckyBtn) {
-          luckyBtn.innerHTML = `<i data-lucide="dice-5" class="w-3.5 h-3.5 inline mr-1"></i> Predict Luck`;
-          luckyBtn.disabled = false;
-          luckyBtn.className = "w-full sm:w-auto bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 text-rose-400 font-bold py-2.5 px-4 rounded-xl transition cursor-pointer text-[10px] flex items-center justify-center gap-1.5 whitespace-nowrap";
-        }
+        avatarImg.classList.add("hidden");
+        avatarFallback.classList.remove("hidden");
       }
     }
 
-    // 5. Security PIN Badge setup rendering
+    const frame = user.avatarFrame || "none";
+    const overlayEl = document.getElementById("profile-frame-overlay");
+    if (overlayEl) overlayEl.innerHTML = CustomizerStore.getFrameOverlayHTML(frame);
+
+    const animOverlayEl = document.getElementById("profile-anim-overlay");
+    if (animOverlayEl) animOverlayEl.innerHTML = CustomizerStore.getAnimationOverlayHTML(user.profileGlow || user.profileAnimation || "none");
+
+    // 4. Check-in and Security PIN status
+    this.updateClaimCountdown(appInstance);
     const pinBadgeEl = document.getElementById("profile-security-pin-badge");
     if (pinBadgeEl) {
       if (user.securityPin) {
@@ -464,127 +460,78 @@ export class ProfileTab {
       }
     }
 
-    // Inject Dynamic Badge Badging Rack
-    const badgeContainer = document.getElementById("profile-unlocked-badges");
-    if (badgeContainer) {
-      badgeContainer.innerHTML = "";
-      
-      const authorUser = appInstance.currentUser;
-      const postsCount = (appInstance.db.communityPosts || []).filter(p => (p.userId === authorUser.id || p.username === authorUser.username) && p.status !== "banned").length;
-      const commentsCount = (appInstance.db.communityComments || []).filter(c => (c.userId === authorUser.id || c.username === authorUser.username) && c.status !== "banned").length;
-      const totalContribution = postsCount + commentsCount;
+    // Performance Optimization: Defer heavy database scans and complex UI sub-renders
+    requestAnimationFrame(() => {
+      if (appInstance.currentTab !== "profile") return;
 
-      const isLuckyWinner = winCounts > 0;
-      const isTopContributor = totalContribution >= 3;
-
-      let badgesHtml = "";
+      // 1. Live statistics calculation from database
+      const currentUser = appInstance.currentUser;
+      if (!currentUser) return;
+      const userId = currentUser.id;
+      const username = currentUser.username;
       
-      // Admin custom badge override mapping
-      if (authorUser.customBadge) {
-        const badgeMap = {
-          vip: { label: "💎 VIP Player", style: "bg-cyan-955/70 text-cyan-400 border-cyan-800/60" },
-          moderator: { label: "🛡️ Staff Mod", style: "bg-indigo-955/70 text-indigo-400 border-indigo-800/60" },
-          star: { label: "⭐ Elite Star", style: "bg-purple-955/70 text-purple-400 border-purple-800/60" },
-          premium: { label: "✨ Premium Member", style: "bg-fuchsia-955/70 text-fuchsia-400 border-fuchsia-800/60" },
-          pro: { label: "🔥 Pro Active", style: "bg-orange-955/70 text-orange-400 border-orange-800/60" },
-          legend: { label: "👑 Royal Legend", style: "bg-rose-955/70 text-rose-400 border-rose-800/60" }
-        };
-        const conf = badgeMap[authorUser.customBadge];
-        if (conf) {
-          badgesHtml += `<span class="${conf.style} px-2 py-0.5 rounded-lg text-[9px] font-bold border flex items-center gap-1 shadow-md">${conf.label}</span>`;
+      const userTickets = (appInstance.db.tickets || []).filter(t => t.userId === userId);
+      const winCounts = userTickets.filter(t => t.status === "won").length + (appInstance.currentUser.wins || 0);
+      
+      const winsEl = document.getElementById("profile-wins");
+      if (winsEl) winsEl.innerText = winCounts;
+      const lossEl = document.getElementById("profile-loss");
+      if (lossEl) lossEl.innerText = appInstance.currentUser.loss || 0;
+      const profitEl = document.getElementById("profile-profit");
+      if (profitEl) profitEl.innerText = (appInstance.currentUser.profit || 0).toFixed(2);
+      const joinDateEl = document.getElementById("profile-join-date");
+      if (joinDateEl) joinDateEl.innerText = appInstance.currentUser.joinDate || "N/A";
+
+      // 2. Badge Badging Rack Rendering
+      const badgeContainer = document.getElementById("profile-unlocked-badges");
+      if (badgeContainer) {
+        badgeContainer.innerHTML = "";
+        
+        const postsCount = (appInstance.db.communityPosts || []).filter(p => (p.userId === userId || p.username === username) && p.status !== "banned").length;
+        const commentsCount = (appInstance.db.communityComments || []).filter(c => (c.userId === userId || c.username === username) && c.status !== "banned").length;
+        const totalContribution = postsCount + commentsCount;
+
+        const isLuckyWinner = winCounts > 0;
+        const isTopContributor = totalContribution >= 3;
+
+        let badgesHtml = "";
+        
+        if (currentUser.customBadge) {
+          const badgeMap = {
+            vip: { label: "💎 VIP Player", style: "bg-cyan-955/70 text-cyan-400 border-cyan-800/60" },
+            moderator: { label: "🛡️ Staff Mod", style: "bg-indigo-955/70 text-indigo-400 border-indigo-800/60" },
+            star: { label: "⭐ Elite Star", style: "bg-purple-955/70 text-purple-400 border-purple-800/60" },
+            premium: { label: "✨ Premium Member", style: "bg-fuchsia-955/70 text-fuchsia-400 border-fuchsia-800/60" },
+            pro: { label: "🔥 Pro Active", style: "bg-orange-955/70 text-orange-400 border-orange-800/60" },
+            legend: { label: "👑 Royal Legend", style: "bg-rose-955/70 text-rose-400 border-rose-800/60" }
+          };
+          const conf = badgeMap[currentUser.customBadge];
+          if (conf) {
+            badgesHtml += `<span class="${conf.style} px-2 py-0.5 rounded-lg text-[9px] font-bold border flex items-center gap-1 shadow-md">${conf.label}</span>`;
+          }
         }
+
+        if (isLuckyWinner) {
+          badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md animate-pulse"><i data-lucide="trophy" class="w-3 h-3 text-amber-500 inline mr-1"></i> Lucky Winner (${winCounts})</span>`;
+        }
+        if (isTopContributor) {
+          badgesHtml += `<span class="bg-emerald-950/70 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md"><i data-lucide="medal" class="w-3 h-3 text-emerald-400 inline mr-1"></i> Top Contributor (${totalContribution})</span>`;
+        }
+        
+        badgesHtml += `<span class="bg-slate-955 border border-slate-800/80 text-slate-400 px-2 py-0.5 rounded-lg text-[9px] font-mono">🎖️ Active Player</span>`;
+        badgeContainer.innerHTML = badgesHtml;
       }
 
-      if (isLuckyWinner) {
-        badgesHtml += `<span class="bg-amber-950/70 text-amber-400 border border-amber-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md animate-pulse" title="Unlocked by winning active lotteries"><i data-lucide="trophy" class="w-3 h-3 text-amber-500 inline mr-1"></i> Lucky Winner (${winCounts})</span>`;
+      // 3. Deferred Charts & Inbox
+      appInstance.renderProfileChart();
+      appInstance.renderUserInbox();
+
+      // Refresh icons for new badges
+      if (typeof appInstance.refreshIconsForContainer === "function") {
+        const badges = document.getElementById("profile-unlocked-badges");
+        if (badges) appInstance.refreshIconsForContainer(badges);
       }
-      if (isTopContributor) {
-        badgesHtml += `<span class="bg-emerald-950/70 text-emerald-400 border border-emerald-800/50 px-2 py-0.5 rounded-lg text-[9px] font-bold flex items-center gap-1 shadow-md" title="Unlocked with 3+ shares/replies"><i data-lucide="medal" class="w-3 h-3 text-emerald-400 inline mr-1"></i> Top Contributor (${totalContribution})</span>`;
-      }
-      
-      // Default baseline standard badge
-      badgesHtml += `<span class="bg-slate-955 border border-slate-800/80 text-slate-400 px-2 py-0.5 rounded-lg text-[9px] font-mono">🎖️ Active Player</span>`;
-      
-      badgeContainer.innerHTML = badgesHtml;
-    }
-
-    // Apply Premium Profile Board Ambient Glow Animation
-    const boardContainer = document.getElementById("profile-identity-board-container");
-    if (boardContainer) {
-      boardContainer.classList.remove(
-        "shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50",
-        "shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50",
-        "shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50",
-        "shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse",
-        "shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60"
-      );
-      
-      const glow = user.profileGlow || "none";
-      if (glow === "pulse") {
-        boardContainer.classList.add("shadow-[0_0_20px_rgba(244,63,94,0.35)]", "border-rose-500/50");
-      } else if (glow === "cyber") {
-        boardContainer.classList.add("shadow-[0_0_20px_rgba(34,211,238,0.35)]", "border-cyan-500/50");
-      } else if (glow === "gold") {
-        boardContainer.classList.add("shadow-[0_0_20px_rgba(245,158,11,0.35)]", "border-amber-500/50");
-      } else if (glow === "rainbow") {
-        boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.3)]", "border-purple-500/50", "animate-pulse");
-      } else if (glow === "mystic") {
-        boardContainer.classList.add("shadow-[0_0_25px_rgba(168,85,247,0.35)]", "border-purple-500/60");
-      }
-    }
-
-    // Apply Profile Banner Background
-    const profileBannerOverlay = document.getElementById("profile-banner-overlay");
-    if (profileBannerOverlay) {
-      CustomizerStore.applyBannerBackground(profileBannerOverlay, user.profileBanner);
-    }
-
-    // Sync Avatar Image display (for main view)
-    const avatarImg = document.getElementById("profile-avatar-img");
-    const avatarFallback = document.getElementById("profile-avatar-fallback");
-    if (avatarImg && avatarFallback) {
-      if (appInstance.currentUser.photo) {
-        avatarImg.src = appInstance.currentUser.photo;
-        avatarImg.classList.remove("hidden");
-        avatarFallback.classList.add("hidden");
-      } else {
-        avatarImg.src = "";
-        avatarImg.classList.add("hidden");
-        avatarFallback.classList.remove("hidden");
-      }
-    }
-
-    // Sync Avatar Image display (for modal preview)
-    const modalAvatarImg = document.getElementById("profile-edit-avatar-img");
-    const modalAvatarFallback = document.getElementById("profile-edit-avatar-fallback");
-    if (modalAvatarImg && modalAvatarFallback) {
-      if (appInstance.currentUser.photo) {
-        modalAvatarImg.src = appInstance.currentUser.photo;
-        modalAvatarImg.classList.remove("hidden");
-        modalAvatarFallback.classList.add("hidden");
-      } else {
-        modalAvatarImg.src = "";
-        modalAvatarImg.classList.add("hidden");
-        modalAvatarFallback.classList.remove("hidden");
-      }
-    }
-
-    // Render the Avatar Frame & 3D Animation Overlay on the main page
-    const frame = appInstance.currentUser.avatarFrame || "none";
-    const overlayEl = document.getElementById("profile-frame-overlay");
-    if (overlayEl) {
-      overlayEl.innerHTML = CustomizerStore.getFrameOverlayHTML(frame);
-    }
-
-    const animOverlayEl = document.getElementById("profile-anim-overlay");
-    if (animOverlayEl) {
-      const glow = appInstance.currentUser.profileGlow || appInstance.currentUser.profileAnimation || "none";
-      animOverlayEl.innerHTML = CustomizerStore.getAnimationOverlayHTML(glow);
-    }
-
-    appInstance.renderProfileChart();
-    appInstance.renderUserInbox();
-    appInstance.refreshIcons();
+    });
   }
 
   static getFrameOverlayHTML(frame) {

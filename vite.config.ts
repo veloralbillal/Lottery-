@@ -3,6 +3,32 @@ import tailwindcss from '@tailwindcss/vite';
 import fs from 'fs';
 import path from 'path';
 
+function disableHmrClientWsPlugin() {
+  let hmrDisabled = false;
+  return {
+    name: 'disable-hmr-client-ws',
+    enforce: 'post' as const,
+    configResolved(config: any) {
+      hmrDisabled = config?.server?.hmr === false;
+    },
+    transform(code: string, id: string) {
+      if (!hmrDisabled) return null;
+      if (!id.includes('vite/dist/client/client.mjs') && !code.includes('createWebSocketModuleRunnerTransport')) {
+        return null;
+      }
+      let patched = code.replace(
+        /const transport = normalizeModuleRunnerTransport\(\s*\(\(\) => \{[\s\S]*?\}\)\(\)\s*\);/,
+        `const transport = normalizeModuleRunnerTransport({ async connect() {}, async disconnect() {}, send() {} });`
+      );
+      patched = patched.replace(
+        /transport\.connect\(createHMRHandler\(handleMessage\)\);/,
+        `/* HMR disabled: skipped WebSocket connect */`
+      );
+      return patched !== code ? { code: patched, map: null } : null;
+    }
+  };
+}
+
 function serveAndCopyAssetsPlugin() {
   // Helper to pre-bundle PHP tab templates and firebase-applet-config.json for offline/APK support
   function bundleTemplates() {
@@ -530,7 +556,8 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [
       tailwindcss(),
-      serveAndCopyAssetsPlugin()
+      serveAndCopyAssetsPlugin(),
+      disableHmrClientWsPlugin()
     ],
     server: {
       hmr: false,
@@ -550,6 +577,7 @@ export default defineConfig(({ mode }) => {
         input: {
           main: path.resolve(__dirname, 'index.html'),
           blog: path.resolve(__dirname, 'blog.html'),
+          luckyWheel: path.resolve(__dirname, 'lucky-wheel.html'),
           comments: path.resolve(__dirname, 'comments.html'),
           adminBlogEditor: path.resolve(__dirname, 'admin-blog-editor.html'),
           adminCategories: path.resolve(__dirname, 'admin-categories.html'),

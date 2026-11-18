@@ -509,6 +509,10 @@ export const SubAgentModule = {
 
         // Add subagent to system DB
         app.db.users.push(newSubUser);
+        if (!Array.isArray(app.db.staff)) app.db.staff = [];
+        app.db.staff.push(newSubUser);
+        if (!Array.isArray(app.db.agents)) app.db.agents = [];
+        app.db.agents.push(newSubUser);
         
         // Show loader/spinner if UI supports it, but at least do a synchronous immediate save!
         await app.saveDB(true);

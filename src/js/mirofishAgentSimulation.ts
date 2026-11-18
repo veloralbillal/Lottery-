@@ -674,6 +674,16 @@ export class MirofishAgentSimulation {
     return persona;
   }
 
+  public addMember(personaData: Partial<MirofishPersona> = {}): MirofishPersona {
+    return this.addPersona(personaData);
+  }
+
+  public saveSettings(): void {
+    if (this.appInstance && typeof this.appInstance.saveDB === "function") {
+      this.appInstance.saveDB(true);
+    }
+  }
+
   /**
    * Seeds lively community conversation if group chat is pristine
    */

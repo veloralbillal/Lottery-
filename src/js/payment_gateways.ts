@@ -882,7 +882,7 @@ export class PaymentGateways {
     if (titleEl) titleEl.innerText = gatewayName;
     if (subtitleEl) subtitleEl.innerText = subtitleText;
     if (badgeEl) badgeEl.innerText = badgeText;
-    if (iconEl) iconEl.className = iconClass;
+    if (iconEl) iconEl.setAttribute("class", iconClass);
     if (iconWrap) iconWrap.className = `w-8 h-8 rounded-xl border flex items-center justify-center text-sm shadow ${bgClass}`;
     if (minBadge) minBadge.innerText = `Min: ৳${minAmt}`;
     if (confirmLbl) confirmLbl.innerText = `Proceed to ${gatewayName} ⚡`;
