@@ -690,6 +690,12 @@ export const AgentModule = {
 
           if (!Array.isArray(app.db.staff)) app.db.staff = [];
           app.db.staff.push(newStaff);
+          if (!Array.isArray(app.db.users)) app.db.users = [];
+          app.db.users.push(newStaff);
+          if (roleVal === "agent" || roleVal === "subagent") {
+            if (!Array.isArray(app.db.agents)) app.db.agents = [];
+            app.db.agents.push(newStaff);
+          }
 
           // Add deposit transaction if agent received initial operational wallet balance
           if (initialBal > 0) {
@@ -710,13 +716,15 @@ export const AgentModule = {
             });
           }
 
-          app.saveDB(true);
+          await app.saveDB(true);
 
-          app.showToast(`Success! Account @${usernameVal} created and immediately usable.`, "success");
+          app.showToast(`Success! Account @${usernameVal} created and saved to SQL database.`, "success");
           createStaffForm.reset();
           staffWrapper.classList.add("hidden");
           if (createStaffBtn) createStaffBtn.innerHTML = `<i class="fa-solid fa-plus"></i> Create Staff Account`;
           app.renderAdminAgents();
+          if (typeof app.renderAgentLeadersDirectory === "function") app.renderAgentLeadersDirectory();
+          if (typeof app.renderAgentHubSelect === "function") app.renderAgentHubSelect();
         } catch (submitErr) {
           console.error("Staff creation exception:", submitErr);
           app.showToast(`Error creating account: ${submitErr.message || submitErr}`, "error");
@@ -736,7 +744,9 @@ export const AgentModule = {
       });
     }
 
-    // --- Agent Workspace Triggers ---
+    // --- Agent Workspace Triggers (bind once) ---
+    if (app._agentWorkspaceListenersBound) return;
+    app._agentWorkspaceListenersBound = true;
     
     // --- Advanced Agent Workspace Sub-Tabs Switcher ---
     const tabBtns = document.querySelectorAll(".agent-tab-selector-btn");
@@ -974,12 +984,17 @@ export const AgentModule = {
 
     const agentLogoutBtn = document.getElementById("agent-logout-btn");
 
-    if (agentLogoutBtn) {
+    if (agentLogoutBtn && !agentLogoutBtn.dataset.bound) {
+      agentLogoutBtn.dataset.bound = "true";
       agentLogoutBtn.addEventListener("click", () => {
-        app.currentUser = null;
-        localStorage.removeItem(app.sessionKey);
-        app.showToast("Logged out from agent field workspace successfully.", "info");
-        app.render();
+        if (typeof app.logout === "function") {
+          app.logout();
+        } else {
+          app.currentUser = null;
+          localStorage.removeItem(app.sessionKey);
+          app.showToast("Logged out from agent field workspace successfully.", "info");
+          app.render();
+        }
       });
     }
 

@@ -220,8 +220,7 @@ export class StoreTab {
         url.searchParams.delete("productId");
         window.history.pushState({}, "", url.toString());
 
-        StoreTab.appInstance.currentTab = "home";
-        StoreTab.appInstance.render();
+        StoreTab.appInstance.navigateTo("home");
       };
     }
 
@@ -652,7 +651,10 @@ export class StoreTab {
   static async fetchActiveProducts() {
     try {
       const apiBase = PathHelper.getApiBaseUrl();
-      const res = await fetch(`${apiBase}products.php`);
+      let res = await fetch(`${apiBase}products`);
+      if (!res.ok) {
+        res = await fetch(`${apiBase}products.php`);
+      }
       if (res.ok) {
         const json = await res.json();
         if (json.success && Array.isArray(json.data) && json.data.length > 0) {
@@ -660,7 +662,7 @@ export class StoreTab {
         }
       }
     } catch (e) {
-      console.warn("SQL Store API offline. Fallback active.");
+      // Silent fallback
     }
     return StoreTab.defaultProducts;
   }

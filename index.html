@@ -2,163 +2,38 @@
 <html lang="en">
   <head>
     <base href="/" id="app-base-href" />
+    <!-- Early UI Logic & Console Filters moved to /src/state_suite/early_logic.ts -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
     <script>
-      /**
-       * Dynamic Path Resolver & Universal Domain Normalizer
-       * Ensures the application works seamlessly on custom domains (root /) 
-       * as well as GitHub Pages subpaths (e.g. /project-name/).
-       */
       (function() {
-        const l = window.location;
-        const isGitHub = l.hostname.includes('github.io');
-        const segments = l.pathname.split('/').filter(Boolean);
-        
-        let base = '/';
-        if (isGitHub && segments.length > 0 && !segments[0].includes('.') && segments[0] !== 'index.html') {
-          base = '/' + segments[0] + '/';
-          const baseTag = document.getElementById('app-base-href');
-          if (baseTag) baseTag.setAttribute('href', base);
-        }
-        window.APP_BASE = base;
-
-        // SPA Redirect handling (from 404.html logic)
-        if (l.search[1] === '/' ) {
-          var decoded = l.search.slice(1).split('&').map(function(s) { 
-            return s.replace(/~and~/g, '&')
-          }).join('?');
-          window.history.replaceState(null, null,
-              l.pathname.slice(0, (l.pathname.endsWith('/') ? -1 : undefined)) + decoded + l.hash
-          );
-        }
-      }());
-
-      /**
-       * Early Core UI Handlers
-       * Defined immediately so inline HTML onclick handlers never throw ReferenceError
-       */
-      window.switchTab = function(tab) {
-        var formContainer = document.getElementById("formContainer");
-        var signInTab = document.getElementById("signInTab");
-        var registerTab = document.getElementById("registerTab");
-
-        if (tab === 'register') {
-          if (formContainer) formContainer.classList.add("show-register");
-          if (registerTab) registerTab.classList.add("active");
-          if (signInTab) signInTab.classList.remove("active");
-        } else {
-          if (formContainer) formContainer.classList.remove("show-register");
-          if (signInTab) signInTab.classList.add("active");
-          if (registerTab) registerTab.classList.remove("active");
-        }
-        if (typeof window.generateMathCaptcha === 'function') {
-          try { window.generateMathCaptcha(); } catch(e) {}
-        }
-      };
-      window.switchAuthTab = function(mode) {
-        window.switchTab(mode === 'login' ? 'signin' : 'register');
-      };
-      window.openBypass = function() {
-        var splash = document.getElementById('splash-screen');
-        var auth = document.getElementById('screen-auth');
-        if (splash) splash.classList.add('hidden');
-        if (auth) auth.classList.remove('hidden');
-      };
-      window.closeModal = function(id) {
-        if (id) {
-          var el = document.getElementById(id);
-          if (el) el.classList.add('hidden');
-        }
-      };
-    </script>
-    <script>
-      // Production Error Logger
-      window.addEventListener('error', function(e) {
-        const msgStr = (e && e.message) ? String(e.message).toLowerCase() : "";
-        if (e && (msgStr.includes("script error") || msgStr.includes("scripterror") || !e.filename || e.filename.indexOf('http') !== 0)) {
-          return;
-        }
-        console.warn('Application notice:', e.message || e);
-      });
-      (function() {
-        const filterWords = ["Could not reach Cloud Firestore backend", "reach Cloud Firestore", "@firebase/firestore", "Firestore (10.8.0)", "Firestore backend is currently unreachable", "script error", "scripterror"];
-        const shouldFilter = (args) => {
-          try {
-            for (let i = 0; i < args.length; i++) {
-              const arg = args[i];
-              if (!arg) continue;
-              if (typeof arg === 'string') {
-                if (filterWords.some(word => arg.includes(word))) {
-                  return true;
-                }
-              } else if (arg.message && typeof arg.message === 'string') {
-                if (filterWords.some(word => arg.message.includes(word))) {
-                  return true;
-                }
-              } else if (arg.reason && arg.reason.message && typeof arg.reason.message === 'string') {
-                if (filterWords.some(word => arg.reason.message.includes(word))) {
-                  return true;
-                }
-              } else if (typeof arg === 'object' && arg !== null && typeof arg.toString === 'function' && arg.toString !== Object.prototype.toString && arg.toString !== Array.prototype.toString) {
-                const str = arg.toString();
-                if (typeof str === 'string' && filterWords.some(word => str.includes(word))) {
-                  return true;
-                }
-              }
-            }
-          } catch (e) {}
-          return false;
-        };
-
-        const originalWarn = console.warn;
-        console.warn = function(...args) {
-          if (shouldFilter(args)) return;
-          originalWarn.apply(console, args);
-        };
-
-        const originalError = console.error;
-        console.error = function(...args) {
-          if (shouldFilter(args)) return;
-          originalError.apply(console, args);
-        };
-
-        const originalLog = console.log;
-        console.log = function(...args) {
-          if (shouldFilter(args)) return;
-          originalLog.apply(console, args);
-        };
-
-        window.addEventListener('error', function(event) {
-          if (event && (shouldFilter([event.message]) || shouldFilter([event.error]))) {
-            event.preventDefault();
-            event.stopPropagation();
+        // Prevent Safari iOS gesture zoom (pinch/expand)
+        document.addEventListener('gesturestart', function(e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gesturechange', function(e) { e.preventDefault(); }, { passive: false });
+        document.addEventListener('gestureend', function(e) { e.preventDefault(); }, { passive: false });
+        // Prevent multi-touch pinch zoom (2+ fingers) without affecting 1-finger vertical scrolling
+        document.addEventListener('touchmove', function(e) {
+          if (e.touches && e.touches.length > 1) {
+            e.preventDefault();
           }
-        }, true);
-
-        window.addEventListener('unhandledrejection', function(event) {
-          if (event && (shouldFilter([event.reason]) || shouldFilter([event.reason ? event.reason.message : '']))) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
-        }, true);
+        }, { passive: false });
       })();
     </script>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" />
     <title id="dynamic-title">Lottery Winner</title>
-    <meta name="description" id="dynamic-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
+    <meta name="description" id="dynamic-desc" content="Unified authentication system with SQL Bridge (MySQL) & local profiles. Pure SQL-based architecture. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" id="og-url" content="" />
     <meta property="og:title" id="og-title" content="Lottery Winner" />
-    <meta property="og:description" id="og-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
+    <meta property="og:description" id="og-desc" content="Unified authentication system with SQL Bridge (MySQL) & local profiles. Pure SQL-based architecture. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     <meta property="og:image" id="og-image" content="./assets/logo-6pkLbpS6.jpg" />
 
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" id="twitter-url" content="" />
     <meta property="twitter:title" id="twitter-title" content="Lottery Winner" />
-    <meta property="twitter:description" id="twitter-desc" content="Unified authentication system with Firebase Auth & Firestore profiles. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
+    <meta property="twitter:description" id="twitter-desc" content="Unified authentication system with SQL Bridge (MySQL) & local profiles. Pure SQL-based architecture. Fixes Admin-to-Agent account usability. Includes 3D dark themes and dynamic draw tools." />
     <meta property="twitter:image" id="twitter-image" content="logo.jpg" />
     <script>
       (function() {
@@ -215,1474 +90,29 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
     
     <!-- Master Tailwind CSS v4 Production & Theme Stylesheet -->
+    <link rel="prefetch" href="./assets/lucky-wheel-ZS4gVKbc.html" />
     
-    <style>
-      /* Image layout safeguard for static hosting */
-      img {
-        max-width: 100%;
-        height: auto;
-        content-visibility: auto;
-      }
-      /* Performance mode CSS containment */
-      .perf-contain {
-        content-visibility: auto;
-        contain-intrinsic-size: 1px 100px;
-      }
-      .perf-gpu {
-        transform: translateZ(0);
-        backface-visibility: hidden;
-      }
-      img[src*="logo.jpg"] {
-        max-width: 40px !important;
-        max-height: 40px !important;
-        width: 40px !important;
-        height: 40px !important;
-        object-fit: cover !important;
-        border-radius: 0.75rem !important;
-      }
-      /* Smooth transitions and scrollbars */
-      .scrollbar-none::-webkit-scrollbar {
-        display: none;
-      }
-      .scrollbar-none {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
-      .hidden {
-        display: none !important;
-      }
-      body {
-        background-color: #030712;
-      }
-      /* Custom Holographic scanning animations */
-      @keyframes cyberScan {
-        0%, 100% { top: 0%; opacity: 0.3; }
-        50% { top: 96%; opacity: 1; }
-      }
-      .animate-cyber-scan {
-        animation: cyberScan 2.5s ease-in-out infinite;
-      }
-      @keyframes neonPulse {
-        0%, 100% { opacity: 0.3; transform: scale(1); }
-        50% { opacity: 0.8; transform: scale(1.05); }
-      }
-      .animate-neon-pulse {
-        animation: neonPulse 3s ease-in-out infinite;
-      }
-      @keyframes spinSlow {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .animate-spin-slow {
-        animation: spinSlow 15s linear infinite;
-      }
-      @keyframes flapWings {
-        0%, 100% { transform: scale(1) rotate(0deg); }
-        50% { transform: scale(1.08) rotate(10deg); }
-      }
-      .animate-flap-wings {
-        animation: flapWings 2s ease-in-out infinite;
-      }
-      @keyframes pulseGlow {
-        0%, 100% { transform: scale(1); opacity: 0.8; }
-        50% { transform: scale(1.03); opacity: 1; }
-      }
-      .animate-pulse-glow {
-        animation: pulseGlow 2.5s ease-in-out infinite;
-      }
-      @keyframes fireBurn {
-        0%, 100% { transform: rotate(0deg) scale(1); }
-        50% { transform: rotate(180deg) scale(1.05); }
-      }
-      .animate-fire-burn {
-        animation: fireBurn 5s linear infinite;
-      }
-      @keyframes driftSparkle {
-        0%, 100% { transform: translate(0, 0) scale(0.9); opacity: 0.7; }
-        50% { transform: translate(-2px, -3px) scale(1.15); opacity: 1; }
-      }
-      .animate-drift-sparkle {
-        animation: driftSparkle 3s ease-in-out infinite;
-      }
-      @keyframes heartBeat {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.22); }
-      }
-      .animate-heart-beat {
-        animation: heartBeat 1.2s cubic-bezier(0.25, 0.8, 0.25, 1) infinite;
-      }
-      @keyframes goldShine {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-      }
-      .animate-gold-shine {
-        background-size: 200% 200%;
-        animation: goldShine 6s ease infinite;
-      }
-
-      /* Ultimate Mobile Responsiveness & Touch Optimization */
-      html, body {
-        overflow-x: hidden !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        -webkit-text-size-adjust: 100%;
-      }
-      
-      button, select, input, label, a {
-        touch-action: manipulation;
-      }
-
-      /* ================= GROUP CHAT MOBILE RESPONSIVENESS & BOUNDARY DEFENSE ================= */
-      #screen-group-chat {
-        width: 100% !important;
-        max-width: 32rem; /* max-w-lg mobile container */
-        margin-left: auto;
-        margin-right: auto;
-        overflow-x: hidden !important;
-        box-sizing: border-box;
-      }
-
-      #group-chat-messages-container {
-        width: 100%;
-        max-width: 100%;
-        overflow-x: hidden !important;
-        box-sizing: border-box;
-        padding-left: 0.625rem;
-        padding-right: 0.625rem;
-      }
-
-      /* Specific margin-right and padding-left adjustments to eliminate excessive white space on the right side while preserving readability */
-      #group-chat-messages-container .group-msg-row {
-        display: flex;
-        align-items: flex-end;
-        max-width: 100%;
-        box-sizing: border-box;
-      }
-
-      #group-chat-messages-container .group-msg-container {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-        box-sizing: border-box;
-      }
-
-      /* Other community members: eliminates right-side dead zone, preserves clean left spacing */
-      #group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
-        max-width: 86%;
-        margin-right: 0.5rem;
-        padding-left: 0.25rem;
-        align-items: flex-start;
-      }
-
-      /* Current user messages: snugly aligns on the right, prevents edge clipping */
-      #group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
-        max-width: 84%;
-        margin-right: 0.25rem;
-        padding-left: 1.25rem;
-        align-items: flex-end;
-      }
-
-      /* Ensure message bubbles do not overflow the right container boundary on smaller mobile viewports */
-      #screen-group-chat .group-msg-bubble,
-      #group-chat-messages-container .group-msg-bubble {
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
-        overflow-wrap: anywhere !important;
-        hyphens: auto;
-        max-width: 100% !important;
-        box-sizing: border-box !important;
-        text-align: left;
-      }
-
-      #screen-group-chat .group-msg-bubble p,
-      #group-chat-messages-container .group-msg-bubble p {
-        word-break: break-word !important;
-        overflow-wrap: break-word !important;
-        overflow-wrap: anywhere !important;
-        margin: 0;
-        line-height: 1.45;
-      }
-
-      @media (max-width: 480px) {
-        #group-chat-messages-container {
-          padding-left: 0.5rem;
-          padding-right: 0.5rem;
-        }
-        #group-chat-messages-container .group-msg-row.group-msg-other .group-msg-container {
-          max-width: 88%;
-          margin-right: 0.25rem;
-          padding-left: 0.125rem;
-        }
-        #group-chat-messages-container .group-msg-row.group-msg-me .group-msg-container {
-          max-width: 86%;
-          margin-right: 0.125rem;
-          padding-left: 0.75rem;
-        }
-        #screen-group-chat .group-msg-bubble {
-          word-break: break-word !important;
-          overflow-wrap: break-word !important;
-          padding: 0.55rem 0.75rem !important;
-        }
-      }
-
-      /* Prevent iOS Safari input zoom on focus */
-      @media screen and (max-width: 768px) {
-        input[type="text"],
-        input[type="password"],
-        input[type="number"],
-        input[type="email"],
-        input[type="tel"],
-        select,
-        textarea {
-          font-size: 16px !important;
-        }
-      }
-
-      /* Mobile friendly scrollbars & containers */
-      .custom-scrollbar::-webkit-scrollbar {
-        width: 4px;
-        height: 4px;
-      }
-      .custom-scrollbar::-webkit-scrollbar-track {
-        background: rgba(15, 23, 42, 0.6);
-      }
-      .custom-scrollbar::-webkit-scrollbar-thumb {
-        background: rgba(212, 175, 55, 0.4);
-        border-radius: 4px;
-      }
-
-      /* ================= VOICE CLUB + LOTTERY HYBRID ANIMATION ENGINE ================= */
-      @keyframes voiceWavePulse {
-        0% {
-          transform: scale(0.92);
-          opacity: 0.9;
-        }
-        50% {
-          opacity: 0.5;
-        }
-        100% {
-          transform: scale(2.3);
-          opacity: 0;
-        }
-      }
-      .voice-wave-1 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; }
-      .voice-wave-2 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 0.6s; }
-      .voice-wave-3 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.2s; }
-      .voice-wave-4 { animation: voiceWavePulse 2.4s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.8s; }
-
-      @keyframes voiceFreqBar {
-        0% { height: 5px; }
-        50% { height: 26px; }
-        100% { height: 9px; }
-      }
-      .eq-bar {
-        animation: voiceFreqBar 0.9s ease-in-out infinite alternate;
-      }
-
-      @keyframes floatLotteryItem {
-        0%, 100% { transform: translateY(0px) rotate(0deg); }
-        50% { transform: translateY(-12px) rotate(8deg); }
-      }
-      .lottery-float-1 { animation: floatLotteryItem 3.2s ease-in-out infinite; }
-      .lottery-float-2 { animation: floatLotteryItem 3.8s ease-in-out infinite 0.8s; }
-      .lottery-float-3 { animation: floatLotteryItem 4.2s ease-in-out infinite 1.5s; }
-
-      @keyframes goldCoinShimmer {
-        0% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5)); transform: scale(1); }
-        50% { filter: drop-shadow(0 0 18px rgba(251, 191, 36, 0.9)) drop-shadow(0 0 25px rgba(236, 72, 153, 0.4)); transform: scale(1.06); }
-        100% { filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5)); transform: scale(1); }
-      }
-      .gold-lottery-pulse { animation: goldCoinShimmer 2.2s infinite ease-in-out; }
-
-      /* Subtle Fade-In Transition Effect for Blog Post Items */
-      @keyframes blogItemFadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      .blog-fade-in {
-        animation: blogItemFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
-        will-change: opacity, transform;
-      }
-      @media (prefers-reduced-motion: reduce) {
-        .blog-fade-in {
-          animation: none !important;
-          opacity: 1 !important;
-          transform: none !important;
-        }
-      }
-    </style>
-    <script type="module" crossorigin src="./assets/main-CWkT_5C7.js"></script>
-    <link rel="modulepreload" crossorigin href="./assets/index-BCb6XRRm.js">
-    <link rel="modulepreload" crossorigin href="./assets/lucide-aRgWbLId.js">
-    <link rel="modulepreload" crossorigin href="./assets/undo-FugcdS0Y.js">
-    <link rel="modulepreload" crossorigin href="./assets/share-2-DNadgRwn.js">
-    <link rel="modulepreload" crossorigin href="./assets/x-DAFRHQJ0.js">
-    <link rel="modulepreload" crossorigin href="./assets/trash-Db88l_QM.js">
-    <link rel="modulepreload" crossorigin href="./assets/square-pen-C-B5Tg7k.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-UIPrMni1.css">
+    <!-- Custom styles moved to /src/index.css -->
+    <script type="module" crossorigin src="./assets/main-Z8Zmho8T.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/index-CptQLR6N.js">
+    <link rel="modulepreload" crossorigin href="./assets/luckyWheel-C2Wp9q9M.js">
+    <link rel="modulepreload" crossorigin href="./assets/lucide-DTsxog6h.js">
+    <link rel="modulepreload" crossorigin href="./assets/share-2-p_VdjV45.js">
+    <link rel="modulepreload" crossorigin href="./assets/undo-CZXfg-KU.js">
+    <link rel="modulepreload" crossorigin href="./assets/square-pen-BCSLR7vn.js">
+    <link rel="modulepreload" crossorigin href="./assets/x-CSZtnJ7w.js">
+    <link rel="modulepreload" crossorigin href="./assets/trash-BxygKRoy.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-Dn3GGfKE.css">
     <link rel="stylesheet" crossorigin href="./assets/main-BAgpGHKJ.css">
   </head>
   <body class="text-slate-100 antialiased font-sans select-none min-h-screen flex flex-col justify-between">
 
-    <!-- ================= STUNNING VOICE CLUB + LOTTERY HYBRID SPLASH SCREEN ================= -->
-    <div id="splash-screen" class="fixed inset-0 bg-[#060814] z-[2000] flex flex-col items-center justify-between p-3 sm:p-5 select-none overflow-y-auto transition-all duration-750 ease-out">
-      <!-- Full-Screen Ambient Voice Club Glows & Lottery Rays -->
-      <div class="absolute w-[700px] h-[700px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-amber-500/25 via-purple-600/15 to-transparent rounded-full blur-[110px] pointer-events-none animate-pulse"></div>
-      <div class="absolute w-[500px] h-[500px] bg-pink-500/15 rounded-full blur-[130px] -top-20 -left-20 animate-pulse delay-500 pointer-events-none"></div>
-      <div class="absolute w-[500px] h-[500px] bg-cyan-500/15 rounded-full blur-[130px] -bottom-20 -right-20 animate-pulse delay-1000 pointer-events-none"></div>
-
-      <!-- Rotating Golden Casino Roulette Sunburst Beams -->
-      <div class="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none overflow-hidden">
-        <div class="w-[900px] h-[900px] border-[2px] border-dashed border-amber-400/40 rounded-full animate-[spin_60s_linear_infinite]"></div>
-        <div class="absolute w-[700px] h-[700px] border border-pink-500/25 rounded-full animate-[spin_35s_linear_infinite_reverse]"></div>
-        <div class="absolute w-[1100px] h-[1100px] bg-[conic-gradient(from_0deg,#fbbf24_0deg,transparent_60deg,#ec4899_120deg,transparent_180deg,#06b6d4_240deg,transparent_300deg,#fbbf24_360deg)] opacity-10 animate-[spin_80s_linear_infinite]"></div>
-      </div>
-
-      <!-- Floating Decorative Lottery Balls & Voice Club Mics -->
-      <div class="absolute top-16 left-4 sm:left-12 hidden xs:flex flex-col items-center pointer-events-none lottery-float-1 z-10">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-amber-600 via-yellow-400 to-amber-200 border-2 border-yellow-200 shadow-[0_0_20px_rgba(251,191,36,0.8)] flex items-center justify-center text-slate-950 font-black text-sm sm:text-base font-mono">
-          7️⃣
-        </div>
-        <span class="text-[8px] font-mono text-amber-300 font-bold uppercase tracking-wider mt-1 drop-shadow">Lucky 7</span>
-      </div>
-
-      <div class="absolute top-20 right-4 sm:right-12 hidden xs:flex flex-col items-center pointer-events-none lottery-float-2 z-10">
-        <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-tr from-rose-600 via-pink-500 to-purple-400 border-2 border-pink-300 shadow-[0_0_20px_rgba(236,72,153,0.8)] flex items-center justify-center text-white font-black text-sm sm:text-base">
-          🎱
-        </div>
-        <span class="text-[8px] font-mono text-pink-300 font-bold uppercase tracking-wider mt-1 drop-shadow">VIP Ball</span>
-      </div>
-
-      <!-- Skip / Dismiss Quick Button -->
-      <button id="splash-skip-btn" type="button" class="absolute top-3.5 right-3.5 sm:top-4 sm:right-4 px-3.5 py-1.5 bg-slate-900/90 hover:bg-slate-800 border border-amber-400/50 text-amber-300 hover:text-white rounded-full text-xs font-mono font-bold transition flex items-center gap-1.5 cursor-pointer z-40 shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-        <span>Skip</span>
-        <i data-lucide="chevron-right" class="w-4 h-4"></i>
-      </button>
-
-      <div id="emergency-bypass" class="hidden absolute bottom-6 right-6 z-[3000]">
-         <button onclick="document.getElementById('splash-screen').classList.add('hidden'); if(window.appInstance) { window.appInstance.render(); } else { alert('App script failed to load. Please check your internet or console for 404 errors.'); }" class="bg-rose-600 hover:bg-rose-700 text-white px-5 py-2.5 rounded-full text-xs font-black shadow-2xl border-2 border-white/20 animate-pulse transition-all active:scale-95">
-           SKIP SPLASH (EMERGENCY)
-         </button>
-      </div>
-
-      <!-- TOP HEADER BRANDING: VOICE CLUB ROOM + LOTTERY JACKPOT -->
-      <div class="relative pt-1 sm:pt-3 flex flex-col items-center gap-1.5 animate-fade-in z-20 text-center">
-        <div class="flex items-center gap-2">
-          <!-- Voice Room Live Indicator Badge -->
-          <div class="flex items-center gap-1.5 bg-slate-900/90 border border-amber-500/40 px-3 py-1 rounded-full shadow-[0_0_15px_rgba(251,191,36,0.3)]">
-            <span class="relative flex h-2 w-2">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-            </span>
-            <span class="bg-gradient-to-r from-amber-400 via-rose-300 to-cyan-300 bg-clip-text text-transparent font-black text-[9px] sm:text-[10px] font-mono tracking-wider uppercase">
-              🎙️ VIP VOICE CLUB • 🎰 LOTTERY JACKPOT STAGE
-            </span>
-          </div>
-        </div>
-
-        <h1 id="splash-headline-text" class="text-xs sm:text-sm font-black uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-300 tracking-widest font-mono drop-shadow-[0_2px_10px_rgba(251,191,36,0.5)] px-2">
-          🏆 CONGRATULATIONS TO OUR TOP WINNER!
-        </h1>
-      </div>
-
-      <!-- CENTER STAGE: VOICE CLUB MIC & LOTTERY JACKPOT SPOTLIGHT -->
-      <div class="relative my-auto py-1 sm:py-3 flex flex-col items-center w-full max-w-[360px] sm:max-w-md text-center z-20 space-y-3">
-        
-        <!-- GRAND VOICE CLUB STAGE & WINNER SPOTLIGHT CARD -->
-        <div id="splash-top-winner-card" class="w-full bg-gradient-to-b from-slate-900/95 via-purple-950/85 to-[#080b18]/95 border-2 border-amber-400/80 p-4 sm:p-5 rounded-3xl shadow-[0_15px_50px_rgba(251,191,36,0.35)] flex flex-col items-center gap-2.5 sm:gap-3 relative overflow-hidden backdrop-blur-xl">
-          
-          <!-- Ambient Background Light Flares -->
-          <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-400/25 rounded-full blur-3xl pointer-events-none"></div>
-          <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-amber-500/15 via-pink-500/10 to-transparent pointer-events-none"></div>
-
-          <!-- TOP 1 SVIP FRAME WITH EXPANDING VOICE SOUNDWAVE RIPPLES -->
-          <div id="splash-winner-avatar-frame-wrapper" class="relative w-28 h-28 sm:w-32 sm:h-32 my-1 sm:my-2 flex items-center justify-center select-none shrink-0">
-            
-            <!-- CONCENTRIC EXPANDING VOICE SOUNDWAVE RIPPLE AURA RINGS (Voice Club Signature Animation) -->
-            <div class="absolute inset-0 rounded-full border-2 border-amber-400/70 voice-wave-1 pointer-events-none"></div>
-            <div class="absolute inset-0 rounded-full border-2 border-rose-500/60 voice-wave-2 pointer-events-none"></div>
-            <div class="absolute inset-0 rounded-full border-2 border-cyan-400/50 voice-wave-3 pointer-events-none"></div>
-            <div class="absolute inset-0 rounded-full border border-yellow-300/40 voice-wave-4 pointer-events-none"></div>
-
-            <!-- Floating Animated Golden Crown & 777 Jackpot Emblem -->
-            <div class="absolute -top-6 sm:-top-7 left-1/2 -translate-x-1/2 z-30 flex flex-col items-center animate-bounce" style="animation-duration: 2.2s;">
-              <div class="relative">
-                <i data-lucide="crown" class="w-8 h-8 text-amber-300 drop-shadow-[0_0_15px_rgba(251,191,36,1)]"></i>
-                <span class="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-rose-600 text-white font-black text-[7px] font-mono px-1 rounded-full border border-yellow-300">777</span>
-              </div>
-            </div>
-
-            <!-- SVIP Golden Rotating Outer Aura Ring -->
-            <div class="absolute inset-0 rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-yellow-300 p-[3px] animate-spin-slow shadow-[0_0_25px_rgba(251,191,36,0.9)] pointer-events-none">
-              <div class="w-full h-full bg-[#0a0c1a] rounded-full"></div>
-            </div>
-
-            <!-- Double Pulsing Neon Rings -->
-            <div class="absolute -inset-2 rounded-full border border-amber-400/60 animate-pulse pointer-events-none"></div>
-            <div class="absolute -inset-1 rounded-full border border-pink-400/50 animate-ping opacity-25 pointer-events-none" style="animation-duration: 2.8s;"></div>
-
-            <!-- SVIP Golden Side Wings (Angel VIP Tier) -->
-            <div class="absolute -left-4 sm:-left-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-              <i data-lucide="feather" class="w-5 h-5 text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform -rotate-[35deg]"></i>
-            </div>
-            <div class="absolute -right-4 sm:-right-5 top-1/2 -translate-y-1/2 z-20 pointer-events-none">
-              <i data-lucide="feather" class="w-5 h-5 text-amber-300 drop-shadow-[0_0_10px_rgba(245,158,11,1)] transform rotate-[35deg] scale-x-[-1]"></i>
-            </div>
-
-            <!-- User Profile Photo -->
-            <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden relative z-10 border-2 border-amber-300/90 bg-slate-900 shadow-[inset_0_0_15px_rgba(0,0,0,0.8)] flex items-center justify-center">
-              <img id="splash-winner-photo" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250" class="w-full h-full object-cover" alt="Top Winner Profile" />
-            </div>
-
-            <!-- Voice Club Studio Mic Floating Badge -->
-            <div class="absolute -bottom-1 -right-1 z-30 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-pink-500 border-2 border-slate-950 flex items-center justify-center text-white shadow-[0_0_15px_rgba(244,63,94,0.9)] animate-pulse">
-              <i data-lucide="mic-2" class="w-4 h-4"></i>
-            </div>
-
-            <!-- Bottom SVIP Voice Room Tag Badge -->
-            <div class="absolute -bottom-3 left-1/2 -translate-x-1/2 z-30 bg-gradient-to-r from-amber-500 via-rose-500 to-yellow-400 text-slate-950 font-black text-[8.5px] sm:text-[9px] font-mono px-2.5 sm:px-3 py-0.5 rounded-full border border-amber-100 shadow-[0_4px_12px_rgba(251,191,36,0.7)] uppercase whitespace-nowrap tracking-wider flex items-center gap-1">
-              <i class="fa-solid fa-microphone-lines text-[8px] text-white"></i> ON MIC • TOP 1 SVIP
-            </div>
-          </div>
-
-          <!-- VOICE AUDIO FREQUENCY EQUALIZER BARS (Music / Voice Club Room Spectrum) -->
-          <div class="flex flex-col items-center gap-1 w-full pt-1">
-            <div class="flex items-center justify-center gap-1 sm:gap-1.5 h-6 select-none">
-              <div class="w-1 rounded-full bg-amber-400 eq-bar" style="animation-delay: 0.1s;"></div>
-              <div class="w-1 rounded-full bg-yellow-300 eq-bar" style="animation-delay: 0.4s;"></div>
-              <div class="w-1 rounded-full bg-rose-500 eq-bar" style="animation-delay: 0.2s;"></div>
-              <div class="w-1 rounded-full bg-pink-500 eq-bar" style="animation-delay: 0.6s;"></div>
-              <div class="w-1.5 rounded-full bg-gradient-to-t from-amber-500 via-rose-500 to-cyan-400 eq-bar shadow-[0_0_8px_rgba(245,158,11,0.8)]" style="animation-delay: 0.0s;"></div>
-              <div class="w-1 rounded-full bg-pink-500 eq-bar" style="animation-delay: 0.5s;"></div>
-              <div class="w-1 rounded-full bg-rose-500 eq-bar" style="animation-delay: 0.3s;"></div>
-              <div class="w-1 rounded-full bg-yellow-300 eq-bar" style="animation-delay: 0.7s;"></div>
-              <div class="w-1 rounded-full bg-amber-400 eq-bar" style="animation-delay: 0.2s;"></div>
-            </div>
-            <div class="flex items-center justify-center gap-1.5 text-[8.5px] sm:text-[9px] font-mono text-emerald-400">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-              <span class="tracking-wider uppercase font-bold">LIVE STAGE VOICE AUDIO • 777 JACKPOT DRAW</span>
-            </div>
-          </div>
-
-          <!-- WINNER DETAILS SECTION -->
-          <div class="space-y-1 sm:space-y-1.5 text-center relative z-10 w-full pt-0.5">
-            <div class="inline-flex items-center gap-1.5 bg-amber-950/90 border border-amber-600/60 px-3 py-0.5 sm:py-1 rounded-full text-amber-300 font-mono text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider shadow">
-              <i data-lucide="trophy" class="w-3 h-3 text-amber-400"></i> TOP 1 LOTTERY CHAMPION
-            </div>
-            
-            <h2 id="splash-winner-username" class="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-white to-amber-300 tracking-tight font-sans drop-shadow">
-              @lottery_pro
-            </h2>
-            
-            <div class="inline-block bg-slate-950/80 px-2.5 py-0.5 rounded-md border border-slate-800 text-[9.5px] sm:text-[10px] font-mono text-cyan-300">
-              <span id="splash-winner-id">ID: #101</span>
-            </div>
-          </div>
-
-          <!-- LOTTERY JACKPOT EARNINGS PRIZE HIGHLIGHT -->
-          <div class="w-full bg-gradient-to-r from-slate-950 via-[#0d0f22] to-slate-950 border border-amber-500/50 rounded-2xl p-2.5 sm:p-3 flex items-center justify-between text-left relative z-10 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
-            <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-500/30 to-rose-500/30 border border-amber-400/60 flex items-center justify-center text-amber-300 text-sm font-black shrink-0 shadow-[0_0_10px_rgba(251,191,36,0.4)]">
-                🎰
-              </div>
-              <div>
-                <span class="block text-[8px] sm:text-[8.5px] font-mono text-slate-400 uppercase tracking-wider">Mega Jackpot Profit</span>
-                <span class="text-[8.5px] sm:text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-                  <i data-lucide="shield-check" class="w-3 h-3 text-emerald-400"></i> Official Winner Verified
-                </span>
-              </div>
-            </div>
-
-            <div class="text-right">
-              <span id="splash-winner-prize" class="font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-400 text-base sm:text-lg font-mono tracking-tight drop-shadow-[0_0_12px_rgba(251,191,36,0.8)]">
-                ৳1,250,000
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <!-- HOLOGRAPHIC LOTTERY TICKET WITH NOTCHES & SCANNER -->
-        <div id="splash-3d-card" class="interactive-tilt-card w-full h-auto min-h-[64px] sm:h-20 bg-gradient-to-br from-amber-500 via-pink-600 to-cyan-400 rounded-2xl p-[1px] shadow-[0_10px_30px_rgba(245,158,11,0.25)] transition-all duration-300 relative overflow-hidden shrink-0">
-          <div class="absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_12px_#22d3ee] z-20 animate-cyber-scan pointer-events-none"></div>
-          
-          <div class="w-full h-full bg-[#0a0c1a] rounded-[15px] p-2.5 sm:p-3 flex justify-between items-center relative overflow-hidden backdrop-blur-md">
-            <!-- Ticket Left Notch Cutout -->
-            <div class="absolute -left-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#060814] border-r border-amber-500/40"></div>
-            <!-- Ticket Right Notch Cutout -->
-            <div class="absolute -right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#060814] border-l border-amber-500/40"></div>
-
-            <div class="space-y-0.5 text-left z-10 pl-2">
-              <span class="text-[8px] font-mono text-amber-400/80 block tracking-widest uppercase flex items-center gap-1">
-                <i data-lucide="ticket" class="w-3 h-3 text-amber-400"></i> VIP LOTTERY PASS
-              </span>
-              <span class="text-[11px] sm:text-xs font-black font-mono text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-200 to-cyan-300 tracking-wider">
-                LUCKY-777-VOICE-VIP
-              </span>
-            </div>
-            
-            <div class="font-mono text-[8px] text-cyan-400 font-extrabold uppercase bg-cyan-950/60 border border-cyan-500/40 px-2.5 py-1 rounded-lg tracking-wider animate-pulse z-10 flex items-center gap-1 mr-2">
-              <i data-lucide="check-circle" class="w-3 h-3 text-cyan-300"></i> TICKET VERIFIED
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- BOTTOM PROGRESS & AUTO-DISMISS CONTROLLER -->
-      <div class="w-full max-w-[360px] sm:max-w-md space-y-2 relative pb-2 z-20 text-center">
-        <!-- Progress Bar with Voice Club Sound Wave Styling -->
-        <div class="h-[6px] w-full bg-slate-900/90 border border-slate-800 rounded-full overflow-hidden relative p-[0.5px]">
-          <div id="splash-progress" class="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-cyan-400 rounded-full w-0 transition-all duration-300 ease-out shadow-[0_0_12px_rgba(251,191,36,0.8)]"></div>
-        </div>
-
-        <div class="flex justify-between items-center text-[10px] font-mono text-slate-400">
-          <span id="splash-timer-text" class="flex items-center gap-1.5 text-amber-300 font-bold">
-            <i data-lucide="clock" class="w-4 h-4 text-amber-400 animate-spin"></i> Auto-closing in 2s
-          </span>
-          <span id="splash-percent" class="font-bold text-cyan-400">0%</span>
-        </div>
-
-        <!-- Prominent Enter App Action Button -->
-        <button id="splash-enter-btn" type="button" class="w-full py-2.5 bg-gradient-to-r from-amber-500 via-yellow-400 to-amber-600 hover:from-amber-400 hover:to-yellow-300 text-slate-950 font-black font-mono text-xs rounded-xl shadow-[0_0_20px_rgba(251,191,36,0.5)] transition cursor-pointer active:scale-95 uppercase tracking-wider flex items-center justify-center gap-2 mt-1 z-30">
-          <i data-lucide="mic-2" class="w-4 h-4"></i>
-          <span>ENTER LOTTERY APP NOW</span>
-          <i data-lucide="chevron-right" class="w-4 h-4"></i>
-        </button>
-        <p class="text-[9px] font-mono text-slate-500 pt-0.5">Tap anywhere on screen to enter immediately</p>
-      </div>
-    </div>
-
-    <!-- Inline Emergency Safety Script: Guarantees splash screen automatically closes after 2.5s or on click -->
-    <script>
-      (function(){
-        function forceCloseSplash() {
-          var s = document.getElementById('splash-screen');
-          if (s && !s.classList.contains('hidden')) {
-            s.style.opacity = '0';
-            setTimeout(function(){ s.classList.add('hidden'); }, 300);
-          }
-          if (window.app && typeof window.app.render === 'function') {
-            try { window.app.render(); } catch(e){}
-          }
-        }
-        // Fail-safe auto close timer
-        setTimeout(forceCloseSplash, 2800);
-        // Instant close on tap/click anywhere
-        var splash = document.getElementById('splash-screen');
-        if (splash) {
-          splash.addEventListener('click', forceCloseSplash);
-        }
-      })();
-    </script>
-
-    <!-- Global Floating Toasts Container (Guaranteed Centered on Mobile & Desktop) -->
-    <div id="toast-container" class="fixed inset-0 z-[999999] flex flex-col items-center justify-center p-4 pointer-events-none text-center"></div>
-
-    <!-- Beautiful Immersive Full-Screen Offline Portal -->
-    <!-- Beautiful Immersive Full-Screen Offline Portal -->
-    <div id="offline-modal" class="hidden fixed inset-0 bg-slate-950 z-[1050] flex flex-col justify-center items-center p-6 select-none overflow-y-auto transition-all duration-500">
-      <!-- High-fidelity background vector glows -->
-      <div class="absolute w-[450px] h-[450px] bg-red-650/10 rounded-full blur-[100px] top-1/4 left-1/4 pointer-events-none animate-pulse"></div>
-      <div class="absolute w-[450px] h-[450px] bg-amber-600/5 rounded-full blur-[100px] bottom-1/4 right-1/4 pointer-events-none animate-pulse delay-500"></div>
-
-      <!-- Adaptive responsive container -->
-      <div class="flex flex-col md:flex-row gap-6 max-w-4xl w-full items-center justify-center relative z-10 scale-95 md:scale-100">
-
-        <!-- Main Locking UI Glass Card -->
-        <div class="bg-gradient-to-b from-slate-900/90 via-slate-950/95 to-slate-900/90 border border-red-500/20 rounded-[32px] p-6 max-w-sm w-full text-center space-y-6 shadow-[0_25px_60px_rgba(239,68,68,0.15)] relative overflow-hidden backdrop-blur-xl">
-          <!-- Accent indicator decoration -->
-          <div class="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent"></div>
-          
-          <!-- Interactive Pulsing 3D Network Radar Container -->
-          <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
-            <!-- Pulse ripple 1 -->
-            <div class="absolute inset-0 rounded-full bg-red-650/15 border border-red-500/10 animate-[ping_2s_infinite]"></div>
-            <!-- Pulse ripple 2 -->
-            <div class="absolute inset-2 rounded-full bg-red-650/10 border border-red-500/10 animate-[ping_3s_infinite_delay-300]"></div>
-            
-            <!-- Core WiFi Off Graphic Circle -->
-            <div class="w-16 h-16 bg-gradient-to-b from-red-950/40 to-slate-900 border border-red-500/30 rounded-3xl flex items-center justify-center text-red-500 text-3xl shadow-xl relative preserve-3d group-hover:scale-105 transition-transform duration-300">
-              <i class="fa-solid fa-signal text-slate-500/40 text-xl absolute"></i>
-              <i class="fa-solid fa-wifi text-red-500 relative z-[2]"></i>
-              <!-- Visual lock slash -->
-              <div class="absolute w-12 h-1 bg-red-500 rotate-45 rounded-full shadow-lg border border-slate-950 z-[3]"></div>
-            </div>
-          </div>
-
-          <!-- Warning Title Block -->
-          <div class="space-y-2 relative">
-            <span class="font-mono text-[9px] tracking-widest text-red-400 font-extrabold uppercase bg-red-950/45 px-3 py-1 rounded-full border border-red-900/30">
-              Network Error Detect
-            </span>
-            <h2 class="text-lg font-black font-display tracking-tight text-white uppercase pt-1">Connection Interrupted</h2>
-            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">
-              Your internet communication channel dropped. Don't worry! Your live state is preserved. Local actions will sync back securely when you reconnect.
-            </p>
-          </div>
-
-          <!-- Connection Telemetry Table -->
-          <div class="bg-slate-950/80 border border-slate-850/85 p-3.5 rounded-2xl space-y-2.5 font-mono text-[9.5px] text-left">
-            <div class="flex justify-between items-center pb-1.5 border-b border-slate-900">
-              <span class="text-slate-500">Live Connection</span>
-              <span class="text-rose-500 font-bold flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span> DISCONNECTED
-              </span>
-            </div>
-            <div class="flex justify-between items-center pb-1.5 border-b border-slate-900">
-              <span class="text-slate-500">Local DB Status</span>
-              <span class="text-emerald-400 font-bold flex items-center gap-1">
-                <i class="fa-solid fa-circle-check"></i> READY (OFFLINE)
-              </span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-slate-500">Failed Node API</span>
-              <span class="text-slate-400 font-semibold text-right">firebase-firestore.js</span>
-            </div>
-          </div>
-
-          <!-- Interactive Control CTA -->
-          <div class="flex flex-col gap-2.5 relative pt-1">
-            <button onclick="window.appInstance.checkNetworkStatus()" class="bg-gradient-to-r from-red-650 to-rose-600 hover:opacity-90 text-white text-[11px] font-black py-3 rounded-xl transition cursor-pointer active:scale-98 shadow-lg shadow-rose-950/30 flex items-center justify-center gap-1.5 group">
-              <i class="fa-solid fa-arrows-rotate animate-[spin_6s_linear_infinite] text-rose-200"></i> RETRY LIVE HANDSHAKE
-            </button>
-            
-            <button onclick="document.getElementById('offline-modal').classList.add('hidden')" class="bg-slate-900/50 hover:bg-slate-900/90 border border-slate-800/60 text-slate-400 hover:text-slate-200 text-[10px] font-medium py-2 rounded-xl transition-colors cursor-pointer">
-              CONTINUE IN READ-ONLY MODE
-            </button>
-          </div>
-        </div>
-
-        <!-- ================= FEATURE 3: 3D LUCKY COIN FLIP MATCH GAME CARD ================= -->
-        <div class="bg-gradient-to-b from-slate-900/95 via-slate-950/98 to-slate-900/95 border border-slate-800/80 rounded-[32px] p-6 max-w-sm w-full text-center space-y-4 shadow-2xl relative overflow-hidden backdrop-blur-xl">
-          <!-- Ambient glowing decoration -->
-          <div class="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-cyan-500/40 to-transparent"></div>
-          
-          <div class="flex items-center justify-between border-b border-slate-850 pb-2">
-            <div class="flex items-center gap-1.5">
-              <span class="text-cyan-400"><i class="fa-solid fa-gamepad animate-pulse text-sm"></i></span>
-              <span class="font-mono text-[9px] font-black text-slate-400 uppercase tracking-wider">Lucky Flip Pair Game</span>
-            </div>
-            <span id="offline-score-badge" class="font-mono text-[9.5px] uppercase font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 bg-amber-955/40 border border-amber-500/20 px-2 py-0.5 rounded-full">Score: 0</span>
-          </div>
-
-          <p class="text-[10.5px] text-slate-400 font-sans leading-relaxed">
-            Internet offline? Let's play! Flip card pairs to trigger matching symbols and get double safety tickets.
-          </p>
-
-          <!-- Interactive Game Grid containing 3D mini items -->
-          <div id="offline-game-grid" class="grid grid-cols-4 gap-2 pt-1 select-none">
-            <!-- Populated dynamically with beautiful 3D flip card elements -->
-          </div>
-
-          <div class="pt-2">
-            <button onclick="window.appInstance.restartOfflineGame()" class="bg-slate-950 border border-slate-850 hover:border-slate-800 text-cyan-400 hover:text-cyan-300 font-mono text-[9.5px] py-2 px-4 rounded-xl shadow-md transition active:scale-95 flex items-center justify-center gap-1.5 w-full cursor-pointer">
-              <i class="fa-solid fa-rotate-right text-[10px]"></i> RESET CARD DECK
-            </button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-
-    <!-- ================= CLOUD SYNC DIAGNOSTICS MODAL ================= -->
-    <div id="cloud-sync-modal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[1050] flex items-center justify-center p-4">
-      <div class="bg-gradient-to-b from-slate-900 via-slate-950 to-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full space-y-5 shadow-2xl relative overflow-hidden">
-        <!-- Glowing accent border -->
-        <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 to-purple-500/10 opacity-50 blur-xl pointer-events-none"></div>
-        
-        <div class="flex justify-between items-center border-b border-slate-850 pb-3 relative">
-          <div class="flex items-center gap-2">
-            <i class="fa-solid fa-cloud-arrow-up text-cyan-400 text-lg"></i>
-            <h3 class="text-xs font-black uppercase tracking-wider text-slate-200">Cloud Sync Monitor</h3>
-          </div>
-          <button onclick="document.getElementById('cloud-sync-modal').classList.add('hidden')" class="text-slate-500 hover:text-slate-300 transition text-sm">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <!-- Pulse Status Panel -->
-        <div class="bg-slate-950/80 border border-slate-850 rounded-2xl p-4 flex items-center gap-4 relative">
-          <div class="w-12 h-12 rounded-xl bg-cyan-950/40 border border-cyan-800/30 flex items-center justify-center text-cyan-400 text-xl shrink-0" id="sync-modal-icon-container">
-            <i class="fa-solid fa-circle-notch animate-spin text-cyan-400" id="sync-modal-icon"></i>
-          </div>
-          <div class="space-y-1">
-            <span class="text-[9px] uppercase font-mono text-slate-500 block">Current Status</span>
-            <div class="flex items-center gap-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" id="sync-modal-dot"></span>
-              <span class="text-xs font-black text-white uppercase tracking-wider" id="sync-modal-state-text">Synced</span>
-            </div>
-            <span class="text-[10px] text-slate-400 block" id="sync-modal-state-subtext">Connected to Google Cloud</span>
-          </div>
-        </div>
-
-        <!-- Sync Stats List -->
-        <div class="bg-slate-950/40 border border-slate-850/50 p-4 rounded-2xl space-y-3 font-mono text-[10px]">
-          <div class="flex justify-between border-b border-slate-850 pb-2">
-            <span class="text-slate-500">Sync Engine</span>
-            <span class="text-slate-300 font-bold">Google Firebase Firestore</span>
-          </div>
-          <div class="flex justify-between border-b border-slate-850 pb-2">
-            <span class="text-slate-500">Database ID</span>
-            <span class="text-cyan-400 font-bold text-[9px] truncate max-w-[155px]" id="sync-modal-project-id" title="ai-studio-974d5483-e694-46e0-8f50-3cc61524c974">ai-studio-974d5483...</span>
-          </div>
-          <div class="flex justify-between border-b border-slate-850 pb-2">
-            <span class="text-slate-500">Registered Players</span>
-            <span class="text-slate-300 font-bold" id="sync-stat-users">--</span>
-          </div>
-          <div class="flex justify-between border-b border-slate-850 pb-2">
-            <span class="text-slate-500 font-mono">Lotteries / Pools</span>
-            <span class="text-slate-300 font-bold" id="sync-stat-pools">--</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Last Synced Status</span>
-            <span class="text-emerald-400 font-bold" id="sync-stat-time">Synced Just Now</span>
-          </div>
-        </div>
-
-        <!-- Action triggers -->
-        <div class="flex flex-col gap-2 relative">
-          <button id="sync-manual-trigger-btn" class="bg-gradient-to-r from-cyan-600 to-rose-600 hover:opacity-90 text-white text-xs font-black py-3 rounded-xl transition cursor-pointer active:scale-98 flex items-center justify-center gap-2">
-            <i class="fa-solid fa-arrows-rotate" id="sync-manual-icon"></i> <span>Sync & Refresh Data</span>
-          </button>
-          
-          <button onclick="document.getElementById('cloud-sync-modal').classList.add('hidden')" class="bg-slate-950 border border-slate-800 hover:bg-slate-900 text-slate-400 text-[10px] subpixel-antialiased font-bold py-2 px-4 rounded-xl transition">
-            Close Panel
-          </button>
-        </div>
-
-        <!-- Friendly Bengali Instruction -->
-        <p class="text-[9px] text-slate-500 text-center font-sans leading-normal">
-          💡 আপনার সমস্ত ডেটা গুগুল ক্লাউডে রিয়েল-টাইমে সুরক্ষিতভাবে সংরক্ষণ এবং সিঙ্ক করা হচ্ছে।
-        </p>
-      </div>
-    </div>
-
-
-    <!-- ================= SCREEN 1: MAINTENANCE LOCK SCREEN ================= -->
-    <div id="screen-maintenance" class="hidden fixed inset-0 bg-slate-950 flex flex-col justify-between p-6 z-50 overflow-y-auto">
-      <div class="my-auto max-w-md w-full mx-auto text-center space-y-6">
-        <div class="w-20 h-20 bg-rose-950/40 border border-rose-500/30 rounded-3xl flex items-center justify-center mx-auto text-rose-500 text-3xl animate-pulse">
-          <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
-        <div class="space-y-2">
-          <h1 class="text-2xl font-black font-display tracking-tight text-white uppercase">System Upgrading</h1>
-          <p id="maintenance-text" class="text-xs text-slate-400 font-medium px-4 leading-relaxed"></p>
-        </div>
-
-        <div class="bg-slate-900 border border-slate-800/80 p-5 rounded-3xl space-y-3 font-mono text-left text-xs max-w-xs mx-auto">
-          <div class="flex justify-between border-b border-slate-800 pb-2">
-            <span class="text-slate-500">Service Area</span>
-            <span class="text-cyan-400 font-bold">Dhaka, BD (Inward)</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">Security Build</span>
-            <span class="text-white font-bold">v<span id="maintenance-apk-ver">5.2.0</span></span>
-          </div>
-        </div>
-
-        <a id="maintenance-apk-link" href="#" class="inline-block bg-gradient-to-r from-cyan-500 to-rose-500 hover:scale-103 text-white text-xs font-black py-3.5 px-8 rounded-2xl shadow-xl shadow-cyan-500/10 transition active:opacity-90">
-          <i class="fa-solid fa-download mr-1.5 animate-bounce"></i> Download Latest Android APK
-        </a>
-      </div>
-
-      <div class="text-center text-[10px] text-slate-600 font-mono">
-        <span class="hover:text-slate-400 cursor-pointer select-none transition" id="exit-maintenance-backdoor" onclick="window.openBypass()">
-          Developer Backlogin
-        </span>
-      </div>
-    </div>
-
-
-    <!-- ================= SCREEN 2: AUTHENTICATION (LOGIN & REGISTRATION) ================= -->
-    <div id="screen-auth" class="hidden min-h-[100dvh] bg-[#0b0e14] flex flex-col justify-center items-center p-3.5 sm:p-5 select-none relative overflow-x-hidden">
-      <!-- Ambient light decorative backdrop glow -->
-      <div class="absolute top-1/6 left-1/2 -translate-x-1/2 w-80 h-80 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
-      <div class="absolute bottom-1/6 left-1/2 -translate-x-1/2 w-80 h-80 bg-yellow-600/5 rounded-full blur-3xl pointer-events-none"></div>
-
-      <div class="portal-card relative z-10">
-        <!-- Top Bonus Banner -->
-        <div class="bonus-banner" id="auth-bonus-banner">
-          🎁 REGISTER NOW &amp; GET $50 FREE BONUS
-        </div>
-
-        <!-- Navigation Tabs -->
-        <div class="nav-tabs">
-          <button class="tab-btn active" id="signInTab" onclick="switchTab('signin')">Sign In</button>
-          <button class="tab-btn" id="registerTab" onclick="switchTab('register')">Register</button>
-        </div>
-
-        <!-- Form Section -->
-        <div class="forms-wrapper">
-          <div class="form-container" id="formContainer">
-            
-            <!-- SIGN IN FORM -->
-            <div class="form-box" id="auth-login-box">
-              <form id="signInForm">
-                <div class="input-group">
-                  <label>Username or Email</label>
-                  <input type="text" id="auth-user" class="input-field" placeholder="Enter username" required autocomplete="username">
-                </div>
-                
-                <div class="input-group">
-                  <div class="flex justify-between items-center mb-1">
-                    <label class="!mb-0">Password</label>
-                    <a href="forgot_password.html" class="text-[10px] text-amber-400 hover:text-amber-300 font-mono">Forgot?</a>
-                  </div>
-                  <input type="password" id="auth-pass" class="input-field" placeholder="••••••••" required autocomplete="current-password">
-                </div>
-
-                <div class="input-group">
-                  <label>Security Math Captcha</label>
-                  <div class="captcha-row">
-                    <div class="captcha-badge" id="loginQuestion">0 + 0 =</div>
-                    <input type="number" id="loginAnswer" class="input-field" placeholder="Answer" required>
-                  </div>
-                </div>
-
-                <button type="submit" class="btn-submit">SIGN IN NOW</button>
-              </form>
-
-              <!-- Agent Portal Login Trigger -->
-              <div class="pt-2">
-                <button type="button" onclick="document.getElementById('auth-login-box').classList.add('hidden'); document.getElementById('auth-agent-login-box').classList.remove('hidden');" class="w-full bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-mono font-bold py-3 px-3 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer text-xs shadow">
-                  <i data-lucide="user" class="w-4 h-4"></i>
-                  <span>Agent / Dealer Portal Login (এজেন্ট লগইন)</span>
-                </button>
-              </div>
-            </div>
-
-            <!-- AGENT LOGIN FORM VIEW -->
-            <div class="form-box hidden" id="auth-agent-login-box">
-              <div class="text-center pb-3 flex flex-col items-center">
-                <div class="w-12 h-12 bg-gradient-to-tr from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mb-2 shadow-lg ring-1 ring-white/10">
-                  <i class="fa-solid fa-user-tie text-white text-xl"></i>
-                </div>
-                <h3 class="text-xs font-black uppercase tracking-wider text-white font-display">Agent Portal Login</h3>
-                <p class="text-[9px] font-mono text-cyan-400 leading-none mt-1">District Agent & Dealer Access</p>
-              </div>
-
-              <form id="auth-agent-login-form">
-                <div class="input-group">
-                  <label>Username, Gmail or Phone</label>
-                  <input type="text" id="agent-login-user" class="input-field" placeholder="Enter username, email or phone" required autocomplete="username">
-                </div>
-
-                <div class="input-group">
-                  <label>Agent Passphrase</label>
-                  <input type="password" id="agent-login-pass" class="input-field" placeholder="••••••••" required autocomplete="current-password">
-                </div>
-
-                <button type="submit" class="w-full bg-gradient-to-r from-cyan-500 via-teal-500 to-indigo-600 hover:brightness-110 text-slate-950 font-black text-xs py-3 rounded-xl shadow-lg transition cursor-pointer uppercase font-display mt-2">
-                  Access Agent Portal
-                </button>
-
-                <button type="button" onclick="document.getElementById('auth-agent-login-box').classList.add('hidden'); document.getElementById('auth-login-box').classList.remove('hidden');" class="w-full mt-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono py-2.5 rounded-xl transition cursor-pointer">
-                  ← Back to Player Sign In
-                </button>
-              </form>
-            </div>
-
-            <!-- REGISTER FORM -->
-            <div class="form-box" id="auth-signup-box">
-              <!-- 1-Click Fast Registration Box -->
-              <div class="one-click-box">
-                <span id="auth-one-click-text">⚡ Instant Setup + $50 Bonus</span>
-                <button class="btn-one-click" type="button" onclick="handleOneClickReg()">1-CLICK REGISTER</button>
-              </div>
-
-              <form id="registerForm">
-                <div class="input-group">
-                  <label>Full Name</label>
-                  <input type="text" id="reg-fullname" class="input-field" placeholder="Enter full name" required>
-                </div>
-
-                <div class="input-group">
-                  <label>Username</label>
-                  <input type="text" id="reg-user" class="input-field" placeholder="Choose username" required autocomplete="off">
-                </div>
-
-                <div class="input-group">
-                  <label>Password</label>
-                  <input type="password" id="reg-pass" class="input-field" placeholder="••••••••" required>
-                </div>
-
-                <!-- Dynamic Agent Recruitment Header Banner -->
-                <div id="reg-agent-apply-banner" class="hidden p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-300 font-sans space-y-1 mb-4">
-                  <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-amber-400">
-                    <i data-lucide="shield" class="w-4 h-4 text-amber-400"></i>
-                    <span>Sub-Agent Field Registration</span>
-                  </div>
-                  <p class="text-[11px] leading-relaxed">
-                    You are registering an official agent portal account under recruitment leader <strong id="reg-agent-leader-name" class="text-white">@Leader</strong>. Complete the form to submit your application for administrator approval.
-                  </p>
-                </div>
-
-                <!-- Fallback schema fields for backend compatibility -->
-                <div id="reg-default-email-phone-block" class="space-y-4">
-                  <input type="hidden" id="reg-email" value="">
-                  <input type="hidden" id="reg-phone" value="">
-                  <input type="hidden" id="reg-region" value="Dhaka">
-                </div>
-
-                <!-- Dynamic Visible Agent Recruitment Fields -->
-                <div id="reg-agent-fields-block" class="hidden space-y-4 mb-4">
-                  <div class="input-group">
-                    <label>Agent Email Address</label>
-                    <input type="email" id="reg-agent-email" class="input-field" placeholder="Enter valid email (e.g. agent@example.com)">
-                  </div>
-                  <div class="input-group">
-                    <label>Agent Mobile Number</label>
-                    <input type="text" id="reg-agent-phone" class="input-field" placeholder="Enter active mobile (e.g. 01712345678)">
-                  </div>
-                  <div class="input-group">
-                    <label>District Office Region</label>
-                    <select id="reg-agent-region" class="input-field w-full bg-[#182035] border border-slate-800 text-white rounded-xl py-3 px-3.5 outline-none">
-                      <option value="Dhaka">Dhaka (ঢাকা)</option>
-                      <option value="Chittagong">Chittagong (চট্টগ্রাম)</option>
-                      <option value="Rajshahi">Rajshahi (রাজশাহী)</option>
-                      <option value="Sylhet">Sylhet (সিলেট)</option>
-                      <option value="Khulna">Khulna (খুলনা)</option>
-                      <option value="Barisal">Barisal (বরিশাল)</option>
-                      <option value="Rangpur">Rangpur (রংপুর)</option>
-                      <option value="Mymensingh">Mymensingh (ময়মনসিংহ)</option>
-                    </select>
-                  </div>
-                </div>
-
-                <input type="hidden" id="reg-dob" value="2000-01-01">
-                <div class="input-group">
-                  <label class="flex items-center gap-1.5 text-amber-400 font-bold">
-                    <i data-lucide="user-plus" class="w-4 h-4 text-amber-400"></i>
-                    <span>Referral Code (Optional)</span>
-                  </label>
-                  <input type="text" id="reg-refer-by" class="input-field border-amber-500/30 focus:border-amber-500" placeholder="Enter recruiter username" autocomplete="off">
-                  <span class="text-[9px] text-slate-500 mt-1 block">If you were invited by a friend, enter their username here.</span>
-                </div>
-                <input type="hidden" id="reg-is-agent-apply" value="false">
-                <input type="hidden" id="reg-agent-comm-rate" value="5.0">
-
-                <div class="input-group">
-                  <label>Security Math Captcha</label>
-                  <div class="captcha-row">
-                    <div class="captcha-badge" id="regQuestion">0 + 0 =</div>
-                    <input type="number" id="regAnswer" class="input-field" placeholder="Answer" required>
-                  </div>
-                </div>
-
-                <div class="input-group !mb-4">
-                  <label class="flex items-start gap-2.5 cursor-pointer text-[11px] text-slate-300 font-sans select-none">
-                    <input type="checkbox" id="reg-terms-checkbox" class="mt-0.5 rounded border-slate-700 bg-slate-950 text-rose-600 focus:ring-rose-500 w-4 h-4 shrink-0 cursor-pointer" required />
-                    <span class="leading-snug">
-                      I agree to the <a href="#terms" onclick="event.preventDefault(); window.LegalPoliciesManager?.renderPublicPolicy(window.appInstance || window.app, 'terms')" class="text-rose-400 hover:text-rose-300 underline font-semibold cursor-pointer">Terms & Conditions</a> and <a href="#privacy" onclick="event.preventDefault(); window.LegalPoliciesManager?.renderPublicPolicy(window.appInstance || window.app, 'privacy')" class="text-rose-400 hover:text-rose-300 underline font-semibold cursor-pointer">Privacy Policy</a>.
-                    </span>
-                  </label>
-                  <p id="reg-terms-error" class="text-[10px] text-rose-500 font-mono mt-1 hidden">You must agree to the Terms & Conditions and Privacy Policy to create an account.</p>
-                </div>
-
-                <button type="submit" id="reg-submit-btn" class="btn-submit">CLAIM $50 &amp; REGISTER</button>
-              </form>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- 1-Click Credentials & Bonus Modal -->
-      <div class="modal" id="credModal">
-        <div class="modal-content !max-w-[360px] !w-[92%] !p-5 !rounded-2xl !bg-[#0f1422] !border-amber-500/50 shadow-2xl">
-          <h3 class="!text-amber-400 !font-black !text-base flex items-center justify-center gap-1.5">
-            <span>🎉</span> Welcome Bonus Claimed!
-          </h3>
-          <div id="cred-modal-bonus-badge" class="bonus-alert !my-2.5 !py-2 !px-3 !rounded-xl !bg-emerald-950/70 !border-emerald-500/60 !text-emerald-400 !text-xs !font-bold flex items-center justify-center gap-1.5 shadow-sm">
-            <span>💵</span> $50 FREE BONUS ADDED TO WALLET
-          </div>
-          <p class="text-[11px] text-slate-400 font-sans mb-2">Save your auto-generated login credentials:</p>
-          
-          <!-- Credentials Box with Individual Copy Options -->
-          <div class="credentials-box !bg-slate-950 !border-slate-800 !rounded-xl !p-3 !space-y-2 !my-3 shadow-inner text-left">
-            <!-- Username Row -->
-            <div class="flex items-center justify-between gap-2 bg-slate-900/90 border border-slate-800/80 p-2 rounded-lg">
-              <div class="min-w-0 flex-1">
-                <span class="text-[9px] uppercase tracking-wider text-slate-500 font-mono block">Username</span>
-                <span id="genUser" class="font-mono font-bold text-xs text-amber-300 truncate block select-all"></span>
-              </div>
-              <button type="button" id="btn-copy-username" onclick="copyCredItem('username')" class="px-2.5 py-1.5 bg-amber-500/10 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-white rounded-lg text-[10px] font-mono font-bold transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer" title="Copy Username">
-                <i data-lucide="clipboard" class="w-4 h-4"></i>
-                <span id="copy-user-btn-text">Copy</span>
-              </button>
-            </div>
-
-            <!-- Password Row -->
-            <div class="flex items-center justify-between gap-2 bg-slate-900/90 border border-slate-800/80 p-2 rounded-lg">
-              <div class="min-w-0 flex-1">
-                <span class="text-[9px] uppercase tracking-wider text-slate-500 font-mono block">Password</span>
-                <span id="genPass" class="font-mono font-bold text-xs text-cyan-300 truncate block select-all"></span>
-              </div>
-              <button type="button" id="btn-copy-password" onclick="copyCredItem('password')" class="px-2.5 py-1.5 bg-cyan-500/10 hover:bg-cyan-500/25 border border-cyan-500/40 text-cyan-300 hover:text-white rounded-lg text-[10px] font-mono font-bold transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer" title="Copy Password">
-                <i class="fa-solid fa-copy text-[10px]"></i>
-                <span id="copy-pass-btn-text">Copy</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Quick Action Buttons: Copy All & TXT Download -->
-          <div class="grid grid-cols-2 gap-2 mb-3 font-mono">
-            <button type="button" id="btn-copy-all" onclick="copyCredItem('all')" class="w-full py-2.5 px-2 bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-sm">
-              <i class="fa-solid fa-clone text-amber-400"></i>
-              <span id="copy-all-btn-text">Copy Both</span>
-            </button>
-            <button type="button" id="btn-download-txt" onclick="downloadCredentialsTxt()" class="w-full py-2.5 px-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold transition active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-emerald-950/60">
-              <i class="fa-solid fa-file-arrow-down text-yellow-300"></i>
-              <span>Download .TXT</span>
-            </button>
-          </div>
-
-          <!-- Primary Submit Button -->
-          <button class="btn-submit !py-3 !rounded-xl !text-xs !font-black !tracking-wide flex items-center justify-center gap-2 cursor-pointer transition active:scale-98" type="button" onclick="closeModal()">
-            <i data-lucide="zap" class="w-4 h-4"></i>
-            <span>START PLAYING</span>
-          </button>
-        </div>
-      </div>
-
-    </div>
-
-
-    <!-- ================= SCREEN: GROUP CHAT (MESSENGER GROUP STYLE) ================= -->
-    <div id="screen-group-chat" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
-      <!-- Messenger Header -->
-      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-2.5 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 w-full max-w-full overflow-hidden">
-        <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          <button type="button" onclick="if(window.app){window.app.closeGroupChat();}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
-            <i class="fa-solid fa-arrow-left text-xs sm:text-sm"></i>
-          </button>
-          
-          <div class="flex items-center gap-2 sm:gap-2.5 min-w-0 flex-1 cursor-pointer" onclick="if(window.app){window.app.openGroupInfoModal();}" title="Group Info">
-            <div class="relative shrink-0">
-              <div class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 p-0.5 shadow-md flex items-center justify-center text-white font-bold">
-                <div class="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
-                  <i class="fa-solid fa-users text-blue-400 text-xs sm:text-sm"></i>
-                </div>
-              </div>
-              <span class="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-emerald-500 border-2 border-[#121826]"></span>
-            </div>
-            <div class="min-w-0 flex-1 text-left">
-              <div class="flex items-center gap-1 min-w-0">
-                <h2 class="text-xs sm:text-sm font-bold text-white truncate">Lucky Community Messenger</h2>
-                <i class="fa-solid fa-circle-check text-blue-400 text-[10px] sm:text-xs shrink-0"></i>
-              </div>
-              <p class="text-[10px] text-slate-400 truncate">৬২৪ জন মেম্বার • অনলাইন ৮৮</p>
-            </div>
-          </div>
-        </div>
-
-        <div class="relative flex items-center gap-1 shrink-0 ml-1">
-          <button type="button" onclick="if(window.app){window.app.openGroupInfoModal();}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Group Info">
-            <i class="fa-solid fa-circle-info text-sm sm:text-base text-blue-400"></i>
-          </button>
-          
-          <!-- 3-Dot Options Dropdown -->
-          <div class="relative">
-            <button type="button" onclick="if(window.app){window.app.toggleGroupMenu(event);}" class="w-8 h-8 sm:w-9 sm:h-9 rounded-full hover:bg-slate-800 text-slate-300 flex items-center justify-center transition cursor-pointer" title="Menu">
-              <i class="fa-solid fa-ellipsis-vertical text-sm sm:text-base"></i>
-            </button>
-            <div id="group-chat-dropdown-menu" class="hidden absolute right-0 top-10 sm:top-11 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl py-1.5 z-50 text-xs text-slate-200">
-              <button type="button" onclick="if(window.app){window.app.refreshGroupChat();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i data-lucide="refresh-cw" class="w-4 h-4 text-blue-400"></i>
-                <span>Refresh</span>
-              </button>
-              <button type="button" onclick="if(window.app){window.app.openGroupSettings();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i data-lucide="settings" class="w-4 h-4 text-amber-400"></i>
-                <span>Settings</span>
-              </button>
-              <button type="button" onclick="if(window.app){window.app.openGroupProfile();}" class="w-full text-left px-4 py-2.5 hover:bg-slate-800 flex items-center gap-2.5 transition cursor-pointer">
-                <i data-lucide="user" class="w-4 h-4 text-pink-400"></i>
-                <span>Profile</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <!-- Pinned Notice Subheader -->
-      <div class="bg-indigo-950/70 border-b border-indigo-500/25 px-3 sm:px-4 py-1.5 sm:py-2 flex items-center text-xs text-indigo-200 z-10 shrink-0 w-full overflow-hidden">
-        <div class="flex items-center gap-1.5 min-w-0 flex-1">
-          <i data-lucide="star" class="w-4 h-4 text-amber-400"></i>
-          <span class="truncate font-medium text-[11px] sm:text-xs">লাইভ আড্ডা: লটারি টিকেট, ড্র রেজাল্ট ও মেম্বারদের প্রফিট ডিসকাশন চলছে 💬</span>
-        </div>
-      </div>
-
-      <!-- Messages Area -->
-      <main class="flex-1 overflow-y-auto p-2.5 sm:p-4 space-y-2.5 sm:space-y-3 bg-[#0b0f19] relative w-full max-w-full overflow-x-hidden" id="group-chat-messages-container">
-        <!-- Messages rendered dynamically -->
-      </main>
-
-      <!-- Cooldown Banner -->
-      <div id="group-cooldown-banner" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-amber-950/90 border border-amber-500/50 text-amber-200 text-xs px-3 sm:px-4 py-1.5 sm:py-2 rounded-2xl shadow-xl z-30 font-mono text-center max-w-[90%]">
-        ⏳ স্প্যাম প্রতিরোধে ৫ সেকেন্ডে ১টি বার্তা! অপেক্ষা করুন...
-      </div>
-
-      <!-- Messenger Footer / Input Area -->
-      <footer class="bg-[#121826] border-t border-slate-800 p-2 sm:p-3 z-20 relative w-full max-w-full overflow-hidden">
-        <div id="group-chat-typing-indicator" class="hidden mb-2 px-3 py-1 text-[11px] text-blue-400 italic bg-slate-950/80 border border-blue-500/30 rounded-xl flex items-center gap-2">
-          <div class="flex items-center gap-1">
-            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce"></span>
-            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-            <span class="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-          </div>
-          <span id="group-typing-text" class="truncate text-[10px] sm:text-[11px]">কেউ একজন টাইপ করছেন...</span>
-        </div>
-
-        <!-- Quick Chips -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-2 scrollbar-none w-full max-w-full">
-          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="আজকের ড্র-এর আপডেট দেখেছ? কার ভাগ্য খুললো বলো তো! 🎟️">
-            🎟️ আজকের ড্র আপডেট
-          </button>
-          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="কে কত প্রফিট করলো লটারিতে? কার কত লাভ হলো? 💰">
-            💰 কে কত প্রফিট করলো?
-          </button>
-          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="Hey guys, নতুন লটারি টিকেটগুলো চেক করেছ? এইবারের প্রাইজ কিন্তু চরম!">
-            🚀 নতুন টিকেট ও প্রাইজ
-          </button>
-          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="congratulations! দারুণ একটা উইন হলো আজ! 🥳🎉">
-            🥳 Congratulations!
-          </button>
-          <button type="button" class="group-quick-chip bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] sm:text-[11px] px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full whitespace-nowrap transition cursor-pointer border border-slate-700 shrink-0" data-msg="বিকাশ বা নগদে ডিপোজিট ও উইথড্র কত সময় লাগে?">
-            💸 পেমেন্ট ও ক্যাশআউট
-          </button>
-        </div>
-
-        <div id="group-chat-attachment-preview" class="hidden mb-2 bg-slate-950 border border-blue-500/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200">
-          <div class="flex items-center gap-2 truncate min-w-0">
-            <i data-lucide="image" class="w-4 h-4 text-blue-400"></i>
-            <span id="group-chat-attachment-name" class="truncate font-mono text-[11px]">image.png</span>
-          </div>
-          <button type="button" id="group-chat-attachment-remove" class="text-rose-400 hover:text-rose-300 text-xs px-2 cursor-pointer shrink-0">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <div id="group-chat-reply-preview" class="hidden mb-2 bg-slate-950 border border-blue-500/40 rounded-xl px-3 py-1.5 flex items-center justify-between text-xs text-slate-200">
-          <div class="flex items-center gap-1.5 truncate min-w-0 flex-1">
-            <i class="fa-solid fa-reply text-blue-400 shrink-0"></i>
-            <span class="text-slate-400 text-[10px] sm:text-[11px] shrink-0">Replying:</span>
-            <span id="group-chat-reply-sender" class="text-white font-bold text-[10px] sm:text-[11px] shrink-0">@user</span>
-            <span id="group-chat-reply-text" class="truncate text-slate-300 text-[10px] sm:text-[11px]">message</span>
-          </div>
-          <button type="button" onclick="if(window.app){window.app.cancelGroupReply();}" class="text-slate-400 hover:text-white text-xs px-2 cursor-pointer shrink-0">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <!-- Messenger Plus Attachment Popup Menu -->
-        <div id="group-chat-plus-menu" class="hidden absolute bottom-16 left-3 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-2 z-40 w-44 sm:w-48 space-y-1 text-xs text-slate-200">
-          <button type="button" onclick="if(window.app){window.app.triggerGroupAttachment('image');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
-            <i class="fa-solid fa-image text-blue-400 w-4"></i>
-            <span>ছবি / Photo</span>
-          </button>
-          <button type="button" onclick="if(window.app){window.app.triggerGroupAttachment('file');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
-            <i class="fa-solid fa-file-arrow-up text-emerald-400 w-4"></i>
-            <span>ফাইল / File</span>
-          </button>
-          <button type="button" onclick="if(window.app){window.app.openGroupPollCreator();}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
-            <i class="fa-solid fa-square-poll-vertical text-amber-400 w-4"></i>
-            <span>পোল তৈরি / Poll</span>
-          </button>
-          <button type="button" onclick="if(window.app){window.app.insertGroupEmoji('🔥');}" class="w-full text-left px-3 py-2 hover:bg-slate-800 rounded-xl flex items-center gap-2.5 transition cursor-pointer">
-            <i class="fa-solid fa-face-smile text-pink-400 w-4"></i>
-            <span>স্টিকার / Sticker</span>
-          </button>
-        </div>
-
-        <form id="group-chat-form" class="flex items-center gap-1.5 sm:gap-2 w-full max-w-full">
-          <input type="file" id="group-chat-file-input" accept="image/*" class="hidden" />
-          <button type="button" id="group-chat-attach-btn" onclick="if(window.app){window.app.toggleGroupPlusMenu(event);}" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-800 hover:bg-slate-700 text-blue-400 flex items-center justify-center transition cursor-pointer shrink-0" title="Attach (Messenger Plus)">
-            <i class="fa-solid fa-circle-plus text-base sm:text-lg"></i>
-          </button>
-          <div class="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-full px-3 sm:px-4 py-1.5 sm:py-2 flex items-center gap-1.5 focus-within:border-blue-500">
-            <textarea id="group-chat-input" rows="1" placeholder="মেসেজ লিখুন..." class="w-full min-w-0 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none resize-none max-h-24 overflow-y-auto"></textarea>
-            <button type="button" class="text-slate-400 hover:text-amber-400 transition cursor-pointer shrink-0" onclick="if(window.app){window.app.insertGroupEmoji('😊');}">
-              <i class="fa-regular fa-face-smile text-sm sm:text-base"></i>
-            </button>
-          </div>
-          <button type="submit" id="group-chat-send-btn" class="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-blue-600 hover:bg-blue-500 text-white flex items-center justify-center transition active:scale-95 shadow-md cursor-pointer shrink-0">
-            <i data-lucide="paper-plane" class="w-4 h-4"></i>
-          </button>
-        </form>
-      </footer>
-    </div>
-
-
-    <!-- ================= SCREEN: COMMUNITY HUB (SEPARATE PAGE) ================= -->
-    <div id="screen-community" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
-      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
-        <div class="flex items-center gap-3 min-w-0">
-          <button type="button" onclick="if(window.app){window.app.closeCommunityPage();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back to Group">
-            <i class="fa-solid fa-arrow-left text-sm"></i>
-          </button>
-          <div class="flex items-center gap-2.5">
-            <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">
-              <i data-lucide="globe" class="w-5 h-5 text-blue-400"></i>
-            </div>
-            <div>
-              <h2 class="text-sm font-bold text-white">Lucky Community Hub</h2>
-              <p class="text-[11px] text-slate-400">অফিশিয়াল কমিউনিটি পোর্টাল ও মেম্বার ডিরেক্টরি</p>
-            </div>
-          </div>
-        </div>
-        <button type="button" onclick="if(window.app){window.app.openGroupChat();}" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition cursor-pointer shrink-0">
-          <i data-lucide="message-square" class="w-3 h-3 mr-1 inline"></i> গ্রুপ চ্যাট
-        </button>
-      </header>
-
-      <main class="flex-1 overflow-y-auto p-4 space-y-4 max-w-2xl mx-auto w-full">
-        <!-- Community Banner Card -->
-        <div class="bg-gradient-to-r from-blue-900/40 via-indigo-900/40 to-purple-900/40 border border-blue-500/30 rounded-3xl p-5 shadow-xl space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-[10px] font-mono font-bold uppercase">Community Portal</span>
-            <span class="text-emerald-400 text-xs font-mono font-bold flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> লাইভ একটিভ</span>
-          </div>
-          <h3 class="text-base font-black text-white">স্বাগতম লাকি কমিউনিটি হাবে!</h3>
-          <p class="text-xs text-slate-300 leading-relaxed">
-            এখানে আমাদের সকল মেম্বার, নোটিশ, পোল, এবং কমিউনিটি রিসোর্স এক্টিভ রয়েছে। গ্রুপের নিয়মাবলী মেনে চলুন এবং মেম্বারদের সাথে যুক্ত থাকুন।
-          </p>
-        </div>
-
-        <!-- Community Tabs -->
-        <div class="grid grid-cols-3 gap-2">
-          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i data-lucide="users" class="w-5 h-5 text-blue-400 inline"></i>
-            <h4 class="text-xs font-bold text-white">মেম্বারগণ</h4>
-            <p id="community-member-count-badge" class="text-[10px] text-slate-400">রিয়েল মেম্বার</p>
-          </button>
-          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i data-lucide="bell" class="w-5 h-5 text-amber-400 inline"></i>
-            <h4 class="text-xs font-bold text-white">অফিশিয়াল নোটিশ</h4>
-            <p class="text-[10px] text-slate-400">৩টি পিনড</p>
-          </button>
-          <button type="button" class="p-3 bg-slate-900 hover:bg-slate-850 border border-slate-800 rounded-2xl text-center transition cursor-pointer space-y-1">
-            <i data-lucide="award" class="w-5 h-5 text-pink-400 inline"></i>
-            <h4 class="text-xs font-bold text-white">টপ উইনার্স</h4>
-            <p class="text-[10px] text-slate-400">লিডারবোর্ড</p>
-          </button>
-        </div>
-
-        <!-- Real Members Directory -->
-        <div class="space-y-3 pb-6">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">রিয়েল কমিউনিটি মেম্বারগণ (<span id="community-real-member-count">0</span> জন)</h4>
-            <span class="text-[10px] text-blue-400 font-mono">প্রফাইল দেখতে নামের উপর ক্লিক করুন</span>
-          </div>
-          <div id="community-real-members-list" class="space-y-2">
-            <!-- Dynamically populated real members -->
-          </div>
-        </div>
-
-        <!-- Recent Announcements -->
-        <div class="space-y-3 pb-6">
-          <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">সর্বশেষ ঘোষণা</h4>
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-            <div class="flex items-center justify-between text-[11px] text-slate-400">
-              <span class="font-bold text-amber-400">@Admin</span>
-              <span>আজ, ১০:৩০ AM</span>
-            </div>
-            <p class="text-xs text-slate-200 leading-relaxed">
-              আসন্ন মেগা জ্যাকপট ড্র এর টিকেটের জন্য এখনই আপনার ব্যালেন্স আপডেট করুন। ড্র সফলভাবে অনুষ্ঠিত হবে।
-            </p>
-          </div>
-          <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2">
-            <div class="flex items-center justify-between text-[11px] text-slate-400">
-              <span class="font-bold text-blue-400">@Support</span>
-              <span>গতকাল, ০৮:১৫ PM</span>
-            </div>
-            <p class="text-xs text-slate-200 leading-relaxed">
-              যেকোনো ডিপোজিট বা উইথড্র সমস্যার জন্য সরাসরি এজেন্ট চ্যাট বা আমাদের হেল্পলাইনে কল করুন।
-            </p>
-          </div>
-        </div>
-      </main>
-
-      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
-        Lucky Community Hub © 2026 • Secure Mobile Portal
-      </footer>
-    </div>
-
-
-    <!-- ================= SCREEN: MEMBER PROFILE (SEPARATE PAGE/FILE) ================= -->
-    <div id="screen-member-profile" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
-      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
-        <div class="flex items-center gap-3 min-w-0">
-          <button type="button" onclick="if(window.app){window.app.openCommunityPage();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
-            <i class="fa-solid fa-arrow-left text-sm"></i>
-          </button>
-          <div>
-            <h2 class="text-sm font-bold text-white">মেম্বার প্রফাইল ডিটেইলস</h2>
-            <p class="text-[11px] text-slate-400">কমিউনিটি ইউজার প্রফাইল</p>
-          </div>
-        </div>
-      </header>
-
-      <main class="flex-1 overflow-y-auto p-4 space-y-4 max-w-lg mx-auto w-full" id="member-profile-details-container">
-        <!-- Rendered dynamically -->
-      </main>
-
-      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
-        Lucky Community Portal © 2026
-      </footer>
-    </div>
-
-
-    <!-- ================= SCREEN: REAL MEMBERS LIST (DEDICATED PAGE) ================= -->
-    <div id="screen-members-list" class="hidden h-screen h-[100dvh] bg-[#0b0f19] flex flex-col justify-between relative overflow-hidden font-sans z-50 w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
-      <header class="bg-[#121826]/95 border-b border-slate-800/80 px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between shadow-md backdrop-blur-md z-20 shrink-0 w-full max-w-full overflow-hidden">
-        <div class="flex items-center gap-3 min-w-0">
-          <button type="button" onclick="if(window.app){window.app.openGroupInfoModal();}" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
-            <i class="fa-solid fa-arrow-left text-sm"></i>
-          </button>
-          <div>
-            <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>রিয়েল কমিউনিটি মেম্বারস</span>
-              <span id="real-members-count-badge" class="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-mono font-bold">৬২৪ জন</span>
-            </h2>
-            <p class="text-[11px] text-slate-400">অনলাইন ও অ্যাক্টিভ মেম্বার তালিকা</p>
-          </div>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span id="real-online-count-text" class="text-xs text-emerald-400 font-mono font-bold">৮৮ জন অনলাইন</span>
-        </div>
-      </header>
-
-      <main class="flex-1 overflow-y-auto p-4 space-y-3 max-w-lg mx-auto w-full" id="real-members-container">
-        <!-- Search filter bar -->
-        <div class="relative">
-          <input type="text" id="member-search-input" placeholder="মেম্বার নাম বা আইডি দিয়ে খুঁজুন..." class="w-full bg-slate-900 border border-slate-800 rounded-2xl px-4 py-2.5 pl-10 text-xs text-slate-200 focus:outline-none focus:border-blue-500 transition" />
-          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-500 text-xs"></i>
-        </div>
-
-        <!-- Members list content -->
-        <div id="real-members-list-content" class="space-y-2">
-          <!-- Dynamically populated real members -->
-        </div>
-      </main>
-
-      <footer class="bg-[#121826] border-t border-slate-800 p-4 text-center text-xs text-slate-500 shrink-0">
-        Lucky Community Members Portal © 2026 • Live Real-time Sync
-      </footer>
-    </div>
-
-
-
-    <!-- ================= SCREEN: DEDICATED AGENT LIVE CHAT ================= -->
-    <div id="screen-agent-chat" class="hidden h-screen h-[100dvh] bg-slate-950 flex flex-col justify-between p-3 sm:p-5 relative overflow-hidden font-sans z-50">
-      <!-- Top Navigation / Header -->
-      <header class="bg-slate-900/95 border border-slate-800/90 rounded-2xl p-3.5 sm:p-4 flex flex-col gap-3 shadow-xl backdrop-blur-md z-20 max-w-3xl mx-auto w-full">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-3 min-w-0">
-            <button type="button" onclick="if(window.app){window.app.closeAgentChat();}" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center justify-center transition active:scale-95 cursor-pointer shrink-0" title="Back">
-              <i class="fa-solid fa-arrow-left text-sm"></i>
-            </button>
-            <div class="flex items-center gap-2.5 min-w-0">
-              <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center text-white font-black shadow-md shrink-0">
-                <i class="fa-solid fa-user-tie"></i>
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-1.5">
-                  <h2 id="chat-agent-title" class="text-xs sm:text-sm font-black text-white font-mono truncate">@Agent</h2>
-                  <span class="text-[9px] text-amber-400 font-mono font-bold"><i class="fa-solid fa-circle-check"></i> Verified</span>
-                </div>
-                <div id="chat-agent-status-indicator" class="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 font-mono">
-                  <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>লাইভ চ্যাট সক্রিয় (Online)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="flex items-center gap-2 shrink-0">
-            <span id="user-chat-thread-status" class="text-[10px] font-mono text-emerald-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
-              Open
-            </span>
-            <button type="button" id="user-chat-refresh-btn" class="w-9 h-9 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-300 border border-slate-800 flex items-center justify-center transition cursor-pointer" title="Refresh Conversation">
-              <i class="fa-solid fa-rotate text-xs"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Sub-bar: Agent Switcher & In-Chat Search -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-slate-800/70">
-          <div class="flex items-center gap-2">
-            <span class="text-[10px] font-mono text-slate-400 shrink-0"><i class="fa-solid fa-headset text-cyan-400 mr-1"></i>Agent:</span>
-            <select id="user-chat-agent-switcher" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white font-mono outline-none focus:border-cyan-500 cursor-pointer">
-              <!-- Populated dynamically with active agents -->
-            </select>
-          </div>
-          <div class="relative">
-            <i class="fa-solid fa-magnifying-glass text-[10px] text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
-            <input type="text" id="user-chat-search-input" placeholder="কথোপকথনে খুঁজুন (Search messages)..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 outline-none focus:border-cyan-500 font-sans" />
-          </div>
-        </div>
-      </header>
-
-      <!-- Chat Messages Container -->
-      <main class="flex-1 my-3 overflow-y-auto space-y-3 pr-1 max-w-3xl mx-auto w-full" id="agent-chat-messages-container">
-        <!-- Dynamic message bubbles will be injected here -->
-      </main>
-
-      <!-- Quick Reply Chips & Input Footer -->
-      <footer class="max-w-3xl mx-auto w-full z-20 space-y-2">
-        <!-- Quick Question Buttons -->
-        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-          <button type="button" class="user-chat-quick-chip bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-cyan-300 text-[10px] px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer" data-msg="আসসালামু আলাইকুম, আমি এজেন্টের মাধ্যমে ক্যাশ-ইন (ডিপোজিট) করতে চাই।">
-            💸 ক্যাশ-ইন করতে চাই
-          </button>
-          <button type="button" class="user-chat-quick-chip bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-cyan-300 text-[10px] px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer" data-msg="আমি ক্যাশ-আউট করতে চাই, দয়া করে প্রক্রিয়াটি জানাবেন।">
-            🏧 ক্যাশ-আউট সাহায্য
-          </button>
-          <button type="button" class="user-chat-quick-chip bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-cyan-300 text-[10px] px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer" data-msg="আমার জন্য লটারি টিকেট বুকিং করে দিন।">
-            🎟️ টিকেট বুকিং সাহায্য
-          </button>
-          <button type="button" class="user-chat-quick-chip bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-cyan-300 text-[10px] px-3 py-1.5 rounded-xl whitespace-nowrap transition cursor-pointer" data-msg="আমার পেমেন্ট রিকোয়েস্টের বর্তমান অবস্থা জানাবেন।">
-            ⏳ পেমেন্ট আপডেট
-          </button>
-        </div>
-
-        <!-- Attachment Preview Box -->
-        <div id="user-chat-attachment-preview" class="hidden bg-slate-900 border border-cyan-500/40 rounded-xl px-3 py-2 flex items-center justify-between text-xs text-slate-200">
-          <div class="flex items-center gap-2 truncate">
-            <i class="fa-solid fa-paperclip text-cyan-400"></i>
-            <span id="user-chat-attachment-name" class="truncate font-mono text-[11px]">attachment.png</span>
-          </div>
-          <button type="button" id="user-chat-attachment-remove" class="text-rose-400 hover:text-rose-300 text-xs px-2 cursor-pointer">
-            <i class="fa-solid fa-xmark"></i>
-          </button>
-        </div>
-
-        <form id="agent-chat-form" class="bg-slate-900/95 border border-slate-800/90 rounded-2xl p-2.5 flex items-end gap-2 shadow-2xl backdrop-blur-xl">
-          <input type="file" id="user-chat-file-input" accept="image/png,image/jpeg,image/webp,image/gif,application/pdf" class="hidden" />
-          <button type="button" id="user-chat-attach-btn" class="w-10 h-10 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 hover:text-cyan-400 flex items-center justify-center transition cursor-pointer shrink-0" title="Attach Screenshot or Receipt (Max 2MB)">
-            <i class="fa-solid fa-paperclip text-xs"></i>
-          </button>
-          <textarea id="agent-chat-input" rows="1" placeholder="আপনার বার্তা লিখুন... (Enter পাঠাতে, Shift+Enter নতুন লাইন)" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 font-sans resize-none max-h-28 overflow-y-auto"></textarea>
-          <button type="submit" id="user-chat-send-btn" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:brightness-110 text-white px-4 py-2.5 h-10 rounded-xl font-bold text-xs flex items-center gap-1.5 transition active:scale-95 shadow-md cursor-pointer shrink-0">
-            <span>পাঠান</span>
-            <i class="fa-solid fa-paper-plane text-[10px]"></i>
-          </button>
-        </form>
-      </footer>
-    </div>
-
-
-    <!-- ================= SCREEN 3: USER CENTRAL DASHBOARD PORTAL ================= -->
-    <div id="screen-dashboard" class="hidden min-h-screen bg-slate-950 flex flex-col justify-between pb-24 relative overflow-x-hidden">
+    <!-- 
+      Main UI Screens (Splash, Auth, Group Chat, etc.) 
+      Extracted to modular templates in /src/state_suite/templates/
+      Injected dynamically via setupRequiredScreens() in /src/state_suite/boot.ts
+    -->
+    <div id="screen-dashboard" class="hidden min-h-screen bg-slate-950 flex flex-col justify-between pb-24 relative overflow-x-hidden w-full max-w-lg mx-auto shadow-2xl border-x border-slate-800/40">
       
       <!-- Top fixed appbar banner -->
       <header class="bg-slate-900 border-b border-slate-800/80 sticky top-0 z-30 px-4 py-3 shadow-lg flex justify-between items-center">
@@ -1732,6 +162,7 @@
         <div id="tab-refer" class="hidden space-y-6"></div>
         <div id="tab-jackpot" class="hidden space-y-6"></div>
         <div id="tab-tasks" class="hidden space-y-6"></div>
+        <div id="tab-daily-checkin" class="hidden space-y-6"></div>
         <div id="tab-otp" class="hidden space-y-6"></div>
         <div id="tab-recovery" class="hidden space-y-6"></div>
         <div id="tab-video-bounty" class="hidden space-y-6"></div>
@@ -1742,7 +173,7 @@
       </main>
 
       <!-- Bottom System Navigation tab bar -->
-      <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 z-40 py-3 shadow-2xl flex justify-around items-center">
+      <nav class="bg-slate-900 border-t border-slate-800/80 fixed bottom-0 left-0 right-0 sm:left-1/2 sm:-translate-x-1/2 sm:max-w-lg z-40 py-3 shadow-2xl flex justify-around items-center">
         <button class="tab-selector-btn text-xs font-semibold flex flex-col items-center gap-1 text-slate-400" data-tab="home">
           <i data-lucide="clover" class="w-5 h-5"></i>
           <span>Pools</span>
@@ -3955,6 +2386,376 @@
           </div>
         </div>
 
+        <!-- ================= DUAL-DATABASE FULL MONITOR & LOAD BALANCING CENTER ================= -->
+        <div id="dual-db-monitor-center" class="bg-gradient-to-br from-slate-900 via-slate-900 to-cyan-950/30 border border-cyan-500/25 rounded-3xl p-5 sm:p-6 space-y-5 shadow-2xl relative overflow-hidden">
+          <!-- Toolbar -->
+          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+            <div class="space-y-1">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 text-[9px] font-mono px-2.5 py-1 rounded-full uppercase font-black tracking-widest inline-flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Dual-DB Full Telemetry & Load Balancer
+                </span>
+                <span id="mon-sync-time-badge" class="bg-slate-950 border border-slate-800 text-slate-400 text-[9px] font-mono px-2.5 py-1 rounded-full">
+                  Updated: Waiting...
+                </span>
+              </div>
+              <h3 class="text-lg font-black text-white font-sans tracking-tight flex items-center gap-2">
+                <i class="fa-solid fa-gauge-high text-cyan-400"></i> Primary & Backup DB Live Monitor + Load Balancing
+              </h3>
+              <p class="text-[11px] text-slate-400 font-sans max-w-2xl">
+                দুটি MySQL ডাটাবেজ (<strong class="text-cyan-300">veloralb_lottery</strong> এবং <strong class="text-emerald-300">veloralb_Lotto</strong>)-এর লাইভ হেলথ, টেবিল প্যারিটি, Read/Write লোড ব্যালেন্সিং ও অটো-ফেইলওভার এখান থেকে মনিটর ও নিয়ন্ত্রণ করুন।
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 shrink-0 font-mono">
+              <label class="flex items-center gap-1.5 bg-slate-950/80 border border-slate-800 px-3 py-2 rounded-xl text-[10px] text-slate-300 cursor-pointer select-none">
+                <input type="checkbox" id="lb-auto-monitor-toggle" class="accent-cyan-500 w-3.5 h-3.5 rounded" checked>
+                <span>5s Live Monitor</span>
+              </label>
+              <button id="lb-btn-refresh-monitor" type="button" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white text-[10.5px] font-black px-3 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                <i class="fa-solid fa-arrows-rotate text-cyan-400" id="lb-refresh-icon"></i>
+                <span>Refresh Monitor</span>
+              </button>
+              <button id="lb-btn-sync-backup-now" type="button" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[10.5px] font-black px-3.5 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-lg">
+                <i class="fa-solid fa-clone" id="lb-sync-backup-icon"></i>
+                <span>Sync Backup Now</span>
+              </button>
+              <button id="lb-btn-backup-schema-sql" type="button" class="bg-indigo-950 hover:bg-indigo-900 border border-indigo-700/70 text-indigo-200 text-[10.5px] font-black px-3 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                <i class="fa-solid fa-file-code text-amber-400"></i>
+                <span>Backup Schema SQL (.sql)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2 Live Database Monitor Cards -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <!-- Primary DB Monitor Card -->
+            <div class="bg-slate-950/80 border border-blue-500/30 rounded-2xl p-4 space-y-3.5">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 text-lg shrink-0">
+                    <i class="fa-solid fa-database"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">NODE 1 • PRIMARY MASTER</span>
+                      <span id="mon-primary-status" class="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">CHECKING...</span>
+                    </div>
+                    <h4 class="text-sm font-black text-white font-mono truncate mt-0.5" id="mon-primary-db">veloralb_lottery</h4>
+                    <span class="text-[10px] font-mono text-slate-400 block truncate" id="mon-primary-host">veloralb_billal@localhost:3306</span>
+                  </div>
+                </div>
+                <div class="text-right font-mono shrink-0">
+                  <div class="text-sm font-black text-cyan-400" id="mon-primary-latency">-- ms</div>
+                  <div class="text-[9px] text-slate-500" id="mon-primary-avg-latency">avg -- ms</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 font-mono text-center">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Tables</span>
+                  <span class="text-sm font-black text-white" id="mon-primary-tables">--</span>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Total Rows</span>
+                  <span class="text-sm font-black text-blue-300" id="mon-primary-rows">--</span>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Storage Size</span>
+                  <span class="text-sm font-black text-cyan-300" id="mon-primary-size">-- KB</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 font-mono text-[10px]">
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Reads</span>
+                  <span class="text-emerald-400 font-black" id="mon-primary-reads">0</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Writes</span>
+                  <span class="text-amber-400 font-black" id="mon-primary-writes">0</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Errors</span>
+                  <span class="text-rose-400 font-black" id="mon-primary-errors">0</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Traffic Share</span>
+                  <span class="text-blue-400 font-black" id="mon-primary-share">100%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Backup DB Monitor Card -->
+            <div class="bg-slate-950/80 border border-emerald-500/30 rounded-2xl p-4 space-y-3.5">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 text-lg shrink-0">
+                    <i class="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="text-[9px] font-mono font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">NODE 2 • BACKUP & LB REPLICA</span>
+                      <span id="mon-backup-status" class="text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">CHECKING...</span>
+                    </div>
+                    <h4 class="text-sm font-black text-white font-mono truncate mt-0.5" id="mon-backup-db">veloralb_Lotto</h4>
+                    <span class="text-[10px] font-mono text-slate-400 block truncate" id="mon-backup-host">veloralb_billal@localhost:3306</span>
+                  </div>
+                </div>
+                <div class="text-right font-mono shrink-0">
+                  <div class="text-sm font-black text-emerald-400" id="mon-backup-latency">-- ms</div>
+                  <div class="text-[9px] text-slate-500" id="mon-backup-avg-latency">avg -- ms</div>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 font-mono text-center">
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Tables</span>
+                  <span class="text-sm font-black text-white" id="mon-backup-tables">--</span>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Total Rows</span>
+                  <span class="text-sm font-black text-emerald-300" id="mon-backup-rows">--</span>
+                </div>
+                <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5">
+                  <span class="text-[9px] text-slate-500 uppercase block">Storage Size</span>
+                  <span class="text-sm font-black text-teal-300" id="mon-backup-size">-- KB</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-4 gap-2 pt-2 border-t border-slate-800/80 font-mono text-[10px]">
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Reads</span>
+                  <span class="text-emerald-400 font-black" id="mon-backup-reads">0</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Writes</span>
+                  <span class="text-amber-400 font-black" id="mon-backup-writes">0</span>
+                </div>
+                <div>
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Errors</span>
+                  <span class="text-rose-400 font-black" id="mon-backup-errors">0</span>
+                </div>
+                <div class="text-right">
+                  <span class="text-slate-500 block text-[8.5px] uppercase">Traffic Share</span>
+                  <span class="text-emerald-400 font-black" id="mon-backup-share">0%</span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 font-mono text-[9.5px]">
+                <div class="flex items-center gap-3">
+                  <span class="text-slate-400">Schema Parity: <strong id="mon-backup-schema-parity" class="text-cyan-400">--%</strong></span>
+                  <span class="text-slate-400">Row Parity: <strong id="mon-backup-parity" class="text-emerald-400">--%</strong></span>
+                </div>
+                <span class="text-slate-500">Last Sync: <strong id="mon-backup-last-sync" class="text-slate-300">Standby</strong></span>
+              </div>
+
+              <!-- Schema setup alert when backup DB has 0 tables -->
+              <div id="mon-backup-schema-alert" class="hidden bg-amber-950/50 border border-amber-500/40 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="text-[10.5px] text-amber-200 font-sans">
+                  <i class="fa-solid fa-triangle-exclamation text-amber-400 mr-1"></i>
+                  <strong>veloralb_Lotto</strong> কানেক্টেড আছে কিন্তু এখনো টেবিল নেই (0 Tables)। Load Balancing চালু করতে phpMyAdmin-এ ১ বার Schema SQL রান করুন।
+                </div>
+                <button id="mon-btn-open-schema-quick" type="button" class="shrink-0 bg-amber-500 hover:bg-amber-400 text-slate-950 font-mono font-black text-[10px] px-3 py-1.5 rounded-lg cursor-pointer transition">
+                  Copy Schema SQL
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- MariaDB Server Telemetry Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 font-mono">
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">DB Engine</span>
+              <span class="text-[11px] font-black text-white truncate block" id="mon-engine-ver">MariaDB</span>
+            </div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">Server Uptime</span>
+              <span class="text-[11px] font-black text-emerald-400" id="mon-uptime">--</span>
+            </div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">Active Threads</span>
+              <span class="text-[11px] font-black text-cyan-300" id="mon-threads">--</span>
+            </div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">Queries / QPS</span>
+              <span class="text-[11px] font-black text-indigo-300" id="mon-qps">--</span>
+            </div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">Slow Queries</span>
+              <span class="text-[11px] font-black text-amber-400" id="mon-slow-q">0</span>
+            </div>
+            <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-2.5">
+              <span class="text-[8.5px] text-slate-500 uppercase block">Last Read Node</span>
+              <span class="text-[11px] font-black text-emerald-300 uppercase" id="mon-last-read-node">PRIMARY</span>
+            </div>
+          </div>
+
+          <!-- Load Balancer Policy + Backup DB Credentials -->
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <!-- Load Balancer Policy Controller -->
+            <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3.5">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <h4 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <i class="fa-solid fa-scale-balanced text-cyan-400"></i> Load Balancer Policy & Traffic Split
+                </h4>
+                <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30" id="lb-eligibility-badge">Checking...</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-xs">
+                <div class="sm:col-span-1 space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Routing Strategy</label>
+                  <select id="lb-mode-select" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-2 text-white text-[11px] focus:outline-none focus:border-cyan-500">
+                    <option value="round_robin">Round Robin (50/50)</option>
+                    <option value="least_latency">Least Latency Auto</option>
+                    <option value="weighted">Weighted Split (%)</option>
+                    <option value="primary_only">Primary Only</option>
+                    <option value="backup_only">Backup Only</option>
+                  </select>
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Primary Weight (%)</label>
+                  <input type="number" id="lb-primary-weight" min="0" max="100" value="60" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-blue-300 font-bold text-[11px] focus:outline-none focus:border-cyan-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Backup Weight (%)</label>
+                  <input type="number" id="lb-backup-weight" min="0" max="100" value="40" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300 font-bold text-[11px] focus:outline-none focus:border-cyan-500">
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-4 font-mono text-[10px] text-slate-300">
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" id="lb-dual-write-chk" class="accent-emerald-500 w-3.5 h-3.5 rounded" checked>
+                  <span>Dual-Write Replication (Sync Writes to Backup DB)</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer select-none">
+                  <input type="checkbox" id="lb-auto-failover-chk" class="accent-cyan-500 w-3.5 h-3.5 rounded" checked>
+                  <span>Auto-Failover Enabled</span>
+                </label>
+              </div>
+
+              <!-- Live Read Traffic Distribution Bar -->
+              <div class="space-y-1.5 pt-1">
+                <div class="flex justify-between text-[9.5px] font-mono">
+                  <span class="text-slate-400">Live Read Traffic Distribution</span>
+                  <span class="text-slate-300 font-bold" id="lb-traffic-split-label">Primary 100% / Backup 0%</span>
+                </div>
+                <div class="w-full h-2.5 rounded-full bg-slate-900 border border-slate-800 overflow-hidden flex">
+                  <div id="lb-traffic-bar-primary" class="h-full bg-gradient-to-r from-blue-500 to-cyan-400 w-full transition-all duration-500"></div>
+                  <div id="lb-traffic-bar-backup" class="h-full bg-gradient-to-r from-emerald-500 to-teal-400 w-0 transition-all duration-500"></div>
+                </div>
+              </div>
+
+              <div class="pt-1 flex justify-end">
+                <button id="lb-btn-save-policy" type="button" class="bg-cyan-600 hover:bg-cyan-500 text-white font-mono text-[11px] font-black px-4 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>Save Load Balancer Policy</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Backup DB Credentials Form -->
+            <form id="backup-sql-config-form" class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3.5 font-mono text-xs">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                <h4 class="text-xs font-black text-white uppercase tracking-wider font-sans flex items-center gap-2">
+                  <i class="fa-solid fa-server text-emerald-400"></i> Backup Database Config (veloralb_Lotto)
+                </h4>
+                <label class="flex items-center gap-1.5 text-[10px] text-emerald-300 cursor-pointer select-none">
+                  <input type="checkbox" id="bak-cfg-enabled" class="accent-emerald-500 w-3.5 h-3.5 rounded" checked>
+                  <span>Backup Active</span>
+                </label>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Host</label>
+                  <input type="text" id="bak-cfg-host" required value="localhost" placeholder="localhost" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-[11px] focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Port</label>
+                  <input type="text" id="bak-cfg-port" required value="3306" placeholder="3306" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-[11px] focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Database Name</label>
+                  <input type="text" id="bak-cfg-database" required value="veloralb_Lotto" placeholder="veloralb_Lotto" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-emerald-300 font-bold text-[11px] focus:outline-none focus:border-emerald-500">
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Username</label>
+                  <input type="text" id="bak-cfg-username" required value="veloralb_billal" placeholder="veloralb_billal" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white text-[11px] focus:outline-none focus:border-emerald-500">
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Password</label>
+                  <div class="relative">
+                    <input type="password" id="bak-cfg-password" value="Z3[9T*x39URzna" placeholder="Password" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-white text-[11px] focus:outline-none focus:border-emerald-500">
+                    <button type="button" id="bak-btn-toggle-pass" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 cursor-pointer text-xs" title="Toggle password visibility">
+                      <i class="fa-solid fa-eye" id="bak-pass-eye-icon"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="space-y-1">
+                  <label class="text-[9px] text-slate-400 uppercase font-black block">Bridge URL (Optional)</label>
+                  <input type="text" id="bak-cfg-bridge-url" value="" placeholder="Auto-share Primary Bridge" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-slate-300 text-[11px] focus:outline-none focus:border-emerald-500">
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+                <button type="button" id="bak-btn-test-connection" class="bg-indigo-950 hover:bg-indigo-900 border border-indigo-800/80 text-indigo-200 text-[11px] font-black px-3.5 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                  <i class="fa-solid fa-plug-circle-check text-emerald-400" id="bak-test-icon"></i>
+                  <span>Test Backup Connection</span>
+                </button>
+                <button type="submit" id="bak-btn-save-config" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-black px-4 py-2 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5">
+                  <i class="fa-solid fa-floppy-disk"></i>
+                  <span>Save Backup Config</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Table Parity Matrix & Load Balancer Events -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="lg:col-span-2 bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h4 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <i class="fa-solid fa-table-columns text-cyan-400"></i> Dual-DB Table Sync & Parity Matrix
+                </h4>
+                <span class="text-[9px] font-mono text-slate-400" id="mon-parity-summary">Scanning tables...</span>
+              </div>
+              <div class="overflow-x-auto max-h-60 overflow-y-auto custom-scrollbar">
+                <table class="w-full text-left font-mono text-[10.5px]">
+                  <thead class="text-[9px] uppercase text-slate-400 border-b border-slate-800 sticky top-0 bg-slate-950">
+                    <tr>
+                      <th class="py-2 pr-2">Table Name</th>
+                      <th class="py-2 px-2 text-right">Primary Rows (KB)</th>
+                      <th class="py-2 px-2 text-right">Backup Rows (KB)</th>
+                      <th class="py-2 pl-2 text-right">Parity Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mon-table-comparison-body" class="divide-y divide-slate-800/60 text-slate-300">
+                    <tr>
+                      <td colspan="4" class="py-4 text-center text-slate-500 italic">Loading dual-database table comparison...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h4 class="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <i class="fa-solid fa-wave-square text-emerald-400"></i> LB & Failover Events
+                </h4>
+                <span class="text-[9px] font-mono text-slate-500">Live Stream</span>
+              </div>
+              <div id="mon-lb-events" class="space-y-1.5 max-h-60 overflow-y-auto font-mono text-[9.5px] text-slate-400 custom-scrollbar">
+                <div class="text-slate-500 italic">Waiting for Load Balancer events...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Master Switches Board -->
         <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
           <div class="flex items-center gap-2 border-b border-slate-800 pb-3">
@@ -4010,7 +2811,7 @@
             <div class="flex items-center gap-3 bg-slate-950/80 border border-slate-800 p-3 rounded-2xl shrink-0 font-mono">
               <div class="text-right text-[10px]">
                 <span class="text-slate-500 block uppercase font-bold">Dual Sync Status</span>
-                <span class="text-emerald-400 font-black" id="sql-last-sync-time">Just Now (Firebase ⇄ SQL)</span>
+                <span class="text-emerald-400 font-black" id="sql-last-sync-time">Just Now (Primary ⇄ Backup SQL)</span>
               </div>
               <button id="sql-btn-manual-sync" type="button" class="bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white text-[11px] font-black px-3.5 py-2.5 rounded-xl cursor-pointer transition active:scale-95 flex items-center gap-1.5 shadow-lg shadow-emerald-950/50">
                 <i class="fa-solid fa-rotate animate-spin" id="sql-sync-icon"></i>
@@ -4019,7 +2820,7 @@
             </div>
           </div>
 
-          <!-- 1. ACTIVE DATABASE SWITCHER (Firebase Cluster 1 vs Cluster 2 vs MySQL) -->
+          <!-- 1. ACTIVE DATABASE SWITCHER -->
           <div class="mt-5 bg-slate-950/60 border border-slate-850 p-4 rounded-2xl space-y-3">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
@@ -4031,53 +2832,53 @@
                 </p>
               </div>
               <span class="text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 self-start sm:self-auto" id="sql-active-db-badge">
-                Active: Firebase Cluster 1
+                Active: MySQL Primary (veloralb_lottery)
               </span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 w-full max-w-full">
-              <!-- Switch to Firebase Cluster 1 -->
-              <button id="switch-btn-fb1" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] w-full max-w-full overflow-hidden" data-target="node-1">
-                <div class="w-9 h-9 rounded-xl bg-slate-900 border border-emerald-500/40 flex items-center justify-center text-amber-400 text-base shrink-0">
-                  <i class="fa-solid fa-cloud"></i>
-                </div>
-                <div class="space-y-0.5 min-w-0 flex-1 w-full">
-                  <div class="flex items-center justify-between flex-wrap gap-1.5">
-                    <span class="text-[11px] font-black text-white truncate max-w-full">Firebase Cluster 1</span>
-                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase shrink-0">ACTIVE</span>
-                  </div>
-                  <span class="text-[9px] text-slate-400 block font-mono break-all">app_data/lottery_winner_db</span>
-                  <span class="text-[8.5px] text-emerald-400 font-sans block break-words">Primary Cloud NoSQL Database</span>
-                </div>
-              </button>
-
-              <!-- Switch to Firebase Cluster 2 -->
-              <button id="switch-btn-fb2" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden" data-target="node-2">
-                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-amber-400/80 text-base shrink-0">
-                  <i class="fa-solid fa-shield-halved"></i>
-                </div>
-                <div class="space-y-0.5 min-w-0 flex-1 w-full">
-                  <div class="flex items-center justify-between flex-wrap gap-1.5">
-                    <span class="text-[11px] font-black text-slate-300 truncate max-w-full">Firebase Cluster 2</span>
-                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase shrink-0">STANDBY</span>
-                  </div>
-                  <span class="text-[9px] text-slate-500 block font-mono break-all">app_data/lottery_winner_db_backup</span>
-                  <span class="text-[8.5px] text-slate-400 font-sans block break-words">Auto-Sync Secondary Backup Node</span>
-                </div>
-              </button>
-
-              <!-- Switch to MySQL Database (veloralb_Digital) -->
-              <button id="switch-btn-sql" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden" data-target="node-sql">
-                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-blue-400 text-base shrink-0">
+              <!-- Switch to MySQL Primary -->
+              <button id="switch-btn-sql" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] w-full max-w-full overflow-hidden" data-target="node-sql">
+                <div class="w-9 h-9 rounded-xl bg-slate-900 border border-emerald-500/40 flex items-center justify-center text-blue-400 text-base shrink-0">
                   <i class="fa-solid fa-database"></i>
                 </div>
                 <div class="space-y-0.5 min-w-0 flex-1 w-full">
                   <div class="flex items-center justify-between flex-wrap gap-1.5">
-                    <span class="text-[11px] font-black text-slate-300 truncate max-w-full">MySQL Database</span>
+                    <span class="text-[11px] font-black text-white truncate max-w-full">Primary MySQL</span>
+                    <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase shrink-0">ACTIVE</span>
+                  </div>
+                  <span class="text-[9px] text-slate-400 block font-mono break-all">veloralb_lottery@localhost:3306</span>
+                  <span class="text-[8.5px] text-emerald-400 font-sans block break-words">Primary cPanel Relational DB</span>
+                </div>
+              </button>
+
+              <!-- Switch to Backup MySQL -->
+              <button id="switch-btn-sql-backup" type="button" class="active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden" data-target="node-sql-backup">
+                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-emerald-400 text-base shrink-0">
+                  <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <div class="space-y-0.5 min-w-0 flex-1 w-full">
+                  <div class="flex items-center justify-between flex-wrap gap-1.5">
+                    <span class="text-[11px] font-black text-slate-300 truncate max-w-full">Backup MySQL (LB)</span>
                     <span class="switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase shrink-0">STANDBY</span>
                   </div>
-                  <span class="text-[9px] text-slate-500 block font-mono break-all">veloralb_Digital@localhost:3306</span>
-                  <span class="text-[8.5px] text-cyan-400 font-sans block break-words">Dedicated cPanel / Localhost Relational DB</span>
+                  <span class="text-[9px] text-slate-500 block font-mono break-all">veloralb_Lotto@localhost:3306</span>
+                  <span class="text-[8.5px] text-cyan-400 font-sans block break-words">Auto-Sync Backup & Load Balancer Node</span>
+                </div>
+              </button>
+
+              <!-- Switch to Dual Balanced Mode -->
+              <button id="switch-btn-dual-lb" type="button" class="p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-cyan-950/30 border-cyan-500/40 hover:border-cyan-400 w-full max-w-full overflow-hidden">
+                <div class="w-9 h-9 rounded-xl bg-slate-950 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-base shrink-0">
+                  <i class="fa-solid fa-scale-balanced"></i>
+                </div>
+                <div class="space-y-0.5 min-w-0 flex-1 w-full">
+                  <div class="flex items-center justify-between flex-wrap gap-1.5">
+                    <span class="text-[11px] font-black text-cyan-300 truncate max-w-full">Dual Load Balanced</span>
+                    <span class="text-[8px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold uppercase shrink-0">ROUND ROBIN</span>
+                  </div>
+                  <span class="text-[9px] text-slate-400 block font-mono break-all">veloralb_lottery ⇄ veloralb_Lotto</span>
+                  <span class="text-[8.5px] text-emerald-400 font-sans block break-words">Shared Reads + Dual-Write Replication</span>
                 </div>
               </button>
             </div>
@@ -4088,10 +2889,10 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-850 pb-3">
               <div class="space-y-0.5">
                 <h4 class="text-xs font-black text-white font-sans uppercase tracking-wider flex items-center gap-2">
-                  <i class="fa-solid fa-sliders text-cyan-400"></i> MySQL Connection Parameters & Settings
+                  <i class="fa-solid fa-sliders text-cyan-400"></i> Primary MySQL Connection Parameters & Settings
                 </h4>
                 <p class="text-[10px] text-slate-500 font-sans">
-                  Configure your cPanel/localhost MySQL database credentials for real-time failover and dual replication.
+                  Configure your primary cPanel/localhost MySQL database credentials for real-time failover and dual replication.
                 </p>
               </div>
               <div class="flex items-center gap-2 self-start sm:self-auto">
@@ -4106,8 +2907,8 @@
               <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <!-- Host -->
                 <div class="space-y-1">
-                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Host Address</label>
-                  <input type="text" id="sql-cfg-host" required value="localhost" placeholder="localhost" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                  <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Host / Bridge URL</label>
+                  <input type="text" id="sql-cfg-host" required value="https://api.veloralbillal.top/db_bridge.php" placeholder="https://api.veloralbillal.top/db_bridge.php" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
                 </div>
 
                 <!-- Port -->
@@ -4119,20 +2920,20 @@
                 <!-- Database Name -->
                 <div class="space-y-1">
                   <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Database Name</label>
-                  <input type="text" id="sql-cfg-database" required value="veloralb_Digital" placeholder="veloralb_Digital" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                  <input type="text" id="sql-cfg-database" required value="veloralb_lottery" placeholder="veloralb_lottery" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-cyan-300 font-bold focus:outline-none focus:border-cyan-500 transition text-[11px]">
                 </div>
 
                 <!-- Username -->
                 <div class="space-y-1">
                   <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Username</label>
-                  <input type="text" id="sql-cfg-username" required value="veloralb_Digital" placeholder="veloralb_Digital" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                  <input type="text" id="sql-cfg-username" required value="veloralb_billal" placeholder="veloralb_billal" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
                 </div>
 
                 <!-- Password with eye toggle -->
                 <div class="space-y-1">
                   <label class="text-[9px] text-slate-400 uppercase font-black tracking-wider block">Password</label>
                   <div class="relative">
-                    <input type="password" id="sql-cfg-password" required value="UcWg.75@wv+Ijzh#" placeholder="Password" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
+                    <input type="password" id="sql-cfg-password" required value="Z3[9T*x39URzna" placeholder="Password" class="w-full bg-slate-900 border border-slate-800 rounded-xl pl-3 pr-8 py-2 text-white focus:outline-none focus:border-cyan-500 transition text-[11px]">
                     <button type="button" id="sql-cfg-toggle-pass" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition cursor-pointer text-xs" title="Toggle password visibility">
                       <i class="fa-solid fa-eye" id="sql-pass-eye-icon"></i>
                     </button>
@@ -4170,7 +2971,7 @@
 
                 <div class="text-[9.5px] text-slate-500 font-sans flex items-center gap-2">
                   <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-                  <span>Host: localhost:3306 | DB: veloralb_Digital | User: veloralb_Digital</span>
+                  <span>Primary: veloralb_lottery | Backup: veloralb_Lotto | User: veloralb_billal</span>
                 </div>
               </div>
             </form>
@@ -4184,8 +2985,8 @@
               <div class="flex items-center gap-2">
                 <i class="fa-solid fa-database text-cyan-400 text-lg"></i>
                 <div>
-                  <h4 class="text-sm font-black text-white font-sans">MySQL Database Schema & SQL Scripts</h4>
-                  <span class="text-[9.5px] font-mono text-slate-400">Database: veloralb_Digital | Ready for cPanel phpMyAdmin</span>
+                  <h4 class="text-sm font-black text-white font-sans" id="sql-schema-modal-title">MySQL Database Schema & SQL Scripts</h4>
+                  <span class="text-[9.5px] font-mono text-slate-400" id="sql-schema-modal-subtitle">Database: veloralb_Lotto | Ready for cPanel phpMyAdmin</span>
                 </div>
               </div>
               <button id="close-sql-schema-modal-btn" type="button" class="text-slate-400 hover:text-white text-base p-1.5 rounded-lg bg-slate-900 border border-slate-800 cursor-pointer">
@@ -4194,9 +2995,9 @@
             </div>
             <div class="p-5 overflow-y-auto space-y-3 flex-1 custom-scrollbar">
               <p class="text-xs text-slate-400">
-                এই স্ক্রিপ্টটি আপনার cPanel-এর phpMyAdmin-এ <strong class="text-white">veloralb_Digital</strong> ডাটাবেজের SQL ট্যাবে পেস্ট করে রান করলেই সব টেবিল ও ডাটা স্বয়ংক্রিয়ভাবে তৈরি হয়ে যাবে।
+                এই স্ক্রিপ্টটি আপনার cPanel-এর phpMyAdmin-এ সিলেক্ট করা ডাটাবেজের <strong class="text-white">SQL</strong> ট্যাবে পেস্ট করে রান করলেই সব টেবিল ও ডাটা স্বয়ংক্রিয়ভাবে ক্লোন হয়ে যাবে।
               </p>
-              <div class="relative bg-black rounded-2xl border border-slate-800 p-4 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-96 select-all" id="sql-schema-modal-code">
+              <div class="relative bg-black rounded-2xl border border-slate-800 p-4 font-mono text-[11px] text-slate-300 overflow-x-auto max-h-96 select-all whitespace-pre" id="sql-schema-modal-code">
                 <!-- Populated dynamically -->
               </div>
             </div>
@@ -4491,7 +3292,7 @@
             </label>
           </div>
 
-          <form id="admin-popup-event-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-popup-event-form" class="space-y-4 text-xs font-mono" onsubmit="event.preventDefault();">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1.5">
                 <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Title</label>
@@ -4504,9 +3305,30 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-1.5">
-                <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Image URL</label>
-                <input id="admin-popup-image-url" type="text" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="e.g. https://images.unsplash.com/photo-...">
+              <div class="space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Image (Upload or URL)</label>
+                  <span class="text-[9px] text-cyan-400 font-mono">PNG / JPG / WEBP</span>
+                </div>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 overflow-hidden">
+                  <div class="w-14 h-12 sm:w-16 sm:h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                    <i id="popup-image-preview-placeholder" class="fa-solid fa-image text-slate-600 text-base"></i>
+                    <img id="popup-image-preview" src="" alt="Popup Image Preview" class="w-full h-full object-cover hidden" />
+                  </div>
+                  <div class="flex-1 min-w-0 space-y-1.5 w-full">
+                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+                      <input id="admin-popup-image-file" type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" class="hidden" />
+                      <button id="btn-popup-image-upload" type="button" class="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold rounded-lg text-[10px] transition flex items-center gap-1 cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image
+                      </button>
+                      <button id="btn-popup-image-clear" type="button" class="px-2 py-1.5 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-400 font-bold rounded-lg text-[10px] transition cursor-pointer">
+                        Clear
+                      </button>
+                    </div>
+                    <p id="popup-image-upload-status" class="hidden text-[10px] font-sans truncate"></p>
+                  </div>
+                </div>
+                <input id="admin-popup-image-url" type="text" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="Or paste image URL (e.g. https://... or /uploads/...)">
               </div>
               <div class="space-y-1.5">
                 <label class="text-[10px] uppercase tracking-wider text-slate-400">Target Redirect Tab</label>
@@ -4528,8 +3350,8 @@
             </div>
 
             <div class="flex items-center justify-end pt-2">
-              <button id="save-popup-event-btn" type="button" class="bg-gradient-to-r from-cyan-500 to-rose-600 hover:scale-102 transition text-white font-black py-2.5 px-6 rounded-xl shadow-lg shadow-cyan-500/10 cursor-pointer text-xs">
-                <i class="fa-solid fa-floppy-disk mr-1"></i> Save Popup Event Settings
+              <button id="save-popup-event-btn" type="submit" class="bg-gradient-to-r from-cyan-500 to-rose-600 hover:scale-102 transition text-white font-black py-2.5 px-6 rounded-xl shadow-lg shadow-cyan-500/10 cursor-pointer text-xs flex items-center gap-1.5">
+                <i class="fa-solid fa-floppy-disk"></i> Save Popup Event Settings
               </button>
             </div>
           </form>
@@ -4552,10 +3374,15 @@
 
           <!-- Add New Banner Form -->
           <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl space-y-4">
-            <h4 class="text-[10px] uppercase tracking-wider text-cyan-400 font-mono font-bold flex items-center gap-1.5">
-              <i class="fa-solid fa-plus-circle"></i> Add New Promo Slider Banner
-            </h4>
-            <form id="admin-add-banner-form" class="space-y-3 text-xs font-mono">
+            <div class="flex items-center justify-between gap-2">
+              <h4 id="admin-banner-form-heading" class="text-[10px] uppercase tracking-wider text-cyan-400 font-mono font-bold flex items-center gap-1.5">
+                <i class="fa-solid fa-plus-circle"></i> Add New Promo Slider Banner
+              </h4>
+              <button id="cancel-edit-banner-btn" type="button" class="hidden text-[10px] font-mono text-slate-400 hover:text-white bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">
+                Cancel Edit
+              </button>
+            </div>
+            <form id="admin-add-banner-form" class="space-y-3 text-xs font-mono" onsubmit="event.preventDefault();">
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div class="space-y-1.5">
                   <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Title</label>
@@ -4568,9 +3395,30 @@
               </div>
 
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div class="space-y-1.5">
-                  <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Image URL</label>
-                  <input id="admin-banner-image" type="text" class="w-full bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="e.g. https://images.unsplash.com/...">
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Image (Upload or URL)</label>
+                    <span class="text-[9px] text-rose-400 font-mono">PNG / JPG / WEBP</span>
+                  </div>
+                  <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 overflow-hidden">
+                    <div class="w-14 h-12 sm:w-16 sm:h-12 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+                      <i id="banner-image-preview-placeholder" class="fa-solid fa-image text-slate-600 text-base"></i>
+                      <img id="banner-image-preview" src="" alt="Banner Image Preview" class="w-full h-full object-cover hidden" />
+                    </div>
+                    <div class="flex-1 min-w-0 space-y-1.5 w-full">
+                      <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+                        <input id="admin-banner-image-file" type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" class="hidden" />
+                        <button id="btn-banner-image-upload" type="button" class="px-2.5 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold rounded-lg text-[10px] transition flex items-center gap-1 cursor-pointer">
+                          <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image
+                        </button>
+                        <button id="btn-banner-image-clear" type="button" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-lg text-[10px] transition cursor-pointer">
+                          Clear
+                        </button>
+                      </div>
+                      <p id="banner-image-upload-status" class="hidden text-[10px] font-sans truncate"></p>
+                    </div>
+                  </div>
+                  <input id="admin-banner-image" type="text" class="w-full bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="Or paste image URL (e.g. https://... or /uploads/...)">
                 </div>
                 <div class="space-y-1.5">
                   <label class="text-[10px] uppercase tracking-wider text-slate-400">Target Action Link / Tab</label>
@@ -4587,8 +3435,8 @@
               </div>
 
               <div class="flex items-center justify-end pt-1">
-                <button id="add-new-banner-btn" type="button" class="bg-gradient-to-r from-red-600 to-rose-600 hover:scale-102 transition text-white font-black py-2 px-5 rounded-xl shadow-lg cursor-pointer text-xs">
-                  <i class="fa-solid fa-plus-circle mr-1"></i> Add Banner Slide
+                <button id="add-new-banner-btn" type="submit" class="bg-gradient-to-r from-red-600 to-rose-600 hover:scale-102 transition text-white font-black py-2 px-5 rounded-xl shadow-lg cursor-pointer text-xs flex items-center gap-1.5">
+                  <i class="fa-solid fa-plus-circle"></i> Add Banner Slide
                 </button>
               </div>
             </form>
@@ -4657,7 +3505,7 @@
             <span class="text-[9px] font-mono px-2.5 py-1 bg-amber-950/60 border border-amber-800/50 text-amber-400 rounded-lg font-black uppercase shrink-0">Admin Control</span>
           </div>
 
-          <form id="admin-settings-checkin-sponsor-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-checkin-sponsor-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveCheckinSponsorSettings){window.app.saveCheckinSponsorSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <!-- Requirement Toggle -->
             <div class="flex justify-between items-center bg-slate-950 p-3.5 border border-slate-800 rounded-2xl">
               <div>
@@ -4752,7 +3600,7 @@
               </div>
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs py-3 rounded-xl transition shadow-lg cursor-pointer">
+            <button type="button" id="save-checkin-sponsor-btn" onclick="if(window.app && window.app.saveCheckinSponsorSettings){window.app.saveCheckinSponsorSettings(event);}" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-slate-950 font-black text-xs py-3 rounded-xl transition shadow-lg cursor-pointer">
               <i class="fa-solid fa-floppy-disk mr-1"></i> Save Daily Check-In & Sponsor Link Config
             </button>
           </form>
@@ -4828,7 +3676,7 @@
         <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-4 shadow-xl">
           <h3 class="text-xs font-bold font-mono tracking-wider uppercase text-rose-500">Commit Maintenance parameters & Settings</h3>
           
-          <form id="admin-settings-app-config-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-app-config-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveMaintenanceSettings){window.app.saveMaintenanceSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
               <div>
                 <span class="text-xs font-bold text-white block">Maintenance System Lock Screen</span>
@@ -4878,7 +3726,7 @@
                 <span class="text-[10px] text-slate-500 font-sans block">Referral bonus will only be awarded to the referrer after the new user deposits this minimum amount.</span>
               </div>
 
-            <button type="submit" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
+            <button type="button" id="save-app-config-btn" onclick="if(window.app && window.app.saveMaintenanceSettings){window.app.saveMaintenanceSettings(event);}" class="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer">
               Commit Maintenance Configuration
             </button>
           </form>
@@ -4889,7 +3737,7 @@
           <h3 class="text-xs font-bold font-mono tracking-wider uppercase text-emerald-400 flex items-center gap-1.5"><i class="fa-solid fa-fire text-emerald-500 animate-pulse"></i> Deposit Match Booster Bonus</h3>
           <p class="text-[10px] text-slate-500 font-sans">Automated boost that matches and adds dynamic cash percentage credits immediately upon administrative deposit confirmation.</p>
           
-          <form id="admin-settings-deposit-booster-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-deposit-booster-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveDepositBoosterSettings){window.app.saveDepositBoosterSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
               <div>
                 <span class="text-xs font-bold text-white block">Enable Deposit Matching</span>
@@ -4918,7 +3766,7 @@
               </div>
             </div>
 
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
+            <button type="button" id="save-deposit-booster-btn" onclick="if(window.app && window.app.saveDepositBoosterSettings){window.app.saveDepositBoosterSettings(event);}" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer">
               Save Deposit Match Configuration
             </button>
           </form>
@@ -4933,7 +3781,7 @@
           </div>
           <p class="text-[10px] text-slate-500 font-sans">Control whether newly registered players receive an instant free welcome credit into their wallet balance upon account creation.</p>
           
-          <form id="admin-settings-signup-bonus-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-signup-bonus-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveSignupBonusSettings){window.app.saveSignupBonusSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
               <div>
                 <span class="text-xs font-bold text-white block">Enable Sign-Up Welcome Bonus</span>
@@ -4954,7 +3802,7 @@
               <span class="text-[9.5px] text-slate-500 font-sans block">This exact amount will be credited to new players on standard &amp; 1-click registration.</span>
             </div>
 
-            <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer active:scale-98">
+            <button type="button" id="save-signup-bonus-btn" onclick="if(window.app && window.app.saveSignupBonusSettings){window.app.saveSignupBonusSettings(event);}" class="w-full bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer active:scale-98">
               <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Sign-Up Bonus Configuration
             </button>
           </form>
@@ -4969,7 +3817,7 @@
             Enable or disable the high-speed 1-minute Quick Draw lottery game. Drawings will only include real users who bought tickets, with a 2% commission kept for administration.
           </p>
           
-          <form id="admin-settings-quickdraw-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-quickdraw-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveQuickDrawSettings){window.app.saveQuickDrawSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <div class="flex justify-between items-center bg-slate-950 p-4 border border-slate-800/60 rounded-2xl">
               <div>
                 <span class="text-xs font-bold text-white block">Enable Quick Draw Game Mode</span>
@@ -4981,7 +3829,7 @@
               </label>
             </div>
 
-            <button type="submit" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
+            <button type="button" id="save-quickdraw-btn" onclick="if(window.app && window.app.saveQuickDrawSettings){window.app.saveQuickDrawSettings(event);}" class="w-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer">
               Save Quick Draw Configuration
             </button>
           </form>
@@ -5075,7 +3923,7 @@
             Customize how your website appears on search engines and social platforms like Facebook, WhatsApp, and Twitter.
           </p>
           
-          <form id="admin-settings-seo-form" class="space-y-4 text-xs font-mono">
+          <form id="admin-settings-seo-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveSeoSettings){window.app.saveSeoSettings(event);} return false;" class="space-y-4 text-xs font-mono">
             <div class="space-y-1.5">
               <label class="block text-slate-500">Website Title</label>
               <input id="sys-seo-title" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2.5 px-3 text-white outline-none focus:border-cyan-500" placeholder="e.g. Lottery Winner - Premium Portal" />
@@ -5100,7 +3948,7 @@
               </p>
             </div>
 
-            <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0">
+            <button type="button" id="save-seo-settings-btn" onclick="if(window.app && window.app.saveSeoSettings){window.app.saveSeoSettings(event);}" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-3 rounded-xl transition shadow-lg shrink-0 cursor-pointer">
               Update SEO & Share Preview
             </button>
           </form>
@@ -5201,7 +4049,7 @@
             </div>
           </div>
           
-          <form id="admin-settings-gateways-form" class="space-y-4 text-xs font-mono relative z-10">
+          <form id="admin-settings-gateways-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveGatewaysSettings){window.app.saveGatewaysSettings(event);} return false;" class="space-y-4 text-xs font-mono relative z-10">
             <!-- 1-CLICK ALL PAYMENT DISABLE / ENABLE MASTER CONTROL BAR -->
             <section class="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-2 border-emerald-500/40 hover:border-emerald-500/60 transition-colors p-4 sm:p-5 rounded-2xl shadow-2xl space-y-4">
               <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
@@ -5561,7 +4409,7 @@
                   </div>
                   <div class="space-y-1">
                     <label class="block text-slate-400 text-[10px]">1 USD Exchange Rate (in BDT ৳)</label>
-                    <input id="sys-pay-cryptomus-rate" type="number" step="0.5" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-purple-500 font-mono text-[10px]" placeholder="125.00" />
+                    <input id="sys-pay-cryptomus-rate" type="number" step="any" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-purple-500 font-mono text-[10px]" placeholder="125.00" />
                   </div>
                   <div class="space-y-1">
                     <label class="block text-slate-400 text-[10px]">Incoming Webhook URL</label>
@@ -5867,7 +4715,7 @@
             </div>
 
             <div class="pt-2">
-              <button type="submit" class="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-6 rounded-2xl transition duration-150 transform hover:scale-[1.01] shadow-lg shadow-emerald-950/60 cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-2">
+              <button type="button" id="save-gateways-settings-btn" onclick="if(window.app && window.app.saveGatewaysSettings){window.app.saveGatewaysSettings(event);}" class="w-full bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3.5 px-6 rounded-2xl transition duration-150 transform hover:scale-[1.01] shadow-lg shadow-emerald-950/60 cursor-pointer text-xs uppercase tracking-wider flex items-center justify-center gap-2">
                 <i class="fa-solid fa-floppy-disk text-amber-300"></i> Synchronize & Save Payment Gateways Suite
               </button>
             </div>
@@ -6089,59 +4937,65 @@
       </div>
 
       <!-- ================= ADMIN TAB: DYNAMIC CATEGORY MANAGER ================= -->
-      <div id="admin-tab-categories" class="hidden space-y-6">
-        <div class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-6 shadow-xl text-xs font-mono">
-          <div class="flex justify-between items-center border-b border-slate-800 pb-3">
-            <div>
+      <div id="admin-tab-categories" class="hidden space-y-4 sm:space-y-6">
+        <div class="bg-slate-900 border border-slate-800 p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl space-y-4 sm:space-y-6 shadow-xl text-xs font-mono">
+          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 border-b border-slate-800 pb-3.5">
+            <div class="min-w-0">
               <h3 class="text-sm font-bold uppercase text-cyan-400">Dynamic Category Manager</h3>
-              <p class="text-[10px] text-slate-500 mt-0.5">Create Categories & configure automated multiple winner reward splits!</p>
+              <p class="text-[11px] sm:text-[10px] text-slate-400 sm:text-slate-500 mt-0.5 font-sans leading-relaxed">Create categories & configure automated multiple winner reward splits!</p>
             </div>
-            <button id="admin-create-category-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-[10px] py-1.5 px-3 rounded-xl transition">
-              + Add Category
+            <button id="admin-create-category-btn" type="button" class="w-full sm:w-auto shrink-0 bg-indigo-600 hover:bg-indigo-500 active:scale-[0.98] text-white font-bold text-[11px] sm:text-[10px] py-2 sm:py-1.5 px-3.5 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5">
+              <span>+ Add Category</span>
             </button>
           </div>
 
           <!-- Inline creation form (Hidden by default) -->
-          <div id="category-creation-zone" class="hidden bg-slate-950 p-4 border border-indigo-950 rounded-2xl space-y-3.5 transition-all text-xs">
+          <div id="category-creation-zone" class="hidden bg-slate-950 p-3.5 sm:p-4 border border-indigo-950 rounded-2xl space-y-3.5 transition-all text-xs">
             <h4 class="text-[10px] uppercase font-black text-indigo-400 tracking-wider">Create New Draw Category</h4>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="space-y-1.5">
-                <label class="block text-slate-500">Category name (Slug/Identifier)</label>
-                <input id="new-cat-name" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. 5 Winner Category" />
+                <label for="new-cat-name" class="block text-slate-400 sm:text-slate-500">Category Name (Slug/Identifier)</label>
+                <input id="new-cat-name" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 sm:py-2 px-3 text-white outline-none focus:border-indigo-500 text-xs" placeholder="e.g. 5 Winner Category" />
               </div>
               <div class="space-y-1.5">
-                <label class="block text-slate-500">Display Label (with emoji!)</label>
-                <input id="new-cat-label" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. 🔥 5 Lucky Winners" />
+                <label for="new-cat-label" class="block text-slate-400 sm:text-slate-500">Display Label (with emoji!)</label>
+                <input id="new-cat-label" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 sm:py-2 px-3 text-white outline-none focus:border-indigo-500 text-xs" placeholder="e.g. 🔥 5 Lucky Winners" />
               </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div class="space-y-1.5">
-                <label class="block text-slate-500">Draw Split Configuration</label>
-                <select id="new-cat-type" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none cursor-pointer focus:border-indigo-500">
+                <label for="new-cat-type" class="block text-slate-400 sm:text-slate-500">Draw Split Configuration</label>
+                <select id="new-cat-type" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 sm:py-2 px-3 text-white outline-none cursor-pointer focus:border-indigo-500 text-xs">
                   <option value="single">Single Jackpot Winner (100% award)</option>
                   <option value="multi">Multiple Winners Rank Split</option>
+                  <option value="syndicate">Group Syndicate Draw</option>
                 </select>
               </div>
               <div class="space-y-1.5">
-                <label class="block text-slate-500">Default Prizes list (Comma separated)</label>
-                <input id="new-cat-prizes" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-indigo-500" placeholder="e.g. 100, 50, 30, 20, 10" />
-                <span class="text-[9px] text-slate-600 block leading-tight">These will be default fallback ranks which admin can edit manually in the Pool Creation screen.</span>
+                <label for="new-cat-prizes" class="block text-slate-400 sm:text-slate-500">Default Prizes List (Comma separated)</label>
+                <input id="new-cat-prizes" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2.5 sm:py-2 px-3 text-white outline-none focus:border-indigo-500 text-xs" placeholder="e.g. 100, 50, 30, 20, 10" />
+                <span class="text-[10px] sm:text-[9px] text-slate-500 block leading-tight font-sans">Default fallback ranks used when creating multi-winner pools.</span>
               </div>
             </div>
 
-            <div class="flex justify-end gap-2 pt-2">
-              <button id="cancel-category-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold py-1.5 px-3 rounded-xl transition text-[10px]">
+            <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+              <button id="cancel-category-btn" type="button" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 sm:py-1.5 px-3.5 rounded-xl transition text-[11px] sm:text-[10px] cursor-pointer">
                 Cancel
               </button>
-              <button id="save-category-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-1.5 px-4 rounded-xl transition text-[10px]">
+              <button id="save-category-btn" type="button" class="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2 sm:py-1.5 px-4 rounded-xl transition text-[11px] sm:text-[10px] cursor-pointer">
                 Save Category
               </button>
             </div>
           </div>
 
-          <!-- Categories List Tables -->
-          <div class="bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden overflow-x-auto">
+          <!-- Mobile Card List (Shown on phones/small screens) -->
+          <div id="admin-categories-mobile-list" class="md:hidden space-y-3">
+            <!-- Loaded dynamically -->
+          </div>
+
+          <!-- Desktop Categories Table (Shown on md+ screens) -->
+          <div class="hidden md:block bg-slate-950 border border-slate-800 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="w-full text-left border-collapse text-[11px]">
               <thead>
                 <tr class="bg-slate-900 text-slate-500 font-bold border-b border-slate-800">
@@ -6176,7 +5030,7 @@
             <i class="fa-solid fa-globe text-rose-500 text-lg"></i>
           </div>
 
-          <form id="admin-settings-website-form" class="space-y-4">
+          <form id="admin-settings-website-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveWebsiteSettings){window.app.saveWebsiteSettings(event);} return false;" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1.5">
                 <label class="block text-slate-400">Site Header Name</label>
@@ -6211,8 +5065,41 @@
               <span class="text-[9px] text-slate-500 block leading-tight">The company licensing footer displayed on the player access screens.</span>
             </div>
 
+            <!-- Site Header Logo Upload -->
+            <div class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 space-y-3">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <label class="block text-slate-200 font-bold text-xs">User Panel Header Logo</label>
+                  <span class="text-[9px] text-slate-500 block leading-tight font-sans">Upload a custom brand logo or paste an image URL to show beside Site Header Name in the User Panel top bar.</span>
+                </div>
+                <span class="text-[9px] text-cyan-400 font-mono uppercase font-bold shrink-0">PNG / JPG / SVG / WEBP</span>
+              </div>
+
+              <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3.5">
+                <div class="w-14 h-14 rounded-xl overflow-hidden bg-gradient-to-tr from-cyan-500 to-rose-600 flex items-center justify-center shrink-0 border border-white/10 shadow-md">
+                  <i id="web-header-logo-preview-icon" class="fa-solid fa-clover text-white text-lg"></i>
+                  <img id="web-header-logo-preview-img" src="" alt="Header Logo Preview" class="w-full h-full object-cover hidden" />
+                </div>
+
+                <div class="flex-1 w-full space-y-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <input type="file" id="sys-web-logo-file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" class="hidden" />
+                    <button type="button" id="btn-web-logo-upload" class="px-3.5 py-2 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold rounded-xl text-[11px] transition flex items-center gap-1.5 cursor-pointer">
+                      <i class="fa-solid fa-cloud-arrow-up"></i> Upload Logo Image
+                    </button>
+                    <button type="button" id="btn-web-logo-remove" class="px-3 py-2 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-400 font-bold rounded-xl text-[11px] transition flex items-center gap-1.5 cursor-pointer">
+                      <i class="fa-solid fa-rotate-left"></i> Reset Default Icon
+                    </button>
+                  </div>
+
+                  <input id="sys-web-header-logo" type="text" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-cyan-500 text-[11px] font-mono" placeholder="Or paste image URL /uploads/... (leave blank for default icon)" />
+                  <p id="web-logo-upload-status" class="hidden text-[10px] font-sans"></p>
+                </div>
+              </div>
+            </div>
+
             <div class="pt-2">
-              <button type="submit" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.01] text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:opacity-95 cursor-pointer">
+              <button type="button" id="save-website-settings-btn" onclick="if(window.app && window.app.saveWebsiteSettings){window.app.saveWebsiteSettings(event);}" class="w-full bg-gradient-to-r from-red-600 to-rose-600 hover:scale-[1.01] text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:opacity-95 cursor-pointer">
                 Save & Update Website Configurations
               </button>
             </div>
@@ -6261,7 +5148,7 @@
             </div>
           </div>
 
-          <form id="admin-settings-push-broadcast-form" class="space-y-4">
+          <form id="admin-settings-push-broadcast-form" onsubmit="event.preventDefault(); if(window.app && window.app.broadcastWebPushAd){window.app.broadcastWebPushAd(event);} return false;" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="space-y-1.5">
                 <label class="block text-slate-300 font-bold">PUSH AD TITLE</label>
@@ -6353,7 +5240,7 @@
                 <button type="button" id="sys-push-preview-btn" class="flex-1 bg-slate-950 hover:bg-slate-850 border border-slate-800 text-cyan-400 font-bold text-xs py-3 rounded-xl transition cursor-pointer flex items-center justify-center gap-1.5">
                   <i class="fa-solid fa-eye"></i> Live Preview Ad
                 </button>
-                <button type="submit" class="flex-[2] bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-black text-xs py-3 rounded-xl shadow-lg transition active:scale-98 cursor-pointer flex items-center justify-center gap-2">
+                <button type="button" id="send-web-push-btn" onclick="if(window.app && window.app.broadcastWebPushAd){window.app.broadcastWebPushAd(event);}" class="flex-[2] bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white font-black text-xs py-3 rounded-xl shadow-lg transition active:scale-98 cursor-pointer flex items-center justify-center gap-2">
                   <i class="fa-solid fa-paper-plane"></i>
                   <span>🚀 Send Web Push Ad</span>
                 </button>
@@ -6475,7 +5362,7 @@
               <span class="text-[9px] text-slate-500">v2.4 Engine</span>
             </div>
 
-            <form id="admin-splash-config-form" class="space-y-4">
+            <form id="admin-splash-config-form" onsubmit="event.preventDefault(); if(window.app && window.app.saveSplashConfig){window.app.saveSplashConfig(event);} return false;" class="space-y-4">
               <div class="space-y-1.5">
                 <label class="block text-slate-300 font-bold">Splash Headline Title</label>
                 <input id="sys-splash-title" type="text" required class="w-full bg-slate-950 border border-slate-800 rounded-xl py-3 px-3.5 text-white outline-none focus:border-rose-500 text-xs font-sans font-bold" placeholder="🏆 CONGRATULATIONS TO OUR TOP WINNER!" />
@@ -6540,7 +5427,7 @@
                 </div>
               </div>
 
-              <button type="submit" class="w-full bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-600 text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:scale-[0.99] cursor-pointer mt-3">
+              <button type="button" id="save-splash-config-btn" onclick="if(window.app && window.app.saveSplashConfig){window.app.saveSplashConfig(event);}" class="w-full bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-600 text-white font-black text-xs py-3.5 rounded-xl shadow-lg transition active:scale-[0.99] cursor-pointer mt-3">
                 💾 Save & Apply Splash Configuration
               </button>
             </form>
@@ -7005,11 +5892,16 @@
           <!-- Logged-in Agent Profile Summary Box -->
           <div class="agent-sidebar-text bg-slate-950/90 border border-slate-800/80 rounded-2xl p-3 space-y-2">
             <div class="flex items-center justify-between gap-2">
-              <div class="min-w-0">
-                <div class="text-xs font-black text-white truncate" id="agent-sidebar-fullname">Agent Operator</div>
-                <div class="text-[10px] font-mono text-emerald-400 truncate" id="agent-display-name">@agent</div>
+              <div class="flex items-center gap-2.5 min-w-0">
+                <div id="agent-sidebar-avatar" class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 border border-emerald-400/40 flex items-center justify-center text-white font-black text-xs overflow-hidden shrink-0 shadow">
+                  A
+                </div>
+                <div class="min-w-0">
+                  <div class="text-xs font-black text-white truncate" id="agent-sidebar-fullname">Agent Operator</div>
+                  <div class="text-[10px] font-mono text-emerald-400 truncate" id="agent-display-name">@agent</div>
+                </div>
               </div>
-              <span id="agent-sidebar-status" class="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-400">
+              <span id="agent-sidebar-status" class="inline-flex items-center gap-1 text-[9px] font-mono font-bold text-emerald-400 shrink-0">
                 <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ACTIVE
               </span>
             </div>
@@ -8061,11 +6953,44 @@
                 </div>
                 <div>
                   <h3 class="text-sm font-black text-white">Agent Profile & Station Settings</h3>
-                  <p class="text-xs text-slate-400">Update your public desk details, contact number, district zone, and live availability status.</p>
+                  <p class="text-xs text-slate-400">Update your public desk photo, contact number, district zone, and live availability status.</p>
                 </div>
               </div>
 
               <form id="agent-profile-update-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono">
+                <!-- Profile Photo Upload & Live Preview -->
+                <div class="sm:col-span-2 bg-slate-950/80 border border-slate-800/90 rounded-2xl p-4 flex flex-col sm:flex-row items-center gap-4">
+                  <div class="relative shrink-0">
+                    <div id="agent-prof-photo-preview" class="w-20 h-20 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-emerald-500/20 border-2 border-amber-500/50 flex items-center justify-center text-amber-400 font-black text-2xl overflow-hidden shadow-lg">
+                      A
+                    </div>
+                  </div>
+                  <div class="flex-1 w-full space-y-2.5">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <label class="text-white text-xs font-bold flex items-center gap-1.5">
+                          <i class="fa-solid fa-camera text-amber-400"></i>
+                          <span>Agent Profile Photo (এজেন্ট প্রোফাইল ছবি)</span>
+                        </label>
+                        <p class="text-[10px] text-slate-400 font-sans mt-0.5">This photo appears on your Agent Desk card in the User Panel Agent Directory.</p>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <input id="agent-prof-photo-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                        <button type="button" id="agent-prof-photo-upload-btn" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl text-[10px] uppercase tracking-wider cursor-pointer transition flex items-center gap-1.5 shadow">
+                          <i class="fa-solid fa-upload"></i> Upload Photo
+                        </button>
+                        <button type="button" id="agent-prof-photo-remove-btn" class="hidden bg-rose-950/70 hover:bg-rose-900 text-rose-300 border border-rose-800/50 font-bold px-2.5 py-1.5 rounded-xl text-[10px] uppercase cursor-pointer transition">
+                          Remove
+                        </button>
+                      </div>
+                    </div>
+                    <div class="space-y-1">
+                      <input id="agent-prof-photo" type="text" class="w-full bg-slate-900 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-amber-500 text-[11px]" placeholder="Or paste image URL (https://...) or /uploads/..." />
+                      <div id="agent-prof-photo-status" class="hidden text-[10px] font-mono"></div>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="space-y-1">
                   <label class="text-slate-400 text-[10px] uppercase font-bold">Agent Username (Read-Only)</label>
                   <input id="agent-prof-username" type="text" readonly class="w-full bg-slate-950/60 border border-slate-800 rounded-xl py-2.5 px-3 text-slate-400 cursor-not-allowed" />
@@ -8709,7 +7634,7 @@
       <div class="max-w-sm w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl relative space-y-4 my-auto">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h4 class="text-sm font-black text-white">Modify Player Record</h4>
-          <button id="admin-close-modal-btn" class="text-slate-400 hover:text-white text-base"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" id="admin-close-modal-btn" class="text-slate-400 hover:text-white text-base cursor-pointer p-1"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <p class="text-[10px] text-slate-400 leading-none">Selected Player: <strong class="text-white" id="edit-player-modal-id"></strong></p>
@@ -8750,6 +7675,7 @@
             <select id="edit-player-role" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none cursor-pointer focus:border-rose-500 font-mono text-xs">
               <option value="player">Standard Player</option>
               <option value="agent">Field Operations Agent</option>
+              <option value="subagent">Field Sub-Agent</option>
               <option value="moderator">System Support Moderator</option>
             </select>
           </div>
@@ -8829,7 +7755,7 @@
         
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h4 class="text-sm font-black text-rose-500">Manual Award Selection</h4>
-          <button id="admin-close-draw-modal-btn" class="text-slate-400 hover:text-white text-base"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" id="admin-close-draw-modal-btn" class="text-slate-400 hover:text-white text-base cursor-pointer p-1"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <p class="text-[11px] text-slate-400">Triggering lucky award for pool:<br/><strong class="text-white text-xs block mt-1" id="draw-modal-pool-title"></strong></p>
@@ -8886,7 +7812,7 @@
         
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
           <h4 class="text-sm font-black text-white">Create New Lottery Pool</h4>
-          <button id="admin-close-create-pool-modal" class="text-slate-400 hover:text-white text-base"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" id="admin-close-create-pool-modal" class="text-slate-400 hover:text-white text-base cursor-pointer p-1"><i class="fa-solid fa-xmark"></i></button>
         </div>
 
         <form id="admin-pool-creation-form" class="space-y-3.5">
@@ -8898,18 +7824,18 @@
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
               <label class="block text-slate-500">Ticket Price (৳)</label>
-              <input id="create-pool-fee" type="number" required min="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-bold" value="10" />
+              <input id="create-pool-fee" type="number" required min="1" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-bold" value="10" />
             </div>
             <div class="space-y-1.5">
               <label class="block text-slate-500">Winner Reward (৳)</label>
-              <input id="create-pool-prize" type="number" required min="100" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-bold" value="500" />
+              <input id="create-pool-prize" type="number" required min="1" step="any" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500 font-bold" value="500" />
             </div>
           </div>
 
           <div class="grid grid-cols-2 gap-3">
             <div class="space-y-1.5">
               <label class="block text-slate-500">Total Tickets Pool</label>
-              <input id="create-pool-total" type="number" required min="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500" value="1000" />
+              <input id="create-pool-total" type="number" required min="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl py-2 px-3 text-white outline-none focus:border-rose-500" value="1000" />
             </div>
             <div class="space-y-1.5">
               <label class="block text-slate-500">Pool Category Slug</label>

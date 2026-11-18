@@ -13,7 +13,7 @@
    </label>
   </div>
 
-  <form id="admin-popup-event-form" class="space-y-4 text-xs font-mono">
+  <form id="admin-popup-event-form" class="space-y-4 text-xs font-mono" onsubmit="event.preventDefault();">
    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <div class="space-y-1.5">
      <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Title</label>
@@ -26,9 +26,30 @@
    </div>
 
    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <div class="space-y-1.5">
-     <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Image URL</label>
-     <input id="admin-popup-image-url" type="text" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="e.g. https://images.unsplash.com/photo-...">
+    <div class="space-y-2">
+     <div class="flex items-center justify-between gap-2">
+      <label class="text-[10px] uppercase tracking-wider text-slate-400">Popup Image (Upload or URL)</label>
+      <span class="text-[9px] text-cyan-400 font-mono">PNG / JPG / WEBP</span>
+     </div>
+     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-slate-950/70 border border-slate-800 rounded-xl p-2.5 overflow-hidden">
+      <div class="w-14 h-12 sm:w-16 sm:h-12 rounded-lg overflow-hidden bg-slate-900 border border-slate-800 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+       <i id="popup-image-preview-placeholder" class="fa-solid fa-image text-slate-600 text-base"></i>
+       <img id="popup-image-preview" src="" alt="Popup Image Preview" class="w-full h-full object-cover hidden" />
+      </div>
+      <div class="flex-1 min-w-0 space-y-1.5 w-full">
+       <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+        <input id="admin-popup-image-file" type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" class="hidden" />
+        <button id="btn-popup-image-upload" type="button" class="px-2.5 py-1.5 bg-cyan-600/20 hover:bg-cyan-600/30 border border-cyan-500/40 text-cyan-300 font-bold rounded-lg text-[10px] transition flex items-center gap-1 cursor-pointer">
+         <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image
+        </button>
+        <button id="btn-popup-image-clear" type="button" class="px-2 py-1.5 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-400 font-bold rounded-lg text-[10px] transition cursor-pointer">
+         Clear
+        </button>
+       </div>
+       <p id="popup-image-upload-status" class="hidden text-[10px] font-sans truncate"></p>
+      </div>
+     </div>
+     <input id="admin-popup-image-url" type="text" class="w-full bg-slate-950 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="Or paste image URL (e.g. https://... or /uploads/...)">
     </div>
     <div class="space-y-1.5">
      <label class="text-[10px] uppercase tracking-wider text-slate-400">Target Redirect Tab</label>
@@ -50,8 +71,8 @@
    </div>
 
    <div class="flex items-center justify-end pt-2">
-    <button id="save-popup-event-btn" type="button" class="bg-gradient-to-r from-cyan-500 to-rose-600 hover:scale-102 transition text-white font-black py-2.5 px-6 rounded-xl shadow-lg shadow-cyan-500/10 cursor-pointer text-xs">
-     <i data-lucide="save" class=" mr-1"></i> Save Popup Event Settings
+    <button id="save-popup-event-btn" type="submit" class="bg-gradient-to-r from-cyan-500 to-rose-600 hover:scale-102 transition text-white font-black py-2.5 px-6 rounded-xl shadow-lg shadow-cyan-500/10 cursor-pointer text-xs flex items-center gap-1.5">
+     <i data-lucide="save" class="mr-1"></i> Save Popup Event Settings
     </button>
    </div>
   </form>
@@ -74,10 +95,15 @@
 
   <!-- Add New Banner Form -->
   <div class="bg-slate-950 p-4 border border-slate-800 rounded-2xl space-y-4">
-   <h4 class="text-[10px] uppercase tracking-wider text-cyan-400 font-mono font-bold flex items-center gap-1.5">
-    <i data-lucide="plus" class="-circle"></i> Add New Promo Slider Banner
-   </h4>
-   <form id="admin-add-banner-form" class="space-y-3 text-xs font-mono">
+   <div class="flex items-center justify-between gap-2">
+    <h4 id="admin-banner-form-heading" class="text-[10px] uppercase tracking-wider text-cyan-400 font-mono font-bold flex items-center gap-1.5">
+     <i data-lucide="plus" class="-circle"></i> Add New Promo Slider Banner
+    </h4>
+    <button id="cancel-edit-banner-btn" type="button" class="hidden text-[10px] font-mono text-slate-400 hover:text-white bg-slate-900 border border-slate-700 px-2.5 py-1 rounded-lg cursor-pointer">
+     Cancel Edit
+    </button>
+   </div>
+   <form id="admin-add-banner-form" class="space-y-3 text-xs font-mono" onsubmit="event.preventDefault();">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
      <div class="space-y-1.5">
       <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Title</label>
@@ -90,9 +116,30 @@
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-     <div class="space-y-1.5">
-      <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Image URL</label>
-      <input id="admin-banner-image" type="text" class="w-full bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="e.g. https://images.unsplash.com/...">
+     <div class="space-y-2">
+      <div class="flex items-center justify-between gap-2">
+       <label class="text-[10px] uppercase tracking-wider text-slate-400">Banner Image (Upload or URL)</label>
+       <span class="text-[9px] text-rose-400 font-mono">PNG / JPG / WEBP</span>
+      </div>
+      <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 overflow-hidden">
+       <div class="w-14 h-12 sm:w-16 sm:h-12 rounded-lg overflow-hidden bg-slate-950 border border-slate-800 flex items-center justify-center shrink-0 mx-auto sm:mx-0">
+        <i id="banner-image-preview-placeholder" class="fa-solid fa-image text-slate-600 text-base"></i>
+        <img id="banner-image-preview" src="" alt="Banner Image Preview" class="w-full h-full object-cover hidden" />
+       </div>
+       <div class="flex-1 min-w-0 space-y-1.5 w-full">
+        <div class="flex flex-wrap items-center justify-center sm:justify-start gap-1.5">
+         <input id="admin-banner-image-file" type="file" accept=".png,.jpg,.jpeg,.svg,.webp,.gif" class="hidden" />
+         <button id="btn-banner-image-upload" type="button" class="px-2.5 py-1.5 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 font-bold rounded-lg text-[10px] transition flex items-center gap-1 cursor-pointer">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Upload Image
+         </button>
+         <button id="btn-banner-image-clear" type="button" class="px-2 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold rounded-lg text-[10px] transition cursor-pointer">
+          Clear
+         </button>
+        </div>
+        <p id="banner-image-upload-status" class="hidden text-[10px] font-sans truncate"></p>
+       </div>
+      </div>
+      <input id="admin-banner-image" type="text" class="w-full bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-white focus:outline-none focus:border-cyan-500 font-sans text-xs" placeholder="Or paste image URL (e.g. https://... or /uploads/...)">
      </div>
      <div class="space-y-1.5">
       <label class="text-[10px] uppercase tracking-wider text-slate-400">Target Action Link / Tab</label>
@@ -109,7 +156,7 @@
     </div>
 
     <div class="flex items-center justify-end pt-1">
-     <button id="add-new-banner-btn" type="button" class="bg-gradient-to-r from-red-600 to-rose-600 hover:scale-102 transition text-white font-black py-2 px-5 rounded-xl shadow-lg cursor-pointer text-xs">
+     <button id="add-new-banner-btn" type="submit" class="bg-gradient-to-r from-red-600 to-rose-600 hover:scale-102 transition text-white font-black py-2 px-5 rounded-xl shadow-lg cursor-pointer text-xs flex items-center gap-1.5">
       <i data-lucide="plus" class="-circle mr-1"></i> Add Banner Slide
      </button>
     </div>

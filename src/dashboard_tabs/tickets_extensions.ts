@@ -765,5 +765,8 @@ export class TicketsExtensions {
 
       listEl.appendChild(card);
     });
+    if (appInstance && typeof appInstance.refreshIconsForContainer === "function") {
+      appInstance.refreshIconsForContainer(listEl);
+    }
   }
 }

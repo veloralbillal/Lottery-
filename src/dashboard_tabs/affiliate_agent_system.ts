@@ -7,8 +7,11 @@
 
 export class AffiliateAgentSystem {
   static expandedL1Nodes = new Set();
+  private static initialized = false;
 
-  static init(appInstance) {
+  static init(appInstance: any) {
+    if (this.initialized) return;
+    this.initialized = true;
     console.log("Tiered Affiliate Agent & Sub-Agent System Initialized.");
     this.setupListeners(appInstance);
   }
@@ -532,7 +535,18 @@ export class AffiliateAgentSystem {
       if (a.role !== "agent" && a.role !== "subagent") return;
       if (a.status === "blocked" || a.status === "suspended" || a.status === "permanently_banned") return;
       const key = a.username.toLowerCase();
-      agentMap.set(key, { ...(agentMap.get(key) || {}), ...a });
+      const prev = agentMap.get(key) || {};
+      const merged: any = { ...prev, ...a };
+      if (!merged.photo && (prev.photo || prev.avatar || a.avatar)) {
+        merged.photo = prev.photo || prev.avatar || a.avatar;
+      }
+      if (!merged.avatar && (merged.photo || prev.avatar)) {
+        merged.avatar = merged.photo || prev.avatar;
+      }
+      if (!merged.displayName && prev.displayName) {
+        merged.displayName = prev.displayName;
+      }
+      agentMap.set(key, merged);
     });
 
     const agents = Array.from(agentMap.values());
@@ -571,38 +585,64 @@ export class AffiliateAgentSystem {
           ? `<span class="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-emerald-800/50"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> ONLINE</span>`
           : `<span class="inline-flex items-center gap-1 bg-slate-900 text-slate-400 text-[9px] px-2 py-0.5 rounded-full font-mono font-bold border border-slate-800"><span class="w-1.5 h-1.5 rounded-full bg-slate-500"></span> OFFLINE</span>`;
 
+      const agentPhoto = agent.photo || agent.avatar || "";
+      const agentInitial = appInstance.escapeHTML(
+        (agent.displayName || agent.username || "A").charAt(0).toUpperCase()
+      );
+      const avatarMarkup = agentPhoto
+        ? `<img src="${appInstance.escapeHTML(agentPhoto)}" class="w-full h-full object-cover" alt="${appInstance.escapeHTML(agent.displayName || agent.username || "Agent")}" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';" /><span class="hidden w-full h-full items-center justify-center text-amber-400 text-base font-black">${agentInitial}</span>`
+        : `<span class="text-amber-400 text-base font-black">${agentInitial}</span>`;
+
+      const statusDotColor = availability === "busy"
+        ? "bg-amber-400"
+        : isOnline
+          ? "bg-emerald-400"
+          : "bg-slate-500";
+
       return `
-      <div class="agent-desk-card bg-slate-900/90 backdrop-blur-md border border-slate-800/80 p-3.5 rounded-2xl space-y-3 shadow-lg hover:border-amber-500/40 transition-all" data-district="${appInstance.escapeHTML(agent.district || '')}" data-name="${appInstance.escapeHTML(agent.username)}" data-phone="${appInstance.escapeHTML(agent.phone || '')}">
-        <div class="flex items-start justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex items-center justify-center text-amber-400 text-lg font-black shadow-sm shrink-0">
-              <i data-lucide="user"></i>
+      <div class="agent-desk-card bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 backdrop-blur-xl border border-slate-800/90 p-4 rounded-3xl space-y-3.5 shadow-xl hover:border-amber-500/50 hover:shadow-2xl transition-all relative overflow-hidden group" data-district="${appInstance.escapeHTML(agent.district || '')}" data-name="${appInstance.escapeHTML((agent.displayName || '') + ' ' + (agent.username || ''))}" data-phone="${appInstance.escapeHTML(agent.phone || '')}">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-amber-500/10 transition-colors"></div>
+        <div class="flex items-start justify-between relative z-10">
+          <div class="flex items-center gap-3.5">
+            <div class="relative shrink-0">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-yellow-500/10 border-2 ${isOnline ? 'border-emerald-500/50' : 'border-amber-500/40'} flex items-center justify-center overflow-hidden shadow-md">
+                ${avatarMarkup}
+              </div>
+              <span class="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full ${statusDotColor} border-2 border-slate-900"></span>
             </div>
             <div>
-              <div class="flex items-center gap-1.5">
-                <h3 class="text-xs font-black text-white font-mono">${appInstance.escapeHTML(agent.displayName || ('@' + agent.username))}</h3>
-                <span class="inline-flex items-center gap-1 bg-amber-500/15 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-amber-500/30">
-                  <i data-lucide="check-circle" class="text-[8px]"></i> VERIFIED
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <h3 class="text-xs sm:text-sm font-black text-white font-mono tracking-wide">${appInstance.escapeHTML(agent.displayName || ('@' + agent.username))}</h3>
+                <span class="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-300 text-[8px] font-mono font-bold px-2 py-0.5 rounded-full border border-amber-500/40 shadow-sm">
+                  <i data-lucide="check-circle" class="text-[8px]"></i> VERIFIED COUNTER
                 </span>
               </div>
-              <p class="text-[10px] text-slate-400 font-sans">${appInstance.escapeHTML(agent.district || 'Dhaka')} • @${appInstance.escapeHTML(agent.username)}</p>
-              <span class="text-[9px] text-slate-500 font-mono">Counter ID: ${appInstance.escapeHTML(String(agent.id || agent.username).toUpperCase().slice(-6))} • Cash In/Out Active</span>
+              <p class="text-[10px] text-slate-300 font-sans mt-0.5 flex items-center gap-1.5">
+                <i data-lucide="map-pin" class="w-3 h-3 text-amber-400"></i>
+                <span>${appInstance.escapeHTML(agent.district || 'Dhaka')} Station</span>
+                <span class="text-slate-600">•</span>
+                <span class="text-slate-400 font-mono">@${appInstance.escapeHTML(agent.username)}</span>
+              </p>
+              <div class="flex items-center gap-2 mt-1 font-mono text-[9.5px]">
+                <span class="text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-800/40">📞 ${appInstance.escapeHTML(agent.phone || '017XXXXXXXX')}</span>
+                <span class="text-slate-500">ID: #${appInstance.escapeHTML(String(agent.id || agent.username).toUpperCase().slice(-6))}</span>
+              </div>
             </div>
           </div>
           ${statusBadge}
         </div>
-        <div class="flex items-center gap-1.5 pt-1 border-t border-slate-800/80 font-mono text-[10px]">
-          <button type="button" onclick="if(window.app){window.app.openAgentChat('${appInstance.escapeHTML(agent.username)}');}" class="relative flex-1 bg-cyan-950/80 hover:bg-cyan-900/80 text-cyan-300 border border-cyan-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-            <i data-lucide="message-square" class="text-cyan-400"></i>
+        <div class="flex items-center gap-2 pt-2 border-t border-slate-800/80 font-mono text-[10px] relative z-10">
+          <button type="button" onclick="if(window.app){window.app.openAgentChat('${appInstance.escapeHTML(agent.username)}');}" class="relative flex-1 bg-gradient-to-r from-cyan-600/20 to-teal-600/20 hover:from-cyan-600/30 hover:to-teal-600/30 text-cyan-300 border border-cyan-500/40 py-2.5 px-3 rounded-2xl flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer font-bold shadow-md">
+            <i data-lucide="message-square" class="text-cyan-400 w-3.5 h-3.5"></i>
             <span>Live Chat</span>
             ${unreadCount > 0 ? `<span class="ml-1 px-1.5 py-0.2 bg-rose-600 text-white rounded-full text-[9px] font-black animate-pulse">${unreadCount}</span>` : ''}
           </button>
-          <a href="https://wa.me/${appInstance.escapeHTML((agent.phone || '').replace(/[^0-9]/g, ''))}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-emerald-950/80 hover:bg-emerald-900/80 text-emerald-300 border border-emerald-800/50 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95">
-            <i data-lucide="message-square" class="text-emerald-400"></i>
+          <a href="https://wa.me/${appInstance.escapeHTML((agent.phone || '').replace(/[^0-9]/g, ''))}" target="_blank" rel="noopener noreferrer" class="flex-1 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/30 hover:to-teal-600/30 text-emerald-300 border border-emerald-500/40 py-2.5 px-3 rounded-2xl flex items-center justify-center gap-2 transition active:scale-95 shadow-md font-bold">
+            <i data-lucide="message-square" class="text-emerald-400 w-3.5 h-3.5"></i>
             <span>WhatsApp</span>
           </a>
-          <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 py-2 rounded-xl flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer font-bold">
-            <i data-lucide="arrow-left-right"></i>
+          <button type="button" onclick="if(window.app){window.app.currentTab='withdraw'; window.app.render();}" class="flex-1 bg-gradient-to-r from-amber-600/20 to-yellow-600/20 hover:from-amber-600/30 hover:to-yellow-600/30 text-amber-300 border border-amber-500/40 py-2.5 px-3 rounded-2xl flex items-center justify-center gap-2 transition active:scale-95 cursor-pointer font-bold shadow-md">
+            <i data-lucide="arrow-left-right" class="w-3.5 h-3.5"></i>
             <span>Cashout</span>
           </button>
         </div>

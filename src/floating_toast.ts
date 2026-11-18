@@ -64,7 +64,8 @@ export class FloatingToastNotification {
     const events = [
       {
         type: "lottery_win",
-        icon: "trophy text-emerald-400",
+        icon: "trophy",
+        iconClass: "text-emerald-400",
         border: "border-emerald-500/40 shadow-emerald-950/20",
         glow: "rgba(16,185,129,0.15)",
         title: "TICKET DRAW WIN! 🎉",
@@ -78,7 +79,8 @@ export class FloatingToastNotification {
       },
       {
         type: "jackpot_win",
-        icon: "crown text-amber-400 animate-bounce",
+        icon: "crown",
+        iconClass: "text-amber-400 animate-bounce",
         border: "border-amber-500/50 shadow-amber-950/30",
         glow: "rgba(245,158,11,0.2)",
         title: "MEGA JACKPOT HIT! 🚀",
@@ -91,7 +93,8 @@ export class FloatingToastNotification {
       },
       {
         type: "affiliate_commission",
-        icon: "trending-up text-pink-400",
+        icon: "trending-up",
+        iconClass: "text-pink-400",
         border: "border-pink-500/40 shadow-pink-950/20",
         glow: "rgba(236,72,153,0.15)",
         title: "COMMISSION PAID! 💸",
@@ -103,7 +106,8 @@ export class FloatingToastNotification {
       },
       {
         type: "lucky_spin",
-        icon: "zap text-cyan-400 animate-spin-slow",
+        icon: "zap",
+        iconClass: "text-cyan-400 animate-spin-slow",
         border: "border-cyan-500/40 shadow-cyan-950/20",
         glow: "rgba(6,182,212,0.15)",
         title: "LUCKY WHEEL HIT! 🎡",
@@ -115,7 +119,8 @@ export class FloatingToastNotification {
       },
       {
         type: "consecutive_checkin",
-        icon: "calendar text-indigo-400",
+        icon: "calendar",
+        iconClass: "text-indigo-400",
         border: "border-indigo-500/40 shadow-indigo-950/20",
         glow: "rgba(99,102,241,0.15)",
         title: "DAILY CHECK-IN! 📅",
@@ -142,9 +147,12 @@ export class FloatingToastNotification {
     toast.className = `p-3 bg-slate-950/95 border ${event.border} rounded-2xl flex gap-3 items-start pointer-events-auto shadow-lg backdrop-blur-md transition-all duration-500 translate-x-12 opacity-0 select-none`;
     toast.style.boxShadow = `0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px ${event.glow}`;
 
+    const [iconName, ...extraFromIcon] = String(event.icon || "bell").trim().split(/\s+/);
+    const iconClasses = [event.iconClass || "", ...extraFromIcon].filter(Boolean).join(" ");
+
     toast.innerHTML = `
       <div class="w-7 h-7 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center shrink-0">
-        <i data-lucide="${event.icon}" class="text-xs"></i>
+        <i data-lucide="${iconName}" class="text-xs ${iconClasses}"></i>
       </div>
       <div class="flex-1 space-y-0.5">
         <div class="text-[8px] font-black uppercase text-slate-500 tracking-wider flex justify-between items-center">
@@ -159,6 +167,7 @@ export class FloatingToastNotification {
 
     // Append to container
     this.container.appendChild(toast);
+    try { (window as any).refreshIcons?.(); } catch {}
 
     // Trigger animation in next frame
     setTimeout(() => {
@@ -181,9 +190,9 @@ export class FloatingToastNotification {
     this.ensureContainer();
 
     const config = {
-      info: { icon: "info text-cyan-400", border: "border-cyan-500/40", glow: "rgba(6,182,212,0.15)" },
-      success: { icon: "circle-check text-emerald-400", border: "border-emerald-500/40", glow: "rgba(16,185,129,0.15)" },
-      warning: { icon: "alert-triangle text-amber-400", border: "border-amber-500/40", glow: "rgba(245,158,11,0.15)" }
+      info: { icon: "info", iconClass: "text-cyan-400", border: "border-cyan-500/40", glow: "rgba(6,182,212,0.15)" },
+      success: { icon: "circle-check", iconClass: "text-emerald-400", border: "border-emerald-500/40", glow: "rgba(16,185,129,0.15)" },
+      warning: { icon: "alert-triangle", iconClass: "text-amber-400", border: "border-amber-500/40", glow: "rgba(245,158,11,0.15)" }
     };
 
     const c = config[type] || config.info;
@@ -192,9 +201,12 @@ export class FloatingToastNotification {
     toast.className = `p-3 bg-slate-950/95 border ${c.border} rounded-2xl flex gap-3 items-start pointer-events-auto shadow-lg backdrop-blur-md transition-all duration-500 translate-x-12 opacity-0 select-none`;
     toast.style.boxShadow = `0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px ${c.glow}`;
 
+    const [iconName, ...extraFromIcon] = String(c.icon || "info").trim().split(/\s+/);
+    const iconClasses = [c.iconClass || "", ...extraFromIcon].filter(Boolean).join(" ");
+
     toast.innerHTML = `
       <div class="w-7 h-7 rounded-full bg-slate-900 border border-slate-850 flex items-center justify-center shrink-0">
-        <i data-lucide="${c.icon}" class="text-xs"></i>
+        <i data-lucide="${iconName}" class="text-xs ${iconClasses}"></i>
       </div>
       <div class="flex-1 space-y-0.5">
         <div class="text-[8px] font-black uppercase text-slate-500 tracking-wider">
@@ -207,6 +219,7 @@ export class FloatingToastNotification {
     `;
 
     this.container.appendChild(toast);
+    try { (window as any).refreshIcons?.(); } catch {}
 
     setTimeout(() => {
       toast.classList.remove("translate-x-12", "opacity-0");

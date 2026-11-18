@@ -1,5 +1,5 @@
 import "./index.css";
-import { createIcons, ArrowLeft, Edit, RotateCw, List, Save, Sliders, CloudUpload, BarChart2, Globe, Code, Eye, Undo, Redo, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Type, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify, ListOrdered, Outdent, Indent, Link, Image, Table, Minus, Quote, Eraser, ShieldCheck, Loader2 } from 'lucide';
+import { createIcons, ArrowLeft, Edit, RotateCw, List, Save, Sliders, CloudUpload, BarChart2, Globe, Code, Eye, Undo, Redo, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Type, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify, ListOrdered, Outdent, Indent, Link, Image, Table, Minus, Quote, Eraser, ShieldCheck, Loader2, PenTool } from 'lucide';
 
 /**
  * Standalone Public Blog Article Editor Suite (src/admin-blog-editor.ts)
@@ -615,7 +615,7 @@ class StandaloneEditorApp {
 
     this.bindEvents();
     this.updateStats();
-    createIcons({ icons: { ArrowLeft, Edit, RotateCw, List, Save, Sliders, CloudUpload, BarChart2, Globe, Code, Eye, Undo, Redo, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Type, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify, ListOrdered, Outdent, Indent, Link, Image, Table, Minus, Quote, Eraser, ShieldCheck, Loader2 } });
+    createIcons({ icons: { ArrowLeft, Edit, RotateCw, List, Save, Sliders, CloudUpload, BarChart2, Globe, Code, Eye, Undo, Redo, Bold, Italic, Underline, Strikethrough, Subscript, Superscript, Type, Highlighter, AlignLeft, AlignCenter, AlignRight, AlignJustify, ListOrdered, Outdent, Indent, Link, Image, Table, Minus, Quote, Eraser, ShieldCheck, Loader2, PenTool, PenNib: PenTool } });
   }
 
   private updateCategoryDropdown() {

@@ -176,7 +176,7 @@
     <button type="button" id="profile-save-pin-btn" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 rounded-2xl transition text-xs shadow-lg shadow-cyan-950/50">Update Security PIN</button>
    </div>
 
-   <button type="button" id="profile-access-otp-btn" class="w-full flex items-center justify-between bg-slate-900/40 border border-slate-800 p-4 rounded-3xl hover:bg-slate-800/40 transition">
+   <button type="button" id="profile-access-otp-btn" onclick="app.navigateTo('otp')" class="w-full flex items-center justify-between bg-slate-900/40 border border-slate-800 p-4 rounded-3xl hover:bg-slate-800/40 transition cursor-pointer">
     <div class="flex items-center gap-3">
      <div class="w-10 h-10 rounded-2xl bg-indigo-500/10 flex items-center justify-center">
       <i data-lucide="key" class="w-5 h-5 text-indigo-400"></i>
@@ -197,14 +197,14 @@
    <i data-lucide="users" class="w-4 h-4 text-purple-500"></i> Community & Growth <span class="text-[8px] lowercase font-mono opacity-60">(কমিউনিটি এবং ইনকাম)</span>
   </h4>
   <div class="grid grid-cols-2 gap-3">
-   <button type="button" id="profile-refer-entry-btn" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition">
+   <button type="button" id="profile-refer-entry-btn" onclick="app.navigateTo('refer')" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition cursor-pointer">
     <div class="w-10 h-10 rounded-2xl bg-amber-500/10 flex items-center justify-center mb-3">
      <i data-lucide="share-2" class="w-5 h-5 text-amber-400"></i>
     </div>
     <span class="text-xs font-bold text-white block">Refer & Earn</span>
     <span class="text-[9px] text-slate-500">Get lifetime bonus</span>
    </button>
-   <button type="button" id="profile-video-bounty-entry-btn" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition">
+   <button type="button" id="profile-video-bounty-entry-btn" onclick="app.navigateTo('video-bounty')" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition cursor-pointer">
     <div class="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center mb-3">
      <i data-lucide="video" class="w-5 h-5 text-rose-400"></i>
     </div>
@@ -213,14 +213,14 @@
    </button>
   </div>
   <div class="grid grid-cols-2 gap-3">
-   <button type="button" id="profile-badge-request-entry-btn" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition">
+   <button type="button" id="profile-badge-request-entry-btn" onclick="app.navigateTo('badge-request')" class="bg-slate-900/40 border border-slate-800 p-4 rounded-3xl text-left hover:bg-slate-800/40 transition cursor-pointer">
     <div class="w-10 h-10 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-3">
      <i data-lucide="ribbon" class="w-5 h-5 text-cyan-400"></i>
     </div>
     <span class="text-xs font-bold text-white block">Badge Request</span>
     <span class="text-[9px] text-slate-500">Apply for VIP/Mod</span>
    </button>
-   <button type="button" onclick="app.shareOnWhatsAppViral()" class="bg-emerald-600/10 border border-emerald-500/30 p-4 rounded-3xl text-left hover:bg-emerald-600/20 transition group">
+   <button type="button" onclick="app.shareOnWhatsAppViral()" class="bg-emerald-600/10 border border-emerald-500/30 p-4 rounded-3xl text-left hover:bg-emerald-600/20 transition group cursor-pointer">
     <div class="w-10 h-10 rounded-2xl bg-emerald-500 text-white flex items-center justify-center mb-3 group-hover:scale-110 transition shadow-lg shadow-emerald-500/30">
      <i data-lucide="message-square" class="w-5 h-5 text-white"></i>
     </div>
@@ -251,7 +251,7 @@
 
  <!-- 5. ACCOUNT UTILITIES: THE EXIT DOOR -->
  <div class="space-y-3 pt-4">
-  <button type="button" id="profile-open-edit-modal-btn" class="w-full flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl hover:bg-white/10 transition">
+  <button type="button" id="profile-open-edit-modal-btn" onclick="app.navigateTo('edit-profile')" class="w-full flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl hover:bg-white/10 transition cursor-pointer">
    <div class="flex items-center gap-3">
     <div class="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center">
      <i data-lucide="user-cog" class="w-5 h-5 text-slate-300"></i>
@@ -264,7 +264,7 @@
    <i data-lucide="chevron-right" class="w-4 h-4 text-slate-600"></i>
   </button>
 
-  <button type="button" id="profile-recovery-entry-btn" class="w-full flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl hover:bg-white/10 transition">
+  <button type="button" id="profile-recovery-entry-btn" onclick="app.navigateTo('recovery')" class="w-full flex items-center justify-between bg-white/5 border border-white/10 p-4 rounded-3xl hover:bg-white/10 transition cursor-pointer">
    <div class="flex items-center gap-3">
     <div class="w-10 h-10 rounded-2xl bg-slate-800 flex items-center justify-center">
      <i data-lucide="shield-alert" class="w-5 h-5 text-slate-300"></i>
@@ -278,11 +278,11 @@
   </button>
 
   <div class="grid grid-cols-2 gap-3">
-   <a href="#" id="profile-support-link" class="flex items-center gap-3 bg-cyan-600/10 border border-cyan-500/30 p-4 rounded-3xl hover:bg-cyan-600/20 transition">
+   <a href="#" id="profile-support-link" class="flex items-center gap-3 bg-cyan-600/10 border border-cyan-500/30 p-4 rounded-3xl hover:bg-cyan-600/20 transition cursor-pointer">
     <i data-lucide="headset" class="w-5 h-5 text-cyan-400"></i>
     <span class="text-xs font-bold text-white">Support</span>
    </a>
-   <button id="profile-logout-btn" class="flex items-center gap-3 bg-rose-600/10 border border-rose-500/30 p-4 rounded-3xl hover:bg-rose-600/20 transition text-rose-400">
+   <button type="button" id="profile-logout-btn" onclick="if(window.appInstance&&window.appInstance.logout){window.appInstance.logout()}else if(window.app&&window.app.logout){window.app.logout()}else if(window.handleLogout){window.handleLogout()}" class="flex items-center gap-3 bg-rose-600/10 border border-rose-500/30 p-4 rounded-3xl hover:bg-rose-600/20 transition text-rose-400 cursor-pointer">
     <i data-lucide="log-out" class="w-5 h-5 text-rose-400"></i>
     <span class="text-xs font-bold">Logout</span>
    </button>

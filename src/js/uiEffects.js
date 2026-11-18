@@ -225,16 +225,15 @@ export const UIEffectsModule = {
 
   initSplashScreen() {
     const splashScreen = document.getElementById("splash-screen");
-    if (!splashScreen) return;
-
-    // Check if splash screen is disabled in app settings
-    const settings = (this.db && this.db.settings) || (window.app?.db?.settings) || {};
-    if (settings.splashEnabled === false) {
+    if (splashScreen) {
       splashScreen.classList.add("hidden");
-      return;
+      splashScreen.style.display = "none";
     }
 
-    this.runSplashScreenSequence();
+    const targetApp = window.appInstance || window.app;
+    if (targetApp && typeof targetApp.render === "function") {
+      targetApp.render();
+    }
   },
 
   runSplashScreenSequence() {
@@ -818,7 +817,7 @@ export const UIEffectsModule = {
       slideDiv.addEventListener("click", () => {
         if (slide.link) {
           this.currentTab = slide.link;
-          this.renderDashboard();
+          this.render();
         }
       });
 
@@ -902,9 +901,66 @@ export const UIEffectsModule = {
         
         const actionBtnSpan = document.getElementById("popup-event-action-text-span");
         if (actionBtnSpan) actionBtnSpan.innerText = popup.actionText || "Claim Bonus";
-        
+
+        const dismissModal = () => {
+          modal.classList.add("hidden");
+          sessionStorage.setItem("lw_popup_dismissed", "true");
+        };
+
+        const closeBtn = document.getElementById("close-popup-event-btn");
+        if (closeBtn) closeBtn.onclick = dismissModal;
+
+        const dismissBtn = document.getElementById("popup-event-dismiss-btn");
+        if (dismissBtn) dismissBtn.onclick = dismissModal;
+
+        const actionBtn = document.getElementById("popup-event-action-btn");
+        if (actionBtn) {
+          actionBtn.onclick = () => {
+            dismissModal();
+            if (typeof this.navigateTo === "function") {
+              this.navigateTo(popup.actionLink || "wallet");
+            }
+          };
+        }
+
         modal.classList.remove("hidden");
       }
+    }
+  },
+
+  renderEventsTab() {
+    const card = document.getElementById("embedded-popup-event-card");
+    const fallback = document.getElementById("events-empty-fallback");
+    const popup = this.db?.settings?.popupEvent || {};
+    if (!card || !fallback) return;
+
+    if (!popup.enabled) {
+      card.classList.add("hidden");
+      fallback.classList.remove("hidden");
+      return;
+    }
+
+    fallback.classList.add("hidden");
+    card.classList.remove("hidden");
+
+    const img = document.getElementById("embedded-event-img");
+    if (img) {
+      img.src = popup.imageUrl || "https://images.unsplash.com/photo-1518152006812-edab29b069ac?q=80&w=600&auto=format&fit=crop";
+    }
+    const title = document.getElementById("embedded-event-title");
+    if (title) title.innerText = popup.title || "Special Event";
+    const msg = document.getElementById("embedded-event-message");
+    if (msg) msg.innerText = popup.message || "";
+    const actionText = document.getElementById("embedded-event-action-text");
+    if (actionText) actionText.innerText = popup.actionText || "Explore Offer";
+
+    const actionBtn = document.getElementById("embedded-event-action-btn");
+    if (actionBtn) {
+      actionBtn.onclick = () => {
+        if (typeof this.navigateTo === "function") {
+          this.navigateTo(popup.actionLink || "wallet");
+        }
+      };
     }
   }
 };

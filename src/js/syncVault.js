@@ -5,7 +5,54 @@
 
 export const SyncVaultModule = {
   renderSyncVaultTab() {
-    if (!this.db || !this.db.syncNodes) return;
+    if (!this.db) return;
+    if (!Array.isArray(this.db.syncNodes) || this.db.syncNodes.length === 0) {
+      this.db.syncNodes = [
+        {
+          id: "node-sql",
+          name: "MySQL Primary Cluster (veloralb_lottery)",
+          type: "sql",
+          endpoint: "https://api.veloralbillal.top/db_bridge.php",
+          priority: 1,
+          status: "connected",
+          latency: 12,
+          active: true,
+          mode: "dual_sync",
+          description: "cPanel Primary MySQL Database (veloralb_lottery) via Bridge API.",
+          tier: "premium",
+          sqlHost: "localhost",
+          sqlPort: "3306",
+          sqlUser: "veloralb_billal",
+          sqlDb: "veloralb_lottery"
+        }
+      ];
+    }
+    if (!this.db.syncNodes.some(n => n.id === "node-sql-backup")) {
+      this.db.syncNodes.push({
+        id: "node-sql-backup",
+        name: "MySQL Backup & LB Replica (veloralb_Lotto)",
+        type: "sql",
+        endpoint: "localhost:3306/veloralb_Lotto",
+        priority: 2,
+        status: "standby",
+        latency: 14,
+        active: false,
+        mode: "active_sync",
+        description: "Backup MySQL Replica & Read Load-Balancing Node (veloralb_Lotto).",
+        tier: "premium",
+        sqlHost: "localhost",
+        sqlPort: "3306",
+        sqlUser: "veloralb_billal",
+        sqlDb: "veloralb_Lotto"
+      });
+    }
+
+    if (!this._syncHandlersBound) {
+      this._syncHandlersBound = true;
+      this.initSyncClickHandlers();
+    }
+    this.startDualMonitorPolling();
+    this.fetchAndRenderDualMonitor();
 
     // 1. Render active pipeline badge in statistics
     const activeNode = this.db.syncNodes.find(n => n.active) || this.db.syncNodes[0];
@@ -215,11 +262,11 @@ export const SyncVaultModule = {
     const passEl = document.getElementById("sql-cfg-password");
     const autoSyncEl = document.getElementById("sql-cfg-autosync");
 
-    if (hostEl) hostEl.value = cfg.host || "localhost";
+    if (hostEl) hostEl.value = cfg.host || "https://api.veloralbillal.top/db_bridge.php";
     if (portEl) portEl.value = cfg.port || "3306";
-    if (dbEl) dbEl.value = cfg.database || "veloralb_Digital";
-    if (userEl) userEl.value = cfg.username || "veloralb_Digital";
-    if (passEl) passEl.value = cfg.password || "UcWg.75@wv+Ijzh#";
+    if (dbEl) dbEl.value = cfg.database || "veloralb_lottery";
+    if (userEl) userEl.value = cfg.username || "veloralb_billal";
+    if (passEl) passEl.value = cfg.password || "Z3[9T*x39URzna";
     if (autoSyncEl) autoSyncEl.checked = cfg.autoSync !== false;
 
     // Update master toggles
@@ -245,11 +292,11 @@ export const SyncVaultModule = {
     }
 
     // Update active database badge
-    const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-1", name: "Firebase Cluster 1" };
+    const activeNode = this.db.syncNodes?.find(n => n.active) || { id: "node-sql", name: "MySQL Primary Cluster (veloralb_lottery)" };
     const activeBadge = document.getElementById("sql-active-db-badge");
     if (activeBadge) {
       activeBadge.innerText = `Active: ${activeNode.name}`;
-      if (activeNode.id === "node-sql") {
+      if (activeNode.id === "node-sql" || activeNode.id === "node-sql-backup") {
         activeBadge.className = "text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-blue-950 border border-blue-800 text-blue-400 self-start sm:self-auto";
       } else {
         activeBadge.className = "text-[9.5px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 self-start sm:self-auto";
@@ -266,27 +313,27 @@ export const SyncVaultModule = {
       let isEngineEnabled = true;
       if (target === "node-1" || target === "node-2") {
         isEngineEnabled = cfg.firebaseEnabled;
-      } else if (target === "node-sql") {
+      } else if (target === "node-sql" || target === "node-sql-backup") {
         isEngineEnabled = cfg.sqlEnabled;
       }
 
       if (!isEngineEnabled) {
-        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-not-allowed bg-slate-950/40 border-slate-900/50 opacity-40";
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-not-allowed bg-slate-950/40 border-slate-900/50 opacity-40 w-full max-w-full overflow-hidden";
         if (statusInd) {
           statusInd.innerText = "DISABLED";
-          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-600 font-bold uppercase";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-900 text-slate-600 font-bold uppercase shrink-0";
         }
       } else if (isTargetActive) {
-        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)]";
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] w-full max-w-full overflow-hidden";
         if (statusInd) {
           statusInd.innerText = "ACTIVE";
-          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950 font-bold uppercase shrink-0";
         }
       } else {
-        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700";
+        btn.className = "active-db-switch-btn p-3.5 rounded-2xl border transition-all text-left flex flex-col sm:flex-row items-start gap-3 cursor-pointer bg-slate-900/60 border-slate-800 hover:border-slate-700 w-full max-w-full overflow-hidden";
         if (statusInd) {
           statusInd.innerText = "STANDBY";
-          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase";
+          statusInd.className = "switch-status-indicator text-[8px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-bold uppercase shrink-0";
         }
       }
     });
@@ -296,7 +343,7 @@ export const SyncVaultModule = {
     if (lastSyncEl) {
       if (cfg.lastSyncTime) {
         const time = new Date(cfg.lastSyncTime).toLocaleTimeString();
-        lastSyncEl.innerText = `${time} (Firebase ⇄ SQL)`;
+        lastSyncEl.innerText = `${time} (Primary ⇄ Backup SQL)`;
       } else {
         lastSyncEl.innerText = "Never Synced";
       }
@@ -488,13 +535,25 @@ export const SyncVaultModule = {
         
         // Firebase references removed
 
-        // Inform server about the active database engine switch
-        const isSqlTarget = node.id === "node-sql";
+        // Inform server about the active database engine / LB switch
+        const isSqlTarget = node.id === "node-sql" || node.id === "node-sql-backup";
         fetch("/api/admin/database/switch", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ database: isSqlTarget ? "mysql" : "firebase", admin_id: "admin" })
         }).catch(err => console.warn("Failed to notify server of engine switch:", err));
+
+        if (node.id === "node-sql" || node.id === "node-sql-backup") {
+          const lbMode = node.id === "node-sql-backup" ? "backup_only" : "primary_only";
+          fetch("/api/sql/loadbalancer/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: lbMode })
+          }).then(() => {
+            this._lbFormDirty = false;
+            this.fetchAndRenderDualMonitor();
+          }).catch(() => {});
+        }
 
         this.saveDB(true).then(() => {
           if (isSqlTarget && typeof this.loadFromCloud === "function") {
@@ -595,8 +654,14 @@ export const SyncVaultModule = {
       viewSchemaBtn.addEventListener("click", () => {
         const modal = document.getElementById("sql-schema-modal");
         const codeBlock = document.getElementById("sql-schema-modal-code");
+        const titleEl = document.getElementById("sql-schema-modal-title");
+        const subEl = document.getElementById("sql-schema-modal-subtitle");
+        const primaryDbName = this.db?.sqlDbConfig?.database || "veloralb_lottery";
+        if (titleEl) titleEl.innerText = "MySQL Database Schema & SQL Scripts";
+        if (subEl) subEl.innerText = `Database: ${primaryDbName} | Ready for cPanel phpMyAdmin`;
         if (modal && codeBlock) {
           codeBlock.innerText = this.getSqlSchemaContent();
+          this._activeSchemaFilename = `${primaryDbName}_schema_${Date.now()}.sql`;
           modal.classList.remove("hidden");
         }
       });
@@ -610,13 +675,14 @@ export const SyncVaultModule = {
       });
     }
 
-    // Copy Schema
+    // Copy Schema (copies whatever SQL is currently displayed in modal)
     const copySchemaBtn = document.getElementById("copy-sql-schema-btn");
     if (copySchemaBtn) {
       copySchemaBtn.addEventListener("click", () => {
-        const code = this.getSqlSchemaContent();
+        const codeBlock = document.getElementById("sql-schema-modal-code");
+        const code = (codeBlock && codeBlock.innerText.trim()) ? codeBlock.innerText : this.getSqlSchemaContent();
         navigator.clipboard.writeText(code).then(() => {
-          this.showToast("SQL স্ক্রিপ্ট কপি করা হয়েছে!", "success");
+          this.showToast("SQL স্ক্রিপ্ট কপি করা হয়েছে!", "success");
         });
       });
     }
@@ -625,15 +691,245 @@ export const SyncVaultModule = {
     const downloadSchemaBtn = document.getElementById("download-sql-file-btn");
     if (downloadSchemaBtn) {
       downloadSchemaBtn.addEventListener("click", () => {
-        const code = this.getSqlSchemaContent();
+        const codeBlock = document.getElementById("sql-schema-modal-code");
+        const code = (codeBlock && codeBlock.innerText.trim()) ? codeBlock.innerText : this.getSqlSchemaContent();
         const blob = new Blob([code], { type: "text/sql" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `lottery_winner_db_schema_${Date.now()}.sql`;
+        a.download = this._activeSchemaFilename || `lottery_winner_db_schema_${Date.now()}.sql`;
         a.click();
         URL.revokeObjectURL(url);
       });
+    }
+
+    // ================= DUAL-DB MONITOR, BACKUP DB & LOAD BALANCER HANDLERS =================
+    const markLbDirty = () => { this._lbFormDirty = true; };
+    ["lb-mode-select", "lb-primary-weight", "lb-backup-weight", "lb-dual-write-chk", "lb-auto-failover-chk"].forEach(id => {
+      document.getElementById(id)?.addEventListener("change", markLbDirty);
+      document.getElementById(id)?.addEventListener("input", markLbDirty);
+    });
+
+    const markBakDirty = () => { this._bakFormDirty = true; };
+    ["bak-cfg-enabled", "bak-cfg-host", "bak-cfg-port", "bak-cfg-database", "bak-cfg-username", "bak-cfg-password", "bak-cfg-bridge-url"].forEach(id => {
+      document.getElementById(id)?.addEventListener("change", markBakDirty);
+      document.getElementById(id)?.addEventListener("input", markBakDirty);
+    });
+
+    const refreshMonitorBtn = document.getElementById("lb-btn-refresh-monitor");
+    if (refreshMonitorBtn) {
+      refreshMonitorBtn.addEventListener("click", async () => {
+        const icon = document.getElementById("lb-refresh-icon");
+        if (icon) icon.classList.add("animate-spin");
+        refreshMonitorBtn.disabled = true;
+        await this.fetchAndRenderDualMonitor(true);
+        if (icon) icon.classList.remove("animate-spin");
+        refreshMonitorBtn.disabled = false;
+      });
+    }
+
+    const autoMonToggle = document.getElementById("lb-auto-monitor-toggle");
+    if (autoMonToggle) {
+      autoMonToggle.addEventListener("change", () => {
+        if (autoMonToggle.checked) {
+          this.startDualMonitorPolling();
+          this.fetchAndRenderDualMonitor();
+        } else {
+          this.stopDualMonitorPolling();
+        }
+      });
+    }
+
+    const saveLbBtn = document.getElementById("lb-btn-save-policy");
+    if (saveLbBtn) {
+      saveLbBtn.addEventListener("click", async () => {
+        const mode = document.getElementById("lb-mode-select")?.value || "round_robin";
+        const primaryWeight = Number(document.getElementById("lb-primary-weight")?.value ?? 60);
+        const backupWeight = Number(document.getElementById("lb-backup-weight")?.value ?? 40);
+        const dualWriteReplication = Boolean(document.getElementById("lb-dual-write-chk")?.checked);
+        const autoFailover = Boolean(document.getElementById("lb-auto-failover-chk")?.checked);
+
+        saveLbBtn.disabled = true;
+        try {
+          const res = await fetch("/api/sql/loadbalancer/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode, primaryWeight, backupWeight, dualWriteReplication, autoFailover })
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message || "Failed to update load balancer");
+          this._lbFormDirty = false;
+          this.addConsoleLog(`[LOAD BALANCER] Policy saved: mode=${mode}, weights=${primaryWeight}/${backupWeight}, dualWrite=${dualWriteReplication}`, "success");
+          this.showToast(data.message || "Load Balancer policy updated!", "success");
+          await this.fetchAndRenderDualMonitor();
+        } catch (err) {
+          this.showToast(`Load Balancer Error: ${err.message || err}`, "error");
+        } finally {
+          saveLbBtn.disabled = false;
+        }
+      });
+    }
+
+    const dualLbQuickBtn = document.getElementById("switch-btn-dual-lb");
+    if (dualLbQuickBtn) {
+      dualLbQuickBtn.addEventListener("click", async () => {
+        try {
+          const res = await fetch("/api/sql/loadbalancer/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mode: "round_robin", dualWriteReplication: true, autoFailover: true })
+          });
+          const data = await res.json();
+          if (data.success) {
+            this._lbFormDirty = false;
+            this.addConsoleLog("[LOAD BALANCER] Switched to Dual Load Balanced (Round Robin 50/50 + Dual-Write).", "success");
+            this.showToast("Dual Load Balanced (Round Robin) চালু হয়েছে!", "success");
+            await this.fetchAndRenderDualMonitor();
+          }
+        } catch (err) {
+          this.showToast(`Error: ${err.message || err}`, "error");
+        }
+      });
+    }
+
+    const bakTogglePassBtn = document.getElementById("bak-btn-toggle-pass");
+    if (bakTogglePassBtn) {
+      bakTogglePassBtn.addEventListener("click", () => {
+        const passInput = document.getElementById("bak-cfg-password");
+        const eyeIcon = document.getElementById("bak-pass-eye-icon");
+        if (passInput && eyeIcon) {
+          if (passInput.type === "password") {
+            passInput.type = "text";
+            eyeIcon.classList.remove("fa-eye");
+            eyeIcon.classList.add("fa-eye-slash");
+          } else {
+            passInput.type = "password";
+            eyeIcon.classList.remove("fa-eye-slash");
+            eyeIcon.classList.add("fa-eye");
+          }
+        }
+      });
+    }
+
+    const backupForm = document.getElementById("backup-sql-config-form");
+    if (backupForm) {
+      backupForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const payload = {
+          enabled: Boolean(document.getElementById("bak-cfg-enabled")?.checked),
+          host: document.getElementById("bak-cfg-host")?.value.trim() || "localhost",
+          port: document.getElementById("bak-cfg-port")?.value.trim() || "3306",
+          database: document.getElementById("bak-cfg-database")?.value.trim() || "veloralb_Lotto",
+          username: document.getElementById("bak-cfg-username")?.value.trim() || "veloralb_billal",
+          password: document.getElementById("bak-cfg-password")?.value || "",
+          bridgeUrl: document.getElementById("bak-cfg-bridge-url")?.value.trim() || ""
+        };
+        try {
+          const res = await fetch("/api/sql/backup/config", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message || "Failed to save Backup DB config");
+          this._bakFormDirty = false;
+          this.db.backupSqlConfig = { ...payload };
+          const bakNode = this.db.syncNodes?.find(n => n.id === "node-sql-backup");
+          if (bakNode) {
+            bakNode.endpoint = `${payload.host}:${payload.port}/${payload.database}`;
+            bakNode.sqlHost = payload.host;
+            bakNode.sqlPort = payload.port;
+            bakNode.sqlUser = payload.username;
+            bakNode.sqlDb = payload.database;
+          }
+          this.saveDB();
+          this.addConsoleLog(`[BACKUP DB] Saved configuration for ${payload.username}@${payload.host}/${payload.database}`, "success");
+          this.showToast(data.message || "Backup DB কনফিগারেশন সেভ হয়েছে!", "success");
+          await this.fetchAndRenderDualMonitor();
+        } catch (err) {
+          this.showToast(`Save Error: ${err.message || err}`, "error");
+        }
+      });
+    }
+
+    const bakTestBtn = document.getElementById("bak-btn-test-connection");
+    if (bakTestBtn) {
+      bakTestBtn.addEventListener("click", async () => {
+        const icon = document.getElementById("bak-test-icon");
+        if (icon) icon.className = "fa-solid fa-spinner animate-spin text-emerald-400";
+        bakTestBtn.disabled = true;
+
+        const payload = {
+          host: document.getElementById("bak-cfg-host")?.value.trim() || "localhost",
+          port: document.getElementById("bak-cfg-port")?.value.trim() || "3306",
+          database: document.getElementById("bak-cfg-database")?.value.trim() || "veloralb_Lotto",
+          username: document.getElementById("bak-cfg-username")?.value.trim() || "veloralb_billal",
+          password: document.getElementById("bak-cfg-password")?.value || "",
+          bridgeUrl: document.getElementById("bak-cfg-bridge-url")?.value.trim() || ""
+        };
+        this.addConsoleLog(`[BACKUP TEST] Probing ${payload.username}@${payload.host}:${payload.port}/${payload.database}...`, "info");
+
+        try {
+          const res = await fetch("/api/sql/backup/test", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const data = await res.json();
+          if (!res.ok || !data.success) throw new Error(data.message || "Backup DB connection failed");
+          this.addConsoleLog(`[BACKUP TEST] 🟢 ${data.message}`, "success");
+          this.showToast(data.message, data.needsSchema ? "warning" : "success");
+          await this.fetchAndRenderDualMonitor();
+        } catch (err) {
+          this.addConsoleLog(`[BACKUP TEST] 🔴 FAILED: ${err.message || err}`, "error");
+          this.showToast(`Backup Connection Error: ${err.message || err}`, "error");
+        } finally {
+          if (icon) icon.className = "fa-solid fa-plug-circle-check text-emerald-400";
+          bakTestBtn.disabled = false;
+        }
+      });
+    }
+
+    const syncBackupNowBtn = document.getElementById("lb-btn-sync-backup-now");
+    if (syncBackupNowBtn) {
+      syncBackupNowBtn.addEventListener("click", async () => {
+        const icon = document.getElementById("lb-sync-backup-icon");
+        if (icon) icon.className = "fa-solid fa-spinner animate-spin";
+        syncBackupNowBtn.disabled = true;
+        this.addConsoleLog("[BACKUP SYNC] Starting manual Primary -> Backup DB replication...", "info");
+
+        try {
+          const res = await fetch("/api/sql/backup/sync-now", { method: "POST" });
+          const data = await res.json();
+          if (data.needsSchema) {
+            this.addConsoleLog(`[BACKUP SYNC] ⚠️ ${data.message}`, "warning");
+            this.showToast(data.message, "warning");
+            await this.openBackupSchemaModal();
+          } else if (!res.ok || !data.success) {
+            throw new Error(data.message || "Backup replication failed");
+          } else {
+            this.addConsoleLog(`[BACKUP SYNC] 🟢 ${data.message}`, "success");
+            this.showToast(data.message, "success");
+            await this.fetchAndRenderDualMonitor();
+          }
+        } catch (err) {
+          this.addConsoleLog(`[BACKUP SYNC] 🔴 FAILED: ${err.message || err}`, "error");
+          this.showToast(`Backup Sync Failed: ${err.message || err}`, "error");
+        } finally {
+          if (icon) icon.className = "fa-solid fa-clone";
+          syncBackupNowBtn.disabled = false;
+        }
+      });
+    }
+
+    const bakSchemaBtn = document.getElementById("lb-btn-backup-schema-sql");
+    if (bakSchemaBtn) {
+      bakSchemaBtn.addEventListener("click", () => this.openBackupSchemaModal());
+    }
+
+    const quickSchemaBtn = document.getElementById("mon-btn-open-schema-quick");
+    if (quickSchemaBtn) {
+      quickSchemaBtn.addEventListener("click", () => this.openBackupSchemaModal());
     }
 
     // Toggle Password
@@ -660,7 +956,7 @@ export const SyncVaultModule = {
     const exportDumpBtn = document.getElementById("sql-btn-export-dump");
     if (exportDumpBtn) {
       exportDumpBtn.addEventListener("click", () => {
-        const dbName = document.getElementById("sql-cfg-database")?.value || "veloralb_Digital";
+        const dbName = document.getElementById("sql-cfg-database")?.value || "veloralb_lottery";
         this.showToast(`Generating full database dump for ${dbName}...`, "info");
         setTimeout(() => {
           const code = this.getSqlFullDump();
@@ -841,8 +1137,8 @@ export const SyncVaultModule = {
 
               if (node.type === "sql") {
                 const host = node.sqlHost || "localhost";
-                const username = node.sqlUser || "veloralb_Digital";
-                const dbName = node.sqlDb || "veloralb_Digital";
+                const username = node.sqlUser || "veloralb_billal";
+                const dbName = node.sqlDb || "veloralb_lottery";
                 this.addConsoleLog(`[FAILOVER TEST] 🟡 Initiating MySQL/MariaDB query sequence to Host: ${host} (DB: ${dbName})...`, "info");
                 this.addConsoleLog(`[FAILOVER TEST] 🔑 Credentials authenticated using User: "${username}" and Password: "●●●●●●●●".`, "info");
                 this.addConsoleLog(`[FAILOVER TEST] 🟢 Switch context verified successfully! MySQL schema ready on localhost:3306. Status: ONLINE.`, "success");
@@ -1136,16 +1432,18 @@ export const SyncVaultModule = {
 
     if (lang === "php") {
       fileName = "db-connection.php";
-      if (selectedNode.type === "sql" || selectedNode.id === "node-sql") {
+      if (selectedNode.type === "sql" || selectedNode.id === "node-sql" || selectedNode.id === "node-sql-backup") {
+        const snippetDb = selectedNode.sqlDb || (selectedNode.id === "node-sql-backup" ? "veloralb_Lotto" : "veloralb_lottery");
+        const snippetUser = selectedNode.sqlUser || "veloralb_billal";
         code = `<?php
 // 💎 MySQL Production Database Connection (Lottery Winner)
-// Host: localhost:3306 | Database: veloralb_Digital | User: veloralb_Digital
+// Host: localhost:3306 | Database: ${snippetDb} | User: ${snippetUser}
 
 define('DB_HOST', 'localhost');
 define('DB_PORT', '3306');
-define('DB_NAME', 'veloralb_Digital');
-define('DB_USER', 'veloralb_Digital');
-define('DB_PASS', 'UcWg.75@wv+Ijzh#');
+define('DB_NAME', '${snippetDb}');
+define('DB_USER', '${snippetUser}');
+define('DB_PASS', 'Z3[9T*x39URzna');
 
 try {
     $pdo = new PDO(
@@ -1497,7 +1795,7 @@ public class DatabaseClusterRouter {
   },
 
   getSqlSchemaContent() {
-    const dbName = this.db.sqlDbConfig?.database || "veloralb_Digital";
+    const dbName = this.db.sqlDbConfig?.database || "veloralb_lottery";
     return `-- Lottery Winner - MySQL Database Schema
 -- Generated: ${new Date().toLocaleString()}
 -- Target DB: ${dbName}
@@ -1563,7 +1861,7 @@ COMMIT;`;
   },
 
   getSqlFullDump() {
-    const dbName = this.db.sqlDbConfig?.database || "veloralb_Digital";
+    const dbName = this.db.sqlDbConfig?.database || "veloralb_lottery";
     let dump = this.getSqlSchemaContent();
     dump += "\n\n-- Dumping data for tables\n";
     
@@ -1578,5 +1876,264 @@ COMMIT;`;
 
     dump += "\n-- Dump completed.";
     return dump;
+  },
+
+  startDualMonitorPolling() {
+    if (this._monitorPollTimer) return;
+    this._monitorPollTimer = setInterval(() => {
+      if (this.currentAdminTab !== "sync-vault") {
+        this.stopDualMonitorPolling();
+        return;
+      }
+      const toggle = document.getElementById("lb-auto-monitor-toggle");
+      if (toggle && !toggle.checked) return;
+      if (typeof document !== "undefined" && document.hidden) return;
+      this.fetchAndRenderDualMonitor();
+    }, 5000);
+  },
+
+  stopDualMonitorPolling() {
+    if (this._monitorPollTimer) {
+      clearInterval(this._monitorPollTimer);
+      this._monitorPollTimer = null;
+    }
+  },
+
+  async openBackupSchemaModal() {
+    const modal = document.getElementById("sql-schema-modal");
+    const codeBlock = document.getElementById("sql-schema-modal-code");
+    const titleEl = document.getElementById("sql-schema-modal-title");
+    const subEl = document.getElementById("sql-schema-modal-subtitle");
+
+    if (modal && codeBlock) {
+      if (titleEl) titleEl.innerText = "Backup DB Schema Clone Script (Primary ➔ Backup)";
+      if (subEl) subEl.innerText = "Target Database: veloralb_Lotto | Run once in cPanel phpMyAdmin";
+      codeBlock.innerText = "-- Generating live schema clone SQL from veloralb_lottery ...";
+      modal.classList.remove("hidden");
+    }
+
+    try {
+      const res = await fetch("/api/sql/backup/schema-sql", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Failed to generate Backup Schema SQL");
+      if (subEl) subEl.innerText = `${data.primaryDb} ➔ ${data.backupDb} (${data.tablesCount} Tables) | Ready for cPanel phpMyAdmin`;
+      if (codeBlock) codeBlock.innerText = data.sql || "";
+      this._activeSchemaFilename = `${data.backupDb || "veloralb_Lotto"}_clone_schema_${Date.now()}.sql`;
+    } catch (err) {
+      if (codeBlock) codeBlock.innerText = `-- Error loading schema SQL: ${err.message || err}`;
+      this.showToast(`Schema SQL Error: ${err.message || err}`, "error");
+    }
+  },
+
+  async fetchAndRenderDualMonitor(showFeedback = false) {
+    if (this._monitorFetching) return;
+    this._monitorFetching = true;
+    try {
+      const res = await fetch("/api/sql/monitor", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || "Monitor unavailable");
+
+      const fmtNum = (n) => Number(n || 0).toLocaleString();
+      const fmtSize = (kb) => {
+        const val = Number(kb || 0);
+        return val >= 1024 ? `${(val / 1024).toFixed(2)} MB` : `${val.toFixed(1)} KB`;
+      };
+      const fmtUptime = (sec) => {
+        const s = Number(sec || 0);
+        if (!s) return "--";
+        const d = Math.floor(s / 86400);
+        const h = Math.floor((s % 86400) / 3600);
+        const m = Math.floor((s % 3600) / 60);
+        return d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`;
+      };
+      const setTxt = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+      };
+
+      setTxt("mon-sync-time-badge", `Updated: ${new Date().toLocaleTimeString()}`);
+
+      // Primary DB Card
+      const p = data.primary || {};
+      const pm = p.metrics || {};
+      setTxt("mon-primary-db", p.database || "veloralb_lottery");
+      setTxt("mon-primary-host", `${p.username || "veloralb_billal"}@${p.host || "localhost"}:${p.port || "3306"}`);
+      setTxt("mon-primary-latency", `${p.latencyMs ?? "--"} ms`);
+      setTxt("mon-primary-avg-latency", `avg ${pm.avgLatencyMs ?? p.latencyMs ?? "--"} ms`);
+      setTxt("mon-primary-tables", fmtNum(p.tablesCount));
+      setTxt("mon-primary-rows", fmtNum(p.totalRows));
+      setTxt("mon-primary-size", fmtSize(p.totalSizeKB));
+      setTxt("mon-primary-reads", fmtNum(pm.reads));
+      setTxt("mon-primary-writes", fmtNum(pm.writes));
+      setTxt("mon-primary-errors", fmtNum(pm.errors));
+      setTxt("mon-primary-share", `${pm.trafficSharePct ?? 100}%`);
+
+      const pBadge = document.getElementById("mon-primary-status");
+      if (pBadge) {
+        pBadge.innerText = p.status || (p.healthy ? "ONLINE" : "OFFLINE");
+        pBadge.className = p.healthy
+          ? "text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+          : "text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
+      }
+
+      // Backup DB Card
+      const b = data.backup || {};
+      const bm = b.metrics || {};
+      setTxt("mon-backup-db", b.database || "veloralb_Lotto");
+      setTxt("mon-backup-host", `${b.username || "veloralb_billal"}@${b.host || "localhost"}:${b.port || "3306"}`);
+      setTxt("mon-backup-latency", `${b.latencyMs ?? "--"} ms`);
+      setTxt("mon-backup-avg-latency", `avg ${bm.avgLatencyMs ?? b.latencyMs ?? "--"} ms`);
+      setTxt("mon-backup-tables", fmtNum(b.tablesCount));
+      setTxt("mon-backup-rows", fmtNum(b.totalRows));
+      setTxt("mon-backup-size", fmtSize(b.totalSizeKB));
+      setTxt("mon-backup-reads", fmtNum(bm.reads));
+      setTxt("mon-backup-writes", fmtNum(bm.writes));
+      setTxt("mon-backup-errors", fmtNum(bm.errors));
+      setTxt("mon-backup-share", `${bm.trafficSharePct ?? 0}%`);
+      setTxt("mon-backup-schema-parity", `${b.schemaParityPct ?? 0}%`);
+      setTxt("mon-backup-parity", `${b.rowParityPct ?? 0}%`);
+      setTxt("mon-backup-last-sync", b.lastSyncTime ? new Date(b.lastSyncTime).toLocaleTimeString() : (b.syncStatus || "Standby"));
+
+      const bBadge = document.getElementById("mon-backup-status");
+      if (bBadge) {
+        const bStat = b.status || "OFFLINE";
+        bBadge.innerText = bStat;
+        if (bStat === "ONLINE") {
+          bBadge.className = "text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30";
+        } else if (bStat === "NEEDS_SCHEMA") {
+          bBadge.className = "text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30";
+        } else {
+          bBadge.className = "text-[9px] font-mono font-black px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-400 border border-rose-500/30";
+        }
+      }
+
+      const schemaAlert = document.getElementById("mon-backup-schema-alert");
+      if (schemaAlert) {
+        schemaAlert.classList.toggle("hidden", !(b.healthy && Number(b.tablesCount || 0) === 0));
+      }
+
+      // MariaDB Server Telemetry Strip
+      const tel = data.serverTelemetry || {};
+      const lb = data.loadBalancer || {};
+      setTxt("mon-engine-ver", tel.engineVersion || "MariaDB");
+      setTxt("mon-uptime", fmtUptime(tel.uptimeSeconds));
+      setTxt("mon-threads", `${tel.threadsRunning ?? 1} / ${tel.threadsConnected ?? 1}`);
+      setTxt("mon-qps", `${fmtNum(tel.totalQueries)} (${tel.qpsEstimate ?? 0}/s)`);
+      setTxt("mon-slow-q", fmtNum(tel.slowQueries));
+      setTxt("mon-last-read-node", String(lb.activeReadNode || "primary").toUpperCase());
+
+      // Load Balancer Eligibility & Split Bar
+      const eligBadge = document.getElementById("lb-eligibility-badge");
+      if (eligBadge) {
+        eligBadge.innerText = lb.backupEligibleForReads ? "2-NODE ACTIVE BALANCING" : "FAILOVER GUARD (PRIMARY)";
+        eligBadge.className = lb.backupEligibleForReads
+          ? "text-[9px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+          : "text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30";
+      }
+
+      const pPct = Number(pm.trafficSharePct ?? 100);
+      const bPct = Number(bm.trafficSharePct ?? 0);
+      setTxt("lb-traffic-split-label", `Primary ${pPct}% / Backup ${bPct}% (${fmtNum(lb.totalReads)} reads, ${fmtNum(lb.totalWrites)} writes)`);
+      const pBar = document.getElementById("lb-traffic-bar-primary");
+      const bBar = document.getElementById("lb-traffic-bar-backup");
+      if (pBar) pBar.style.width = `${pPct}%`;
+      if (bBar) bBar.style.width = `${bPct}%`;
+
+      // Populate LB controls only if admin isn't editing them
+      const activeId = document.activeElement?.id || "";
+      if (!this._lbFormDirty && !activeId.startsWith("lb-")) {
+        const modeSel = document.getElementById("lb-mode-select");
+        const pwEl = document.getElementById("lb-primary-weight");
+        const bwEl = document.getElementById("lb-backup-weight");
+        const dwEl = document.getElementById("lb-dual-write-chk");
+        const afEl = document.getElementById("lb-auto-failover-chk");
+        if (modeSel && lb.mode) modeSel.value = lb.mode;
+        if (pwEl && lb.primaryWeight !== undefined) pwEl.value = String(lb.primaryWeight);
+        if (bwEl && lb.backupWeight !== undefined) bwEl.value = String(lb.backupWeight);
+        if (dwEl && lb.dualWriteReplication !== undefined) dwEl.checked = Boolean(lb.dualWriteReplication);
+        if (afEl && lb.autoFailover !== undefined) afEl.checked = Boolean(lb.autoFailover);
+      }
+
+      // Populate Backup DB Config form only if admin isn't editing it
+      const bCfg = data.backupConfig || {};
+      if (!this._bakFormDirty && !activeId.startsWith("bak-cfg-")) {
+        const enEl = document.getElementById("bak-cfg-enabled");
+        const hEl = document.getElementById("bak-cfg-host");
+        const poEl = document.getElementById("bak-cfg-port");
+        const dEl = document.getElementById("bak-cfg-database");
+        const uEl = document.getElementById("bak-cfg-username");
+        const brEl = document.getElementById("bak-cfg-bridge-url");
+        if (enEl && bCfg.enabled !== undefined) enEl.checked = Boolean(bCfg.enabled);
+        if (hEl && bCfg.host) hEl.value = bCfg.host;
+        if (poEl && bCfg.port) poEl.value = bCfg.port;
+        if (dEl && bCfg.database) dEl.value = bCfg.database;
+        if (uEl && bCfg.username) uEl.value = bCfg.username;
+        if (brEl && bCfg.bridgeUrl !== undefined) brEl.value = bCfg.bridgeUrl;
+      }
+
+      // Sync existing cluster cards latency dynamically from live monitor
+      const pNode = this.db?.syncNodes?.find(n => n.id === "node-sql");
+      if (pNode && p.latencyMs) {
+        pNode.latency = p.latencyMs;
+        pNode.status = p.healthy ? "connected" : "outage";
+      }
+      const bNode = this.db?.syncNodes?.find(n => n.id === "node-sql-backup");
+      if (bNode && b.latencyMs) {
+        bNode.latency = b.latencyMs;
+        bNode.status = b.healthy ? (b.tablesCount > 0 ? "connected" : "standby") : "outage";
+      }
+
+      // Render Table Comparison Matrix
+      const compBody = document.getElementById("mon-table-comparison-body");
+      const rowsList = Array.isArray(data.tableComparison) ? data.tableComparison : [];
+      setTxt("mon-parity-summary", `${rowsList.length} tables monitored | Schema ${b.schemaParityPct ?? 0}% | Rows ${b.rowParityPct ?? 0}%`);
+      if (compBody) {
+        if (rowsList.length === 0) {
+          compBody.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-slate-500 italic">No tables found.</td></tr>`;
+        } else {
+          compBody.innerHTML = rowsList.map(r => {
+            let statusCls = "bg-emerald-500/15 text-emerald-400 border-emerald-500/30";
+            if (r.status === "MISSING_IN_BACKUP") statusCls = "bg-amber-500/15 text-amber-300 border-amber-500/30";
+            else if (r.status === "SYNC_LAG") statusCls = "bg-cyan-500/15 text-cyan-300 border-cyan-500/30";
+            else if (r.status === "BACKUP_ONLY") statusCls = "bg-indigo-500/15 text-indigo-300 border-indigo-500/30";
+            return `
+              <tr class="hover:bg-slate-900/50 transition">
+                <td class="py-1.5 pr-2 font-bold text-slate-200">${r.table}</td>
+                <td class="py-1.5 px-2 text-right text-blue-300">${fmtNum(r.primaryRows)} <span class="text-slate-500">(${r.primaryKB} KB)</span></td>
+                <td class="py-1.5 px-2 text-right text-emerald-300">${fmtNum(r.backupRows)} <span class="text-slate-500">(${r.backupKB} KB)</span></td>
+                <td class="py-1.5 pl-2 text-right"><span class="px-1.5 py-0.5 rounded border text-[8.5px] font-black ${statusCls}">${r.status}</span></td>
+              </tr>
+            `;
+          }).join("");
+        }
+      }
+
+      // Render LB Events
+      const eventsBox = document.getElementById("mon-lb-events");
+      const evList = Array.isArray(lb.events) ? lb.events : [];
+      if (eventsBox) {
+        if (evList.length === 0) {
+          eventsBox.innerHTML = `<div class="text-slate-500 italic">No Load Balancer / Failover events yet.</div>`;
+        } else {
+          eventsBox.innerHTML = evList.map(ev => {
+            let cls = "text-cyan-300";
+            if (ev.type === "success") cls = "text-emerald-400";
+            else if (ev.type === "warning") cls = "text-amber-300";
+            else if (ev.type === "error") cls = "text-rose-400 font-bold";
+            return `<div class="${cls} leading-relaxed">[${ev.time}] ${ev.message}</div>`;
+          }).join("");
+        }
+      }
+
+      if (showFeedback) {
+        this.showToast("Dual-DB Telemetry refreshed!", "success");
+      }
+    } catch (err) {
+      if (showFeedback) {
+        this.showToast(`Monitor Error: ${err.message || err}`, "error");
+      }
+    } finally {
+      this._monitorFetching = false;
+    }
   }
 };

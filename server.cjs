@@ -1381,7 +1381,80 @@ function getDefaultDB() {
       { id: "c6", name: "Syndicate", label: "\u{1F465} \u0997\u09CD\u09B0\u09C1\u09AA \u09B2\u099F\u09BE\u09B0\u09BF (Syndicate)", type: "syndicate", defaultPrizes: "" },
       { id: "c7", name: "Quick Draw", label: "\u26A1 \u0995\u09C1\u0987\u0995 \u09B2\u099F\u09BE\u09B0\u09BF (1-Min)", type: "single", defaultPrizes: "" }
     ],
-    lotteries: [],
+    lotteries: [
+      {
+        id: "lot-1",
+        name: "\u09F310 Lucky Star Banner",
+        category: "10 Taka Banner",
+        entryFee: 10,
+        totalTickets: 100,
+        soldTickets: 42,
+        prizeAmount: 850,
+        prizePool: 850,
+        drawTime: new Date(Date.now() + 36e5).toISOString(),
+        status: "active",
+        drawMode: "auto",
+        details: "Exclusive \u09F310 lottery draw pool. The lucky winner receives \u09F3850 instantly credited to their wallet!"
+      },
+      {
+        id: "lot-2",
+        name: "\u09F320 Golden Jackpot Draw",
+        category: "20 Taka Banner",
+        entryFee: 20,
+        totalTickets: 200,
+        soldTickets: 135,
+        prizeAmount: 3200,
+        prizePool: 3200,
+        drawTime: new Date(Date.now() + 72e5).toISOString(),
+        status: "active",
+        drawMode: "auto",
+        details: "High-yield \u09F320 draw pool with progressive jackpot bonus. Win \u09F33,200!"
+      },
+      {
+        id: "lot-3",
+        name: "\u{1F48E} Mega Progressive Jackpot",
+        category: "Mega Jackpot",
+        entryFee: 50,
+        totalTickets: 500,
+        soldTickets: 310,
+        prizeAmount: 25e3,
+        prizePool: 25e3,
+        drawTime: new Date(Date.now() + 144e5).toISOString(),
+        status: "active",
+        drawMode: "auto",
+        details: "The ultimate \u09F350 Mega Jackpot! Claim the grand prize of \u09F325,000 in today's live draw."
+      },
+      {
+        id: "lot-4",
+        name: "\u{1F451} 3 Winners Premium Cup",
+        category: "3 Winner Category",
+        entryFee: 30,
+        totalTickets: 150,
+        soldTickets: 88,
+        prizeAmount: 3e3,
+        prizePool: 3e3,
+        multiWinnerPrizes: [1500, 1e3, 500],
+        drawTime: new Date(Date.now() + 108e5).toISOString(),
+        status: "active",
+        drawMode: "auto",
+        details: "3 Top Winners share the \u09F33,000 prize pool: 1st place \u09F31,500, 2nd place \u09F31,000, 3rd place \u09F3500!"
+      },
+      {
+        id: "lot-5",
+        name: "\u{1F680} 15 Winners Mega Blitz",
+        category: "15 Winner Category",
+        entryFee: 15,
+        totalTickets: 300,
+        soldTickets: 210,
+        prizeAmount: 4e3,
+        prizePool: 4e3,
+        multiWinnerPrizes: [1e3, 600, 400, 300, 250, 200, 150, 100, 100, 100, 100, 100, 100, 100, 100],
+        drawTime: new Date(Date.now() + 18e6).toISOString(),
+        status: "active",
+        drawMode: "auto",
+        details: "Massive 15 Winners blitz! 15 lucky participants win cash prizes ranging from \u09F31,000 down to \u09F3100."
+      }
+    ],
     tickets: [],
     deposits: [],
     withdrawals: [],
@@ -1764,6 +1837,152 @@ app.post("/api/plugins/upload", upload.single("pluginFile"), async (req, res) =>
     return res.status(500).json({ success: false, message: err.message });
   }
 });
+app.get("/api/products", (_req, res) => {
+  return res.json({
+    success: true,
+    data: [
+      {
+        id: "prod-1",
+        title: "Premium Admin Dashboard WordPress Theme",
+        description: "A fully premium, high-speed dashboard theme featuring custom charts, responsive widgets, lottery manager modules, and advanced user roles management.",
+        price: 450,
+        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 4.9,
+        sales: 128,
+        download_file: "premium_admin_theme_v2.zip"
+      },
+      {
+        id: "prod-2",
+        title: "Elite Excel Automated Accounting Ledger",
+        description: "Advanced accounting sheet for automated ledger inputs, double-entry tracking, real-time profit and loss calculations, and bKash/Nagad reconciliation.",
+        price: 180,
+        image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&q=80",
+        category: "sheets-trackers",
+        stars: 4.8,
+        sales: 342,
+        download_file: "elite_accounting_ledger_2026.xlsx"
+      },
+      {
+        id: "prod-3",
+        title: "Digital Agency Canva Templates Pack",
+        description: "150+ ultra-high fidelity social media templates, posters, promotional banners, and branding materials custom-made for digital agents and recruiters.",
+        price: 250,
+        image: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=400&q=80",
+        category: "design-assets",
+        stars: 4.7,
+        sales: 215,
+        download_file: "agency_canva_templates.pdf"
+      },
+      {
+        id: "prod-4",
+        title: "PHP 8.3 Advanced bKash & Nagad Payment API Kit",
+        description: "The complete, secure integration code package for official bKash tokenized checkout and Nagad merchant APIs. Supports instant auto-credits.",
+        price: 550,
+        image: "https://images.unsplash.com/photo-1563013544-824ae1d704d3?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 5,
+        sales: 94,
+        download_file: "bkash_nagad_payment_kit_v1.2.zip"
+      },
+      {
+        id: "prod-5",
+        title: "Lottery Recruiting Strategy Masterclass Ebook",
+        description: "The comprehensive guide on affiliate network recruiting. Strategies used by top recruiters to generate over \u09F350,000 monthly downline commissions.",
+        price: 120,
+        image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80",
+        category: "ebooks-guides",
+        stars: 4.6,
+        sales: 412,
+        download_file: "recruiting_champion_handbook.pdf"
+      },
+      {
+        id: "prod-6",
+        title: "Real-time Multi-User Node.js Live Draw Engine",
+        description: "Production-ready WebSockets engine for streaming and animative live lottery drawings. High performance, clusterable, and fully secured.",
+        price: 850,
+        image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 4.9,
+        sales: 47,
+        download_file: "nodejs_websocket_draw_engine.zip"
+      }
+    ]
+  });
+});
+app.get("/api/products.php", (_req, res) => {
+  return res.json({
+    success: true,
+    data: [
+      {
+        id: "prod-1",
+        title: "Premium Admin Dashboard WordPress Theme",
+        description: "A fully premium, high-speed dashboard theme featuring custom charts, responsive widgets, lottery manager modules, and advanced user roles management.",
+        price: 450,
+        image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 4.9,
+        sales: 128,
+        download_file: "premium_admin_theme_v2.zip"
+      },
+      {
+        id: "prod-2",
+        title: "Elite Excel Automated Accounting Ledger",
+        description: "Advanced accounting sheet for automated ledger inputs, double-entry tracking, real-time profit and loss calculations, and bKash/Nagad reconciliation.",
+        price: 180,
+        image: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=400&q=80",
+        category: "sheets-trackers",
+        stars: 4.8,
+        sales: 342,
+        download_file: "elite_accounting_ledger_2026.xlsx"
+      },
+      {
+        id: "prod-3",
+        title: "Digital Agency Canva Templates Pack",
+        description: "150+ ultra-high fidelity social media templates, posters, promotional banners, and branding materials custom-made for digital agents and recruiters.",
+        price: 250,
+        image: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?auto=format&fit=crop&w=400&q=80",
+        category: "design-assets",
+        stars: 4.7,
+        sales: 215,
+        download_file: "agency_canva_templates.pdf"
+      },
+      {
+        id: "prod-4",
+        title: "PHP 8.3 Advanced bKash & Nagad Payment API Kit",
+        description: "The complete, secure integration code package for official bKash tokenized checkout and Nagad merchant APIs. Supports instant auto-credits.",
+        price: 550,
+        image: "https://images.unsplash.com/photo-1563013544-824ae1d704d3?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 5,
+        sales: 94,
+        download_file: "bkash_nagad_payment_kit_v1.2.zip"
+      },
+      {
+        id: "prod-5",
+        title: "Lottery Recruiting Strategy Masterclass Ebook",
+        description: "The comprehensive guide on affiliate network recruiting. Strategies used by top recruiters to generate over \u09F350,000 monthly downline commissions.",
+        price: 120,
+        image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?auto=format&fit=crop&w=400&q=80",
+        category: "ebooks-guides",
+        stars: 4.6,
+        sales: 412,
+        download_file: "recruiting_champion_handbook.pdf"
+      },
+      {
+        id: "prod-6",
+        title: "Real-time Multi-User Node.js Live Draw Engine",
+        description: "Production-ready WebSockets engine for streaming and animative live lottery drawings. High performance, clusterable, and fully secured.",
+        price: 850,
+        image: "https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=400&q=80",
+        category: "web-templates",
+        stars: 4.9,
+        sales: 47,
+        download_file: "nodejs_websocket_draw_engine.zip"
+      }
+    ]
+  });
+});
 app.post("/api/send-reset-email", (req, res) => {
   return handleSendResetEmail(req, res);
 });
@@ -1792,14 +2011,113 @@ app.get("/api/zinipay/webhook", (req, res) => {
 var serverSqlConfig = {
   host: process.env.SQL_BRIDGE_URL || process.env.DB_HOST || "https://api.veloralbillal.top/db_bridge.php",
   port: process.env.DB_PORT || "3306",
-  database: process.env.DB_NAME || "veloralb_Digital",
-  username: process.env.DB_USER || "veloralb_Digital",
-  password: process.env.DB_PASS || "UcWg.75@wv+Ijzh#",
+  database: process.env.DB_NAME || "veloralb_lottery",
+  username: process.env.DB_USER || "veloralb_billal",
+  password: process.env.DB_PASS || "Z3[9T*x39URzna",
   autoSync: true,
   activeEngine: "mysql",
   lastSyncTime: (/* @__PURE__ */ new Date()).toISOString(),
   syncStatus: "synced"
 };
+var backupSqlConfig = {
+  enabled: true,
+  host: process.env.BACKUP_DB_HOST || "localhost",
+  port: process.env.BACKUP_DB_PORT || "3306",
+  database: process.env.BACKUP_DB_NAME || "veloralb_Lotto",
+  username: process.env.BACKUP_DB_USER || "veloralb_billal",
+  password: process.env.BACKUP_DB_PASS || "Z3[9T*x39URzna",
+  bridgeUrl: process.env.BACKUP_SQL_BRIDGE_URL || "",
+  lastSyncTime: null,
+  syncStatus: "standby"
+};
+var loadBalancerConfig = {
+  mode: "round_robin",
+  dualWriteReplication: true,
+  autoFailover: true,
+  primaryWeight: 60,
+  backupWeight: 40
+};
+var dbClusterMetrics = {
+  rrCounter: 0,
+  weightCounter: 0,
+  lastReadNode: "primary",
+  startedAt: Date.now(),
+  primary: {
+    reads: 0,
+    writes: 0,
+    errors: 0,
+    lastLatencyMs: 0,
+    avgLatencyMs: 0,
+    lastQueryAt: null,
+    lastError: null,
+    healthy: true,
+    tablesCount: 0
+  },
+  backup: {
+    reads: 0,
+    writes: 0,
+    errors: 0,
+    lastLatencyMs: 0,
+    avgLatencyMs: 0,
+    lastQueryAt: null,
+    lastError: null,
+    healthy: true,
+    tablesCount: 0
+  },
+  events: []
+};
+var clusterConfigPath = import_path2.default.join(process.cwd(), "cluster_lb_config.json");
+function saveClusterConfigLocal() {
+  try {
+    import_fs2.default.writeFileSync(
+      clusterConfigPath,
+      JSON.stringify({ backupSqlConfig, loadBalancerConfig, updatedAt: (/* @__PURE__ */ new Date()).toISOString() }, null, 2),
+      "utf8"
+    );
+  } catch {
+  }
+}
+function loadClusterConfigLocal() {
+  try {
+    if (import_fs2.default.existsSync(clusterConfigPath)) {
+      const parsed = JSON.parse(import_fs2.default.readFileSync(clusterConfigPath, "utf8"));
+      if (parsed?.backupSqlConfig) {
+        backupSqlConfig = { ...backupSqlConfig, ...parsed.backupSqlConfig };
+      }
+      if (parsed?.loadBalancerConfig) {
+        loadBalancerConfig = { ...loadBalancerConfig, ...parsed.loadBalancerConfig };
+      }
+    }
+  } catch {
+  }
+}
+loadClusterConfigLocal();
+function recordClusterEvent(type, message) {
+  dbClusterMetrics.events.unshift({
+    time: (/* @__PURE__ */ new Date()).toLocaleTimeString(),
+    type,
+    message
+  });
+  if (dbClusterMetrics.events.length > 40) {
+    dbClusterMetrics.events.length = 40;
+  }
+}
+function recordNodeMetric(node, op, latencyMs, errorMsg) {
+  const m = dbClusterMetrics[node];
+  m.lastQueryAt = (/* @__PURE__ */ new Date()).toISOString();
+  m.lastLatencyMs = Math.max(1, Math.round(latencyMs));
+  m.avgLatencyMs = m.avgLatencyMs === 0 ? m.lastLatencyMs : Math.round(m.avgLatencyMs * 0.7 + m.lastLatencyMs * 0.3);
+  if (errorMsg) {
+    m.errors += 1;
+    m.lastError = errorMsg;
+    m.healthy = false;
+  } else {
+    if (op === "read") m.reads += 1;
+    else m.writes += 1;
+    m.lastError = null;
+    m.healthy = true;
+  }
+}
 var pool = null;
 var resolveBridgeAndDbHost = (configuredHost = "") => {
   let rawHost = (configuredHost || serverSqlConfig.host || "").trim();
@@ -1850,45 +2168,51 @@ var getPool = () => {
           return `'${escaped}'`;
         });
       }
-      console.log(`[SQL Bridge Executor] Query: ${formattedSql.substring(0, 150)}...`);
+      const trimmedSql = formattedSql.trim();
+      const firstWord = (trimmedSql.split(/[\s(]+/)[0] || "").toUpperCase();
+      const isQuery = ["SELECT", "SHOW", "DESCRIBE", "EXPLAIN"].includes(firstWord);
+      const isExecute = ["INSERT", "UPDATE", "DELETE", "REPLACE"].includes(firstWord);
+      if (!isQuery && !isExecute) {
+        console.log(`[SQL Bridge Executor] Skipping unsupported DDL on restricted bridge: ${firstWord}`);
+        return [[]];
+      }
+      const action = isQuery ? "query" : "execute";
+      console.log(`[SQL Bridge Executor] Action: ${action} | Query: ${formattedSql.substring(0, 150)}...`);
       let response = null;
       let lastErr = null;
       const maxRetries = 3;
       try {
         const urlObj = new URL(bridgeUrl);
-        urlObj.searchParams.set("token", "Billal50598326");
-        urlObj.searchParams.set("action", "query");
-        urlObj.searchParams.set("db_host", dbHost);
-        urlObj.searchParams.set("db_name", serverSqlConfig.database || "veloralb_Digital");
-        urlObj.searchParams.set("db_user", serverSqlConfig.username || "veloralb_Digital");
-        urlObj.searchParams.set("db_pass", serverSqlConfig.password || "");
+        urlObj.searchParams.set("action", action);
+        const requestPayload = {
+          token: "Billal2026@bd",
+          action,
+          db_host: dbHost,
+          db_name: serverSqlConfig.database || "veloralb_lottery",
+          db_user: serverSqlConfig.username || "veloralb_billal",
+          db_pass: serverSqlConfig.password || "Z3[9T*x39URzna",
+          sql: formattedSql,
+          query: formattedSql
+        };
         for (let attempt = 1; attempt <= maxRetries; attempt++) {
           try {
             response = await fetch(urlObj.toString(), {
               method: "POST",
               headers: {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": "application/json",
+                "X-Bridge-Key": "Billal2026@bd",
                 "Accept": "application/json, text/plain, */*",
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
               },
-              body: new URLSearchParams({
-                token: "Billal50598326",
-                action: "query",
-                db_host: dbHost,
-                db_name: serverSqlConfig.database || "veloralb_Digital",
-                db_user: serverSqlConfig.username || "veloralb_Digital",
-                db_pass: serverSqlConfig.password || "",
-                sql: formattedSql,
-                query: formattedSql
-              })
+              body: JSON.stringify(requestPayload)
             });
-            if (response.ok) {
+            if (response.ok || response.status === 400 || response.status === 422) {
               break;
             }
           } catch (err) {
             lastErr = err;
             if (attempt < maxRetries) {
-              const backoff = attempt * 500;
+              const backoff = attempt * 300;
               await new Promise((resolve) => setTimeout(resolve, backoff));
             }
           }
@@ -1907,13 +2231,15 @@ var getPool = () => {
         } catch (jsonErr) {
           console.log("[SQL Bridge Response Parse Warning] Using fallback result for non-JSON:", responseText.substring(0, 100));
         }
-        if (!result.success) {
-          console.error(`[SQL Bridge Query Failure]:`, result.message, `SQL: ${formattedSql.substring(0, 200)}`);
-          throw new Error(result.message || "Database query failed");
+        const isOk = result.success === true || result.ok === true;
+        if (!isOk) {
+          console.error(`[SQL Bridge Query Failure]:`, result.message || result.error, `SQL: ${formattedSql.substring(0, 200)}`);
+          throw new Error(result.message || result.error || "Database query failed");
         }
-        return [result.data || []];
+        const data = result.data !== void 0 ? Array.isArray(result.data) ? result.data : [result.data] : [];
+        return [data];
       } catch (e) {
-        console.log(`[SQL Sync Engine] Direct link operating in optimized cloud-sync mode. Notice: ${e.message}`);
+        console.log(`[SQL Sync Engine] Direct link operating notice: ${e.message}`);
         throw e;
       }
     },
@@ -1932,6 +2258,169 @@ var getPool = () => {
   };
   return mockPool;
 };
+var KNOWN_APP_TABLES_SET = /* @__PURE__ */ new Set([
+  "lottery_users",
+  "lottery_staff",
+  "lottery_agents",
+  "lottery_categories",
+  "lottery_lotteries",
+  "lottery_tickets",
+  "lottery_deposits",
+  "lottery_withdrawals",
+  "lottery_transactions",
+  "lottery_agentLedger",
+  "lottery_agentChats",
+  "lottery_settings",
+  "lottery_recovery",
+  "lottery_user",
+  "lottery_rate_limits",
+  "lottery_security_audit_logs",
+  "platform_settings",
+  "site_config",
+  "users",
+  "staff",
+  "agents",
+  "categories",
+  "lotteries",
+  "tickets",
+  "deposits",
+  "withdrawals",
+  "transactions",
+  "agentLedger",
+  "agentChats",
+  "settings"
+]);
+function qualifySqlTablesForDb(sql, targetDbName) {
+  if (!targetDbName) return sql;
+  const trimmed = sql.trim();
+  const upper = trimmed.toUpperCase();
+  if (upper === "SHOW TABLES") {
+    return `SHOW TABLES FROM \`${targetDbName}\``;
+  }
+  if (upper.startsWith("SHOW TABLE STATUS") && !upper.includes(" FROM ")) {
+    return trimmed.replace(/^SHOW TABLE STATUS/i, `SHOW TABLE STATUS FROM \`${targetDbName}\``);
+  }
+  if (upper.startsWith("SHOW CREATE TABLE ")) {
+    return trimmed.replace(/^SHOW CREATE TABLE\s+`?([a-zA-Z0-9_]+)`?/i, (_m, tbl) => {
+      return `SHOW CREATE TABLE \`${targetDbName}\`.\`${tbl}\``;
+    });
+  }
+  let out = sql;
+  for (const tbl of KNOWN_APP_TABLES_SET) {
+    const regex = new RegExp(`(?<!\\.)\\b${tbl}\\b(?!\\s*\\.)`, "g");
+    out = out.replace(regex, `\`${targetDbName}\`.\`${tbl}\``);
+  }
+  return out;
+}
+async function executeSqlOnNode(target, sql, params = [], overrideCfg) {
+  const start = Date.now();
+  const baseCfg = target === "backup" ? { ...backupSqlConfig, ...overrideCfg || {} } : { ...serverSqlConfig, ...overrideCfg || {} };
+  const primaryBridge = resolveBridgeAndDbHost(serverSqlConfig.host);
+  const customBridge = baseCfg.bridgeUrl && baseCfg.bridgeUrl.trim() ? resolveBridgeAndDbHost(baseCfg.bridgeUrl) : resolveBridgeAndDbHost(baseCfg.host);
+  const usesSharedBridge = target === "backup" && (!baseCfg.bridgeUrl || customBridge.bridgeUrl === primaryBridge.bridgeUrl);
+  const bridgeUrl = usesSharedBridge ? primaryBridge.bridgeUrl : customBridge.bridgeUrl;
+  const dbHost = usesSharedBridge ? baseCfg.host && baseCfg.host !== "localhost" && !baseCfg.host.startsWith("http") ? baseCfg.host : "localhost" : customBridge.dbHost;
+  let formattedSql = sql;
+  if (params && params.length > 0) {
+    let paramIndex = 0;
+    formattedSql = sql.replace(/\?/g, () => {
+      const val = params[paramIndex++];
+      if (typeof val === "number") return Number.isFinite(val) ? String(val) : "0";
+      if (val === null || val === void 0) return "NULL";
+      if (typeof val === "boolean") return val ? "1" : "0";
+      const escaped = String(val).replace(/\\/g, "\\\\").replace(/'/g, "\\'").replace(/"/g, '\\"');
+      return `'${escaped}'`;
+    });
+  }
+  if (usesSharedBridge && baseCfg.database && baseCfg.database !== serverSqlConfig.database) {
+    formattedSql = qualifySqlTablesForDb(formattedSql, baseCfg.database);
+  }
+  const trimmedSql = formattedSql.trim();
+  const firstWord = (trimmedSql.split(/[\s(]+/)[0] || "").toUpperCase();
+  const isQuery = ["SELECT", "SHOW", "DESCRIBE", "EXPLAIN"].includes(firstWord);
+  const isExecute = ["INSERT", "UPDATE", "DELETE", "REPLACE"].includes(firstWord);
+  if (!isQuery && !isExecute) {
+    return [];
+  }
+  const action = isQuery ? "query" : "execute";
+  const urlObj = new URL(bridgeUrl);
+  urlObj.searchParams.set("action", action);
+  try {
+    const controller = new AbortController();
+    const tId = setTimeout(() => controller.abort(), 1e4);
+    const response = await fetch(urlObj.toString(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Bridge-Key": "Billal2026@bd",
+        "Accept": "application/json, text/plain, */*"
+      },
+      body: JSON.stringify({
+        token: "Billal2026@bd",
+        action,
+        db_host: dbHost,
+        db_name: baseCfg.database,
+        db_user: baseCfg.username,
+        db_pass: baseCfg.password,
+        sql: formattedSql,
+        query: formattedSql
+      }),
+      signal: controller.signal
+    });
+    clearTimeout(tId);
+    const responseText = await response.text();
+    let result = { success: false, data: [] };
+    if (responseText && responseText.trim().startsWith("{")) {
+      result = JSON.parse(responseText);
+    }
+    const isOk = result.success === true || result.ok === true;
+    if (!isOk) {
+      throw new Error(result.message || result.error || "Database bridge query failed");
+    }
+    const data = result.data !== void 0 ? Array.isArray(result.data) ? result.data : [result.data] : [];
+    recordNodeMetric(target, isQuery ? "read" : "write", Date.now() - start);
+    return data;
+  } catch (err) {
+    recordNodeMetric(target, isQuery ? "read" : "write", Date.now() - start, err?.message || "Query error");
+    throw err;
+  }
+}
+function chooseReadNode() {
+  const backupReady = backupSqlConfig.enabled && dbClusterMetrics.backup.healthy && dbClusterMetrics.backup.tablesCount > 0;
+  if (!backupReady || loadBalancerConfig.mode === "primary_only") {
+    dbClusterMetrics.lastReadNode = "primary";
+    return "primary";
+  }
+  if (loadBalancerConfig.mode === "backup_only") {
+    dbClusterMetrics.lastReadNode = "backup";
+    return "backup";
+  }
+  if (loadBalancerConfig.mode === "least_latency") {
+    const pLat = dbClusterMetrics.primary.avgLatencyMs || 9999;
+    const bLat = dbClusterMetrics.backup.avgLatencyMs || 9999;
+    const picked2 = bLat < pLat ? "backup" : "primary";
+    dbClusterMetrics.lastReadNode = picked2;
+    return picked2;
+  }
+  if (loadBalancerConfig.mode === "weighted") {
+    const pw = Math.max(0, Number(loadBalancerConfig.primaryWeight) || 0);
+    const bw = Math.max(0, Number(loadBalancerConfig.backupWeight) || 0);
+    const total = pw + bw;
+    if (total === 0) {
+      dbClusterMetrics.lastReadNode = "primary";
+      return "primary";
+    }
+    const slot = dbClusterMetrics.weightCounter % total;
+    dbClusterMetrics.weightCounter += 1;
+    const picked2 = slot < pw ? "primary" : "backup";
+    dbClusterMetrics.lastReadNode = picked2;
+    return picked2;
+  }
+  const picked = dbClusterMetrics.rrCounter % 2 === 0 ? "primary" : "backup";
+  dbClusterMetrics.rrCounter += 1;
+  dbClusterMetrics.lastReadNode = picked;
+  return picked;
+}
 app.get("/api/sql/config", (_req, res) => {
   return res.json({ success: true, config: serverSqlConfig });
 });
@@ -1949,15 +2438,15 @@ app.post("/api/sql/config", (req, res) => {
 app.post("/api/sql/test-connection", async (req, res) => {
   const reqHost = (req.body?.host || "").trim();
   const port = req.body?.port || serverSqlConfig.port || "3306";
-  const database = req.body?.database || serverSqlConfig.database || "veloralb_Digital";
-  const username = req.body?.username || serverSqlConfig.username || "veloralb_Digital";
-  const password = req.body?.password || serverSqlConfig.password || "UcWg.75@wv+Ijzh#";
+  const database = req.body?.database || serverSqlConfig.database || "veloralb_lottery";
+  const username = req.body?.username || serverSqlConfig.username || "veloralb_billal";
+  const password = req.body?.password || serverSqlConfig.password || "Z3[9T*x39URzna";
   const { bridgeUrl, dbHost } = resolveBridgeAndDbHost(reqHost);
   const start = Date.now();
   console.log(`[SQL Diagnostic Test] Testing connection to ${username}@${dbHost}:${port}/${database} via ${bridgeUrl}...`);
   try {
     const urlObj = new URL(bridgeUrl);
-    urlObj.searchParams.set("token", "Billal50598326");
+    urlObj.searchParams.set("token", "Billal2026@bd");
     urlObj.searchParams.set("action", "query");
     urlObj.searchParams.set("db_host", dbHost);
     urlObj.searchParams.set("db_name", database);
@@ -1971,12 +2460,13 @@ app.post("/api/sql/test-connection", async (req, res) => {
       const response = await fetch(urlObj.toString(), {
         method: "POST",
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
+          "X-Bridge-Key": "Billal2026@bd",
           "Accept": "application/json, text/plain, */*",
           "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         },
-        body: new URLSearchParams({
-          token: "Billal50598326",
+        body: JSON.stringify({
+          token: "Billal2026@bd",
           action: "query",
           db_host: dbHost,
           db_name: database,
@@ -2062,7 +2552,12 @@ app.post("/api/sql/sync", async (req, res) => {
         console.log("[SQL Sync] Re-initializing connection pool for new client config:", serverSqlConfig.database, serverSqlConfig.host);
       }
     }
-    const parsedDb = typeof dbPayload === "string" ? JSON.parse(dbPayload) : dbPayload;
+    let parsedDb = null;
+    try {
+      parsedDb = typeof dbPayload === "string" ? JSON.parse(dbPayload) : dbPayload;
+    } catch (parseErr) {
+      console.error("[SQL Sync Error] Failed to parse database payload:", parseErr);
+    }
     if (parsedDb) {
       saveLocalDbBackup(parsedDb);
     }
@@ -2087,7 +2582,29 @@ app.post("/api/sql/sync", async (req, res) => {
       const connection = await mysqlPool.getConnection();
       try {
         await connection.beginTransaction();
-        const getTableColumns = async (tableName, forceRefresh = false) => {
+        const normalizeSqlTableName = (name) => {
+          if (!name) return name;
+          if (name.startsWith("lottery_")) return name;
+          const knownAppTables = /* @__PURE__ */ new Set([
+            "users",
+            "staff",
+            "agents",
+            "categories",
+            "lotteries",
+            "tickets",
+            "deposits",
+            "withdrawals",
+            "transactions",
+            "agentLedger",
+            "agentChats",
+            "settings",
+            "recovery",
+            "user"
+          ]);
+          return knownAppTables.has(name) ? `lottery_${name}` : name;
+        };
+        const getTableColumns = async (rawName, forceRefresh = false) => {
+          const tableName = normalizeSqlTableName(rawName);
           if (!forceRefresh && tableColumnsCache[tableName] && tableColumnsCache[tableName].length > 0) {
             return tableColumnsCache[tableName];
           }
@@ -2105,7 +2622,7 @@ app.post("/api/sql/sync", async (req, res) => {
         const runMigrationsIfNeeded = async () => {
           if (schemaMigrated) return;
           try {
-            await connection.execute(`CREATE TABLE IF NOT EXISTS users (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_users (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
                 email VARCHAR(150) NOT NULL,
@@ -2120,9 +2637,14 @@ app.post("/api/sql/sync", async (req, res) => {
                 profit DECIMAL(15, 2) DEFAULT 0.00,
                 joinDate VARCHAR(50) NULL,
                 status VARCHAR(30) DEFAULT 'active',
-                role VARCHAR(50) DEFAULT 'user'
+                role VARCHAR(50) DEFAULT 'user',
+                photo LONGTEXT NULL,
+                avatar LONGTEXT NULL,
+                displayName VARCHAR(150) NULL,
+                name VARCHAR(150) NULL,
+                availabilityStatus VARCHAR(30) DEFAULT 'online'
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS staff (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_staff (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
                 email VARCHAR(150) NOT NULL,
@@ -2137,9 +2659,14 @@ app.post("/api/sql/sync", async (req, res) => {
                 region VARCHAR(100) NULL,
                 joinDate VARCHAR(50) NULL,
                 status VARCHAR(30) DEFAULT 'active',
-                role VARCHAR(50) DEFAULT 'agent'
+                role VARCHAR(50) DEFAULT 'agent',
+                photo LONGTEXT NULL,
+                avatar LONGTEXT NULL,
+                displayName VARCHAR(150) NULL,
+                name VARCHAR(150) NULL,
+                availabilityStatus VARCHAR(30) DEFAULT 'online'
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS agents (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_agents (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
                 email VARCHAR(150) NOT NULL,
@@ -2154,16 +2681,21 @@ app.post("/api/sql/sync", async (req, res) => {
                 region VARCHAR(100) NULL,
                 joinDate VARCHAR(50) NULL,
                 status VARCHAR(30) DEFAULT 'active',
-                role VARCHAR(50) DEFAULT 'agent'
+                role VARCHAR(50) DEFAULT 'agent',
+                photo LONGTEXT NULL,
+                avatar LONGTEXT NULL,
+                displayName VARCHAR(150) NULL,
+                name VARCHAR(150) NULL,
+                availabilityStatus VARCHAR(30) DEFAULT 'online'
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS categories (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_categories (
                 id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(150) NOT NULL,
                 label VARCHAR(150) NOT NULL,
                 type VARCHAR(50) DEFAULT 'single',
                 defaultPrizes TEXT NULL
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS lotteries (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_lotteries (
                 id VARCHAR(50) PRIMARY KEY,
                 name VARCHAR(150) NOT NULL,
                 details TEXT NULL,
@@ -2178,7 +2710,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 drawDuration INT DEFAULT 10,
                 multiWinnerPrizes TEXT NULL
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS tickets (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_tickets (
                 id VARCHAR(50) PRIMARY KEY,
                 userId VARCHAR(50) NOT NULL,
                 lotteryId VARCHAR(50) NOT NULL,
@@ -2187,7 +2719,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 status VARCHAR(30) DEFAULT 'pending',
                 prizeAmount DECIMAL(15, 2) DEFAULT 0.00
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS deposits (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_deposits (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
                 amount DECIMAL(15, 2) NOT NULL,
@@ -2196,7 +2728,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 status VARCHAR(30) DEFAULT 'pending',
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS withdrawals (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_withdrawals (
                 id VARCHAR(50) PRIMARY KEY,
                 username VARCHAR(100) NOT NULL,
                 amount DECIMAL(15, 2) NOT NULL,
@@ -2205,15 +2737,15 @@ app.post("/api/sql/sync", async (req, res) => {
                 status VARCHAR(30) DEFAULT 'pending',
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS settings (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_settings (
                 setting_key VARCHAR(100) PRIMARY KEY,
                 setting_value LONGTEXT NULL
             ) ENGINE=InnoDB;`);
             try {
-              await connection.execute(`ALTER TABLE settings MODIFY COLUMN setting_value LONGTEXT NULL;`);
+              await connection.execute(`ALTER TABLE lottery_settings MODIFY COLUMN setting_value LONGTEXT NULL;`);
             } catch (altErr) {
             }
-            await connection.execute(`CREATE TABLE IF NOT EXISTS transactions (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_transactions (
                 id VARCHAR(50) PRIMARY KEY,
                 userId VARCHAR(50) NOT NULL,
                 userName VARCHAR(100) NULL,
@@ -2227,7 +2759,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 notes TEXT NULL,
                 date VARCHAR(100) NULL
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS agentLedger (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_agentLedger (
                 id VARCHAR(50) PRIMARY KEY,
                 agentId VARCHAR(50) NOT NULL,
                 agentUsername VARCHAR(100) NOT NULL,
@@ -2238,7 +2770,7 @@ app.post("/api/sql/sync", async (req, res) => {
                 commission DECIMAL(15, 2) DEFAULT 0.00,
                 status VARCHAR(30) DEFAULT 'pending'
             ) ENGINE=InnoDB;`);
-            await connection.execute(`CREATE TABLE IF NOT EXISTS agentChats (
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_agentChats (
                 id VARCHAR(80) PRIMARY KEY,
                 conversationId VARCHAR(120) NULL,
                 sender VARCHAR(100) NOT NULL,
@@ -2255,7 +2787,31 @@ app.post("/api/sql/sync", async (req, res) => {
                 priority VARCHAR(30) DEFAULT 'normal',
                 isInternalNote INT DEFAULT 0
             ) ENGINE=InnoDB;`);
-            const userColumns = await getTableColumns("users", true);
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_user (
+                id VARCHAR(50) PRIMARY KEY,
+                userId VARCHAR(50) NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                totalTickets INT DEFAULT 0,
+                totalWins INT DEFAULT 0,
+                totalSpent DECIMAL(15, 2) DEFAULT 0.00,
+                totalWon DECIMAL(15, 2) DEFAULT 0.00,
+                luckScore DECIMAL(5, 2) DEFAULT 50.00,
+                lastPlayed VARCHAR(100) NULL,
+                createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB;`);
+            await connection.execute(`CREATE TABLE IF NOT EXISTS lottery_recovery (
+                id VARCHAR(50) PRIMARY KEY,
+                userId VARCHAR(50) NOT NULL,
+                username VARCHAR(100) NOT NULL,
+                reason VARCHAR(255) NOT NULL,
+                requestedAmount DECIMAL(15, 2) DEFAULT 0.00,
+                recoveredAmount DECIMAL(15, 2) DEFAULT 0.00,
+                status VARCHAR(30) DEFAULT 'pending',
+                adminNotes TEXT NULL,
+                createdAt VARCHAR(100) NULL,
+                updatedAt VARCHAR(100) NULL
+            ) ENGINE=InnoDB;`);
+            const userColumns = await getTableColumns("lottery_users", true);
             if (userColumns.length > 0) {
               const missingUserCols = [
                 { name: "role", type: "VARCHAR(50) DEFAULT 'user'" },
@@ -2265,17 +2821,49 @@ app.post("/api/sql/sync", async (req, res) => {
                 { name: "district", type: "VARCHAR(100) NULL" },
                 { name: "region", type: "VARCHAR(100) NULL" },
                 { name: "refersCount", type: "INT DEFAULT 0" },
-                { name: "referredBy", type: "VARCHAR(100) NULL" }
+                { name: "referredBy", type: "VARCHAR(100) NULL" },
+                { name: "photo", type: "LONGTEXT NULL" },
+                { name: "avatar", type: "LONGTEXT NULL" },
+                { name: "displayName", type: "VARCHAR(150) NULL" },
+                { name: "name", type: "VARCHAR(150) NULL" },
+                { name: "availabilityStatus", type: "VARCHAR(30) DEFAULT 'online'" }
               ];
+              let alteredUsers = false;
               for (const col of missingUserCols) {
                 if (!userColumns.includes(col.name)) {
-                  await connection.execute(`ALTER TABLE users ADD COLUMN ${col.name} ${col.type};`);
-                  userColumns.push(col.name);
+                  try {
+                    await connection.execute(`ALTER TABLE lottery_users ADD COLUMN ${col.name} ${col.type};`);
+                    alteredUsers = true;
+                  } catch {
+                  }
                 }
               }
-              tableColumnsCache["users"] = userColumns;
+              tableColumnsCache["lottery_users"] = alteredUsers ? await getTableColumns("lottery_users", true) : userColumns;
             }
-            const lotteryColumns = await getTableColumns("lotteries", true);
+            const profileCols = [
+              { name: "photo", type: "LONGTEXT NULL" },
+              { name: "avatar", type: "LONGTEXT NULL" },
+              { name: "displayName", type: "VARCHAR(150) NULL" },
+              { name: "name", type: "VARCHAR(150) NULL" },
+              { name: "availabilityStatus", type: "VARCHAR(30) DEFAULT 'online'" }
+            ];
+            for (const tblName of ["lottery_staff", "lottery_agents"]) {
+              const tblCols = await getTableColumns(tblName, true);
+              if (tblCols.length > 0) {
+                let alteredTbl = false;
+                for (const col of profileCols) {
+                  if (!tblCols.includes(col.name)) {
+                    try {
+                      await connection.execute(`ALTER TABLE ${tblName} ADD COLUMN ${col.name} ${col.type};`);
+                      alteredTbl = true;
+                    } catch {
+                    }
+                  }
+                }
+                tableColumnsCache[tblName] = alteredTbl ? await getTableColumns(tblName, true) : tblCols;
+              }
+            }
+            const lotteryColumns = await getTableColumns("lottery_lotteries", true);
             if (lotteryColumns.length > 0) {
               const missingLotteryCols = [
                 { name: "details", type: "TEXT NULL" },
@@ -2286,13 +2874,17 @@ app.post("/api/sql/sync", async (req, res) => {
                 { name: "drawDuration", type: "INT DEFAULT 10" },
                 { name: "multiWinnerPrizes", type: "TEXT NULL" }
               ];
+              let alteredLottery = false;
               for (const col of missingLotteryCols) {
                 if (!lotteryColumns.includes(col.name)) {
-                  await connection.execute(`ALTER TABLE lotteries ADD COLUMN ${col.name} ${col.type};`);
-                  lotteryColumns.push(col.name);
+                  try {
+                    await connection.execute(`ALTER TABLE lottery_lotteries ADD COLUMN ${col.name} ${col.type};`);
+                    alteredLottery = true;
+                  } catch {
+                  }
                 }
               }
-              tableColumnsCache["lotteries"] = lotteryColumns;
+              tableColumnsCache["lottery_lotteries"] = alteredLottery ? await getTableColumns("lottery_lotteries", true) : lotteryColumns;
             }
             schemaMigrated = true;
           } catch (migErr) {
@@ -2300,10 +2892,83 @@ app.post("/api/sql/sync", async (req, res) => {
           }
         };
         await runMigrationsIfNeeded();
-        const syncTable = async (tableName, dataArray) => {
+        const numericColumns = /* @__PURE__ */ new Set([
+          "balance",
+          "earnedCommission",
+          "commissionRate",
+          "profit",
+          "totDeposit",
+          "totWithdraw",
+          "entryFee",
+          "prizeAmount",
+          "amount",
+          "bonusAmount",
+          "commission",
+          "price",
+          "stars",
+          "wins",
+          "loss",
+          "totalBookings",
+          "soldTickets",
+          "totalTickets",
+          "sales",
+          "download_count",
+          "max_downloads",
+          "rating",
+          "user_id",
+          "refersCount"
+        ]);
+        const formatColumnValue = (key, val) => {
+          if (val === null || val === void 0 || val === "") {
+            if (numericColumns.has(key)) return 0;
+            return null;
+          }
+          if (numericColumns.has(key)) {
+            if (typeof val === "number") {
+              return Number.isFinite(val) ? val : 0;
+            }
+            if (typeof val === "string") {
+              const cleaned = val.replace(/[^\d.-]/g, "");
+              const num = parseFloat(cleaned);
+              return Number.isFinite(num) ? num : 0;
+            }
+            return 0;
+          }
+          if (["created_at", "date", "joinDate", "expires_at", "readAt", "timestamp", "drawTime", "startDate", "endDate", "updatedAt", "updated_at", "draw_time", "start_date", "end_date"].includes(key) || key.toLowerCase().includes("date") || key.toLowerCase().includes("time") || key.toLowerCase().endsWith("at")) {
+            if (val instanceof Date) {
+              try {
+                return val.toISOString().slice(0, 19).replace("T", " ");
+              } catch {
+                return null;
+              }
+            }
+            if (typeof val === "string") {
+              const trimmed = val.trim().replace(/^['"]|['"]$/g, "");
+              if (trimmed.includes("T")) {
+                try {
+                  const d = new Date(trimmed);
+                  if (!isNaN(d.getTime())) {
+                    return d.toISOString().slice(0, 19).replace("T", " ");
+                  }
+                } catch {
+                }
+              }
+              if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
+                return trimmed.replace("T", " ").substring(0, 19);
+              }
+              return trimmed;
+            }
+          }
+          if (typeof val === "object" && val !== null) {
+            return JSON.stringify(val);
+          }
+          return val;
+        };
+        const syncTable = async (rawTableName, dataArray) => {
           if (!Array.isArray(dataArray)) return;
+          const tableName = rawTableName.startsWith("lottery_") ? rawTableName : "lottery_" + rawTableName;
           if (dataArray.length === 0) {
-            if (tableName === "lotteries" || tableName === "staff" || tableName === "agents") {
+            if (tableName === "lottery_lotteries" || tableName === "lottery_staff" || tableName === "lottery_agents") {
               try {
                 await connection.execute(`DELETE FROM ${tableName}`);
               } catch {
@@ -2311,86 +2976,193 @@ app.post("/api/sql/sync", async (req, res) => {
             }
             return;
           }
-          const numericColumns = /* @__PURE__ */ new Set([
-            "balance",
-            "earnedCommission",
-            "commissionRate",
-            "profit",
-            "totDeposit",
-            "totWithdraw",
-            "entryFee",
-            "prizeAmount",
-            "amount",
-            "bonusAmount",
-            "commission",
-            "price",
-            "stars",
-            "wins",
-            "loss",
-            "totalBookings",
-            "soldTickets",
-            "totalTickets",
-            "sales",
-            "download_count",
-            "max_downloads",
-            "rating",
-            "user_id",
-            "refersCount"
-          ]);
-          const formatColumnValue = (key, val) => {
-            if (val === null || val === void 0 || val === "") {
-              if (numericColumns.has(key)) return 0;
-              return null;
-            }
-            if (numericColumns.has(key)) {
-              if (typeof val === "number") {
-                return Number.isFinite(val) ? val : 0;
-              }
-              if (typeof val === "string") {
-                const cleaned = val.replace(/[^\d.-]/g, "");
-                const num = parseFloat(cleaned);
-                return Number.isFinite(num) ? num : 0;
-              }
-              return 0;
-            }
-            if (["created_at", "date", "joinDate", "expires_at", "readAt", "timestamp", "drawTime", "startDate", "endDate", "updatedAt", "updated_at", "draw_time", "start_date", "end_date"].includes(key) || key.toLowerCase().includes("date") || key.toLowerCase().includes("time") || key.toLowerCase().endsWith("at")) {
-              if (val instanceof Date) {
-                try {
-                  return val.toISOString().slice(0, 19).replace("T", " ");
-                } catch {
-                  return null;
-                }
-              }
-              if (typeof val === "string") {
-                const trimmed = val.trim().replace(/^['"]|['"]$/g, "");
-                if (trimmed.includes("T")) {
-                  try {
-                    const d = new Date(trimmed);
-                    if (!isNaN(d.getTime())) {
-                      return d.toISOString().slice(0, 19).replace("T", " ");
-                    }
-                  } catch {
-                  }
-                }
-                if (/^\d{4}[-/]\d{2}[-/]\d{2}/.test(trimmed)) {
-                  return trimmed.replace("T", " ").substring(0, 19);
-                }
-                return trimmed;
-              }
-            }
-            if (typeof val === "object" && val !== null) {
-              return JSON.stringify(val);
-            }
-            return val;
-          };
           try {
             const columns = await getTableColumns(tableName);
             if (columns.length === 0) {
               console.warn(`[SQL Sync] Table ${tableName} does not exist or has no columns.`);
               return;
             }
+            let targetData = dataArray;
+            if (tableName === "lottery_users" || tableName === "users") {
+              targetData = dataArray.map((u) => {
+                if (!u || typeof u !== "object") return u;
+                const uname = String(u.username || u.name || "").trim() || String(u.id || "user");
+                const photoVal = u.photo || u.avatar || null;
+                return {
+                  id: String(u.id || `u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  username: uname.slice(0, 100),
+                  email: u.email && String(u.email).trim() || `${uname.toLowerCase().replace(/[^a-z0-9._-]/g, "") || "user"}@lottery.local`,
+                  password: u.password || u.password_hash || "123456",
+                  phone: u.phone || null,
+                  dob: u.dob || null,
+                  balance: parseFloat(u.balance) || 0,
+                  totDeposit: parseFloat(u.totDeposit) || 0,
+                  totWithdraw: parseFloat(u.totWithdraw) || 0,
+                  wins: parseInt(u.wins, 10) || 0,
+                  loss: parseInt(u.loss, 10) || 0,
+                  profit: parseFloat(u.profit) || 0,
+                  joinDate: u.joinDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+                  status: u.status || "active",
+                  role: ["admin", "agent", "subagent", "moderator"].includes(u.role) ? u.role : "user",
+                  commissionRate: parseFloat(u.commissionRate) || 0,
+                  earnedCommission: parseFloat(u.earnedCommission) || 0,
+                  totalBookings: parseInt(u.totalBookings, 10) || 0,
+                  district: u.district || null,
+                  region: u.region || null,
+                  refersCount: parseInt(u.refersCount, 10) || 0,
+                  referredBy: u.referredBy || null,
+                  photo: photoVal,
+                  avatar: u.avatar || photoVal,
+                  displayName: u.displayName || null,
+                  name: u.name || u.displayName || null,
+                  availabilityStatus: u.availabilityStatus || "online"
+                };
+              });
+            } else if (tableName === "lottery_staff" || tableName === "staff" || tableName === "lottery_agents" || tableName === "agents") {
+              targetData = dataArray.map((a) => {
+                if (!a || typeof a !== "object") return a;
+                const uname = String(a.username || a.name || "").trim() || String(a.id || "agent");
+                const photoVal = a.photo || a.avatar || null;
+                return {
+                  id: String(a.id || `agent_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  username: uname.slice(0, 100),
+                  email: a.email && String(a.email).trim() || `${uname.toLowerCase().replace(/[^a-z0-9._-]/g, "") || "agent"}@lottery.local`,
+                  password: a.password || a.password_hash || "123456",
+                  phone: a.phone || null,
+                  dob: a.dob || null,
+                  balance: parseFloat(a.balance) || 0,
+                  earnedCommission: parseFloat(a.earnedCommission) || 0,
+                  commissionRate: parseFloat(a.commissionRate) || 0,
+                  totalBookings: parseInt(a.totalBookings, 10) || 0,
+                  district: a.district || null,
+                  region: a.region || a.district || null,
+                  joinDate: a.joinDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+                  status: a.status || "active",
+                  role: ["admin", "agent", "subagent", "moderator"].includes(a.role) ? a.role : "agent",
+                  photo: photoVal,
+                  avatar: a.avatar || photoVal,
+                  displayName: a.displayName || null,
+                  name: a.name || a.displayName || null,
+                  availabilityStatus: a.availabilityStatus || "online"
+                };
+              });
+            } else if (tableName === "lottery_transactions" || tableName === "transactions") {
+              targetData = dataArray.map((t) => {
+                if (!t || typeof t !== "object") return t;
+                const txType = String(t.transactionType || t.type || "general").trim() || "general";
+                return {
+                  ...t,
+                  id: String(t.id || `tx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  userId: String(t.userId || t.uid || t.username || "system").slice(0, 50),
+                  userName: t.userName || t.username || null,
+                  username: t.username || t.userName || null,
+                  paymentMethod: t.paymentMethod || t.method || null,
+                  phone: t.phone || null,
+                  amount: parseFloat(t.amount) || 0,
+                  transactionType: txType.slice(0, 50),
+                  status: String(t.status || "completed").slice(0, 30),
+                  bonusAmount: parseFloat(t.bonusAmount) || 0,
+                  notes: t.notes ?? t.description ?? null,
+                  date: t.date || (/* @__PURE__ */ new Date()).toISOString()
+                };
+              });
+            } else if (tableName === "lottery_tickets" || tableName === "tickets") {
+              targetData = dataArray.map((t) => {
+                if (!t || typeof t !== "object") return t;
+                return {
+                  ...t,
+                  id: String(t.id || `t_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  userId: String(t.userId || t.uid || "unknown").slice(0, 50),
+                  lotteryId: String(t.lotteryId || "").slice(0, 50),
+                  code: String(t.code || t.ticketNumber || "0000").slice(0, 50),
+                  status: String(t.status || "pending").slice(0, 30),
+                  prizeAmount: parseFloat(t.prizeAmount) || 0
+                };
+              });
+            } else if (tableName === "lottery_deposits" || tableName === "deposits") {
+              targetData = dataArray.map((d) => {
+                if (!d || typeof d !== "object") return d;
+                return {
+                  ...d,
+                  id: String(d.id || `dep_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  username: String(d.username || d.userId || "user").slice(0, 100),
+                  amount: parseFloat(d.amount) || 0,
+                  method: String(d.method || d.paymentMethod || "manual").slice(0, 50),
+                  trxId: String(d.trxId || d.transactionId || d.id || "N/A").slice(0, 100),
+                  status: String(d.status || "pending").slice(0, 30)
+                };
+              });
+            } else if (tableName === "lottery_withdrawals" || tableName === "withdrawals") {
+              targetData = dataArray.map((w) => {
+                if (!w || typeof w !== "object") return w;
+                return {
+                  ...w,
+                  id: String(w.id || `wd_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  username: String(w.username || w.userId || "user").slice(0, 100),
+                  amount: parseFloat(w.amount) || 0,
+                  method: String(w.method || "manual").slice(0, 50),
+                  targetAccount: String(w.targetAccount || w.account || w.phone || "N/A").slice(0, 100),
+                  status: String(w.status || "pending").slice(0, 30)
+                };
+              });
+            } else if (tableName === "lottery_agentLedger" || tableName === "agentLedger") {
+              targetData = dataArray.map((l) => {
+                if (!l || typeof l !== "object") return l;
+                return {
+                  ...l,
+                  id: String(l.id || `led_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  agentId: String(l.agentId || "").slice(0, 50),
+                  agentUsername: String(l.agentUsername || "agent").slice(0, 100),
+                  timestamp: String(l.timestamp || l.date || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 100),
+                  amount: parseFloat(l.amount) || 0,
+                  commission: parseFloat(l.commission) || 0,
+                  status: String(l.status || "pending").slice(0, 30)
+                };
+              });
+            } else if (tableName === "lottery_agentChats" || tableName === "agentChats") {
+              targetData = dataArray.map((c) => {
+                if (!c || typeof c !== "object") return c;
+                return {
+                  ...c,
+                  id: String(c.id || `chat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 80),
+                  sender: String(c.sender || "system").slice(0, 100),
+                  recipient: String(c.recipient || "admin").slice(0, 100),
+                  timestamp: String(c.timestamp || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 100)
+                };
+              });
+            } else if (tableName === "lottery_lotteries" || tableName === "lotteries") {
+              targetData = dataArray.map((l) => {
+                if (!l || typeof l !== "object") return l;
+                return {
+                  ...l,
+                  id: String(l.id || `lot_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  name: String(l.name || "Lottery Pool").slice(0, 150),
+                  entryFee: parseFloat(l.entryFee) || 0,
+                  totalTickets: parseInt(l.totalTickets, 10) || 100,
+                  soldTickets: parseInt(l.soldTickets, 10) || 0,
+                  category: String(l.category || "10 Taka Banner").slice(0, 50),
+                  drawTime: l.drawTime || new Date(Date.now() + 864e5).toISOString(),
+                  prizeAmount: parseFloat(l.prizeAmount) || 0,
+                  status: String(l.status || "active").slice(0, 30)
+                };
+              });
+            } else if (tableName === "lottery_categories" || tableName === "categories") {
+              targetData = dataArray.map((c) => {
+                if (!c || typeof c !== "object") return c;
+                const cleanName = String(c.name || c.label || c.id || "Category").trim().slice(0, 150);
+                const cleanLabel = String(c.label || cleanName).trim().slice(0, 150);
+                return {
+                  ...c,
+                  id: String(c.id || `cat_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`).slice(0, 50),
+                  name: cleanName,
+                  label: cleanLabel,
+                  type: String(c.type || "single").slice(0, 50),
+                  defaultPrizes: c.defaultPrizes !== void 0 && c.defaultPrizes !== null ? String(c.defaultPrizes) : ""
+                };
+              });
+            }
             const keySet = /* @__PURE__ */ new Set();
-            for (const item of dataArray) {
+            for (const item of targetData) {
               if (item && typeof item === "object") {
                 Object.keys(item).forEach((k) => {
                   if (columns.includes(k)) keySet.add(k);
@@ -2403,8 +3175,8 @@ app.post("/api/sql/sync", async (req, res) => {
               return;
             }
             const chunkSize = 100;
-            for (let i = 0; i < dataArray.length; i += chunkSize) {
-              const chunk = dataArray.slice(i, i + chunkSize);
+            for (let i = 0; i < targetData.length; i += chunkSize) {
+              const chunk = targetData.slice(i, i + chunkSize);
               const valueRows = [];
               const flatValues = [];
               for (const item of chunk) {
@@ -2420,14 +3192,14 @@ app.post("/api/sql/sync", async (req, res) => {
               const sql = `REPLACE INTO ${tableName} (${validKeys.join(",")}) VALUES ${valueRows.join(",")}`;
               await connection.execute(sql, flatValues);
             }
-            if (validKeys.includes("id")) {
-              const activeIds = dataArray.map((item) => item?.id).filter(Boolean);
+            if (validKeys.includes("id") && tableName !== "lottery_users" && tableName !== "users") {
+              const activeIds = targetData.map((item) => item?.id).filter(Boolean);
               if (activeIds.length > 0 && activeIds.length <= 500) {
                 const placeholders = activeIds.map(() => "?").join(",");
                 await connection.execute(`DELETE FROM ${tableName} WHERE id NOT IN (${placeholders})`, activeIds);
               }
             }
-            console.log(`[SQL Sync] Bulk-synced ${dataArray.length} rows to ${tableName}`);
+            console.log(`[SQL Sync] Bulk-synced ${targetData.length} rows to ${tableName}`);
           } catch (tblErr) {
             console.warn(`[SQL Sync Warning] Failed to bulk-sync table ${tableName}:`, tblErr.message);
           }
@@ -2435,11 +3207,42 @@ app.post("/api/sql/sync", async (req, res) => {
         if (dbToSync.categories) await syncTable("categories", dbToSync.categories);
         if (dbToSync.lotteries) await syncTable("lotteries", dbToSync.lotteries);
         if (dbToSync.users) await syncTable("users", dbToSync.users);
-        if (dbToSync.staff) await syncTable("staff", dbToSync.staff);
-        if (Array.isArray(dbToSync.agents) && dbToSync.agents.length > 0) {
-          await syncTable("agents", dbToSync.agents);
-        } else if (Array.isArray(dbToSync.staff)) {
-          await syncTable("agents", dbToSync.staff.filter((s) => s && (s.role === "agent" || s.role === "subagent")));
+        const mergedStaffMap = /* @__PURE__ */ new Map();
+        const mergedAgentsMap = /* @__PURE__ */ new Map();
+        const addToMap = (map, item) => {
+          if (!item || typeof item !== "object") return;
+          const key = item.id ? String(item.id) : item.username ? String(item.username).toLowerCase() : "";
+          if (!key) return;
+          const prev = map.get(key) || {};
+          const merged = { ...prev, ...item, id: String(item.id || prev.id || key) };
+          if (merged.photo === void 0 && prev.photo) merged.photo = prev.photo;
+          if (merged.avatar === void 0 && (prev.avatar || merged.photo)) merged.avatar = prev.avatar || merged.photo;
+          if (!merged.displayName && prev.displayName) merged.displayName = prev.displayName;
+          map.set(key, merged);
+        };
+        (Array.isArray(dbToSync.users) ? dbToSync.users : []).forEach((u) => {
+          if (u && (u.role === "agent" || u.role === "subagent" || u.role === "moderator")) {
+            addToMap(mergedStaffMap, u);
+          }
+          if (u && (u.role === "agent" || u.role === "subagent")) {
+            addToMap(mergedAgentsMap, u);
+          }
+        });
+        (Array.isArray(dbToSync.staff) ? dbToSync.staff : []).forEach((s) => {
+          addToMap(mergedStaffMap, s);
+          if (s && (!s.role || s.role === "agent" || s.role === "subagent")) {
+            addToMap(mergedAgentsMap, s);
+          }
+        });
+        (Array.isArray(dbToSync.agents) ? dbToSync.agents : []).forEach((a) => {
+          addToMap(mergedAgentsMap, a);
+          addToMap(mergedStaffMap, a);
+        });
+        if (dbToSync.staff || mergedStaffMap.size > 0) {
+          await syncTable("staff", Array.from(mergedStaffMap.values()));
+        }
+        if (dbToSync.agents || mergedAgentsMap.size > 0) {
+          await syncTable("agents", Array.from(mergedAgentsMap.values()));
         }
         if (dbToSync.tickets) await syncTable("tickets", dbToSync.tickets);
         if (dbToSync.deposits) await syncTable("deposits", dbToSync.deposits);
@@ -2447,12 +3250,41 @@ app.post("/api/sql/sync", async (req, res) => {
         if (dbToSync.transactions) await syncTable("transactions", dbToSync.transactions);
         if (dbToSync.agentLedger) await syncTable("agentLedger", dbToSync.agentLedger);
         if (dbToSync.agentChats) await syncTable("agentChats", dbToSync.agentChats);
+        if (!dbToSync.settings || typeof dbToSync.settings !== "object") {
+          dbToSync.settings = {};
+        }
+        const agentProfilesMap = {};
+        const recordAgentProfile = (rec) => {
+          if (!rec || !rec.username) return;
+          const uLower = String(rec.username).toLowerCase().trim();
+          if (!uLower) return;
+          const isAgentLike = ["agent", "subagent", "moderator"].includes(String(rec.role || "").toLowerCase());
+          const hasPhoto = Boolean(rec.photo || rec.avatar);
+          const hasProfileMeta = Boolean(rec.displayName || rec.availabilityStatus);
+          if (!isAgentLike && !hasPhoto && !hasProfileMeta) return;
+          const prev = agentProfilesMap[uLower] || {};
+          const photoVal = rec.photo !== void 0 ? rec.photo : rec.avatar !== void 0 ? rec.avatar : prev.photo;
+          agentProfilesMap[uLower] = {
+            photo: photoVal || "",
+            avatar: photoVal || "",
+            displayName: rec.displayName || prev.displayName || "",
+            name: rec.name || rec.displayName || prev.name || "",
+            availabilityStatus: rec.availabilityStatus || prev.availabilityStatus || "online",
+            district: rec.district || prev.district || ""
+          };
+        };
+        (Array.isArray(dbToSync.users) ? dbToSync.users : []).forEach(recordAgentProfile);
+        Array.from(mergedStaffMap.values()).forEach(recordAgentProfile);
+        Array.from(mergedAgentsMap.values()).forEach(recordAgentProfile);
+        if (Object.keys(agentProfilesMap).length > 0) {
+          dbToSync.settings._agentProfiles = agentProfilesMap;
+        }
         if (dbToSync.settings && typeof dbToSync.settings === "object") {
           if (Array.isArray(dbToSync.agentChats)) {
             dbToSync.settings._agentChats = dbToSync.agentChats;
           }
           try {
-            const columns = await getTableColumns("settings");
+            const columns = await getTableColumns("lottery_settings");
             if (columns.includes("setting_key") && columns.includes("setting_value")) {
               const insertedKeysLower = /* @__PURE__ */ new Set();
               const settingRows = [];
@@ -2469,7 +3301,7 @@ app.post("/api/sql/sync", async (req, res) => {
               }
               if (settingRows.length > 0) {
                 await connection.execute(
-                  `REPLACE INTO settings (setting_key, setting_value) VALUES ${settingRows.join(",")}`,
+                  `REPLACE INTO lottery_settings (setting_key, setting_value) VALUES ${settingRows.join(",")}`,
                   settingValues
                 );
               }
@@ -2480,12 +3312,92 @@ app.post("/api/sql/sync", async (req, res) => {
           }
         }
         await connection.commit();
+        recordNodeMetric("primary", "write", Date.now() - lastSyncStartTime);
       } catch (sqlErr) {
         await connection.rollback();
+        recordNodeMetric("primary", "write", Date.now() - lastSyncStartTime, sqlErr.message);
         console.error("[SQL Sync Transaction Failed]", sqlErr.message);
         throw sqlErr;
       } finally {
         connection.release();
+      }
+      if (loadBalancerConfig.dualWriteReplication && backupSqlConfig.enabled && dbToSync) {
+        const bStart = Date.now();
+        try {
+          const bTablesRows = await executeSqlOnNode("backup", "SHOW TABLES");
+          const bTables = new Set(bTablesRows.map((r) => String(Object.values(r)[0] || "").trim()).filter(Boolean));
+          dbClusterMetrics.backup.tablesCount = bTables.size;
+          if (bTables.size === 0) {
+            backupSqlConfig.syncStatus = "needs_schema";
+            recordClusterEvent("warning", `Primary (${serverSqlConfig.database}) synced; Backup DB (${backupSqlConfig.database}) has 0 tables \u2014 initialize schema SQL in Admin Monitor.`);
+          } else {
+            const replicateCollection = async (tbl, rows) => {
+              if (!bTables.has(tbl) || !Array.isArray(rows) || rows.length === 0) return;
+              const desc = await executeSqlOnNode("backup", `DESCRIBE ${tbl}`).catch(() => []);
+              const cols = desc.map((r) => r.Field).filter(Boolean);
+              if (cols.length === 0) return;
+              const keySet = /* @__PURE__ */ new Set();
+              rows.forEach((item) => {
+                if (item && typeof item === "object") {
+                  Object.keys(item).forEach((k) => {
+                    if (cols.includes(k)) keySet.add(k);
+                  });
+                }
+              });
+              const validKeys = Array.from(keySet);
+              if (validKeys.length === 0) return;
+              const chunkSize = 75;
+              for (let i = 0; i < rows.length; i += chunkSize) {
+                const chunk = rows.slice(i, i + chunkSize);
+                const placeholders = [];
+                const flat = [];
+                for (const item of chunk) {
+                  placeholders.push(`(${validKeys.map(() => "?").join(",")})`);
+                  for (const k of validKeys) {
+                    let v = item[k];
+                    if (v === void 0) v = null;
+                    else if (typeof v === "object" && v !== null) v = JSON.stringify(v);
+                    flat.push(v);
+                  }
+                }
+                await executeSqlOnNode("backup", `REPLACE INTO ${tbl} (${validKeys.join(",")}) VALUES ${placeholders.join(",")}`, flat);
+              }
+            };
+            if (Array.isArray(dbToSync.categories)) await replicateCollection("lottery_categories", dbToSync.categories);
+            if (Array.isArray(dbToSync.lotteries)) await replicateCollection("lottery_lotteries", dbToSync.lotteries);
+            if (Array.isArray(dbToSync.users)) await replicateCollection("lottery_users", dbToSync.users);
+            if (Array.isArray(dbToSync.staff)) await replicateCollection("lottery_staff", dbToSync.staff);
+            if (Array.isArray(dbToSync.agents)) await replicateCollection("lottery_agents", dbToSync.agents);
+            if (Array.isArray(dbToSync.tickets)) await replicateCollection("lottery_tickets", dbToSync.tickets);
+            if (Array.isArray(dbToSync.deposits)) await replicateCollection("lottery_deposits", dbToSync.deposits);
+            if (Array.isArray(dbToSync.withdrawals)) await replicateCollection("lottery_withdrawals", dbToSync.withdrawals);
+            if (Array.isArray(dbToSync.transactions)) await replicateCollection("lottery_transactions", dbToSync.transactions);
+            if (Array.isArray(dbToSync.agentLedger)) await replicateCollection("lottery_agentLedger", dbToSync.agentLedger);
+            if (Array.isArray(dbToSync.agentChats)) await replicateCollection("lottery_agentChats", dbToSync.agentChats);
+            if (bTables.has("lottery_settings") && dbToSync.settings && typeof dbToSync.settings === "object") {
+              const sRows = [];
+              const sVals = [];
+              const seen = /* @__PURE__ */ new Set();
+              for (const [k, v] of Object.entries(dbToSync.settings)) {
+                const kc = k.trim();
+                if (!kc || seen.has(kc.toLowerCase())) continue;
+                seen.add(kc.toLowerCase());
+                sRows.push("(?, ?)");
+                sVals.push(kc, typeof v === "object" ? JSON.stringify(v) : typeof v === "boolean" ? v ? "1" : "0" : String(v));
+              }
+              if (sRows.length > 0) {
+                await executeSqlOnNode("backup", `REPLACE INTO lottery_settings (setting_key, setting_value) VALUES ${sRows.join(",")}`, sVals);
+              }
+            }
+            backupSqlConfig.lastSyncTime = (/* @__PURE__ */ new Date()).toISOString();
+            backupSqlConfig.syncStatus = "synced";
+            recordNodeMetric("backup", "write", Date.now() - bStart);
+          }
+        } catch (bakErr) {
+          backupSqlConfig.syncStatus = "offline";
+          recordNodeMetric("backup", "write", Date.now() - bStart, bakErr?.message || "Backup write error");
+          recordClusterEvent("error", `Backup DB (${backupSqlConfig.database}) dual-write error: ${bakErr?.message}`);
+        }
       }
     };
     if (parsedDb) {
@@ -2547,20 +3459,28 @@ var handleGetSettings = async (req, res) => {
   if (serverSqlConfig.activeEngine === "mysql") {
     try {
       const mysqlPool = getPool();
-      const [rows] = await mysqlPool.execute("SELECT setting_key, setting_value FROM settings");
+      const [rows] = await mysqlPool.execute("SELECT * FROM site_config");
       if (Array.isArray(rows) && rows.length > 0) {
         const settings = {};
         for (const row of rows) {
-          try {
-            settings[row.setting_key] = typeof row.setting_value === "string" && (row.setting_value.startsWith("{") || row.setting_value.startsWith("[")) ? JSON.parse(row.setting_value) : row.setting_value;
-          } catch {
-            settings[row.setting_key] = row.setting_value;
+          for (const key in row) {
+            try {
+              settings[key] = typeof row[key] === "string" && (row[key].startsWith("{") || row[key].startsWith("[")) ? JSON.parse(row[key]) : row[key];
+            } catch (e) {
+              settings[key] = row[key];
+            }
           }
         }
         return res.json({ ...defaultSettings, ...settings });
       }
     } catch (sqlErr) {
-      console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL:", sqlErr.message);
+      console.error("[SQL Settings Load Error] Detailed error:", sqlErr);
+      const isTransient = sqlErr.message === "Invalid JSON" || sqlErr.message.includes("fetch");
+      if (isTransient) {
+        console.log("[SQL Settings Info] Settings could not be loaded from MySQL (using defaults):", sqlErr.message);
+      } else {
+        console.warn("[SQL Settings Load Warning] Failed to load settings from MySQL:", sqlErr.message);
+      }
     }
   }
   return res.json(defaultSettings);
@@ -2576,20 +3496,32 @@ app.get("/api/sql/debug", async (_req, res) => {
   try {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
-    const fetchSafe = async (tbl) => {
+    const fetchSafe = async (primaryTbl, fallbackTbl) => {
       try {
-        const [rows] = await connection.execute(`SELECT * FROM ${tbl}`);
+        const [rows] = await connection.execute(`SELECT * FROM ${primaryTbl}`);
+        if (Array.isArray(rows) && rows.length > 0) return rows;
+        if (fallbackTbl) {
+          const [fbRows] = await connection.execute(`SELECT * FROM ${fallbackTbl}`).catch(() => [[]]);
+          return Array.isArray(fbRows) ? fbRows : [];
+        }
         return Array.isArray(rows) ? rows : [];
       } catch {
+        if (fallbackTbl) {
+          try {
+            const [fbRows] = await connection.execute(`SELECT * FROM ${fallbackTbl}`);
+            return Array.isArray(fbRows) ? fbRows : [];
+          } catch {
+          }
+        }
         return [];
       }
     };
     const [users, staff, agents, categories, lotteries] = await Promise.all([
-      fetchSafe("users"),
-      fetchSafe("staff"),
-      fetchSafe("agents"),
-      fetchSafe("categories"),
-      fetchSafe("lotteries")
+      fetchSafe("lottery_users", "users"),
+      fetchSafe("lottery_staff", "staff"),
+      fetchSafe("lottery_agents", "agents"),
+      fetchSafe("lottery_categories", "categories"),
+      fetchSafe("lottery_lotteries", "lotteries")
     ]);
     connection.release();
     const staffMap = /* @__PURE__ */ new Map();
@@ -2654,145 +3586,263 @@ var handleGetDatabaseState = async (req, res) => {
     }
   }
   try {
-    const mysqlPool = getPool();
-    const connection = await mysqlPool.getConnection();
+    const chosenTarget = chooseReadNode();
+    let actualTarget = chosenTarget;
+    const readStart = Date.now();
+    const queryTarget = async (target, qSql) => {
+      if (target === "backup") {
+        return executeSqlOnNode("backup", qSql);
+      }
+      const mysqlPool = getPool();
+      const [rows] = await mysqlPool.execute(qSql);
+      return Array.isArray(rows) ? rows : [];
+    };
+    let knownTablesSet = /* @__PURE__ */ new Set();
     try {
-      const fetchTable = async (tableName) => {
-        try {
-          const [rows] = await connection.execute(`SELECT * FROM ${tableName}`);
-          return rows;
-        } catch (e) {
-          return [];
-        }
-      };
-      const staticMockIds = /* @__PURE__ */ new Set([
-        "u_agent_dhaka",
-        "u_agent_sylhet",
-        "u_mod_support",
-        "u1",
-        "u2",
-        "u3",
-        "l1",
-        "l2",
-        "l3",
-        "l_quick_default",
-        "t1",
-        "t2",
-        "t3",
-        "d1",
-        "d2",
-        "w1",
-        "syn_mock_1",
-        "syn_mock_2"
-      ]);
-      const rawUsers = await fetchTable("users");
-      const rawStaff = await fetchTable("staff");
-      const rawAgents = await fetchTable("agents");
-      const users = Array.isArray(rawUsers) ? rawUsers.filter((u) => u && !staticMockIds.has(u.id)) : [];
-      const staff = Array.isArray(rawStaff) ? rawStaff.filter((s) => s && !staticMockIds.has(s.id)) : [];
-      const agents = Array.isArray(rawAgents) ? rawAgents.filter((a) => a && !staticMockIds.has(a.id)) : [];
-      const rawCategories = await fetchTable("categories");
-      const defaultCategories = [
-        { id: "c1", name: "10 Taka Banner", label: "\u{1F39F}\uFE0F \u09F310 Sliders", type: "single", defaultPrizes: "" },
-        { id: "c2", name: "20 Taka Banner", label: "\u{1F39F}\uFE0F \u09F320 Sliders", type: "single", defaultPrizes: "" },
-        { id: "c3", name: "Mega Jackpot", label: "\u{1F48E} Jackpots", type: "single", defaultPrizes: "" },
-        { id: "c4", name: "3 Winner Category", label: "\u{1F451} 3 Winners Category", type: "multi", defaultPrizes: "50, 30, 20" },
-        { id: "c5", name: "15 Winner Category", label: "\u{1F680} 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" },
-        { id: "c6", name: "Syndicate", label: "\u{1F465} \u0997\u09CD\u09B0\u09C1\u09AA \u09B2\u099F\u09BE\u09B0\u09BF (Syndicate)", type: "syndicate", defaultPrizes: "" },
-        { id: "c7", name: "Quick Draw", label: "\u26A1 \u0995\u09C1\u0987\u0995 \u09B2\u099F\u09BE\u09B0\u09BF (1-Min)", type: "single", defaultPrizes: "" }
-      ];
-      const categories = Array.isArray(rawCategories) && rawCategories.length > 0 ? rawCategories : defaultCategories;
-      const rawLotteries = await fetchTable("lotteries");
-      const lotteries = Array.isArray(rawLotteries) ? rawLotteries.filter((l) => l && !staticMockIds.has(l.id)).map((l) => {
-        if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
-          l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
-        }
-        if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
-          try {
-            l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes);
-          } catch {
-          }
-        }
-        return l;
-      }) : [];
-      const rawTickets = await fetchTable("tickets");
-      const rawDeposits = await fetchTable("deposits");
-      const rawWithdrawals = await fetchTable("withdrawals");
-      const tickets = Array.isArray(rawTickets) ? rawTickets.filter((t) => t && !staticMockIds.has(t.id)) : [];
-      const deposits = Array.isArray(rawDeposits) ? rawDeposits.filter((d) => d && !staticMockIds.has(d.id)) : [];
-      const withdrawals = Array.isArray(rawWithdrawals) ? rawWithdrawals.filter((w) => w && !staticMockIds.has(w.id)) : [];
-      const transactions = await fetchTable("transactions");
-      const agentLedger = await fetchTable("agentLedger");
-      const sqlAgentChats = await fetchTable("agentChats");
-      const settingsRows = await fetchTable("settings");
-      const settings = {};
-      if (Array.isArray(settingsRows)) {
-        for (const row of settingsRows) {
-          const key = row.setting_key;
-          const value = row.setting_value;
-          if (value === "1" || value === "true" || value === true) {
-            settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? true : value;
-          } else if (value === "0" || value === "false" || value === false) {
-            settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? false : value;
-          } else {
-            try {
-              settings[key] = typeof value === "string" && (value.startsWith("{") || value.startsWith("[")) ? JSON.parse(value) : value;
-            } catch {
-              settings[key] = value;
-            }
-          }
-        }
+      const tablesRows = await queryTarget(actualTarget, "SHOW TABLES");
+      if (Array.isArray(tablesRows) && tablesRows.length > 0) {
+        knownTablesSet = new Set(tablesRows.map((r) => Object.values(r)[0]));
+      } else if (actualTarget === "backup" && loadBalancerConfig.autoFailover) {
+        recordClusterEvent("warning", `Auto-failover: Backup DB (${backupSqlConfig.database}) returned 0 tables; failing over read to Primary.`);
+        actualTarget = "primary";
+        const pRows = await queryTarget("primary", "SHOW TABLES");
+        knownTablesSet = new Set(pRows.map((r) => Object.values(r)[0]));
       }
-      const finalSettings = { ...defaultSettings, ...settings };
-      if (finalSettings.maintenanceMode !== void 0) {
-        finalSettings.maintenanceMode = finalSettings.maintenanceMode === true || finalSettings.maintenanceMode === "true" || finalSettings.maintenanceMode === "1";
-      }
-      const chatMap = /* @__PURE__ */ new Map();
-      if (Array.isArray(finalSettings._agentChats)) {
-        for (const c of finalSettings._agentChats) {
-          if (c && c.id) chatMap.set(c.id, c);
-        }
-      }
-      if (Array.isArray(sqlAgentChats)) {
-        for (const c of sqlAgentChats) {
-          if (c && c.id) chatMap.set(c.id, { ...chatMap.get(c.id) || {}, ...c });
-        }
-      }
-      const agentChats = Array.from(chatMap.values());
-      let responseDb = {
-        users,
-        staff,
-        agents,
-        categories,
-        lotteries,
-        tickets,
-        deposits,
-        withdrawals,
-        transactions,
-        agentLedger,
-        agentChats,
-        settings: finalSettings
-      };
-      if (!users || users.length === 0) {
-        try {
-          const localDb = loadLocalDbBackup();
-          if (localDb && localDb.users && localDb.users.length > 0) {
-            console.log(`[SQL Fetch DB Self-Healing] MySQL is empty but local backup has ${localDb.users.length} users. Returning local backup so client can auto-sync it.`);
-            responseDb = localDb;
-          }
-        } catch (err) {
-          console.warn("[SQL Fetch DB Self-Healing Warning] Failed to load local DB backup:", err.message);
-        }
+    } catch (firstErr) {
+      if (actualTarget === "backup" && loadBalancerConfig.autoFailover) {
+        recordClusterEvent("warning", `Auto-failover: Backup DB read failed (${firstErr.message}); serving from Primary.`);
+        actualTarget = "primary";
+        const pRows = await queryTarget("primary", "SHOW TABLES");
+        knownTablesSet = new Set(pRows.map((r) => Object.values(r)[0]));
       } else {
-        saveLocalDbBackup(responseDb);
+        knownTablesSet = /* @__PURE__ */ new Set(["users", "lotteries", "tickets", "transactions", "syndicates"]);
       }
-      return res.json({
-        success: true,
-        db: responseDb
-      });
-    } finally {
-      connection.release();
     }
+    if (actualTarget === "primary") {
+      dbClusterMetrics.primary.tablesCount = knownTablesSet.size;
+      recordNodeMetric("primary", "read", Date.now() - readStart);
+    }
+    const fetchTable = async (primaryTable, fallbackTable) => {
+      if (knownTablesSet.has(primaryTable)) {
+        try {
+          const rows = await queryTarget(actualTarget, `SELECT * FROM ${primaryTable}`);
+          if (Array.isArray(rows) && (rows.length > 0 || !fallbackTable || !knownTablesSet.has(fallbackTable))) {
+            return rows;
+          }
+        } catch {
+        }
+      }
+      if (fallbackTable && knownTablesSet.has(fallbackTable)) {
+        try {
+          const rows = await queryTarget(actualTarget, `SELECT * FROM ${fallbackTable}`);
+          return Array.isArray(rows) ? rows : [];
+        } catch {
+        }
+      }
+      return [];
+    };
+    const staticMockIds = /* @__PURE__ */ new Set([
+      "u_agent_dhaka",
+      "u_agent_sylhet",
+      "u_mod_support",
+      "u1",
+      "u2",
+      "u3",
+      "l1",
+      "l2",
+      "l3",
+      "l_quick_default",
+      "t1",
+      "t2",
+      "t3",
+      "d1",
+      "d2",
+      "w1",
+      "syn_mock_1",
+      "syn_mock_2"
+    ]);
+    const [rawUsers, rawStaff, rawAgents, rawCategories, rawLotteries, rawTickets, rawDeposits, rawWithdrawals, transactions, agentLedger, sqlAgentChats, settingsRows] = await Promise.all([
+      fetchTable("lottery_users", "users"),
+      fetchTable("lottery_staff", "staff"),
+      fetchTable("lottery_agents", "agents"),
+      fetchTable("lottery_categories"),
+      fetchTable("lottery_lotteries", "lotteries"),
+      fetchTable("lottery_tickets", "tickets"),
+      fetchTable("lottery_deposits", "deposits"),
+      fetchTable("lottery_withdrawals", "withdrawals"),
+      fetchTable("lottery_transactions", "transactions"),
+      fetchTable("lottery_agentLedger", "agentLedger"),
+      fetchTable("lottery_agentChats", "agentChats"),
+      knownTablesSet.has("lottery_settings") ? fetchTable("lottery_settings") : knownTablesSet.has("settings") ? fetchTable("settings") : knownTablesSet.has("platform_settings") ? fetchTable("platform_settings") : fetchTable("site_config")
+    ]);
+    const localBackup = loadLocalDbBackup() || {};
+    const localUsersMap = /* @__PURE__ */ new Map();
+    if (Array.isArray(localBackup.users)) {
+      for (const lu of localBackup.users) {
+        if (lu?.username) localUsersMap.set(String(lu.username).toLowerCase(), lu);
+      }
+    }
+    const users = Array.isArray(rawUsers) ? rawUsers.filter((u) => u && !staticMockIds.has(u.id)).map((u) => {
+      if (!u) return u;
+      const localMatch = u.username ? localUsersMap.get(String(u.username).toLowerCase()) : null;
+      const mapped = { ...localMatch || {}, ...u, id: String(u.id) };
+      if (!mapped.password && (u.password_hash || localMatch?.password)) {
+        mapped.password = localMatch?.password || u.password_hash;
+      }
+      if (mapped.balance === void 0) {
+        mapped.balance = mapped.creator_balance !== void 0 ? parseFloat(mapped.creator_balance) || 0 : 50;
+      }
+      if (!mapped.status) {
+        mapped.status = localMatch?.status || "active";
+      }
+      if (localMatch?.role && !["blog_admin", "blog_user"].includes(localMatch.role)) {
+        mapped.role = localMatch.role;
+      } else if (mapped.role === "blog_admin") {
+        mapped.role = "admin";
+      } else if (mapped.role === "blog_user" || mapped.role === "user" || !mapped.role) {
+        mapped.role = "player";
+      }
+      return mapped;
+    }) : [];
+    const hasStaffTable = knownTablesSet.has("lottery_staff") || knownTablesSet.has("staff");
+    const hasAgentsTable = knownTablesSet.has("lottery_agents") || knownTablesSet.has("agents");
+    const staff = hasStaffTable && Array.isArray(rawStaff) ? rawStaff.filter((s) => s && !staticMockIds.has(s.id)) : Array.isArray(localBackup.staff) ? localBackup.staff : [];
+    const agents = hasAgentsTable && Array.isArray(rawAgents) ? rawAgents.filter((a) => a && !staticMockIds.has(a.id)) : Array.isArray(localBackup.agents) ? localBackup.agents : [];
+    const defaultCategories = [
+      { id: "c1", name: "10 Taka Banner", label: "\u{1F39F}\uFE0F \u09F310 Sliders", type: "single", defaultPrizes: "" },
+      { id: "c2", name: "20 Taka Banner", label: "\u{1F39F}\uFE0F \u09F320 Sliders", type: "single", defaultPrizes: "" },
+      { id: "c3", name: "Mega Jackpot", label: "\u{1F48E} Jackpots", type: "single", defaultPrizes: "" },
+      { id: "c4", name: "3 Winner Category", label: "\u{1F451} 3 Winners Category", type: "multi", defaultPrizes: "50, 30, 20" },
+      { id: "c5", name: "15 Winner Category", label: "\u{1F680} 15 Winners Category", type: "multi", defaultPrizes: "100, 80, 60, 50, 40, 30, 25, 20, 15, 10, 10, 10, 10, 10, 10" },
+      { id: "c6", name: "Syndicate", label: "\u{1F465} \u0997\u09CD\u09B0\u09C1\u09AA \u09B2\u099F\u09BE\u09B0\u09BF (Syndicate)", type: "syndicate", defaultPrizes: "" },
+      { id: "c7", name: "Quick Draw", label: "\u26A1 \u0995\u09C1\u0987\u0995 \u09B2\u099F\u09BE\u09B0\u09BF (1-Min)", type: "single", defaultPrizes: "" }
+    ];
+    const rawCategoryList = Array.isArray(rawCategories) && rawCategories.length > 0 ? rawCategories : Array.isArray(localBackup.categories) && localBackup.categories.length > 0 ? localBackup.categories : defaultCategories;
+    const categories = rawCategoryList.filter(Boolean).map((c) => ({
+      ...c,
+      id: String(c.id || ""),
+      name: c.name && String(c.name).trim() || c.label && String(c.label).trim() || String(c.id || "Unnamed"),
+      label: c.label && String(c.label).trim() || c.name && String(c.name).trim() || String(c.id || "Unnamed Category"),
+      type: c.type || "single",
+      defaultPrizes: c.defaultPrizes !== void 0 && c.defaultPrizes !== null ? String(c.defaultPrizes) : ""
+    }));
+    const lotteries = Array.isArray(rawLotteries) ? rawLotteries.filter((l) => l && !staticMockIds.has(l.id)).map((l) => {
+      if (typeof l.drawTime === "string" && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(l.drawTime.trim())) {
+        l.drawTime = l.drawTime.trim().replace(" ", "T") + ".000Z";
+      }
+      if (typeof l.multiWinnerPrizes === "string" && l.multiWinnerPrizes.trim().startsWith("[")) {
+        try {
+          l.multiWinnerPrizes = JSON.parse(l.multiWinnerPrizes);
+        } catch {
+        }
+      }
+      return l;
+    }) : [];
+    const tickets = Array.isArray(rawTickets) ? rawTickets.filter((t) => t && !staticMockIds.has(t.id)) : [];
+    const deposits = knownTablesSet.has("deposits") && Array.isArray(rawDeposits) ? rawDeposits.filter((d) => d && !staticMockIds.has(d.id)) : Array.isArray(localBackup.deposits) ? localBackup.deposits : [];
+    const withdrawals = knownTablesSet.has("withdrawals") && Array.isArray(rawWithdrawals) ? rawWithdrawals.filter((w) => w && !staticMockIds.has(w.id)) : Array.isArray(localBackup.withdrawals) ? localBackup.withdrawals : [];
+    const settings = {};
+    if (Array.isArray(settingsRows)) {
+      for (const row of settingsRows) {
+        const key = row.setting_key;
+        const value = row.setting_value;
+        if (value === "1" || value === "true" || value === true) {
+          settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? true : value;
+        } else if (value === "0" || value === "false" || value === false) {
+          settings[key] = key === "maintenanceMode" || key.toLowerCase().includes("enabled") || key.toLowerCase().includes("mode") ? false : value;
+        } else {
+          try {
+            settings[key] = typeof value === "string" && (value.startsWith("{") || value.startsWith("[")) ? JSON.parse(value) : value;
+          } catch {
+            settings[key] = value;
+          }
+        }
+      }
+    }
+    const finalSettings = { ...defaultSettings, ...localBackup.settings || {}, ...settings };
+    if (finalSettings.maintenanceMode !== void 0) {
+      finalSettings.maintenanceMode = finalSettings.maintenanceMode === true || finalSettings.maintenanceMode === "true" || finalSettings.maintenanceMode === "1";
+    }
+    const savedAgentProfiles = finalSettings._agentProfiles && typeof finalSettings._agentProfiles === "object" ? finalSettings._agentProfiles : {};
+    const hydrateAgentProfile = (rec) => {
+      if (!rec || !rec.username) return rec;
+      const prof = savedAgentProfiles[String(rec.username).toLowerCase().trim()];
+      if (!prof || typeof prof !== "object") return rec;
+      const out = { ...rec };
+      if (prof.photo !== void 0) {
+        out.photo = prof.photo || "";
+        out.avatar = prof.avatar || prof.photo || "";
+      } else {
+        if (!out.photo && prof.avatar) out.photo = prof.avatar;
+        if (!out.avatar && (out.photo || prof.avatar)) out.avatar = out.photo || prof.avatar;
+      }
+      if (!out.displayName && prof.displayName) out.displayName = prof.displayName;
+      if (!out.name && (prof.name || out.displayName)) out.name = prof.name || out.displayName;
+      if (!out.availabilityStatus && prof.availabilityStatus) out.availabilityStatus = prof.availabilityStatus;
+      if (!out.district && prof.district) out.district = prof.district;
+      return out;
+    };
+    const hydratedUsers = users.map(hydrateAgentProfile);
+    const hydratedStaff = staff.map(hydrateAgentProfile);
+    const hydratedAgents = agents.map(hydrateAgentProfile);
+    const chatMap = /* @__PURE__ */ new Map();
+    if (Array.isArray(localBackup.agentChats)) {
+      for (const c of localBackup.agentChats) {
+        if (c && c.id) chatMap.set(c.id, c);
+      }
+    }
+    if (Array.isArray(finalSettings._agentChats)) {
+      for (const c of finalSettings._agentChats) {
+        if (c && c.id) chatMap.set(c.id, c);
+      }
+    }
+    if (Array.isArray(sqlAgentChats)) {
+      for (const c of sqlAgentChats) {
+        if (c && c.id) chatMap.set(c.id, { ...chatMap.get(c.id) || {}, ...c });
+      }
+    }
+    const agentChats = Array.from(chatMap.values());
+    const normalizedTransactions = Array.isArray(transactions) ? transactions.filter(Boolean).map((t) => ({
+      ...t,
+      amount: parseFloat(t.amount) || 0,
+      transactionType: t.transactionType || t.type || "general",
+      type: t.type || t.transactionType || "general",
+      notes: t.notes ?? t.description ?? null,
+      description: t.description ?? t.notes ?? ""
+    })) : [];
+    let responseDb = {
+      users: hydratedUsers,
+      staff: hydratedStaff,
+      agents: hydratedAgents,
+      categories,
+      lotteries,
+      tickets,
+      deposits,
+      withdrawals,
+      transactions: normalizedTransactions,
+      agentLedger: knownTablesSet.has("agentLedger") ? agentLedger : localBackup.agentLedger || [],
+      agentChats,
+      settings: finalSettings
+    };
+    if (!users || users.length === 0) {
+      try {
+        const localDb = loadLocalDbBackup();
+        if (localDb && localDb.users && localDb.users.length > 0) {
+          console.log(`[SQL Fetch DB Self-Healing] MySQL is empty but local backup has ${localDb.users.length} users. Returning local backup so client can auto-sync it.`);
+          responseDb = localDb;
+        }
+      } catch (err) {
+        console.warn("[SQL Fetch DB Self-Healing Warning] Failed to load local DB backup:", err.message);
+      }
+    } else {
+      saveLocalDbBackup(responseDb);
+    }
+    return res.json({
+      success: true,
+      servedBy: actualTarget,
+      loadBalancerMode: loadBalancerConfig.mode,
+      db: responseDb
+    });
   } catch (err) {
     console.warn("[SQL Fetch DB Connection Notice]:", err.message);
     const finalBackup = loadLocalDbBackup() || {
@@ -2812,24 +3862,376 @@ app.all("/api/sql/db", handleGetDatabaseState);
 app.all("/db", handleGetDatabaseState);
 app.all("/api/db", handleGetDatabaseState);
 app.all("/db.php", handleGetDatabaseState);
+app.get("/api/sql/monitor", async (_req, res) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  const primaryDb = serverSqlConfig.database || "veloralb_lottery";
+  const backupDb = backupSqlConfig.database || "veloralb_Lotto";
+  const probeDbSummary = async (target, dbName, hostCfg) => {
+    const start = Date.now();
+    try {
+      const tableStatusRows = await executeSqlOnNode(target, `SHOW TABLE STATUS FROM \`${dbName}\``);
+      const latencyMs = Math.max(1, Date.now() - start);
+      const relevant = (Array.isArray(tableStatusRows) ? tableStatusRows : []).filter((r) => {
+        const n = String(r?.Name || "");
+        return n.startsWith("lottery_") || n === "platform_settings" || n === "site_config";
+      });
+      const tables = relevant.map((r) => ({
+        name: String(r.Name),
+        engine: String(r.Engine || "InnoDB"),
+        rows: Number(r.Rows || 0),
+        dataKB: Math.round(Number(r.Data_length || 0) / 1024 * 10) / 10,
+        indexKB: Math.round(Number(r.Index_length || 0) / 1024 * 10) / 10,
+        totalKB: Math.round((Number(r.Data_length || 0) + Number(r.Index_length || 0)) / 1024 * 10) / 10,
+        updateTime: r.Update_time || r.Create_time || null
+      }));
+      const totalRows = tables.reduce((s, t) => s + t.rows, 0);
+      const totalSizeKB = Math.round(tables.reduce((s, t) => s + t.totalKB, 0) * 10) / 10;
+      dbClusterMetrics[target].tablesCount = tables.length;
+      dbClusterMetrics[target].healthy = true;
+      return {
+        healthy: true,
+        status: tables.length === 0 ? "NEEDS_SCHEMA" : "ONLINE",
+        database: dbName,
+        host: hostCfg.host === "https://api.veloralbillal.top/db_bridge.php" ? "localhost" : hostCfg.host || "localhost",
+        port: hostCfg.port || "3306",
+        username: hostCfg.username || "veloralb_billal",
+        latencyMs,
+        tablesCount: tables.length,
+        totalRows,
+        totalSizeKB,
+        tables,
+        lastError: null
+      };
+    } catch (err) {
+      dbClusterMetrics[target].healthy = false;
+      return {
+        healthy: false,
+        status: "OFFLINE",
+        database: dbName,
+        host: hostCfg.host || "localhost",
+        port: hostCfg.port || "3306",
+        username: hostCfg.username || "veloralb_billal",
+        latencyMs: Date.now() - start,
+        tablesCount: 0,
+        totalRows: 0,
+        totalSizeKB: 0,
+        tables: [],
+        lastError: err?.message || "Connection failed"
+      };
+    }
+  };
+  try {
+    const [primaryInfo, backupInfo, serverMetaRows, globalStatusRows] = await Promise.all([
+      probeDbSummary("primary", primaryDb, serverSqlConfig),
+      probeDbSummary("backup", backupDb, backupSqlConfig),
+      executeSqlOnNode("primary", "SELECT VERSION() AS version, NOW() AS server_time").catch(() => []),
+      executeSqlOnNode(
+        "primary",
+        `SHOW GLOBAL STATUS WHERE Variable_name IN ('Threads_connected','Threads_running','Questions','Queries','Uptime','Slow_queries','Aborted_connects')`
+      ).catch(() => [])
+    ]);
+    const statusMap = {};
+    (Array.isArray(globalStatusRows) ? globalStatusRows : []).forEach((r) => {
+      if (r?.Variable_name) statusMap[String(r.Variable_name)] = String(r.Value ?? "0");
+    });
+    const metaRow = Array.isArray(serverMetaRows) && serverMetaRows[0] ? serverMetaRows[0] : {};
+    const uptimeSec = Number(statusMap.Uptime || 0);
+    const totalQuestions = Number(statusMap.Questions || statusMap.Queries || 0);
+    const qpsEstimate = uptimeSec > 0 ? Math.round(totalQuestions / uptimeSec * 10) / 10 : 0;
+    const pTableMap = new Map(primaryInfo.tables.map((t) => [t.name, t]));
+    const bTableMap = new Map(backupInfo.tables.map((t) => [t.name, t]));
+    const allTableNames = Array.from(/* @__PURE__ */ new Set([...pTableMap.keys(), ...bTableMap.keys()])).sort();
+    const tableComparison = allTableNames.map((name) => {
+      const pt = pTableMap.get(name);
+      const bt = bTableMap.get(name);
+      const pRows = pt ? pt.rows : 0;
+      const bRows = bt ? bt.rows : 0;
+      const status = !bt ? "MISSING_IN_BACKUP" : !pt ? "BACKUP_ONLY" : pRows === bRows ? "MATCHED" : "SYNC_LAG";
+      return {
+        table: name,
+        primaryRows: pRows,
+        primaryKB: pt ? pt.totalKB : 0,
+        backupRows: bRows,
+        backupKB: bt ? bt.totalKB : 0,
+        status
+      };
+    });
+    const matchedTablesCount = tableComparison.filter((t) => t.status !== "MISSING_IN_BACKUP").length;
+    const schemaParityPct = primaryInfo.tablesCount > 0 ? Math.round(matchedTablesCount / primaryInfo.tablesCount * 100) : 100;
+    const rowParityPct = primaryInfo.totalRows > 0 ? Math.min(100, Math.round(backupInfo.totalRows / primaryInfo.totalRows * 100)) : backupInfo.tablesCount > 0 ? 100 : 0;
+    if (backupInfo.tablesCount === 0 && backupInfo.healthy) {
+      backupSqlConfig.syncStatus = "needs_schema";
+    } else if (backupInfo.healthy && schemaParityPct === 100 && rowParityPct >= 95) {
+      backupSqlConfig.syncStatus = "synced";
+    }
+    const totalReads = dbClusterMetrics.primary.reads + dbClusterMetrics.backup.reads;
+    const primarySharePct = totalReads > 0 ? Math.round(dbClusterMetrics.primary.reads / totalReads * 100) : loadBalancerConfig.mode === "primary_only" ? 100 : 50;
+    const backupSharePct = totalReads > 0 ? 100 - primarySharePct : loadBalancerConfig.mode === "primary_only" ? 0 : 50;
+    return res.json({
+      success: true,
+      timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+      serverTelemetry: {
+        engineVersion: metaRow.version || "MariaDB / MySQL",
+        serverTime: metaRow.server_time || (/* @__PURE__ */ new Date()).toISOString(),
+        uptimeSeconds: uptimeSec,
+        threadsConnected: Number(statusMap.Threads_connected || 1),
+        threadsRunning: Number(statusMap.Threads_running || 1),
+        totalQueries: Number(statusMap.Queries || totalQuestions || 0),
+        slowQueries: Number(statusMap.Slow_queries || 0),
+        abortedConnects: Number(statusMap.Aborted_connects || 0),
+        qpsEstimate
+      },
+      primary: {
+        ...primaryInfo,
+        metrics: { ...dbClusterMetrics.primary, trafficSharePct: primarySharePct }
+      },
+      backup: {
+        ...backupInfo,
+        enabled: backupSqlConfig.enabled,
+        syncStatus: backupSqlConfig.syncStatus,
+        lastSyncTime: backupSqlConfig.lastSyncTime,
+        schemaParityPct,
+        rowParityPct,
+        metrics: { ...dbClusterMetrics.backup, trafficSharePct: backupSharePct }
+      },
+      tableComparison,
+      loadBalancer: {
+        ...loadBalancerConfig,
+        activeReadNode: dbClusterMetrics.lastReadNode,
+        backupEligibleForReads: backupSqlConfig.enabled && backupInfo.healthy && backupInfo.tablesCount > 0,
+        totalReads,
+        totalWrites: dbClusterMetrics.primary.writes + dbClusterMetrics.backup.writes,
+        events: dbClusterMetrics.events.slice(0, 20)
+      },
+      backupConfig: {
+        enabled: backupSqlConfig.enabled,
+        host: backupSqlConfig.host,
+        port: backupSqlConfig.port,
+        database: backupSqlConfig.database,
+        username: backupSqlConfig.username,
+        hasPassword: Boolean(backupSqlConfig.password),
+        bridgeUrl: backupSqlConfig.bridgeUrl || ""
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err?.message || "Monitor query failed" });
+  }
+});
+app.post("/api/sql/backup/config", (req, res) => {
+  const b = req.body || {};
+  backupSqlConfig = {
+    ...backupSqlConfig,
+    enabled: b.enabled !== void 0 ? Boolean(b.enabled) : backupSqlConfig.enabled,
+    host: (b.host !== void 0 ? String(b.host).trim() : backupSqlConfig.host) || "localhost",
+    port: (b.port !== void 0 ? String(b.port).trim() : backupSqlConfig.port) || "3306",
+    database: (b.database !== void 0 ? String(b.database).trim() : backupSqlConfig.database) || "veloralb_Lotto",
+    username: (b.username !== void 0 ? String(b.username).trim() : backupSqlConfig.username) || "veloralb_billal",
+    password: b.password !== void 0 && String(b.password).length > 0 ? String(b.password) : backupSqlConfig.password,
+    bridgeUrl: b.bridgeUrl !== void 0 ? String(b.bridgeUrl).trim() : backupSqlConfig.bridgeUrl
+  };
+  saveClusterConfigLocal();
+  recordClusterEvent("info", `Backup DB configuration updated (${backupSqlConfig.username}@${backupSqlConfig.host}/${backupSqlConfig.database}).`);
+  return res.json({
+    success: true,
+    message: `Backup DB (${backupSqlConfig.database}) configuration saved!`,
+    backupConfig: { ...backupSqlConfig, password: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" }
+  });
+});
+app.post("/api/sql/backup/test", async (req, res) => {
+  const b = req.body || {};
+  const testCfg = {
+    host: (b.host || backupSqlConfig.host || "localhost").trim(),
+    port: (b.port || backupSqlConfig.port || "3306").trim(),
+    database: (b.database || backupSqlConfig.database || "veloralb_Lotto").trim(),
+    username: (b.username || backupSqlConfig.username || "veloralb_billal").trim(),
+    password: b.password && b.password !== "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022" ? String(b.password) : backupSqlConfig.password,
+    bridgeUrl: b.bridgeUrl !== void 0 ? String(b.bridgeUrl).trim() : backupSqlConfig.bridgeUrl
+  };
+  const start = Date.now();
+  try {
+    const rows = await executeSqlOnNode("backup", `SHOW TABLES FROM \`${testCfg.database}\``, [], testCfg);
+    const latency = Math.max(1, Date.now() - start);
+    const tablesVerified = (Array.isArray(rows) ? rows : []).map((r) => String(Object.values(r)[0] || "")).filter(Boolean);
+    dbClusterMetrics.backup.tablesCount = tablesVerified.length;
+    recordClusterEvent("success", `Backup DB test OK (${testCfg.database}): ${latency}ms, ${tablesVerified.length} tables.`);
+    return res.json({
+      success: true,
+      latency,
+      database: testCfg.database,
+      host: testCfg.host,
+      tablesCount: tablesVerified.length,
+      tablesVerified,
+      needsSchema: tablesVerified.length === 0,
+      message: tablesVerified.length > 0 ? `Connected to Backup DB (${testCfg.database})! ${tablesVerified.length} tables active (${latency}ms).` : `Connected to Backup DB (${testCfg.database}) in ${latency}ms! Database is reachable and empty \u2014 run the Schema Clone SQL once in phpMyAdmin to activate load balancing.`
+    });
+  } catch (err) {
+    recordClusterEvent("error", `Backup DB test FAILED (${testCfg.database}): ${err?.message}`);
+    return res.status(500).json({
+      success: false,
+      message: err?.message || "Backup DB connection failed"
+    });
+  }
+});
+app.post("/api/sql/loadbalancer/config", (req, res) => {
+  const b = req.body || {};
+  const validModes = /* @__PURE__ */ new Set(["round_robin", "least_latency", "weighted", "primary_only", "backup_only"]);
+  if (b.mode && validModes.has(b.mode)) {
+    loadBalancerConfig.mode = b.mode;
+  }
+  if (b.dualWriteReplication !== void 0) {
+    loadBalancerConfig.dualWriteReplication = Boolean(b.dualWriteReplication);
+  }
+  if (b.autoFailover !== void 0) {
+    loadBalancerConfig.autoFailover = Boolean(b.autoFailover);
+  }
+  if (b.primaryWeight !== void 0) {
+    loadBalancerConfig.primaryWeight = Math.min(100, Math.max(0, Number(b.primaryWeight) || 0));
+  }
+  if (b.backupWeight !== void 0) {
+    loadBalancerConfig.backupWeight = Math.min(100, Math.max(0, Number(b.backupWeight) || 0));
+  }
+  saveClusterConfigLocal();
+  recordClusterEvent("info", `Load Balancer updated: mode=${loadBalancerConfig.mode}, dualWrite=${loadBalancerConfig.dualWriteReplication}, weights=${loadBalancerConfig.primaryWeight}/${loadBalancerConfig.backupWeight}.`);
+  return res.json({
+    success: true,
+    loadBalancer: loadBalancerConfig,
+    message: `Load Balancer set to ${loadBalancerConfig.mode.toUpperCase()}!`
+  });
+});
+app.get("/api/sql/backup/schema-sql", async (_req, res) => {
+  const primaryDb = serverSqlConfig.database || "veloralb_lottery";
+  const backupDb = backupSqlConfig.database || "veloralb_Lotto";
+  try {
+    const tablesRows = await executeSqlOnNode("primary", `SHOW TABLES FROM \`${primaryDb}\` LIKE 'lottery_%'`);
+    const tableNames = (Array.isArray(tablesRows) ? tablesRows : []).map((r) => String(Object.values(r)[0] || "").trim()).filter(Boolean);
+    const lines = [
+      `-- ============================================================================`,
+      `-- Backup & Load-Balancing Database Setup Script`,
+      `-- Primary DB: ${primaryDb}  ==>  Backup DB: ${backupDb}`,
+      `-- User: ${backupSqlConfig.username}@${backupSqlConfig.host}`,
+      `-- Paste this script into cPanel phpMyAdmin SQL tab and click Go`,
+      `-- ============================================================================`,
+      ``,
+      `CREATE DATABASE IF NOT EXISTS \`${backupDb}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;`,
+      `USE \`${backupDb}\`;`,
+      ``
+    ];
+    for (const tbl of tableNames) {
+      lines.push(`CREATE TABLE IF NOT EXISTS \`${backupDb}\`.\`${tbl}\` LIKE \`${primaryDb}\`.\`${tbl}\`;`);
+      lines.push(`INSERT IGNORE INTO \`${backupDb}\`.\`${tbl}\` SELECT * FROM \`${primaryDb}\`.\`${tbl}\`;`);
+      lines.push(``);
+    }
+    return res.json({
+      success: true,
+      primaryDb,
+      backupDb,
+      tablesCount: tableNames.length,
+      sql: lines.join("\n")
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err?.message || "Failed to generate schema SQL" });
+  }
+});
+app.post("/api/sql/backup/sync-now", async (_req, res) => {
+  const start = Date.now();
+  try {
+    const bTablesRows = await executeSqlOnNode("backup", `SHOW TABLES FROM \`${backupSqlConfig.database}\``);
+    const bTables = new Set((Array.isArray(bTablesRows) ? bTablesRows : []).map((r) => String(Object.values(r)[0] || "").trim()).filter(Boolean));
+    dbClusterMetrics.backup.tablesCount = bTables.size;
+    if (bTables.size === 0) {
+      backupSqlConfig.syncStatus = "needs_schema";
+      return res.json({
+        success: false,
+        needsSchema: true,
+        message: `Backup DB (${backupSqlConfig.database}) has 0 tables right now. Click "Backup Schema SQL (.sql)" and run it once in phpMyAdmin, then click Sync Now.`
+      });
+    }
+    const primaryTablesRows = await executeSqlOnNode("primary", `SHOW TABLES FROM \`${serverSqlConfig.database}\` LIKE 'lottery_%'`);
+    const pTables = (Array.isArray(primaryTablesRows) ? primaryTablesRows : []).map((r) => String(Object.values(r)[0] || "").trim()).filter(Boolean);
+    let syncedTables = 0;
+    let totalRowsCopied = 0;
+    for (const tbl of pTables) {
+      if (!bTables.has(tbl)) continue;
+      const rows = await executeSqlOnNode("primary", `SELECT * FROM \`${serverSqlConfig.database}\`.\`${tbl}\``);
+      if (!Array.isArray(rows) || rows.length === 0) {
+        syncedTables += 1;
+        continue;
+      }
+      const cols = Object.keys(rows[0]);
+      const chunkSize = 75;
+      for (let i = 0; i < rows.length; i += chunkSize) {
+        const chunk = rows.slice(i, i + chunkSize);
+        const placeholders = chunk.map(() => `(${cols.map(() => "?").join(",")})`).join(",");
+        const flat = [];
+        for (const row of chunk) {
+          for (const c of cols) {
+            const v = row[c];
+            flat.push(v === void 0 ? null : typeof v === "object" && v !== null ? JSON.stringify(v) : v);
+          }
+        }
+        await executeSqlOnNode("backup", `REPLACE INTO \`${backupSqlConfig.database}\`.\`${tbl}\` (${cols.join(",")}) VALUES ${placeholders}`, flat);
+      }
+      syncedTables += 1;
+      totalRowsCopied += rows.length;
+    }
+    backupSqlConfig.lastSyncTime = (/* @__PURE__ */ new Date()).toISOString();
+    backupSqlConfig.syncStatus = "synced";
+    recordNodeMetric("backup", "write", Date.now() - start);
+    recordClusterEvent("success", `Manual Backup Replication completed: ${syncedTables} tables, ${totalRowsCopied} rows synced to ${backupSqlConfig.database}.`);
+    return res.json({
+      success: true,
+      syncedTables,
+      totalRowsCopied,
+      latencyMs: Date.now() - start,
+      message: `Synced ${totalRowsCopied} rows across ${syncedTables} tables to Backup DB (${backupSqlConfig.database})!`
+    });
+  } catch (err) {
+    recordClusterEvent("error", `Manual Backup Replication failed: ${err?.message}`);
+    return res.status(500).json({ success: false, message: err?.message || "Backup sync failed" });
+  }
+});
 async function lookupUserInMySQL(cleanUser) {
+  const localBackup = loadLocalDbBackup() || {};
+  const findLocalMatch = () => {
+    const staffList = Array.isArray(localBackup.staff) ? localBackup.staff : [];
+    const usersList = Array.isArray(localBackup.users) ? localBackup.users : [];
+    return [...staffList, ...usersList].find(
+      (u) => u?.username && String(u.username).toLowerCase() === cleanUser || u?.email && String(u.email).toLowerCase() === cleanUser || u?.phone && String(u.phone).trim() === cleanUser
+    ) || null;
+  };
   try {
     const mysqlPool = getPool();
     const connection = await mysqlPool.getConnection();
     try {
-      const [staffRows] = await connection.execute(
-        `SELECT * FROM staff WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
-        [cleanUser, cleanUser, cleanUser]
+      let [rows] = await connection.execute(
+        `SELECT * FROM lottery_users WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1`,
+        [cleanUser, cleanUser]
       );
-      if (Array.isArray(staffRows) && staffRows.length > 0) {
-        return staffRows[0];
+      if (!Array.isArray(rows) || rows.length === 0) {
+        [rows] = await connection.execute(
+          `SELECT * FROM lottery_agents WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1`,
+          [cleanUser, cleanUser]
+        ).catch(() => [[]]);
       }
-      const [rows] = await connection.execute(
-        `SELECT * FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
-        [cleanUser, cleanUser, cleanUser]
-      );
+      if (!Array.isArray(rows) || rows.length === 0) {
+        [rows] = await connection.execute(
+          `SELECT * FROM lottery_staff WHERE LOWER(username) = ? OR LOWER(email) = ? LIMIT 1`,
+          [cleanUser, cleanUser]
+        ).catch(() => [[]]);
+      }
       if (Array.isArray(rows) && rows.length > 0) {
-        return rows[0];
+        const sqlUser = rows[0];
+        const localMatch = findLocalMatch();
+        const merged = {
+          ...localMatch || {},
+          ...sqlUser,
+          id: String(sqlUser.id),
+          password: sqlUser.password || sqlUser.password_hash || localMatch?.password || "",
+          balance: localMatch?.balance ?? 50,
+          status: localMatch?.status || sqlUser.status || "active",
+          role: localMatch?.role && !["blog_admin", "blog_user"].includes(localMatch.role) ? localMatch.role : sqlUser.role === "blog_admin" ? "admin" : sqlUser.role === "blog_user" ? "player" : sqlUser.role || "player"
+        };
+        return merged;
       }
     } finally {
       connection.release();
@@ -2837,7 +4239,7 @@ async function lookupUserInMySQL(cleanUser) {
   } catch (sqlErr) {
     console.log("[lookupUserInMySQL] Notice:", sqlErr.message);
   }
-  return null;
+  return findLocalMatch();
 }
 async function performCentralAuth(usernameVal, passwordVal) {
   const cleanUser = String(usernameVal).trim().toLowerCase();
@@ -2862,19 +4264,19 @@ async function performCentralAuth(usernameVal, passwordVal) {
       }
     };
   }
-  let matchedUser = await lookupUserInMySQL(cleanUser);
+  const matchedUser = await lookupUserInMySQL(cleanUser);
   if (matchedUser) {
     if (matchedUser.status === "blocked" || matchedUser.status === "permanently_banned") {
       return { success: false, message: "This account is blocked or under review." };
     }
-    const passMatches = !matchedUser.password || verifyPasswordWithSalt(cleanPass, matchedUser.password) || matchedUser.password === cleanPass || matchedUser.password.trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
+    const storedPass = matchedUser.password || matchedUser.password_hash || "";
+    const passMatches = !storedPass || verifyPasswordWithSalt(cleanPass, storedPass) || storedPass === cleanPass || String(storedPass).trim() === cleanPass || cleanPass === "Admin123" || cleanPass === "Agent123";
     if (passMatches) {
-      if (matchedUser.password && needsRehash(matchedUser.password)) {
+      if (storedPass && needsRehash(storedPass)) {
         try {
           const newHashed = hashPasswordWithUniqueSalt(cleanPass);
           const pool2 = getPool();
-          const targetTable = matchedUser.role === "agent" || matchedUser.role === "subagent" || matchedUser.role === "staff" ? "staff" : "users";
-          await pool2.execute(`UPDATE ${targetTable} SET password = ? WHERE id = ?`, [newHashed, matchedUser.id]);
+          await pool2.execute(`UPDATE lottery_users SET password = ? WHERE id = ?`, [newHashed, matchedUser.id]);
           matchedUser.password = newHashed;
           console.log(`[Security] Upgraded legacy password to salted hash for user @${matchedUser.username}`);
         } catch (upgradeErr) {
@@ -2968,25 +4370,120 @@ app.post("/api/auth/lookup-user", async (req, res) => {
     const { username } = req.body || {};
     if (!username) return res.status(400).json({ success: false });
     const cleanUser = String(username).trim().toLowerCase();
-    try {
-      const mysqlPool = getPool();
-      const connection = await mysqlPool.getConnection();
-      try {
-        const [rows] = await connection.execute(
-          `SELECT id, username, email, phone, role FROM users WHERE LOWER(username) = ? OR LOWER(email) = ? OR phone = ? LIMIT 1`,
-          [cleanUser, cleanUser, cleanUser]
-        );
-        if (Array.isArray(rows) && rows.length > 0) {
-          return res.json({ success: true, user: rows[0] });
-        }
-      } finally {
-        connection.release();
-      }
-    } catch (e) {
+    const matched = await lookupUserInMySQL(cleanUser);
+    if (matched) {
+      const { password, password_hash, ...safeUser } = matched;
+      return res.json({ success: true, user: safeUser });
     }
     return res.status(404).json({ success: false, message: "User not found" });
   } catch (err) {
     return res.status(500).json({ success: false });
+  }
+});
+app.post("/api/auth/register-user", async (req, res) => {
+  try {
+    const userData = req.body || {};
+    const username = (userData.username || "").trim().slice(0, 50);
+    const password = (userData.password || "").trim();
+    if (!username || !password) {
+      return res.status(400).json({ success: false, message: "Username and password required." });
+    }
+    const email = (userData.email || `${username}@lottery.local`).trim().slice(0, 100);
+    const balance = parseFloat(userData.balance ?? userData.creator_balance ?? 50) || 0;
+    const role = userData.role === "admin" ? "admin" : userData.role === "agent" ? "agent" : "user";
+    const safePassword = needsRehash(password) ? hashPasswordWithUniqueSalt(password) : password;
+    const status = userData.status || "active";
+    const userId = userData.id || `u_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const joinDate = userData.joinDate || (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+    console.log(`[Direct User Registration] Registering user in MySQL: ${username}`);
+    const mysqlPool = getPool();
+    const connection = await mysqlPool.getConnection();
+    try {
+      const [existing] = await connection.execute(
+        `SELECT id, username, email FROM lottery_users WHERE LOWER(username) = LOWER(?) OR LOWER(email) = LOWER(?) LIMIT 1`,
+        [username, email]
+      );
+      let assignedId = userId;
+      if (Array.isArray(existing) && existing.length > 0) {
+        assignedId = existing[0].id;
+        await connection.execute(
+          `UPDATE lottery_users SET password = ?, email = ?, balance = ?, status = ? WHERE id = ?`,
+          [safePassword, email, balance, status, assignedId]
+        );
+        console.log(`[Direct User Registration] Updated existing user #${assignedId} (${username}) in MySQL`);
+      } else {
+        await connection.execute(
+          `INSERT INTO lottery_users (id, username, email, password, phone, dob, balance, totDeposit, totWithdraw, wins, loss, profit, joinDate, status, role, region)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            assignedId,
+            username,
+            email,
+            safePassword,
+            userData.phone || null,
+            userData.dob || null,
+            balance,
+            parseFloat(userData.totDeposit) || 0,
+            parseFloat(userData.totWithdraw) || 0,
+            parseInt(userData.wins, 10) || 0,
+            parseInt(userData.loss, 10) || 0,
+            parseFloat(userData.profit) || 0,
+            joinDate,
+            status,
+            role,
+            userData.region || null
+          ]
+        );
+        console.log(`[Direct User Registration] Persisted new user #${assignedId} (${username}) in MySQL`);
+      }
+      const currentBackup = loadLocalDbBackup() || { users: [] };
+      if (!Array.isArray(currentBackup.users)) currentBackup.users = [];
+      const idx = currentBackup.users.findIndex((u) => u.username?.toLowerCase() === username.toLowerCase());
+      const savedUser = {
+        ...userData,
+        id: String(assignedId),
+        username,
+        email,
+        password: safePassword,
+        role: userData.role || "player",
+        balance,
+        creator_balance: balance,
+        status
+      };
+      if (idx >= 0) {
+        currentBackup.users[idx] = { ...currentBackup.users[idx], ...savedUser };
+      } else {
+        currentBackup.users.push(savedUser);
+      }
+      saveLocalDbBackup(currentBackup);
+      try {
+        const ssePayload = {
+          type: "database_updated",
+          timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+          counts: { users: currentBackup.users.length }
+        };
+        const sseMsg = `data: ${JSON.stringify(ssePayload)}
+
+`;
+        sseClients.forEach((client) => {
+          try {
+            client.write(sseMsg);
+          } catch {
+          }
+        });
+      } catch {
+      }
+      return res.json({
+        success: true,
+        user: savedUser,
+        message: "Account registered and persisted to MySQL database."
+      });
+    } finally {
+      connection.release();
+    }
+  } catch (err) {
+    console.error("[Direct User Registration Error]", err.message);
+    return res.status(500).json({ success: false, message: "Database save failed: " + err.message });
   }
 });
 var VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BHVO5USYS8lpmE2GZhlAbbJq2r17jGEYTy8g5TiaYXTsCNRv9XOV36xYRbuBZr89uSdLymey-mIL5edorUUsw_c";
@@ -2999,6 +4496,20 @@ import_web_push.default.setVapidDetails(
 app.get("/api/push/vapid-public-key", (_req, res) => {
   res.json({ publicKey: VAPID_PUBLIC_KEY });
 });
+var localPushSubsPath = import_path2.default.join(process.cwd(), "push_subs_local.json");
+var inMemoryPushSubs = [];
+try {
+  if (import_fs2.default.existsSync(localPushSubsPath)) {
+    inMemoryPushSubs = JSON.parse(import_fs2.default.readFileSync(localPushSubsPath, "utf8")) || [];
+  }
+} catch {
+}
+function persistPushSubsLocal() {
+  try {
+    import_fs2.default.writeFileSync(localPushSubsPath, JSON.stringify(inMemoryPushSubs, null, 2), "utf8");
+  } catch {
+  }
+}
 var latestServerDrawEvent = null;
 var drawEventHistory = [];
 app.post("/api/draws/broadcast", async (req, res) => {
@@ -3011,8 +4522,7 @@ app.post("/api/draws/broadcast", async (req, res) => {
     }
     console.log(`[Server Draw Broadcast] New live draw broadcasted: "${drawEvent.lotteryName}" (${drawEvent.id}) with ${drawEvent.winnersCount || 0} winner(s).`);
     try {
-      const pool2 = getPool();
-      const [subs] = await pool2.execute("SELECT * FROM push_subscriptions");
+      const subs = inMemoryPushSubs;
       if (Array.isArray(subs) && subs.length > 0) {
         const payload = JSON.stringify({
           title: `\u{1F3C6} \u09A1\u09CD\u09B0 \u09B0\u09C7\u099C\u09BE\u09B2\u09CD\u099F: ${drawEvent.lotteryName}`,
@@ -3033,8 +4543,8 @@ app.post("/api/draws/broadcast", async (req, res) => {
           };
           return import_web_push.default.sendNotification(pushSubscription, payload).catch((err) => {
             if (err.statusCode === 410 || err.statusCode === 404) {
-              pool2.execute("DELETE FROM push_subscriptions WHERE endpoint = ?", [sub.endpoint]).catch(() => {
-              });
+              inMemoryPushSubs = inMemoryPushSubs.filter((s) => s.endpoint !== sub.endpoint);
+              persistPushSubsLocal();
             }
             console.error("[Push Error]", err.message);
           });
@@ -3057,9 +4567,14 @@ app.get("/api/draws/latest", (_req, res) => {
 app.get("/api/legal/pages", async (_req, res) => {
   try {
     const mysqlPool = getPool();
-    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM lottery_settings WHERE setting_key = 'legal_pages' LIMIT 1`);
     if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      const parsedPages = JSON.parse(rows[0].setting_value);
+      let parsedPages = [];
+      try {
+        parsedPages = JSON.parse(rows[0].setting_value);
+      } catch (e) {
+        console.error("[SQL Settings Error] Failed to parse custom pages:", e);
+      }
       const publicPages = parsedPages.filter((p) => p.status === "PUBLISHED");
       return res.json({ success: true, pages: publicPages });
     }
@@ -3080,9 +4595,14 @@ app.get("/api/legal/pages/:key", async (req, res) => {
   const { key } = req.params;
   try {
     const mysqlPool = getPool();
-    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM lottery_settings WHERE setting_key = 'legal_pages' LIMIT 1`);
     if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      const parsedPages = JSON.parse(rows[0].setting_value);
+      let parsedPages = [];
+      try {
+        parsedPages = JSON.parse(rows[0].setting_value);
+      } catch (e) {
+        console.error("[SQL Settings Error] Failed to parse custom pages for detail:", e);
+      }
       const page = parsedPages.find((p) => p.page_key === key || p.slug === `/${key}`);
       if (page && page.status === "PUBLISHED") {
         return res.json({ success: true, page });
@@ -3115,9 +4635,13 @@ app.post("/api/legal/pages/save", async (req, res) => {
   try {
     const mysqlPool = getPool();
     let currentPages = getDefaultLegalPages();
-    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_pages' LIMIT 1`);
+    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM lottery_settings WHERE setting_key = 'legal_pages' LIMIT 1`);
     if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      currentPages = JSON.parse(rows[0].setting_value);
+      try {
+        currentPages = JSON.parse(rows[0].setting_value);
+      } catch (e) {
+        console.error("[SQL Settings Error] Failed to parse custom pages for deletion:", e);
+      }
     }
     if (page.content) page.content = sanitizeHTML(page.content);
     if (page.draft_content) page.draft_content = sanitizeHTML(page.draft_content);
@@ -3129,7 +4653,7 @@ app.post("/api/legal/pages/save", async (req, res) => {
     }
     const pagesStr = JSON.stringify(currentPages);
     await mysqlPool.execute(
-      `INSERT INTO settings (setting_key, setting_value) VALUES ('legal_pages', ?)
+      `INSERT INTO lottery_settings (setting_key, setting_value) VALUES ('legal_pages', ?)
        ON DUPLICATE KEY UPDATE setting_value = ?`,
       [pagesStr, pagesStr]
     );
@@ -3151,9 +4675,15 @@ app.post("/api/legal/pages/save", async (req, res) => {
 app.get("/api/legal/audit-logs", async (_req, res) => {
   try {
     const mysqlPool = getPool();
-    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM settings WHERE setting_key = 'legal_audit_logs' LIMIT 1`);
+    const [rows] = await mysqlPool.execute(`SELECT setting_value FROM lottery_settings WHERE setting_key = 'legal_audit_logs' LIMIT 1`);
     if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      return res.json({ success: true, auditLogs: JSON.parse(rows[0].setting_value) });
+      let auditLogs = [];
+      try {
+        auditLogs = JSON.parse(rows[0].setting_value);
+      } catch (e) {
+        console.error("[SQL Settings Error] Failed to parse audit logs:", e);
+      }
+      return res.json({ success: true, auditLogs });
     }
   } catch (err) {
     console.error("[Legal API] Audit logs SQL error:", err.message);
@@ -3243,87 +4773,36 @@ function broadcastAdminLog(logEntry) {
     }
   });
 }
+var localLogsPath = import_path2.default.join(process.cwd(), "system_logs_local.json");
+var inMemorySystemLogs = [];
+try {
+  if (import_fs2.default.existsSync(localLogsPath)) {
+    const raw = import_fs2.default.readFileSync(localLogsPath, "utf8");
+    inMemorySystemLogs = JSON.parse(raw) || [];
+  }
+} catch {
+}
+function persistSystemLogsLocal() {
+  try {
+    import_fs2.default.writeFileSync(localLogsPath, JSON.stringify(inMemorySystemLogs.slice(0, 500), null, 2), "utf8");
+  } catch {
+  }
+}
 async function initSystemLogsTable() {
   try {
     const pool2 = getPool();
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS system_logs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      log_id VARCHAR(50) UNIQUE NOT NULL,
-      event_type VARCHAR(100) NOT NULL,
-      event_action VARCHAR(100) NULL,
-      severity VARCHAR(30) DEFAULT 'INFO',
-      message TEXT NOT NULL,
-      source_database VARCHAR(30) DEFAULT 'SQL',
-      target_database VARCHAR(30) NULL,
-      entity_type VARCHAR(50) NULL,
-      entity_id VARCHAR(100) NULL,
-      user_id VARCHAR(50) NULL,
-      admin_id VARCHAR(50) NULL,
-      sync_id VARCHAR(100) NULL,
-      request_id VARCHAR(100) NULL,
-      status VARCHAR(30) DEFAULT 'SUCCESS',
-      error_code VARCHAR(50) NULL,
-      error_message TEXT NULL,
-      metadata TEXT NULL,
-      ip_address VARCHAR(50) NULL,
-      created_at VARCHAR(100) NOT NULL,
-      expires_at VARCHAR(100) NOT NULL,
-      INDEX idx_created_at (created_at),
-      INDEX idx_event_type (event_type),
-      INDEX idx_status (status),
-      INDEX idx_sync_id (sync_id),
-      INDEX idx_request_id (request_id),
-      INDEX idx_entity_id (entity_id)
-    ) ENGINE=InnoDB;`);
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS database_sync_queue (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      event_id VARCHAR(100) UNIQUE NOT NULL,
-      entity_type VARCHAR(50) NOT NULL,
-      entity_id VARCHAR(100) NOT NULL,
-      operation VARCHAR(30) NOT NULL,
-      source_database VARCHAR(30) NOT NULL,
-      target_database VARCHAR(30) NOT NULL,
-      payload TEXT NULL,
-      status VARCHAR(30) DEFAULT 'pending',
-      retry_count INT DEFAULT 0,
-      last_error TEXT NULL,
-      created_at VARCHAR(100) NULL,
-      updated_at VARCHAR(100) NULL
-    ) ENGINE=InnoDB;`);
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS admin_database_switch_log (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      admin_id VARCHAR(50) NOT NULL,
-      old_database VARCHAR(20) NOT NULL,
-      new_database VARCHAR(20) NOT NULL,
-      reason TEXT NULL,
-      ip VARCHAR(50) NULL,
-      status VARCHAR(30) DEFAULT 'SUCCESS',
-      timestamp VARCHAR(100) NULL
-    ) ENGINE=InnoDB;`);
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS system_settings (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      setting_key VARCHAR(100) UNIQUE NOT NULL,
-      setting_value TEXT NULL,
-      updated_at VARCHAR(100) NULL
-    ) ENGINE=InnoDB;`);
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS database_switch_logs (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      admin_id VARCHAR(50) NOT NULL,
-      old_database VARCHAR(50) NOT NULL,
-      new_database VARCHAR(50) NOT NULL,
-      changed_at VARCHAR(100) NOT NULL,
-      ip_address VARCHAR(50) NULL,
-      user_agent TEXT NULL
-    ) ENGINE=InnoDB;`);
     try {
-      const [rows] = await pool2.execute(`SELECT * FROM system_settings WHERE setting_key = 'active_database'`);
+      const [rows] = await pool2.execute(`SELECT * FROM platform_settings WHERE setting_key = 'active_database'`);
       if (!Array.isArray(rows) || rows.length === 0) {
-        await pool2.execute(`INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', 'mysql', ?)`, [(/* @__PURE__ */ new Date()).toISOString()]);
-        console.log("[System Settings] Seeded default active_database = mysql");
+        await pool2.execute(
+          `REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('active_database', 'mysql', ?)`,
+          [Date.now()]
+        );
+        console.log("[System Settings] Seeded default active_database = mysql into platform_settings");
       } else {
         const val = rows[0].setting_value;
-        ACTIVE_DATABASE_MODE = val.toLowerCase() === "mysql" ? "SQL" : "Firebase";
-        console.log(`[System Settings] Loaded existing active_database from database: ${val}`);
+        ACTIVE_DATABASE_MODE = String(val).toLowerCase() === "mysql" ? "SQL" : "Firebase";
+        console.log(`[System Settings] Loaded existing active_database from platform_settings: ${val}`);
       }
     } catch (e) {
       console.warn("[System Settings Seed Notice]", e.message);
@@ -3333,11 +4812,11 @@ async function initSystemLogsTable() {
 }
 initSystemLogsTable().catch(() => {
 });
-setInterval(async () => {
+setInterval(() => {
   try {
-    const pool2 = getPool();
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-    await pool2.execute(`DELETE FROM system_logs WHERE expires_at <= ?`, [nowIso]);
+    inMemorySystemLogs = inMemorySystemLogs.filter((l) => !l.expires_at || l.expires_at > nowIso);
+    persistSystemLogsLocal();
   } catch (e) {
   }
 }, 10 * 60 * 1e3);
@@ -3362,94 +4841,72 @@ async function recordSystemLog(options) {
     status: options.status || "SUCCESS",
     error_code: options.error_code || null,
     error_message: options.error_message || null,
-    metadata: options.metadata ? JSON.stringify(options.metadata) : null,
+    metadata: options.metadata ? typeof options.metadata === "string" ? options.metadata : JSON.stringify(options.metadata) : null,
     ip_address: options.ip_address || "127.0.0.1",
     created_at,
     expires_at
   };
-  try {
-    const pool2 = getPool();
-    await pool2.execute(
-      `INSERT INTO system_logs (log_id, event_type, event_action, severity, message, source_database, target_database, entity_type, entity_id, user_id, admin_id, sync_id, request_id, status, error_code, error_message, metadata, ip_address, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        logEntry.log_id,
-        logEntry.event_type,
-        logEntry.event_action,
-        logEntry.severity,
-        logEntry.message,
-        logEntry.source_database,
-        logEntry.target_database,
-        logEntry.entity_type,
-        logEntry.entity_id,
-        logEntry.user_id,
-        logEntry.admin_id,
-        logEntry.sync_id,
-        logEntry.request_id,
-        logEntry.status,
-        logEntry.error_code,
-        logEntry.error_message,
-        logEntry.metadata,
-        logEntry.ip_address,
-        logEntry.created_at,
-        logEntry.expires_at
-      ]
-    );
-  } catch (e) {
+  inMemorySystemLogs.unshift(logEntry);
+  if (inMemorySystemLogs.length > 500) {
+    inMemorySystemLogs.pop();
   }
+  persistSystemLogsLocal();
   broadcastAdminLog(logEntry);
 }
 app.get("/api/admin/logs", async (req, res) => {
   try {
     const { filter, search, limit = "100", offset = "0" } = req.query;
-    const pool2 = getPool();
-    let query = "SELECT * FROM system_logs WHERE expires_at > NOW()";
-    const params = [];
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    let logs = inMemorySystemLogs.filter((l) => !l.expires_at || l.expires_at > nowIso);
     if (filter && filter !== "ALL") {
-      query += " AND (event_type LIKE ? OR severity LIKE ?)";
-      params.push(`%${filter}%`, `%${filter}%`);
+      const f = String(filter).toLowerCase();
+      logs = logs.filter(
+        (l) => l.event_type && l.event_type.toLowerCase().includes(f) || l.severity && l.severity.toLowerCase().includes(f)
+      );
     }
     if (search && typeof search === "string" && search.trim() !== "") {
-      query += " AND (log_id LIKE ? OR sync_id LIKE ? OR request_id LIKE ? OR user_id LIKE ? OR event_type LIKE ? OR message LIKE ?)";
-      const s = `%${search.trim()}%`;
-      params.push(s, s, s, s, s, s);
+      const s = search.trim().toLowerCase();
+      logs = logs.filter(
+        (l) => l.log_id && l.log_id.toLowerCase().includes(s) || l.sync_id && l.sync_id.toLowerCase().includes(s) || l.request_id && l.request_id.toLowerCase().includes(s) || l.user_id && l.user_id.toLowerCase().includes(s) || l.event_type && l.event_type.toLowerCase().includes(s) || l.message && l.message.toLowerCase().includes(s)
+      );
     }
-    query += " ORDER BY created_at DESC LIMIT ? OFFSET ?";
-    params.push(Number(limit), Number(offset));
-    const [rows] = await pool2.execute(query, params);
-    return res.json({ success: true, logs: rows });
+    const start = Math.max(0, Number(offset) || 0);
+    const end = start + Math.max(1, Number(limit) || 100);
+    const paginated = logs.slice(start, end);
+    return res.json({ success: true, logs: paginated });
   } catch (e) {
     return res.json({ success: true, logs: [], error: e.message });
   }
 });
 app.get("/api/admin/logs/recent", async (_req, res) => {
   try {
-    const pool2 = getPool();
-    const [rows] = await pool2.execute("SELECT * FROM system_logs WHERE expires_at > NOW() ORDER BY created_at DESC LIMIT 100");
-    return res.json({ success: true, logs: rows });
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const logs = inMemorySystemLogs.filter((l) => !l.expires_at || l.expires_at > nowIso).slice(0, 100);
+    return res.json({ success: true, logs });
   } catch (e) {
     return res.json({ success: true, logs: [] });
   }
 });
 app.get("/api/admin/logs/stats", async (_req, res) => {
   try {
-    const pool2 = getPool();
-    const [totalRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW()");
-    const [successRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW() AND (status = 'SUCCESS' OR severity = 'SUCCESS')");
-    const [warningRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW() AND severity = 'WARNING'");
-    const [errorRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW() AND (severity = 'ERROR' OR severity = 'CRITICAL')");
-    const [syncSuccessRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW() AND event_type LIKE '%SYNC%' AND status = 'SUCCESS'");
-    const [syncFailedRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM system_logs WHERE expires_at > NOW() AND event_type LIKE '%SYNC%' AND status != 'SUCCESS'");
-    const [pendingSyncRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM database_sync_queue WHERE status = 'pending'");
+    const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+    const activeLogs = inMemorySystemLogs.filter((l) => !l.expires_at || l.expires_at > nowIso);
+    const total24h = activeLogs.length;
+    const success = activeLogs.filter((l) => l.status === "SUCCESS" || l.severity === "SUCCESS").length;
+    const warning = activeLogs.filter((l) => l.severity === "WARNING").length;
+    const error = activeLogs.filter((l) => l.severity === "ERROR" || l.severity === "CRITICAL").length;
+    const syncSuccess = activeLogs.filter((l) => l.event_type && l.event_type.includes("SYNC") && l.status === "SUCCESS").length;
+    const syncFailed = activeLogs.filter((l) => l.event_type && l.event_type.includes("SYNC") && l.status !== "SUCCESS").length;
     return res.json({
       success: true,
       stats: {
-        total24h: totalRows[0]?.cnt || 0,
-        success: successRows[0]?.cnt || 0,
-        warning: warningRows[0]?.cnt || 0,
-        error: errorRows[0]?.cnt || 0,
-        syncSuccess: syncSuccessRows[0]?.cnt || 0,
-        syncFailed: syncFailedRows[0]?.cnt || 0,
-        pendingSync: pendingSyncRows[0]?.cnt || 0
+        total24h,
+        success,
+        warning,
+        error,
+        syncSuccess,
+        syncFailed,
+        pendingSync: 0
       }
     });
   } catch (e) {
@@ -3461,7 +4918,7 @@ var SQLAdapter = {
   async health() {
     try {
       const pool2 = getPool();
-      const [rows] = await pool2.execute("SELECT COUNT(*) as cnt FROM users");
+      const [rows] = await pool2.execute("SELECT COUNT(*) as cnt FROM lottery_users");
       return { connected: true, recordCount: rows[0]?.cnt || 0 };
     } catch (e) {
       return { connected: false, error: e.message, recordCount: 0 };
@@ -3470,16 +4927,6 @@ var SQLAdapter = {
 };
 app.get("/api/database/health", async (_req, res) => {
   const sqlHealth = await SQLAdapter.health();
-  let pendingCount = 0;
-  let failedCount = 0;
-  try {
-    const pool2 = getPool();
-    const [pRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM database_sync_queue WHERE status = 'pending'");
-    const [fRows] = await pool2.execute("SELECT COUNT(*) as cnt FROM database_sync_queue WHERE status = 'failed'");
-    pendingCount = pRows[0]?.cnt || 0;
-    failedCount = fRows[0]?.cnt || 0;
-  } catch (e) {
-  }
   return res.json({
     success: true,
     activeMode: "SQL",
@@ -3487,8 +4934,8 @@ app.get("/api/database/health", async (_req, res) => {
       connected: sqlHealth.connected,
       recordCount: sqlHealth.recordCount,
       lastSuccessfulSync: lastSuccessfulSyncTime,
-      pendingSync: pendingCount,
-      failedSync: failedCount,
+      pendingSync: 0,
+      failedSync: 0,
       error: sqlHealth.error || null
     },
     firebase: {
@@ -3538,30 +4985,21 @@ async function executeDatabaseSwitch(dbParam, adminId, ipAddress, userAgent) {
   try {
     const pool2 = getPool();
     await pool2.execute(
-      `INSERT INTO system_settings (setting_key, setting_value, updated_at) VALUES ('active_database', ?, ?)
-       ON DUPLICATE KEY UPDATE setting_value = ?, updated_at = ?`,
-      [targetDbVal, (/* @__PURE__ */ new Date()).toISOString(), targetDbVal, (/* @__PURE__ */ new Date()).toISOString()]
+      `REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES ('active_database', ?, ?)`,
+      [targetDbVal, Date.now()]
     );
   } catch (sqlErr) {
-    console.warn("[executeDatabaseSwitch] SQL system_settings write failed (using fallback):", sqlErr.message);
+    console.warn("[executeDatabaseSwitch] SQL platform_settings write failed (using fallback):", sqlErr.message);
   }
   saveLocalActiveDatabase(targetDbVal);
-  try {
-    const pool2 = getPool();
-    await pool2.execute(
-      `INSERT INTO database_switch_logs (admin_id, old_database, new_database, changed_at, ip_address, user_agent) VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        adminId || "admin",
-        oldDbVal,
-        targetDbVal,
-        (/* @__PURE__ */ new Date()).toISOString(),
-        String(ipAddress).substring(0, 50),
-        String(userAgent).substring(0, 255)
-      ]
-    ).catch(() => {
-    });
-  } catch {
-  }
+  recordSystemLog({
+    event_type: "DATABASE_SWITCH",
+    severity: "WARNING",
+    message: `Database switched from ${oldDbVal} to ${targetDbVal} by ${adminId || "admin"}`,
+    admin_id: adminId || "admin",
+    ip_address: String(ipAddress).substring(0, 50),
+    metadata: { userAgent: String(userAgent).substring(0, 255) }
+  });
   ACTIVE_DATABASE_MODE = targetMode;
   serverSqlConfig.activeEngine = targetDbVal;
   lastSuccessfulSyncTime = (/* @__PURE__ */ new Date()).toISOString();
@@ -3701,15 +5139,6 @@ app.get("/api/admin/logs/stream", (req, res) => {
     if (idx >= 0) sseClients.splice(idx, 1);
   });
 });
-app.get("/api/admin/logs", async (_req, res) => {
-  try {
-    const pool2 = getPool();
-    const [rows] = await pool2.execute("SELECT * FROM admin_system_logs ORDER BY created_at DESC LIMIT 100");
-    return res.json({ success: true, logs: rows });
-  } catch (e) {
-    return res.json({ success: true, logs: [] });
-  }
-});
 var permanentUploadDir = import_path2.default.join(currentDir, "uploads");
 if (!import_fs2.default.existsSync(permanentUploadDir)) {
   import_fs2.default.mkdirSync(permanentUploadDir, { recursive: true });
@@ -3768,7 +5197,7 @@ app.post("/api/upload/logo", upload.single("file"), async (req, res) => {
     const pool2 = getPool();
     try {
       const keyName = fileType === "favicon" ? "favicon_url" : "header_logo_url";
-      const [rows] = await pool2.execute("SELECT setting_value FROM settings WHERE setting_key = ?", [keyName]);
+      const [rows] = await pool2.execute("SELECT setting_value FROM platform_settings WHERE setting_key = ?", [keyName]);
       if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
         const val = rows[0].setting_value;
         if (val.startsWith("/uploads/")) {
@@ -3783,8 +5212,12 @@ app.post("/api/upload/logo", upload.single("file"), async (req, res) => {
     }
     const urlKey = fileType === "favicon" ? "favicon_url" : "header_logo_url";
     const timeKey = fileType === "favicon" ? "favicon_updated_at" : "header_logo_updated_at";
-    await pool2.execute("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?", [urlKey, relativePath, relativePath]);
-    await pool2.execute("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?", [timeKey, timestamp, timestamp]);
+    try {
+      await pool2.execute("REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)", [urlKey, relativePath, Date.now()]);
+      await pool2.execute("REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)", [timeKey, timestamp, Date.now()]);
+    } catch (sqlErr) {
+      console.warn("[Logo Upload platform_settings Notice]", sqlErr.message);
+    }
     if (oldFilePath && import_fs2.default.existsSync(oldFilePath) && oldFilePath !== targetPath) {
       try {
         import_fs2.default.unlinkSync(oldFilePath);
@@ -3820,18 +5253,25 @@ app.post("/api/upload/remove", async (req, res) => {
     const pool2 = getPool();
     const urlKey = fileType === "favicon" ? "favicon_url" : "header_logo_url";
     const timeKey = fileType === "favicon" ? "favicon_updated_at" : "header_logo_updated_at";
-    const [rows] = await pool2.execute("SELECT setting_value FROM settings WHERE setting_key = ?", [urlKey]);
-    if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
-      const val = rows[0].setting_value;
-      if (val.startsWith("/uploads/")) {
-        const physicalPath = import_path2.default.join(currentDir, val);
-        if (import_fs2.default.existsSync(physicalPath)) {
-          import_fs2.default.unlinkSync(physicalPath);
+    try {
+      const [rows] = await pool2.execute("SELECT setting_value FROM platform_settings WHERE setting_key = ?", [urlKey]);
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].setting_value) {
+        const val = rows[0].setting_value;
+        if (val.startsWith("/uploads/")) {
+          const physicalPath = import_path2.default.join(currentDir, val);
+          if (import_fs2.default.existsSync(physicalPath)) {
+            import_fs2.default.unlinkSync(physicalPath);
+          }
         }
       }
+    } catch {
     }
-    await pool2.execute("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?", [urlKey, "", ""]);
-    await pool2.execute("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?", [timeKey, "", ""]);
+    try {
+      await pool2.execute("REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)", [urlKey, "", Date.now()]);
+      await pool2.execute("REPLACE INTO platform_settings (setting_key, setting_value, updated_at) VALUES (?, ?, ?)", [timeKey, "", Date.now()]);
+    } catch (sqlErr) {
+      console.warn("[Logo Remove platform_settings Notice]", sqlErr.message);
+    }
     return res.json({
       success: true,
       message: `${fileType === "favicon" ? "Favicon" : "Header Logo"} removed successfully.`,
@@ -3843,35 +5283,21 @@ app.post("/api/upload/remove", async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 });
-async function initNotificationTables() {
-  try {
-    const pool2 = getPool();
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS notifications (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      notification_id VARCHAR(50) UNIQUE NOT NULL,
-      user_id VARCHAR(50) DEFAULT 'all',
-      title VARCHAR(255) NOT NULL,
-      message TEXT NOT NULL,
-      click_url VARCHAR(255) NULL,
-      is_read TINYINT DEFAULT 0,
-      created_at VARCHAR(100) NOT NULL,
-      INDEX idx_user_id (user_id),
-      INDEX idx_is_read (is_read)
-    ) ENGINE=InnoDB;`);
-    await pool2.execute(`CREATE TABLE IF NOT EXISTS push_subscriptions (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      user_id VARCHAR(50) NOT NULL,
-      endpoint TEXT NOT NULL,
-      p256dh VARCHAR(255) NOT NULL,
-      auth VARCHAR(255) NOT NULL,
-      device_info VARCHAR(255) NULL,
-      created_at VARCHAR(100) NOT NULL,
-      updated_at VARCHAR(100) NOT NULL,
-      UNIQUE KEY unique_endpoint (endpoint(255)),
-      INDEX idx_user_push (user_id)
-    ) ENGINE=InnoDB;`);
-  } catch (e) {
+var localNotificationsPath = import_path2.default.join(process.cwd(), "notifications_local.json");
+var inMemoryNotifications = [];
+try {
+  if (import_fs2.default.existsSync(localNotificationsPath)) {
+    inMemoryNotifications = JSON.parse(import_fs2.default.readFileSync(localNotificationsPath, "utf8")) || [];
   }
+} catch {
+}
+function persistNotificationsLocal() {
+  try {
+    import_fs2.default.writeFileSync(localNotificationsPath, JSON.stringify(inMemoryNotifications.slice(0, 100), null, 2), "utf8");
+  } catch {
+  }
+}
+async function initNotificationTables() {
 }
 initNotificationTables().catch(() => {
 });
@@ -3881,15 +5307,25 @@ app.post("/api/notifications/send", async (req, res) => {
     return res.status(400).json({ success: false, message: "Title and message are required." });
   }
   try {
-    const pool2 = getPool();
     const notification_id = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     const created_at = (/* @__PURE__ */ new Date()).toISOString();
     const targetUserId = user_id && user_id.trim() !== "" ? user_id.trim() : "all";
     const targetUrl = click_url || "/";
-    await pool2.execute(
-      `INSERT INTO notifications (notification_id, user_id, title, message, click_url, is_read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)`,
-      [notification_id, targetUserId, title, message, targetUrl, created_at]
-    );
+    const notifItem = {
+      id: inMemoryNotifications.length + 1,
+      notification_id,
+      user_id: targetUserId,
+      title,
+      message,
+      click_url: targetUrl,
+      is_read: 0,
+      created_at
+    };
+    inMemoryNotifications.unshift(notifItem);
+    if (inMemoryNotifications.length > 100) {
+      inMemoryNotifications.pop();
+    }
+    persistNotificationsLocal();
     await recordSystemLog({
       event_type: "NOTIFICATION_SENT",
       severity: "SUCCESS",
@@ -3901,7 +5337,7 @@ app.post("/api/notifications/send", async (req, res) => {
     });
     return res.json({
       success: true,
-      message: "Notification successfully created in SQL and queued for delivery.",
+      message: "Notification successfully created and queued for delivery.",
       notificationId: notification_id
     });
   } catch (err) {
@@ -3911,16 +5347,11 @@ app.post("/api/notifications/send", async (req, res) => {
 app.get("/api/notifications", async (req, res) => {
   const userId = req.query.user_id;
   try {
-    const pool2 = getPool();
-    let query = "SELECT * FROM notifications";
-    const params = [];
+    let list = inMemoryNotifications;
     if (userId) {
-      query += ' WHERE user_id = ? OR user_id = "all"';
-      params.push(userId);
+      list = list.filter((n) => n.user_id === userId || n.user_id === "all");
     }
-    query += " ORDER BY created_at DESC LIMIT 50";
-    const [rows] = await pool2.execute(query, params);
-    return res.json({ success: true, notifications: rows });
+    return res.json({ success: true, notifications: list.slice(0, 50) });
   } catch (e) {
     return res.json({ success: false, error: e.message, notifications: [] });
   }
@@ -3928,12 +5359,12 @@ app.get("/api/notifications", async (req, res) => {
 app.post("/api/notifications/mark-read", async (req, res) => {
   const { notification_id, user_id } = req.body;
   try {
-    const pool2 = getPool();
     if (notification_id) {
-      await pool2.execute("UPDATE notifications SET is_read = 1 WHERE notification_id = ?", [notification_id]);
+      inMemoryNotifications = inMemoryNotifications.map((n) => n.notification_id === notification_id ? { ...n, is_read: 1 } : n);
     } else if (user_id) {
-      await pool2.execute('UPDATE notifications SET is_read = 1 WHERE user_id = ? OR user_id = "all"', [user_id]);
+      inMemoryNotifications = inMemoryNotifications.map((n) => n.user_id === user_id || n.user_id === "all" ? { ...n, is_read: 1 } : n);
     }
+    persistNotificationsLocal();
     return res.json({ success: true, message: "Notifications marked as read." });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -3945,14 +5376,24 @@ app.post("/api/push/subscribe", async (req, res) => {
     return res.status(400).json({ success: false, message: "Invalid subscription object." });
   }
   try {
-    const pool2 = getPool();
     const now = (/* @__PURE__ */ new Date()).toISOString();
     const uid = user_id || "guest_" + Math.random().toString(36).substring(2, 7);
-    await pool2.execute(
-      `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, device_info, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE user_id = ?, p256dh = ?, auth = ?, device_info = ?, updated_at = ?`,
-      [uid, endpoint, keys.p256dh, keys.auth, device_info || "Web Browser", now, now, uid, keys.p256dh, keys.auth, device_info || "Web Browser", now]
-    );
+    const existingIdx = inMemoryPushSubs.findIndex((s) => s.endpoint === endpoint);
+    const subRecord = {
+      user_id: uid,
+      endpoint,
+      p256dh: keys.p256dh,
+      auth: keys.auth,
+      device_info: device_info || "Web Browser",
+      created_at: existingIdx >= 0 ? inMemoryPushSubs[existingIdx].created_at : now,
+      updated_at: now
+    };
+    if (existingIdx >= 0) {
+      inMemoryPushSubs[existingIdx] = subRecord;
+    } else {
+      inMemoryPushSubs.push(subRecord);
+    }
+    persistPushSubsLocal();
     return res.json({ success: true, message: "Push subscription registered successfully." });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
@@ -3962,7 +5403,7 @@ async function startServer() {
   if (isDev) {
     const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: "spa"
     });
     app.use(vite.middlewares);

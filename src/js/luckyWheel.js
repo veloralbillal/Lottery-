@@ -6,6 +6,20 @@ import { FloatingToastNotification } from "../floating_toast.js";
 import { DeviceFingerprint } from "./deviceFingerprint.js";
 
 export const LuckyWheelModule = {
+  getVIPMultiplier(user) {
+    if (!user) return 1.0;
+    const rank = user.vipLevel || user.vipRank || "Bronze";
+    if (rank === "Diamond" || rank === "Platinum") return 2.0;
+    if (rank === "Gold") return 1.5;
+    if (rank === "Silver") return 1.25;
+    return 1.0;
+  },
+  renderTab(state) {
+    if (!state || !state.currentUser) return;
+    this.currentUser = state.currentUser;
+    this.db = state.db;
+    this.renderLuckyWheel();
+  },
   renderDailyCheckinGrid() {
     const grid = document.getElementById("checkin-grid-days-container");
     if (!grid || !this.currentUser) return;
@@ -26,7 +40,7 @@ export const LuckyWheelModule = {
 
     if (isStreakBroken) {
       this.currentUser.checkinStreak = 0;
-      this.saveDB();
+      if (typeof this.saveDB === "function") this.saveDB();
     }
 
     const currentStreak = this.currentUser.checkinStreak || 0;
@@ -211,13 +225,13 @@ export const LuckyWheelModule = {
       status: "approved"
     });
 
-    this.saveDB();
-    this.showToast(`🎁 Day ${newStreak} checked-in! Claimed ৳${finalBonus.toFixed(2)} cash (VIP Boost applied: ${vipMult}x). Come back tomorrow!`, "success");
+    if (typeof this.saveDB === "function") this.saveDB();
+    if (typeof this.showToast === "function") this.showToast(`🎁 Day ${newStreak} checked-in! Claimed ৳${finalBonus.toFixed(2)} cash (VIP Boost applied: ${vipMult}x). Come back tomorrow!`, "success");
     FloatingToastNotification.broadcastCustom("DAILY CHECK-IN STREAK! 📅", `@<span class="text-white font-bold">${this.currentUser.username}</span> claimed Day ${newStreak} consecutive check-in reward of <strong class="text-indigo-400">৳${finalBonus.toFixed(2)}</strong>!`, "success");
     if (navigator.vibrate) navigator.vibrate(150);
     
     this.renderDailyCheckinGrid();
-    this.render(); // Refreshes primary headers
+    if (typeof this.render === "function") this.render(); // Refreshes primary headers
   },
 
   renderLuckyWheel() {
@@ -517,15 +531,15 @@ export const LuckyWheelModule = {
           username: appRef.currentUser.username
         });
       }
-      appRef.saveDB();
+      if (typeof appRef.saveDB === "function") appRef.saveDB();
 
       // Reset Wheel visual button
       triggerBtn.disabled = false;
       triggerBtn.className = "absolute z-20 w-14 h-14 bg-gradient-to-br from-amber-400 to-amber-600 hover:from-amber-300 hover:to-amber-500 active:scale-95 text-slate-950 font-black text-[10px] font-sans rounded-full flex flex-col items-center justify-center border-4 border-slate-900 shadow-xl shadow-amber-500/10 cursor-pointer uppercase tracking-tighter transition-all duration-300";
 
       // Redraw tab visual components
-      appRef.renderLuckyWheel();
-      appRef.render(); // Redraw header balances
+      if (typeof appRef.renderLuckyWheel === "function") appRef.renderLuckyWheel();
+      if (typeof appRef.render === "function") appRef.render(); // Redraw header balances
     }, 4500);
   }
 };
